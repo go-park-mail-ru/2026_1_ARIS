@@ -8,6 +8,9 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/model"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
 )
 
 func main() {
@@ -31,6 +34,18 @@ func main() {
 			return
 		}
 	}()
+
+	// инициализация репозитория и добавление тестовых данных
+	db := repository.NewRepository()
+
+	db.UserRepo.Save(context.Background(), model.NewUser(1, "KokInside", "KokInside@gmail.com", "+79999999999", "hard_password"))
+
+	users, err := db.UserRepo.List(context.Background(), 0, 1)
+	if err != nil {
+		fmt.Println("Error listing users:", err)
+	} else {
+		fmt.Println("Users:", users)
+	}
 
 	stop := make(chan os.Signal, 1)
 
