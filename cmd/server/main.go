@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/model"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
 )
 
@@ -38,7 +38,7 @@ func main() {
 	// инициализация репозитория и добавление тестовых данных
 	db := repository.NewRepository()
 
-	db.UserRepo.Save(context.Background(), model.NewUser(1, "KokInside", "KokInside@gmail.com", "+79999999999", "hard_password"))
+	db.UserRepo.Save(context.Background(), models.NewUser(1, "KokInside", "KokInside@gmail.com", "+79999999999", "hard_password"))
 
 	users, err := db.UserRepo.List(context.Background(), 0, 1)
 	if err != nil {

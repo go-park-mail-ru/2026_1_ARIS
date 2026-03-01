@@ -4,31 +4,31 @@ import (
 	"context"
 	"errors"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/model"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 )
 
 type UserRepo interface {
-	Save(ctx context.Context, user model.User)
-	Delete(ctx context.Context, id model.UserID) error
-	Update(ctx context.Context, id model.UserID, user model.User) error
+	Save(ctx context.Context, user models.User)
+	Delete(ctx context.Context, id models.UserID) error
+	Update(ctx context.Context, id models.UserID, user models.User) error
 
-	GetByID(ctx context.Context, id model.UserID) (model.User, error)
-	GetByEmail(ctx context.Context, email string) (model.User, error)
-	GetByUsername(ctx context.Context, username string) (model.User, error)
-	GetByPhone(ctx context.Context, phone string) (model.User, error)
+	GetByID(ctx context.Context, id models.UserID) (models.User, error)
+	GetByEmail(ctx context.Context, email string) (models.User, error)
+	GetByUsername(ctx context.Context, username string) (models.User, error)
+	GetByPhone(ctx context.Context, phone string) (models.User, error)
 
-	List(ctx context.Context, ofset, limit int) ([]model.User, error)
+	List(ctx context.Context, ofset, limit int) ([]models.User, error)
 }
 
 type inmemoryUserRepo struct {
-	users []model.User
+	users []models.User
 }
 
-func (r *inmemoryUserRepo) Save(ctx context.Context, user model.User) {
+func (r *inmemoryUserRepo) Save(ctx context.Context, user models.User) {
 	r.users = append(r.users, user)
 }
 
-func (r *inmemoryUserRepo) Delete(ctx context.Context, id model.UserID) error {
+func (r *inmemoryUserRepo) Delete(ctx context.Context, id models.UserID) error {
 	for i, u := range r.users {
 		if u.ID == id {
 			r.users = append(r.users[:i], r.users[i+1:]...)
@@ -38,43 +38,43 @@ func (r *inmemoryUserRepo) Delete(ctx context.Context, id model.UserID) error {
 	return errors.New("user not found")
 }
 
-func (r *inmemoryUserRepo) GetByID(ctx context.Context, id model.UserID) (model.User, error) {
+func (r *inmemoryUserRepo) GetByID(ctx context.Context, id models.UserID) (models.User, error) {
 	for _, u := range r.users {
 		if u.ID == id {
 			return u, nil
 		}
 	}
-	return model.User{}, errors.New("user not found")
+	return models.User{}, errors.New("user not found")
 }
 
-func (r *inmemoryUserRepo) GetByEmail(ctx context.Context, email string) (model.User, error) {
+func (r *inmemoryUserRepo) GetByEmail(ctx context.Context, email string) (models.User, error) {
 	for _, u := range r.users {
 		if u.Email == email {
 			return u, nil
 		}
 	}
-	return model.User{}, errors.New("user not found")
+	return models.User{}, errors.New("user not found")
 }
 
-func (r *inmemoryUserRepo) GetByUsername(ctx context.Context, username string) (model.User, error) {
+func (r *inmemoryUserRepo) GetByUsername(ctx context.Context, username string) (models.User, error) {
 	for _, u := range r.users {
 		if u.Username == username {
 			return u, nil
 		}
 	}
-	return model.User{}, errors.New("user not found")
+	return models.User{}, errors.New("user not found")
 }
 
-func (r *inmemoryUserRepo) GetByPhone(ctx context.Context, phone string) (model.User, error) {
+func (r *inmemoryUserRepo) GetByPhone(ctx context.Context, phone string) (models.User, error) {
 	for _, u := range r.users {
 		if u.Phone == phone {
 			return u, nil
 		}
 	}
-	return model.User{}, errors.New("user not found")
+	return models.User{}, errors.New("user not found")
 }
 
-func (r *inmemoryUserRepo) Update(ctx context.Context, id model.UserID, user model.User) error {
+func (r *inmemoryUserRepo) Update(ctx context.Context, id models.UserID, user models.User) error {
 	for i, u := range r.users {
 		if u.ID == id {
 			r.users[i] = user
@@ -85,7 +85,7 @@ func (r *inmemoryUserRepo) Update(ctx context.Context, id model.UserID, user mod
 	return errors.New("user not found")
 }
 
-func (r *inmemoryUserRepo) List(ctx context.Context, ofset, limit int) ([]model.User, error) {
+func (r *inmemoryUserRepo) List(ctx context.Context, ofset, limit int) ([]models.User, error) {
 	if ofset+limit > len(r.users) {
 		return nil, errors.New("out of range")
 	}
