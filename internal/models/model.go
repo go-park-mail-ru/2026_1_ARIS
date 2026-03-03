@@ -106,7 +106,7 @@ func NewProfile(id ProfileID, firstName, lastName, bio string, birthday *time.Ti
 	}
 }
 
-// Необходимо валидировать только один источник загрузки: Prorile или Group
+// Необходимо валидировать только один источник загрузки: Profile или Group
 type Media struct {
 	ID        MediaID    `json:"id"`
 	Type      MediaType  `json:"type"`
@@ -121,7 +121,7 @@ type Media struct {
 	IsDeleted bool       `json:"isDeleted"`
 }
 
-// Необходимо валидировать только один источник загрузки: Prorile или Group
+// Необходимо валидировать только один источник загрузки: Profile или Group
 type Document struct {
 	ID        DocumentID `json:"id"`
 	Link      string     `json:"link"`
@@ -133,7 +133,7 @@ type Document struct {
 	IsDeleted bool       `json:"isDeleted"`
 }
 
-// Необходимо валидировать только один источник публикации: Prorile или Group
+// Необходимо валидировать только один источник публикации: Profile или Group
 // Необходимо валидировать только один тип контента: Media или Document
 type Post struct {
 	ID          PostID       `json:"id"`
@@ -182,7 +182,7 @@ type Chat struct {
 	CreatedAt time.Time    `json:"createdAt"`
 }
 
-// Необходимо валидировать только одного отправителя сообщения: Prorile или Group
+// Необходимо валидировать только одного отправителя сообщения: Profile или Group
 // Необходимо валидировать только один тип контента: Media или Document
 type Message struct {
 	ID            MessageID    `json:"id"`
@@ -220,7 +220,7 @@ type Group struct {
 	IsDeleted   bool          `json:"isDeleted"`
 }
 
-// Необходимо валидировать только один одного автора комментария: Prorile или Group
+// Необходимо валидировать только один одного автора комментария: Profile или Group
 // Необходимо валидировать только один тип контента: Media или Document
 type Comment struct {
 	ID              CommentID    `json:"id"`

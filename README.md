@@ -18,3 +18,4 @@
 
 ### Ссылки
 - [Frontend repository](https://github.com/frontend-park-mail-ru/2026_1_ARIS)
+- [Figma](https://www.figma.com/design/fhzdyBQ8qjNFRCRVriSrK9/VK.com?node-id=8-16&p=f&t=u2EXBO6Pxh6QqWVC-0)

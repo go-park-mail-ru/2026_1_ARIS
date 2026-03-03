@@ -11,7 +11,7 @@ type PostRepo interface {
 	Save(ctx context.Context, post models.Post)
 	Delete(ctx context.Context, id models.PostID) error
 
-	List(ctx context.Context, ofset, limit int) ([]models.Post, error)
+	List(ctx context.Context, offset, limit int) ([]models.Post, error)
 }
 
 type inmemoryPostRepo struct {
@@ -32,9 +32,9 @@ func (r *inmemoryPostRepo) Delete(ctx context.Context, id models.PostID) error {
 	return errors.New("post not found")
 }
 
-func (r *inmemoryPostRepo) List(ctx context.Context, ofset, limit int) ([]models.Post, error) {
-	if ofset+limit > len(r.posts) {
+func (r *inmemoryPostRepo) List(ctx context.Context, offset, limit int) ([]models.Post, error) {
+	if offset+limit > len(r.posts) {
 		return nil, errors.New("out of range")
 	}
-	return r.posts[ofset : ofset+limit], nil
+	return r.posts[offset : offset+limit], nil
 }
