@@ -5,7 +5,6 @@
 - `phone` - номер телефона
 - `password_hash` - хэш пароля
 - `updatedAt` - дата обновления
-- `createdAt` - дата создания
 # profile
 - `user_id` - пользователь, которому принадлежит профиль
 - `firstName` - имяd
@@ -13,9 +12,22 @@
 - `bio` - описание профиля
 - `birthdayDate` - дата рождения
 - `gender_id` - пол
-- `avatar_id` - аватарка профиля (media table)
+
+# profile
+- `id` - уникальный id абстрактного профиля, единой точки для действий и контента
+- `avatar_id` - общая аватарка, отображаемая везде
+- `displayName` - отображаемое имя/никнейм
+- `createdAt` - дата создания
 - `updatedAt` - дата обновления
 - `isActive` - активный ли аккаунт
+
+# profileUser
+- `abstract_profile_id` - ссылка на `profile`
+- `profile_id` - профиль из таблицы `profile`
+
+# profileGroup
+- `abstract_profile_id` - ссылка на `profile`
+- `group_id` - группа из таблицы `group`
 
 # gender
 - `id` - униальный id пола
@@ -32,17 +44,13 @@
 - `isDeleted` - удалено ли
 
 # post
-- `id` - униальный id поста
+- `id` - уникальный id поста
 - `text` - текст поста
+- `author_id` - абстрактный профиль, создавший пост (ссылка на `profile`)
 - `createdAt` - дата создания
 - `updatedAt` - дата обновления
 - `isActive` - активный ли пост
-# postByProfile
-- `post_id` - id поста
-- `profile_id` - профиль, отправивший пост
-# postByGroup
-- `post_id` - id поста
-- `group_id` - сообщество, отправившее пост
+
 # postWithMedia
 - `post_id` - пост, к которому прикреплён медиафайл
 - `media_id` - медиафайл поста
@@ -56,17 +64,10 @@
 - `createdAt` - дата создания
 - `updatedAt` - дата обновления
 - `isDeleted` - удален ли чат
-# chatMemberProfile
-- `id` - униальный id участника чата
-- `profile_id` - профиль-участник чата
+# chatMember
+- `id` - уникальный id участника чата
 - `chat_id` - чат
-- `joinedAt` - дата вступления в чат
-- `leaveAt` - дата выхода из чата
-- `role_id` - роль в чате
-# chatMemberGroup
-- `id` - униальный id участника чата
-- `group_id` - группа-участник чата
-- `chat_id` - чат
+- `abstract_profile_id` - ссылка на `profile` (профиль или группа)
 - `joinedAt` - дата вступления в чат
 - `leaveAt` - дата выхода из чата
 - `role_id` - роль в чате
@@ -78,21 +79,16 @@
 - `typeName` - название типа чата
 
 # message
-- `id` - униальный id сообщения
+- `id` - уникальный id сообщения
 - `text` - текст сообщения
 - `parentMessage_id` - id родительского сообщения (для ответов)
 - `chat_id` - чат
 - `status_id` - статус сообщения
 - `sticker_id` - сообщение = стикер
+- `author_id` - отправитель сообщения (ссылка на `profile`)
 - `createdAt` - дата создания
 - `updatedAt` - дата изменения
 - `isDeleted` - удалено ли сообщение
-# messageByProfile
-- `message_id` - id сообщения
-- `profile_id` - профиль, отправивший сообщение
-# messageByGroup
-- `message_id` - id сообщения
-- `group_id` - группа, отправившая сообщение
 # messageStatus
 - `id` - униальный id статуса сообщения
 - `statusName` - название статуса
@@ -106,11 +102,7 @@
 - `title` - название группы
 - `description` - описание группы
 - `type_id` - тип группы (публичная, приватная)
-- `owner_id` - профиль владельца группы (profile table)
-- `avatar_id` - аватарка группы (media table)
-- `createdAt` - дата создания
-- `updatedAt` - дата обновления
-- `isDeleted` - удалена ли группа
+- `owner_id` - профиль владельца группы (abstructProfile table)
 # groupMember
 - `id` - униальный id участника группы
 - `profile_id` - профиль участника группы
@@ -126,34 +118,24 @@
 - `typeName` - название типа группы
 
 # comment
-- `id` - униальный id комментария
+- `id` - уникальный id комментария
 - `text` - текст комментария
 - `post_id` - пост, под которым оставлен комментарий
-- `parentComment_id` - родительский комментарий(для ответов)
+- `parentComment_id` - родительский комментарий (для ответов)
 - `sticker_id` - комментарий = стикер
+- `author_id` - автор комментария (ссылка на `profile`)
 - `createdAt` - дата создания
 - `updatedAt` - дата обновления
 - `isDeleted` - удален ли комментарий
-# commentByProfile
-- `comment` - id комментария
-- `profile_id` - профиль, который оставил сообщение
-# commentByGroup
-- `comment` - id комментария
-- `group_id` - группа, которая оставила комментарий
 # commentWithMedia
 - `comment_id` - комментарий с медиа
 - `media_id` - медиафайл комментария
 - `order` - порядковый номер медиафайла в комментарии
 
 # like
-- `id` - униальный id лайка
+- `id` - уникальный id лайка
+- `author_id` - кто поставил лайк (ссылка на `profile`)
 - `createdAt` - дата создания
-# likeByProfile
-- `like_id` - уникальный id лайка
-- `profile_id` - профиль, поставивший лайк
-# likeByGroup
-- `like_id` - уникальный id лайка
-- `group_id` - группа, которая поставила лайк
 # likeToPost
 - `like_id` - уникальный id лайка
 - `post_id` - пост, под которым поставлен лайк
@@ -162,23 +144,18 @@
 - `comment_id` - комментарий, которому поставлен лайк
 
 # reaction
-- `id` - униальный id реакции
+- `id` - уникальный id реакции
 - `message_id` - сообщение, к которому приложена реакция
 - `type_id` - тип реакции
+- `author_id` - кто оставил реакцию (ссылка на `profile`)
 - `createdAt` - дата создания реакции
-# reactionByProfile
-- `reaction_id` - id реакции
-- `profile_id` - профиль, оставивший реакцию
-# reactionByGroup
-- `reaction_id` - id реакции
-- `group_id` - группа, оставившая реакцию
 # reactionType
 - `id` - униальный id типа реакции
 - `typeName` - название типа реакции
 
 # friendship
-- `friend1_id` - профиль одного друга
-- `friend2_id` - профиль другого друга
+- `friend1_id` - первый участник (ссылка на `profile`)
+- `friend2_id` - второй участник (ссылка на `profile`)
 - `status_id` - статус дружбы (запрос, принята, отклонена)
 - `createdAt` - дата создания
 - `updatedAt` - дата обновления
@@ -210,20 +187,15 @@
 - `expiredAt` - дата истечения срока действия
 
 # ad
-- `id` - униальный id рекламы
+- `id` - уникальный id рекламы
 - `title` - название рекламы
 - `description` - описание рекламы
 - `link` - ссылка на рекламируемый продукт или услугу
 - `media_id` - медиа контент рекламы
+- `author_id` - кто создал рекламу (ссылка на `profile`)
 - `createdAt` - дата создания
 - `updatedAt` - дата обновления
 - `isDeleted` - удален ли рекламный пост
-# adByProfile
-- `ad_id` - id рекламы
-- `profile_id` - профиль, который создал рекламу
-# adByGroup
-- `ad_id` - id рекламы
-- `group_id` - группа, которая создала рекламу
 # adMeta
 - `ad_id` - реклама, к которой относятся метаданные
 - `key` - ключ метаданных
