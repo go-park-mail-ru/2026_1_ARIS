@@ -11,7 +11,7 @@
 - `lastName` - фамилия
 - `bio` - описание профиля
 - `birthdayDate` - дата рождения
-- `gender_id` - пол
+- `gender` - пол (`int` enum)
 
 # profile
 - `id` - уникальный id абстрактного профиля, единой точки для действий и контента
@@ -27,10 +27,6 @@
 # profileGroup
 - `abstract_profile_id` - ссылка на `profile`
 - `group_id` - группа из таблицы `group`
-
-# gender
-- `id` - униальный id пола
-- `genderName` - название пола
 
 # media
 - `id` - униальный id файла
@@ -168,6 +164,7 @@
 - `createdAt` - дата создания
 - `updatedAt` - дата обновления
 - `isDeleted` - удален ли стикерпак
+- `author_id` - кто создал стикерпак (ссылка на `profile`) (опционально)
 # sticker
 - `id` - униальный id стикера
 - `link` - ссылка на стикер
