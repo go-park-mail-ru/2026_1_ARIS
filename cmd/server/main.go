@@ -55,8 +55,8 @@ func main() {
 
 	fmt.Println("Server is stopping")
 
-	ctx, cansel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cansel()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
 		fmt.Println(err)

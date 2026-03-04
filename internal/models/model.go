@@ -111,7 +111,6 @@ func NewUserProfile(user User, firstName, lastName, bio string, birthday *time.T
 	}
 }
 
-// Media type with properties from schema
 type Media struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
@@ -169,7 +168,7 @@ func NewProfile(avatar *Media, isActive bool) Profile {
 	}
 }
 
-// GroupProfile - group-specific profile information
+// Group act as Abstract-Profile
 type ProfileGroup struct {
 	ProfileID uuid.UUID `json:"profileId"`
 	GroupID   uuid.UUID `json:"profileGroupId"`
@@ -182,6 +181,7 @@ func NewProfileGroup(profile Profile, group Group) ProfileGroup {
 	}
 }
 
+// UserProfile (User) act line Abstract-Prile
 type ProfileUser struct {
 	ProfileID            uuid.UUID `json:"profileId"`
 	ProfileUserPforileID uuid.UUID `json:"profileUserId"`
@@ -194,7 +194,6 @@ func NewProfileUser(profile Profile, userProfile UserProfile) ProfileUser {
 	}
 }
 
-// Post model matching schema
 type Post struct {
 	ID        uuid.UUID `json:"id"`
 	Text      string    `json:"text,omitempty"`
@@ -234,7 +233,6 @@ func NewPostWithMedia(post Post, media Media, order int) PostWithMedia {
 	}
 }
 
-// Chat model matching schema
 type Chat struct {
 	ID        uuid.UUID  `json:"id"`
 	TypeID    ChatType   `json:"type"`
@@ -255,7 +253,6 @@ type ChatMember struct {
 	Role      string     `json:"role"`
 }
 
-// Message model matching schema
 type Message struct {
 	ID              uuid.UUID     `json:"id"`
 	Text            string        `json:"text"`
@@ -276,7 +273,6 @@ type MessageWithMedia struct {
 	Order     int       `json:"order"`
 }
 
-// Group model matching schema
 type Group struct {
 	ID          uuid.UUID `json:"id"`
 	Title       string    `json:"title"`
@@ -296,7 +292,6 @@ type GroupMember struct {
 	Role      GroupRole  `json:"role"`
 }
 
-// Comment model matching schema
 type Comment struct {
 	ID              uuid.UUID  `json:"id"`
 	Text            string     `json:"text"`
@@ -316,7 +311,6 @@ type CommentWithMedia struct {
 	Order     int       `json:"order"`
 }
 
-// Like model - represents a like action
 type Like struct {
 	ID        uuid.UUID `json:"id"`
 	AuthorID  uuid.UUID `json:"author"`
@@ -362,7 +356,6 @@ type Sticker struct {
 	IsDeleted  bool      `json:"isDeleted"`
 }
 
-// Session model
 type Session struct {
 	ID             string    `json:"id"`
 	ProfileID      uuid.UUID `json:"profile"`
@@ -372,7 +365,6 @@ type Session struct {
 	LastActivityAt time.Time `json:"lastActivityAt"`
 }
 
-// Ad model - represents an advertisement
 type Ad struct {
 	ID          uuid.UUID  `json:"id"`
 	Title       string     `json:"title"`
@@ -392,7 +384,6 @@ type AdMeta struct {
 	Value string    `json:"value"`
 }
 
-// Reaction model - represents a reaction to a message
 type Reaction struct {
 	ID        uuid.UUID    `json:"id"`
 	MessageID uuid.UUID    `json:"message"`

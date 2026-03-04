@@ -19,7 +19,7 @@ type UserRepo interface {
 	GetByUsername(ctx context.Context, username string) (models.User, error)
 	GetByPhone(ctx context.Context, phone string) (models.User, error)
 
-	List(ctx context.Context, ofset, limit int) ([]models.User, error)
+	List(ctx context.Context, offset, limit int) ([]models.User, error)
 }
 
 type inmemoryUserRepo struct {
@@ -87,9 +87,9 @@ func (r *inmemoryUserRepo) Update(ctx context.Context, id uuid.UUID, user models
 	return errors.New("user not found")
 }
 
-func (r *inmemoryUserRepo) List(ctx context.Context, ofset, limit int) ([]models.User, error) {
-	if ofset+limit > len(r.users) {
+func (r *inmemoryUserRepo) List(ctx context.Context, offset, limit int) ([]models.User, error) {
+	if offset+limit > len(r.users) {
 		return nil, errors.New("out of range")
 	}
-	return r.users[ofset : ofset+limit], nil
+	return r.users[offset : offset+limit], nil
 }
