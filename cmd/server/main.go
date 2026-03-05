@@ -6,19 +6,28 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
 )
 
 func main() {
+	feedRepo := repository.NewFeedRepo()
+	feedService := service.NewFeedService(feedRepo)
+	feedHandler := handler.NewHandler(feedService)
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Hello world")
 	})
+
+	mux.HandleFunc("/api/feed/", feedHandler.GetFeed)
 
 	server := http.Server{
 		Addr:    ":8080",
@@ -45,6 +54,14 @@ func main() {
 		fmt.Println("Error listing users:", err)
 	} else {
 		fmt.Println("Users:", users)
+	}
+
+	for i := range 10 {
+		post := models.Post{
+			Text:      fmt.Sprintf("%s_%s", "Post №", strconv.Itoa(i)),
+			CreatedAt: time.Now(),
+		}
+		feedService.Save(context.Background(), post)
 	}
 
 	stop := make(chan os.Signal, 1)
