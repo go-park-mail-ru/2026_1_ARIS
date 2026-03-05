@@ -66,21 +66,19 @@ const (
 )
 
 // models structs
-
+// credentials данные
 type User struct {
 	ID           uuid.UUID `json:"id"`
-	Username     string    `json:"username"`
 	Email        string    `json:"email"`
 	Phone        string    `json:"phone"`
 	PasswordHash string    `json:"-"`
 	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
-func NewUser(username, email, phone, passwordHash string) User {
+func NewUser(email, phone, passwordHash string) User {
 	userID := uuid.New()
 	return User{
 		ID:           userID,
-		Username:     username,
 		Email:        email,
 		Phone:        phone,
 		PasswordHash: passwordHash,
@@ -89,22 +87,22 @@ func NewUser(username, email, phone, passwordHash string) User {
 }
 
 // UserProfile - user-specific profile information
+// профиль пользователя
 type UserProfile struct {
 	UserID       uuid.UUID  `json:"userId"`
+	ProfileID    uuid.UUID  `json:"profileId"` // Abstract-Profile
 	FirstName    string     `json:"firstName"`
 	LastName     string     `json:"lastName"`
-	Bio          string     `json:"bio"`
 	BirthdayDate *time.Time `json:"birthdayDate,omitempty"`
 	Gender       Gender     `json:"gender"`
 	UpdatedAt    time.Time  `json:"updatedAt"`
 }
 
-func NewUserProfile(user User, firstName, lastName, bio string, birthday *time.Time, gender Gender) UserProfile {
+func NewUserProfile(user User, firstName, lastName string, birthday *time.Time, gender Gender) UserProfile {
 	return UserProfile{
 		UserID:       user.ID,
 		FirstName:    firstName,
 		LastName:     lastName,
-		Bio:          bio,
 		BirthdayDate: birthday,
 		Gender:       gender,
 		UpdatedAt:    time.Now(),
@@ -143,6 +141,7 @@ func NewMedia(name, extension, description, mimeType, link string, size int, isD
 type Profile struct {
 	ID        uuid.UUID  `json:"id"`
 	AvatarID  *uuid.UUID `json:"avatar,omitempty"`
+	Username  string     `json:"username"`
 	CreatedAt time.Time  `json:"createdAt"`
 	UpdatedAt time.Time  `json:"updatedAt"`
 	IsActive  bool       `json:"isActive"`
@@ -168,36 +167,10 @@ func NewProfile(avatar *Media, isActive bool) Profile {
 	}
 }
 
-// Group act as Abstract-Profile
-type ProfileGroup struct {
-	ProfileID uuid.UUID `json:"profileId"`
-	GroupID   uuid.UUID `json:"profileGroupId"`
-}
-
-func NewProfileGroup(profile Profile, group Group) ProfileGroup {
-	return ProfileGroup{
-		profile.ID,
-		group.ID,
-	}
-}
-
-// UserProfile (User) act line Abstract-Prile
-type ProfileUser struct {
-	ProfileID            uuid.UUID `json:"profileId"`
-	ProfileUserPforileID uuid.UUID `json:"profileUserId"`
-}
-
-func NewProfileUser(profile Profile, userProfile UserProfile) ProfileUser {
-	return ProfileUser{
-		ProfileID:            profile.ID,
-		ProfileUserPforileID: userProfile.UserID,
-	}
-}
-
 type Post struct {
 	ID        uuid.UUID `json:"id"`
 	Text      string    `json:"text,omitempty"`
-	AuthorID  uuid.UUID `json:"authorId"`
+	AuthorID  uuid.UUID `json:"authorId"` // to Profile
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 	IsActive  bool      `json:"isActive"`
@@ -274,12 +247,13 @@ type MessageWithMedia struct {
 }
 
 type Group struct {
-	ID          uuid.UUID `json:"id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description,omitempty"`
-	Type        GroupType `json:"type"`
-	OwnerID     uuid.UUID `json:"owner"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID        uuid.UUID `json:"id"`
+	Title     string    `json:"title"`
+	Bio       string    `json:"bio,omitempty"`
+	Type      GroupType `json:"type"`
+	OwnerID   uuid.UUID `json:"owner"`     // Profile
+	ProfileID uuid.UUID `json:"profileId"` // Abstract-Profile
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // GroupMember - represents a member in a group
