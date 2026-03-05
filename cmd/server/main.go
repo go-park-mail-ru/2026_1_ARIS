@@ -47,7 +47,7 @@ func main() {
 	// инициализация репозитория и добавление тестовых данных
 	db := repository.NewRepository()
 
-	db.UserRepo.Save(context.Background(), models.NewUser("KokInside", "KokInside@gmail.com", "+79999999999", "hard_password"))
+	db.UserRepo.Save(context.Background(), models.NewUser("KokInside@gmail.com", "+79999999999", "hard_password"))
 
 	users, err := db.UserRepo.List(context.Background(), 0, 1)
 	if err != nil {

@@ -16,7 +16,6 @@ type UserRepo interface {
 
 	GetByID(ctx context.Context, id uuid.UUID) (models.User, error)
 	GetByEmail(ctx context.Context, email string) (models.User, error)
-	GetByUsername(ctx context.Context, username string) (models.User, error)
 	GetByPhone(ctx context.Context, phone string) (models.User, error)
 
 	List(ctx context.Context, offset, limit int) ([]models.User, error)
@@ -52,15 +51,6 @@ func (r *inmemoryUserRepo) GetByID(ctx context.Context, id uuid.UUID) (models.Us
 func (r *inmemoryUserRepo) GetByEmail(ctx context.Context, email string) (models.User, error) {
 	for _, u := range r.users {
 		if u.Email == email {
-			return u, nil
-		}
-	}
-	return models.User{}, errors.New("user not found")
-}
-
-func (r *inmemoryUserRepo) GetByUsername(ctx context.Context, username string) (models.User, error) {
-	for _, u := range r.users {
-		if u.Username == username {
 			return u, nil
 		}
 	}
