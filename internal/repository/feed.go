@@ -44,7 +44,13 @@ func (r *inmemoryFeedRepo) GetFeed(ctx context.Context, params FeedParams) ([]mo
 	limit := params.Limit + 1
 
 	if params.Cursor == nil {
-		return r.feedRepo[:limit], nil
+		fmt.Println("Пустой курсор")
+		fmt.Println("Возвращено из репо", r.feedRepo)
+		if limit > len(r.feedRepo) {
+			return r.feedRepo[:], nil
+		} else {
+			return r.feedRepo[:limit], nil
+		}
 	}
 
 	for i, p := range r.feedRepo {

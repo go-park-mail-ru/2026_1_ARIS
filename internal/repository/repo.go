@@ -7,7 +7,7 @@ type Repository struct {
 
 func NewRepository() *Repository {
 	return &Repository{
-		UserRepo: &inmemoryUserRepo{},
-		PostRepo: &inmemoryPostRepo{},
+		UserRepo: NewUserRepo(),
+		PostRepo: NewPostRepo(),
 	}
 }

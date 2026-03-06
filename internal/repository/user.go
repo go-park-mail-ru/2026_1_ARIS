@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 	"errors"
+	"maps"
+	"slices"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 
@@ -12,7 +14,7 @@ import (
 type UserRepo interface {
 	Save(ctx context.Context, user models.User)
 	Delete(ctx context.Context, id uuid.UUID) error
-	Update(ctx context.Context, id uuid.UUID, user models.User) error
+	//Update(ctx context.Context, id uuid.UUID, user models.User) error
 
 	GetByID(ctx context.Context, id uuid.UUID) (models.User, error)
 	GetByEmail(ctx context.Context, email string) (models.User, error)
@@ -22,30 +24,39 @@ type UserRepo interface {
 }
 
 type inmemoryUserRepo struct {
-	users []models.User
+	users map[uuid.UUID]models.User
+}
+
+func NewUserRepo() *inmemoryUserRepo {
+	repo := inmemoryUserRepo{}
+	repo.users = make(map[uuid.UUID]models.User)
+	return &repo
 }
 
 func (r *inmemoryUserRepo) Save(ctx context.Context, user models.User) {
-	r.users = append(r.users, user)
+	r.users[user.ID] = user
+	//r.users = append(r.users, user)
 }
 
 func (r *inmemoryUserRepo) Delete(ctx context.Context, id uuid.UUID) error {
-	for i, u := range r.users {
-		if u.ID == id {
-			r.users = append(r.users[:i], r.users[i+1:]...)
-			return nil
-		}
+	_, ok := r.users[id]
+
+	if ok {
+		delete(r.users, id)
+		return nil
 	}
+
 	return errors.New("user not found")
 }
 
 func (r *inmemoryUserRepo) GetByID(ctx context.Context, id uuid.UUID) (models.User, error) {
-	for _, u := range r.users {
-		if u.ID == id {
-			return u, nil
-		}
+
+	user, ok := r.users[id]
+
+	if !ok {
+		return models.User{}, errors.New("user not found")
 	}
-	return models.User{}, errors.New("user not found")
+	return user, nil
 }
 
 func (r *inmemoryUserRepo) GetByEmail(ctx context.Context, email string) (models.User, error) {
@@ -66,20 +77,10 @@ func (r *inmemoryUserRepo) GetByPhone(ctx context.Context, phone string) (models
 	return models.User{}, errors.New("user not found")
 }
 
-func (r *inmemoryUserRepo) Update(ctx context.Context, id uuid.UUID, user models.User) error {
-	for i, u := range r.users {
-		if u.ID == id {
-			r.users[i] = user
-			r.users[i].ID = id
-			return nil
-		}
-	}
-	return errors.New("user not found")
-}
-
 func (r *inmemoryUserRepo) List(ctx context.Context, offset, limit int) ([]models.User, error) {
 	if offset+limit > len(r.users) {
 		return nil, errors.New("out of range")
 	}
-	return r.users[offset : offset+limit], nil
+
+	return slices.Collect(maps.Values(r.users))[offset : offset+limit], nil
 }
