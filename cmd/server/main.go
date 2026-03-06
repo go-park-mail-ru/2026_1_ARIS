@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -19,7 +18,20 @@ import (
 func main() {
 	feedRepo := repository.NewFeedRepo()
 	feedService := service.NewFeedService(feedRepo)
-	feedHandler := handler.NewHandler(feedService)
+
+	postRepo := repository.NewPostRepo()
+	profileRepo := repository.NewProfileRepo()
+	postService := service.NewPostService(postRepo, profileRepo)
+
+	mediaRepo := repository.NewMediaRepo()
+	postWithMediaRepo := repository.NewPostWithMediaRepo()
+	mediaService := service.NewMediaService(mediaRepo, postWithMediaRepo)
+
+	media := models.NewMedia("Media name", "png", "Media description", "image", "media/link/media33223.png", 1024, false)
+
+	mediaRepo.Save(context.Background(), media)
+
+	feedHandler := handler.NewHandler(feedService, postService, mediaService)
 
 	mux := http.NewServeMux()
 
@@ -47,7 +59,22 @@ func main() {
 	// инициализация репозитория и добавление тестовых данных
 	db := repository.NewRepository()
 
-	db.UserRepo.Save(context.Background(), models.NewUser("KokInside@gmail.com", "+79999999999", "hard_password"))
+	KokInside := models.NewUser("KokInside@gmail.com", "+79999999999", "hard_password")
+
+	db.UserRepo.Save(context.Background(), KokInside)
+
+	userProfileRepo := repository.NewUserProfileRepo()
+
+	KokInsideProfile := models.NewProfile("KokInside", nil, true)
+	KokInsideUserProfile := models.NewUserProfile(KokInside, KokInsideProfile, "Ivan", "Khvostov", nil, models.Male)
+
+	userProfileRepo.Save(KokInsideUserProfile)
+
+	profileRepo.Save(KokInsideProfile)
+
+	//postService.PostRepo.Save(context.Background(), models.NewPost("Текст поста", KokInsideProfile, true))
+
+	fmt.Println("Посты = ", postRepo.Posts)
 
 	users, err := db.UserRepo.List(context.Background(), 0, 1)
 	if err != nil {
@@ -56,13 +83,19 @@ func main() {
 		fmt.Println("Users:", users)
 	}
 
-	for i := range 10 {
-		post := models.Post{
-			Text:      fmt.Sprintf("%s_%s", "Post №", strconv.Itoa(i)),
-			CreatedAt: time.Now(),
-		}
-		feedService.Save(context.Background(), post)
-	}
+	// for i := range 10 {
+	// 	post := models.Post{
+	// 		Text:      fmt.Sprintf("%s_%s", "Post №", strconv.Itoa(i)),
+	// 		CreatedAt: time.Now(),
+	// 	}
+	// 	feedService.Save(context.Background(), post)
+	// }
+
+	post := models.NewPost("Текст поста", KokInsideProfile, true)
+
+	postRepo.Save(context.Background(), post)
+
+	postWithMediaRepo.Save(post, media, 0)
 
 	stop := make(chan os.Signal, 1)
 

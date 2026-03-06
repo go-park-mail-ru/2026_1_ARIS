@@ -59,48 +59,46 @@ import (
 // var cookie_name = "session_token"
 
 type feedResponse struct {
-	items      *[]postFeedDTO
-	nextCursor string
-	hasNext    bool
+	Items      []postFeedDTO
+	NextCursor string
+	HasNext    bool
 }
 
 type postFeedDTO struct {
-	id        uuid.UUID
-	text      string
-	author    authorFeedDTO
-	createdAt time.Time
-	likes     int
-	comments  int
-	medias    *[]mediaFeedDTO
-	documents *[]documentFeedDTO
+	Id        uuid.UUID
+	Text      string
+	Author    authorFeedDTO
+	CreatedAt time.Time
+	Likes     int
+	Comments  int
+	Medias    *[]mediaFeedDTO
 }
 
 type authorFeedDTO struct {
-	id         uuid.UUID
-	username   string
-	avatarLink string
+	Id         uuid.UUID
+	Username   string
+	AvatarLink string
 }
 
 type mediaFeedDTO struct {
-	id        uuid.UUID
-	mimeType  string
-	link      string
-	thumbnail string
-}
-
-type documentFeedDTO struct {
-	id   uuid.UUID
-	link string
-	name string
-	size int
+	Id        uuid.UUID
+	MimeType  string
+	Link      string
+	Thumbnail string
 }
 
 type FeedHandler struct {
-	service service.FeedServide
+	FeedService  service.FeedServide
+	PostService  service.PostService
+	MediaService service.MediaService
 }
 
-func NewHandler(service service.FeedServide) *FeedHandler {
-	return &FeedHandler{service: service}
+func NewHandler(feedService service.FeedServide, postService service.PostService, mediaService service.MediaService) *FeedHandler {
+	return &FeedHandler{
+		FeedService:  feedService,
+		PostService:  postService,
+		MediaService: mediaService,
+	}
 }
 
 func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
@@ -152,9 +150,9 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("limit =", limit)
 
-	feedService := h.service
+	postService := h.PostService
 
-	result, err := feedService.GetFeed(r.Context(), rawCursor, limit)
+	result, err := postService.GetFeed(r.Context(), rawCursor, limit)
 	if err != nil {
 		fmt.Println("Feed error", err)
 		return
@@ -165,13 +163,77 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(i, p)
 	}
 
-	//var posts []postFeedDTO
+	var posts []postFeedDTO
+
+	for _, post := range result.Posts {
+
+		fmt.Println("Before h.PostService.GetPostAuthor")
+		postAuthor, err := h.PostService.GetPostAuthor(post.ID)
+
+		if err != nil {
+			fmt.Println("Error in hanlder: ", err)
+			return
+		}
+
+		fmt.Println("Post Author = ", postAuthor)
+
+		fmt.Println("postAuthor avatar = ", postAuthor.AvatarID)
+
+		var authorAvatarLink string
+
+		if postAuthor.AvatarID != nil {
+			authorAvatar, err := h.MediaService.GetAvatarByID(*postAuthor.AvatarID)
+
+			if err == nil {
+				authorAvatarLink = authorAvatar.Link
+			}
+		}
+
+		author := authorFeedDTO{
+			Id:         postAuthor.ID,
+			Username:   postAuthor.Username,
+			AvatarLink: authorAvatarLink,
+		}
+
+		fmt.Println("Author = ", author)
+
+		medias := h.MediaService.GetMediaByPost(post.ID)
+
+		fmt.Println("Post's medias = ", medias)
+
+		var mediasDTO []mediaFeedDTO
+
+		for _, m := range medias {
+			mediasDTO = append(mediasDTO, mediaFeedDTO{
+				Id:        m.ID,
+				MimeType:  m.MimeType,
+				Link:      m.Link,
+				Thumbnail: m.Link,
+			})
+		}
+
+		fmt.Println("Medias DTO = ", mediasDTO)
+
+		posts = append(posts, postFeedDTO{
+			Id:        post.ID,
+			Text:      post.Text,
+			Author:    author,
+			CreatedAt: post.CreatedAt,
+			Likes:     0,
+			Comments:  0,
+			Medias:    &mediasDTO,
+		})
+
+		fmt.Println("Posts DTO = ", posts)
+	}
 
 	response := feedResponse{
-
-		nextCursor: result.Cursor,
-		hasNext:    result.HasMore,
+		Items:      posts,
+		NextCursor: result.Cursor,
+		HasNext:    result.HasMore,
 	}
+
+	fmt.Println("Responce = ", response)
 
 	json.NewEncoder(w).Encode(response)
 }
