@@ -52,8 +52,8 @@ const (
 type Gender int
 
 const (
-	male Gender = iota
-	female
+	Male Gender = iota
+	Female
 )
 
 type MessageStatus int
@@ -98,9 +98,10 @@ type UserProfile struct {
 	UpdatedAt    time.Time  `json:"updatedAt"`
 }
 
-func NewUserProfile(user User, firstName, lastName string, birthday *time.Time, gender Gender) UserProfile {
+func NewUserProfile(user User, profile Profile, firstName, lastName string, birthday *time.Time, gender Gender) UserProfile {
 	return UserProfile{
 		UserID:       user.ID,
+		ProfileID:    profile.ID,
 		FirstName:    firstName,
 		LastName:     lastName,
 		BirthdayDate: birthday,
@@ -147,7 +148,7 @@ type Profile struct {
 	IsActive  bool       `json:"isActive"`
 }
 
-func NewProfile(avatar *Media, isActive bool) Profile {
+func NewProfile(username string, avatar *Media, isActive bool) Profile {
 	var avatarID *uuid.UUID
 
 	if avatar != nil {
@@ -161,6 +162,7 @@ func NewProfile(avatar *Media, isActive bool) Profile {
 	return Profile{
 		ID:        profileID,
 		AvatarID:  avatarID,
+		Username:  username,
 		CreatedAt: now,
 		UpdatedAt: now,
 		IsActive:  isActive,
