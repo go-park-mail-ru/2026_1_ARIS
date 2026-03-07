@@ -18,7 +18,7 @@ type MediaService interface {
 	GetMediaByPost(postID uuid.UUID) []models.Media
 }
 
-func NewMediaService(mediaRepo repository.MediaRepo, postWithMediaRepo repository.PostWithMediaRepo) *mediaService {
+func NewMediaService(mediaRepo repository.MediaRepo, postWithMediaRepo repository.PostWithMediaRepo) MediaService {
 	return &mediaService{
 		mediaRepo:         mediaRepo,
 		postWithMediaRepo: postWithMediaRepo,
