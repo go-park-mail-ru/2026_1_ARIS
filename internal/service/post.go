@@ -10,25 +10,37 @@ import (
 	"github.com/google/uuid"
 )
 
+type FeedResult struct {
+	Posts   []models.Post `json:"posts"`
+	Cursor  string        `json:"cursor,omitempty"`
+	HasMore bool          `json:"hasMore"`
+}
+
 type postService struct {
-	PostRepo    repository.PostRepo
-	ProfileRepo repository.ProfileRepo
+	PostRepo       repository.PostRepo
+	ProfileRepo    repository.ProfileRepo
+	LikeToPostRepo repository.LikeToPostRepo
+	CommentRepo    repository.CommentRepo
 }
 
 type PostService interface {
 	GetPostAuthor(postID uuid.UUID) (models.Profile, error)
 	GetFeed(ctx context.Context, rawCursor string, limit int) (FeedResult, error)
+	Save(ctx context.Context, post models.Post) error
+	GetLikeCount(ctx context.Context, postID uuid.UUID) int
+	GetCommentCount(ctx context.Context, postID uuid.UUID) int
 }
 
-func NewPostService(postRepo repository.PostRepo, profileRepo repository.ProfileRepo) *postService {
+func NewPostService(postRepo repository.PostRepo, profileRepo repository.ProfileRepo, likeToPostRepo repository.LikeToPostRepo, commentRepo repository.CommentRepo) PostService {
 	return &postService{
-		PostRepo:    postRepo,
-		ProfileRepo: profileRepo,
+		PostRepo:       postRepo,
+		ProfileRepo:    profileRepo,
+		LikeToPostRepo: likeToPostRepo,
+		CommentRepo:    commentRepo,
 	}
 }
 
 func (service *postService) GetFeed(ctx context.Context, rawCursor string, limit int) (FeedResult, error) {
-
 	fmt.Println("Feed service")
 
 	if limit <= 0 || limit > 100 {
@@ -46,13 +58,10 @@ func (service *postService) GetFeed(ctx context.Context, rawCursor string, limit
 		cur = &decoded
 	}
 
-	_ = cur
-
-	fmt.Println("Before repo in service")
 	params := repository.FeedParams{Cursor: cur, Limit: limit}
 	fmt.Println(params)
+
 	posts, err := service.PostRepo.GetFeed(ctx, params)
-	fmt.Println("Post in service returned")
 	if err != nil {
 		return FeedResult{}, err
 	}
@@ -67,7 +76,7 @@ func (service *postService) GetFeed(ctx context.Context, rawCursor string, limit
 		lastPost := posts[len(posts)-1]
 		nextCursor = cursor.Encode(cursor.Cursor{
 			CreatedAt: lastPost.CreatedAt,
-			ID:        0, //uuid.Max,
+			ID:        cur.ID,
 		})
 	}
 
@@ -96,4 +105,18 @@ func (r *postService) GetPostAuthor(postID uuid.UUID) (models.Profile, error) {
 	}
 
 	return profile, nil
+}
+
+func (service *postService) Save(ctx context.Context, post models.Post) error {
+	return service.PostRepo.Save(ctx, post)
+}
+
+func (service *postService) GetLikeCount(ctx context.Context, postID uuid.UUID) int {
+	fmt.Println("In GetLikeCount in Post Service")
+	return service.LikeToPostRepo.GetLikeCountOnPost(postID)
+}
+
+func (service *postService) GetCommentCount(ctx context.Context, postID uuid.UUID) int {
+	fmt.Println("In GetCommentCount in Post Service")
+	return service.CommentRepo.GetCommentCount(postID)
 }
