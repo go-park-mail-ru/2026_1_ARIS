@@ -16,7 +16,7 @@ type PostWithMediaRepo interface {
 	Save(post models.Post, media models.Media, order int) error
 }
 
-func NewPostWithMediaRepo() *inmemoryPostWithMediaRepo {
+func NewPostWithMediaRepo() PostWithMediaRepo {
 	return &inmemoryPostWithMediaRepo{}
 }
 

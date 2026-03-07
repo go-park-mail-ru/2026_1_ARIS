@@ -16,7 +16,7 @@ type inmemoryProfileRepo struct {
 	Profiles map[uuid.UUID]models.Profile
 }
 
-func NewProfileRepo() *inmemoryProfileRepo {
+func NewProfileRepo() ProfileRepo {
 	repo := inmemoryProfileRepo{}
 	repo.Profiles = make(map[uuid.UUID]models.Profile)
 	return &repo

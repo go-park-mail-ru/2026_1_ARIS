@@ -8,12 +8,18 @@ import (
 	"slices"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/cursor"
 
 	"github.com/google/uuid"
 )
 
+type FeedParams struct {
+	Cursor *cursor.Cursor
+	Limit  int
+}
+
 type PostRepo interface {
-	Save(ctx context.Context, post models.Post)
+	Save(ctx context.Context, post models.Post) error
 	Delete(ctx context.Context, id uuid.UUID) error
 
 	List(ctx context.Context, offset, limit int) ([]models.Post, error)
@@ -26,7 +32,7 @@ type inmemoryPostRepo struct {
 	Posts map[uuid.UUID]models.Post
 }
 
-func NewPostRepo() *inmemoryPostRepo {
+func NewPostRepo() PostRepo {
 	repo := inmemoryPostRepo{}
 	repo.Posts = make(map[uuid.UUID]models.Post)
 	return &repo
@@ -73,14 +79,15 @@ func (r *inmemoryPostRepo) GetFeed(ctx context.Context, params FeedParams) ([]mo
 	return nil, errors.New("No more posts")
 }
 
-func (r *inmemoryPostRepo) Save(ctx context.Context, post models.Post) {
+func (r *inmemoryPostRepo) Save(ctx context.Context, post models.Post) error {
 	_, ok := r.Posts[post.ID]
-
 	if ok {
-		return
+		return nil
 	}
 
 	r.Posts[post.ID] = post
+
+	return nil
 }
 
 func (r *inmemoryPostRepo) Delete(ctx context.Context, id uuid.UUID) error {

@@ -17,7 +17,7 @@ type inmemoryMediaRepo struct {
 	medias map[uuid.UUID]models.Media
 }
 
-func NewMediaRepo() *inmemoryMediaRepo {
+func NewMediaRepo() MediaRepo {
 	repo := inmemoryMediaRepo{}
 	repo.medias = make(map[uuid.UUID]models.Media)
 	return &repo
