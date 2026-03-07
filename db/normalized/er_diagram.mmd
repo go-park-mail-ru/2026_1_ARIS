@@ -1,0 +1,259 @@
+---
+title: ARIS
+config:
+    layout: elk
+---
+erDiagram
+    %% Entities
+
+    USER {
+        int id PK
+        string email
+        string phone
+        string password_hash
+        datetime updatedAt
+    }
+
+    USER_PROFILE {
+        int user_id FK
+        int profile_id FK
+        string firstName
+        string lastName
+        string bio
+        date birthdayDate
+        int gender
+        datetime updatedAt
+    }
+
+    PROFILE {
+        int id PK
+        int avatar_id FK
+        string username
+        datetime createdAt
+        datetime updatedAt
+        bool isActive
+    }
+
+    "MEDIA (MinIO)" {
+        int id PK
+        string name
+        string extension
+        string description
+        string link
+        string mimeType
+        int size
+        datetime createdAt
+        bool isDeleted
+    }
+
+    POST {
+        int id PK
+        string text
+        int author_id FK
+        datetime createdAt
+        datetime updatedAt
+        bool isActive
+    }
+
+    POST_WITH_MEDIA {
+        int post_id FK
+        int media_id FK
+        int order
+    }
+
+    CHAT {
+        int id PK
+        string type
+        string title
+        int avatar_id FK
+        datetime createdAt
+        datetime updatedAt
+        bool isDeleted
+    }
+
+    CHAT_MEMBER {
+        int id PK
+        int chat_id FK
+        int profile_id FK
+        datetime joinedAt
+        datetime leaveAt
+        string role
+    }
+
+    MESSAGE {
+        int id PK
+        string text
+        int parentMessage_id FK
+        int chat_id FK
+        string status
+        int sticker_id FK
+        int author_id FK
+        datetime createdAt
+        datetime updatedAt
+        bool isDeleted
+    }
+
+    MESSAGE_WITH_MEDIA {
+        int message_id FK
+        int media_id FK
+        int order
+    }
+
+    GROUP {
+        int id PK
+        string title
+        string bio
+        string type
+        int owner_id FK
+        int profile_id FK
+        datetime updatedAt
+    }
+
+    GROUP_MEMBER {
+        int id PK
+        int profile_id FK
+        int group_id FK
+        datetime joinedAt
+        datetime leaveAt
+        int role
+    }
+
+    COMMENT {
+        int id PK
+        string text
+        int post_id FK
+        int parentComment_id FK
+        int sticker_id FK
+        int author_id FK
+        datetime createdAt
+        datetime updatedAt
+        bool isDeleted
+    }
+
+    COMMENT_WITH_MEDIA {
+        int comment_id FK
+        int media_id FK
+        int order
+    }
+
+    LIKE {
+        int id PK
+        int author_id FK
+        datetime createdAt
+    }
+
+    LIKE_TO_POST {
+        int like_id FK
+        int post_id FK
+    }
+
+    LIKE_TO_COMMENT {
+        int like_id FK
+        int comment_id FK
+    }
+
+    REACTION {
+        int id PK
+        int message_id FK
+        string type
+        int author_id FK
+        datetime createdAt
+    }
+
+    FRIENDSHIP {
+        int friend1_id FK
+        int friend2_id FK
+        string status
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    STICKERPACK {
+        int id PK
+        string title
+        int author_id FK
+        datetime createdAt
+        datetime updatedAt
+        bool isDeleted
+    }
+
+    STICKER {
+        int id PK
+        string link
+        int size
+        int indexOrder
+        int pack_id FK
+        datetime createdAt
+        bool isDeleted
+    }
+
+    "SESSION (REDIS)" {
+        int id PK
+        int profile_id FK
+        string ip
+        string userAgent
+        datetime createdAt
+        datetime expiresAt
+        datetime lastActivityAt
+    }
+
+    AD {
+        int id PK
+        string title
+        string description
+        string link
+        int media_id FK
+        int author_id FK
+        datetime createdAt
+        datetime updatedAt
+        bool isDeleted
+    }
+
+    AD_META {
+        int ad_id FK
+        string key
+        string value
+    }
+
+    %% Relationships
+
+    USER ||--|| USER_PROFILE : has
+    PROFILE ||--o{ USER_PROFILE : has
+    PROFILE ||--o{ POST : "authors"
+    PROFILE ||--o{ MESSAGE : "authors"
+    PROFILE ||--o{ COMMENT : "authors"
+    PROFILE ||--o{ LIKE : "authors"
+    PROFILE ||--o{ REACTION : "authors"
+    PROFILE ||--o{ FRIENDSHIP : "friend1"
+    PROFILE ||--o{ FRIENDSHIP : "friend2"
+    PROFILE ||--o{ STICKERPACK : "authors"
+    PROFILE ||--o{ "SESSION (REDIS)" : "sessions"
+    PROFILE ||--o{ AD : "authors"
+    PROFILE ||--|| CHAT_MEMBER : "members"
+    PROFILE ||--|| GROUP_MEMBER : "members"
+    PROFILE ||--o{ "GROUP" : "group profile"
+    CHAT ||--o{ CHAT_MEMBER : "members"
+    CHAT ||--o{ MESSAGE : "messages"
+    POST ||--o{ COMMENT : "comments"
+    POST ||--o{ "LIKE_TO_POST" : "likes"
+    POST ||--o{ POST_WITH_MEDIA : "MEDIA (MinIO)"
+    "MEDIA (MinIO)" ||--o{ POST_WITH_MEDIA : "posts"
+    "MEDIA (MinIO)" ||--o{ MESSAGE_WITH_MEDIA : "messages"
+    "MEDIA (MinIO)" ||--o{ COMMENT_WITH_MEDIA : "comments"
+    "MEDIA (MinIO)" ||--o{ CHAT : "avatars"
+    "MEDIA (MinIO)" ||--o{ PROFILE : "avatars"
+    "MEDIA (MinIO)" ||--o{ AD : "MEDIA (MinIO)"
+    MESSAGE ||--o{ MESSAGE_WITH_MEDIA : "MEDIA (MinIO)"
+    MESSAGE ||--o{ REACTION : "reactions"
+    MESSAGE ||--o{ MESSAGE : "replies"
+    MESSAGE ||--o| STICKER : "sticker"
+    COMMENT ||--o{ COMMENT_WITH_MEDIA : "MEDIA (MinIO)"
+    COMMENT ||--o{ COMMENT : "replies"
+    COMMENT ||--o| STICKER : "sticker"
+    COMMENT ||--o{ "LIKE_TO_COMMENT" : "likes"
+    LIKE ||--o{ "LIKE_TO_POST" : "likes"
+    LIKE ||--o{ "LIKE_TO_COMMENT" : "likes"
+    GROUP ||--o{ GROUP_MEMBER : "members"
+    GROUP ||--|| USER_PROFILE : "owner"
+    STICKERPACK ||--o{ STICKER : "stickers"
+    AD ||--o{ AD_META : "meta"
