@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// ДЛЯ СЕССИИ (НЕ РЕАЛИЗОВАНО):
 // func randHex(n int) string {
 // 	if n < 0 || n > 64 {
 // 		n = 32
@@ -71,7 +72,7 @@ type postFeedDTO struct {
 	CreatedAt time.Time
 	Likes     int
 	Comments  int
-	Medias    *[]mediaFeedDTO
+	Medias    []mediaFeedDTO
 }
 
 type authorFeedDTO struct {
@@ -88,14 +89,13 @@ type mediaFeedDTO struct {
 }
 
 type FeedHandler struct {
-	FeedService  service.FeedServide
+	//FeedService  service.FeedServide
 	PostService  service.PostService
 	MediaService service.MediaService
 }
 
-func NewHandler(feedService service.FeedServide, postService service.PostService, mediaService service.MediaService) *FeedHandler {
+func NewHandler(postService service.PostService, mediaService service.MediaService) *FeedHandler {
 	return &FeedHandler{
-		FeedService:  feedService,
 		PostService:  postService,
 		MediaService: mediaService,
 	}
@@ -113,6 +113,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	/*
+		ПРОВЕРКА КУК (НЕ РЕАЛИЗОВАНО)
 
 		// check cookie
 
@@ -150,26 +151,19 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("limit =", limit)
 
-	postService := h.PostService
-
-	result, err := postService.GetFeed(r.Context(), rawCursor, limit)
+	feed, err := h.PostService.GetFeed(r.Context(), rawCursor, limit)
 	if err != nil {
 		fmt.Println("Feed error", err)
 		return
 	}
 
-	fmt.Println("Result Feed: ")
-	for i, p := range result.Posts {
-		fmt.Println(i, p)
-	}
-
 	var posts []postFeedDTO
 
-	for _, post := range result.Posts {
+	for _, post := range feed.Posts {
 
-		fmt.Println("Before h.PostService.GetPostAuthor")
+		fmt.Println("Begining of each post in feed handler")
+
 		postAuthor, err := h.PostService.GetPostAuthor(post.ID)
-
 		if err != nil {
 			fmt.Println("Error in hanlder: ", err)
 			return
@@ -183,10 +177,11 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 		if postAuthor.AvatarID != nil {
 			authorAvatar, err := h.MediaService.GetAvatarByID(*postAuthor.AvatarID)
-
-			if err == nil {
-				authorAvatarLink = authorAvatar.Link
+			if err != nil {
+				fmt.Println("Error in feed handler: ", err)
+				return
 			}
+			authorAvatarLink = authorAvatar.Link
 		}
 
 		author := authorFeedDTO{
@@ -195,7 +190,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 			AvatarLink: authorAvatarLink,
 		}
 
-		fmt.Println("Author = ", author)
+		fmt.Println("Author DTO = ", author)
 
 		medias := h.MediaService.GetMediaByPost(post.ID)
 
@@ -203,25 +198,29 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 		var mediasDTO []mediaFeedDTO
 
-		for _, m := range medias {
+		for _, media := range medias {
 			mediasDTO = append(mediasDTO, mediaFeedDTO{
-				Id:        m.ID,
-				MimeType:  m.MimeType,
-				Link:      m.Link,
-				Thumbnail: m.Link,
+				Id:        media.ID,
+				MimeType:  media.MimeType,
+				Link:      media.Link,
+				Thumbnail: media.Link,
 			})
 		}
 
 		fmt.Println("Medias DTO = ", mediasDTO)
+
+		likeCount := h.PostService.GetLikeCount(r.Context(), post.ID)
+
+		commentCount := h.PostService.GetCommentCount(r.Context(), post.ID)
 
 		posts = append(posts, postFeedDTO{
 			Id:        post.ID,
 			Text:      post.Text,
 			Author:    author,
 			CreatedAt: post.CreatedAt,
-			Likes:     0,
-			Comments:  0,
-			Medias:    &mediasDTO,
+			Likes:     likeCount,
+			Comments:  commentCount,
+			Medias:    mediasDTO,
 		})
 
 		fmt.Println("Posts DTO = ", posts)
@@ -229,11 +228,11 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 	response := feedResponse{
 		Items:      posts,
-		NextCursor: result.Cursor,
-		HasNext:    result.HasMore,
+		NextCursor: feed.Cursor,
+		HasNext:    feed.HasMore,
 	}
 
-	fmt.Println("Responce = ", response)
+	fmt.Println("Feed Responce = ", response)
 
 	json.NewEncoder(w).Encode(response)
 }
