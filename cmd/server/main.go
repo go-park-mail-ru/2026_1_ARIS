@@ -16,12 +16,14 @@ import (
 )
 
 func main() {
-	feedRepo := repository.NewFeedRepo()
-	feedService := service.NewFeedService(feedRepo)
+	// Инициализация репозиториев и сервисов для ленты
+	likeToPostRepo := repository.NewLikeToPostRepo()
+
+	commentRepo := repository.NewCommentRepo()
 
 	postRepo := repository.NewPostRepo()
 	profileRepo := repository.NewProfileRepo()
-	postService := service.NewPostService(postRepo, profileRepo)
+	postService := service.NewPostService(postRepo, profileRepo, likeToPostRepo, commentRepo)
 
 	mediaRepo := repository.NewMediaRepo()
 	postWithMediaRepo := repository.NewPostWithMediaRepo()
@@ -31,7 +33,7 @@ func main() {
 
 	mediaRepo.Save(context.Background(), media)
 
-	feedHandler := handler.NewHandler(feedService, postService, mediaService)
+	feedHandler := handler.NewHandler(postService, mediaService)
 
 	mux := http.NewServeMux()
 
@@ -72,10 +74,6 @@ func main() {
 
 	profileRepo.Save(KokInsideProfile)
 
-	//postService.PostRepo.Save(context.Background(), models.NewPost("Текст поста", KokInsideProfile, true))
-
-	fmt.Println("Посты = ", postRepo.Posts)
-
 	users, err := db.UserRepo.List(context.Background(), 0, 1)
 	if err != nil {
 		fmt.Println("Error listing users:", err)
@@ -83,20 +81,13 @@ func main() {
 		fmt.Println("Users:", users)
 	}
 
-	// for i := range 10 {
-	// 	post := models.Post{
-	// 		Text:      fmt.Sprintf("%s_%s", "Post №", strconv.Itoa(i)),
-	// 		CreatedAt: time.Now(),
-	// 	}
-	// 	feedService.Save(context.Background(), post)
-	// }
-
 	post := models.NewPost("Текст поста", KokInsideProfile, true)
 
 	postRepo.Save(context.Background(), post)
 
 	postWithMediaRepo.Save(post, media, 0)
 
+	// gracefull shutdown
 	stop := make(chan os.Signal, 1)
 
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM, syscall.SIGTSTP)
