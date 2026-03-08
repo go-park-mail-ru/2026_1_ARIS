@@ -72,23 +72,26 @@ type User struct {
 	Email        string    `json:"email"`
 	Phone        string    `json:"phone"`
 	PasswordHash string    `json:"-"`
+	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
 func NewUser(email, phone, passwordHash string) User {
-	userID := uuid.New()
+	now := time.Now()
 	return User{
-		ID:           userID,
+		ID:           uuid.New(),
 		Email:        email,
 		Phone:        phone,
 		PasswordHash: passwordHash,
-		UpdatedAt:    time.Now(),
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 }
 
 // UserProfile - user-specific profile information
 // профиль пользователя
 type UserProfile struct {
+	ID           uuid.UUID  `json:"id"`
 	UserID       uuid.UUID  `json:"userId"`
 	ProfileID    uuid.UUID  `json:"profileId"` // Abstract-Profile
 	FirstName    string     `json:"firstName"`
@@ -96,18 +99,23 @@ type UserProfile struct {
 	Bio          string     `json:"bio,omitempty"`
 	BirthdayDate *time.Time `json:"birthdayDate,omitempty"`
 	Gender       Gender     `json:"gender"`
+	CreatedAt    time.Time  `json:"createdAt"`
 	UpdatedAt    time.Time  `json:"updatedAt"`
 }
 
 func NewUserProfile(user User, profile Profile, firstName, lastName string, birthday *time.Time, gender Gender) UserProfile {
+	now := time.Now()
+
 	return UserProfile{
+		ID:           uuid.New(),
 		UserID:       user.ID,
 		ProfileID:    profile.ID,
 		FirstName:    firstName,
 		LastName:     lastName,
 		BirthdayDate: birthday,
 		Gender:       gender,
-		UpdatedAt:    time.Now(),
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 }
 
@@ -124,10 +132,8 @@ type Media struct {
 }
 
 func NewMedia(name, extension, description, mimeType, link string, size int, isDeleted bool) Media {
-	mediaID := uuid.New()
-
 	return Media{
-		ID:          mediaID,
+		ID:          uuid.New(),
 		Name:        name,
 		Extension:   extension,
 		Description: description,
@@ -156,12 +162,10 @@ func NewProfile(username string, avatar *Media, isActive bool) Profile {
 		avatarID = &avatar.ID
 	}
 
-	profileID := uuid.New()
-
 	now := time.Now()
 
 	return Profile{
-		ID:        profileID,
+		ID:        uuid.New(),
 		AvatarID:  avatarID,
 		Username:  username,
 		CreatedAt: now,
@@ -180,12 +184,10 @@ type Post struct {
 }
 
 func NewPost(text string, author Profile, isActive bool) Post {
-	postID := uuid.New()
-
 	now := time.Now()
 
 	return Post{
-		ID:        postID,
+		ID:        uuid.New(),
 		Text:      text,
 		AuthorID:  author.ID,
 		CreatedAt: now,
@@ -275,10 +277,26 @@ type Comment struct {
 	TargetPostID    uuid.UUID  `json:"post"`
 	ParentCommentID *uuid.UUID `json:"parentComment,omitempty"`
 	StickerID       *uuid.UUID `json:"sticker,omitempty"`
-	ProfileID       *uuid.UUID `json:"profile,omitempty"`
+	AuthorID        uuid.UUID  `json:"profile,omitempty"`
 	CreatedAt       time.Time  `json:"createdAt"`
 	UpdatedAt       time.Time  `json:"updatedAt"`
 	IsDeleted       bool       `json:"isDeleted"`
+}
+
+func NewComment(text string, targetPostID uuid.UUID, parentCommentID, stickerID *uuid.UUID, authorID uuid.UUID, isDeleted bool) Comment {
+	now := time.Now()
+
+	return Comment{
+		ID:              uuid.New(),
+		Text:            text,
+		TargetPostID:    targetPostID,
+		ParentCommentID: parentCommentID,
+		StickerID:       stickerID,
+		AuthorID:        authorID,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+		IsDeleted:       isDeleted,
+	}
 }
 
 // CommentWithMedia - junction table for comments and media
@@ -294,10 +312,25 @@ type Like struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+func NewLike(author Profile) Like {
+	return Like{
+		ID:        uuid.New(),
+		AuthorID:  author.ID,
+		CreatedAt: time.Now(),
+	}
+}
+
 // LikeToPost - junction table for likes to posts
 type LikeToPost struct {
 	LikeID uuid.UUID `json:"likeId"`
 	PostID uuid.UUID `json:"postId"`
+}
+
+func NewLikeToPost(likeID, postID uuid.UUID) LikeToPost {
+	return LikeToPost{
+		LikeID: likeID,
+		PostID: postID,
+	}
 }
 
 // LikeToComment - junction table for likes to comments
