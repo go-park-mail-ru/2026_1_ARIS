@@ -19,7 +19,7 @@ type MessageID ID
 type PostID ID
 type CommentID ID
 type StickerpackID ID
-type SessionID ID
+type SessionID string
 
 // models Types
 
@@ -275,7 +275,7 @@ type Sticker struct {
 }
 
 type Session struct {
-	SessionID ID        `json:"id"`
+	SessionID SessionID `json:"id"`
 	UserID    UserID    `json:"user"`
 	CreatedAt time.Time `json:"createdAt"`
 	ExpiredAt time.Time `json:"expiredAt"`

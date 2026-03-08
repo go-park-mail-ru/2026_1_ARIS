@@ -11,19 +11,26 @@ import (
 	"time"
 
 	handlers "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	//"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/server"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
 )
 
 func main() {
+	db := repository.NewRepository()
+	//db.UserRepo.Save(context.Background(), models.NewUser(1, "KokInside", "KokInside@gmail.com", "+79999999999", "hard_password"))
 
-	authService := service.NewAuthService()
-	jwtSecret := "ключ"
-	authHandler := handlers.NewAuthHandler(authService, jwtSecret)
+	authService := service.NewAuthService(db.UserRepo)
+	sessService := service.NewSessionService(db.SessionRepo)
 
-	router := server.NewRouter(authHandler, []byte(jwtSecret))
+	_, err := authService.Register(context.Background(), "KokInside@gmail.com", "hard_password", "KokInside", "+79999999999")
+	if err != nil {
+		fmt.Println("Test user already exists or error:", err)
+	}
+	authHandler := handlers.NewAuthHandler(authService, sessService)
+
+	router := server.NewRouter(authHandler, sessService)
 
 	srv := &http.Server{
 		Addr:    ":8080",
@@ -36,9 +43,6 @@ func main() {
 			log.Fatalf("listen: %s\n", err)
 		}
 	}()
-
-	db := repository.NewRepository()
-	db.UserRepo.Save(context.Background(), models.NewUser(1, "KokInside", "KokInside@gmail.com", "+79999999999", "hard_password"))
 
 	users, err := db.UserRepo.List(context.Background(), 0, 1)
 	if err != nil {

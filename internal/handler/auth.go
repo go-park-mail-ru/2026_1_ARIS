@@ -3,11 +3,9 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
 	"github.com/go-playground/validator/v10"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 var validate = validator.New()
@@ -25,14 +23,14 @@ type LoginRequest struct {
 }
 
 type AuthHandler struct {
-	authService *service.AuthService
-	jwtSecret   []byte
+	authService    *service.AuthService
+	sessionService service.SessionService
 }
 
-func NewAuthHandler(authService *service.AuthService, jwtSecret string) *AuthHandler {
+func NewAuthHandler(authService *service.AuthService, sessSvc service.SessionService) *AuthHandler {
 	return &AuthHandler{
-		authService: authService,
-		jwtSecret:   []byte(jwtSecret),
+		authService:    authService,
+		sessionService: sessSvc,
 	}
 }
 
@@ -52,7 +50,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.authService.Register(req.Email, req.Password, req.Username, req.Phone)
+	user, err := h.authService.Register(r.Context(), req.Email, req.Password, req.Username, req.Phone)
 	if err != nil {
 		if err.Error() == "пользователь с таким email уже существует" {
 			http.Error(w, `{"error":"email already registered"}`, http.StatusConflict)
@@ -68,34 +66,32 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"неверный запрос"}`, http.StatusBadRequest)
 		return
 	}
 
-	user, err := h.authService.Login(req.Email, req.Password)
+	user, err := h.authService.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
 		http.Error(w, `{"error":"неверные учетные данные"}`, http.StatusUnauthorized)
 		return
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": user.ID,
-		"email":   user.Email,
-		"exp":     time.Now().Add(24 * time.Hour).Unix(),
-	})
-	tokenString, err := token.SignedString(h.jwtSecret)
+	session, err := h.sessionService.Create(r.Context(), user.ID)
 	if err != nil {
-		http.Error(w, `{"error":"невозможно сгенерировать токен"}`, http.StatusInternalServerError)
+		http.Error(w, `{"error":"не удалось создать сессию"}`, http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"token": tokenString,
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    string(session.SessionID),
+		Expires:  session.ExpiredAt,
+		HttpOnly: true,
+		Path:     "/",
 	})
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(user)
 }

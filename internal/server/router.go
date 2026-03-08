@@ -5,6 +5,7 @@ import (
 
 	handlers "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
 	mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -13,7 +14,7 @@ import (
 
 func NewRouter(
 	authHandler *handlers.AuthHandler,
-	jwtSecret []byte,
+	sessSvc service.SessionService,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -34,7 +35,7 @@ func NewRouter(
 
 	r.Group(func(r chi.Router) {
 
-		r.Use(mymiddleware.AuthMiddleware(jwtSecret))
+		r.Use(mymiddleware.AuthMiddleware(sessSvc))
 		r.Get("/api/feed", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.Write([]byte(`{"items":[], "nextCursor": null, "hasNext": false}`))

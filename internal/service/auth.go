@@ -1,34 +1,37 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"sync"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
-	mu     sync.RWMutex
-	users  map[string]models.User
-	nextID models.UserID
+	mu       sync.RWMutex
+	userRepo repository.UserRepo
+	nextID   models.UserID
 }
 
-func NewAuthService() *AuthService {
+func NewAuthService(repo repository.UserRepo) *AuthService {
 	return &AuthService{
-		users:  make(map[string]models.User),
-		nextID: 1,
+		userRepo: repo,
+		nextID:   1,
 	}
 }
 
-func (s *AuthService) Register(email, password, username, phone string) (*models.User, error) {
+func (s *AuthService) Register(ctx context.Context, email, password, username, phone string) (*models.User, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	email = strings.ToLower(email)
 
-	if _, exists := s.users[email]; exists {
+	existingUser, _ := s.userRepo.GetByEmail(ctx, email)
+	if existingUser.Email != "" {
 		return nil, errors.New("пользователь с таким email уже существует")
 	}
 
@@ -44,22 +47,22 @@ func (s *AuthService) Register(email, password, username, phone string) (*models
 		phone,
 		string(hashedPassword),
 	)
-	s.users[email] = user
+
+	s.userRepo.Save(ctx, user)
+
 	s.nextID++
 	return &user, nil
 }
 
-func (s *AuthService) Login(email, password string) (*models.User, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
+func (s *AuthService) Login(ctx context.Context, email, password string) (*models.User, error) {
 	email = strings.ToLower(email)
-	user, exists := s.users[email]
-	if !exists {
+
+	user, err := s.userRepo.GetByEmail(ctx, email)
+	if err != nil {
 		return nil, errors.New("недействительные учётные данные")
 	}
 
-	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
 		return nil, errors.New("недействительные учётные данные")
 	}
