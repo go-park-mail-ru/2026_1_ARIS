@@ -76,7 +76,7 @@ func (service *postService) GetFeed(ctx context.Context, rawCursor string, limit
 		lastPost := posts[len(posts)-1]
 		nextCursor = cursor.Encode(cursor.Cursor{
 			CreatedAt: lastPost.CreatedAt,
-			ID:        cur.ID,
+			ID:        lastPost.ID,
 		})
 	}
 
