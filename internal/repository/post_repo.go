@@ -5,11 +5,13 @@ import (
 	"errors"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+
+	"github.com/google/uuid"
 )
 
 type PostRepo interface {
 	Save(ctx context.Context, post models.Post)
-	Delete(ctx context.Context, id models.PostID) error
+	Delete(ctx context.Context, id uuid.UUID) error
 
 	List(ctx context.Context, offset, limit int) ([]models.Post, error)
 }
@@ -22,7 +24,7 @@ func (r *inmemoryPostRepo) Save(ctx context.Context, post models.Post) {
 	r.posts = append(r.posts, post)
 }
 
-func (r *inmemoryPostRepo) Delete(ctx context.Context, id models.PostID) error {
+func (r *inmemoryPostRepo) Delete(ctx context.Context, id uuid.UUID) error {
 	for i, p := range r.posts {
 		if p.ID == id {
 			r.posts = append(r.posts[:i], r.posts[i+1:]...)
