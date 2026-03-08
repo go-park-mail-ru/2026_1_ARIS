@@ -66,7 +66,7 @@ func (r *inmemoryPostRepo) GetFeed(ctx context.Context, params FeedParams) ([]mo
 	}
 
 	for i, p := range feedSlice {
-		if p.CreatedAt.After(params.Cursor.CreatedAt) {
+		if p.CreatedAt.After(params.Cursor.CreatedAt) && p.ID.String() != params.Cursor.ID.String() {
 			if i+limit > len(feedSlice) {
 				return feedSlice[i:], nil
 			}

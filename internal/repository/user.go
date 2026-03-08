@@ -12,7 +12,7 @@ import (
 )
 
 type UserRepo interface {
-	Save(ctx context.Context, user models.User)
+	Save(ctx context.Context, user models.User) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	//Update(ctx context.Context, id uuid.UUID, user models.User) error
 
@@ -33,9 +33,10 @@ func NewUserRepo() UserRepo {
 	return &repo
 }
 
-func (r *inmemoryUserRepo) Save(ctx context.Context, user models.User) {
+func (r *inmemoryUserRepo) Save(ctx context.Context, user models.User) error {
 	r.users[user.ID] = user
 	//r.users = append(r.users, user)
+	return nil
 }
 
 func (r *inmemoryUserRepo) Delete(ctx context.Context, id uuid.UUID) error {

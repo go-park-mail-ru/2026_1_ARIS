@@ -11,6 +11,7 @@ type inmemoryCommentRepo struct {
 
 type CommentRepo interface {
 	GetCommentCount(postID uuid.UUID) int
+	Save(comment models.Comment) error
 }
 
 func NewCommentRepo() CommentRepo {
@@ -29,4 +30,12 @@ func (r *inmemoryCommentRepo) GetCommentCount(postID uuid.UUID) int {
 	}
 
 	return commentsCount
+}
+
+func (r *inmemoryCommentRepo) Save(comment models.Comment) error {
+	_, ok := r.comments[comment.ID]
+	if !ok {
+		r.comments[comment.ID] = comment
+	}
+	return nil
 }

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"errors"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
@@ -10,7 +11,7 @@ import (
 
 type UserProfileRepo interface {
 	GetUserProfileByID(userProfileID uuid.UUID) (models.UserProfile, error)
-	Save(userProfile models.UserProfile) error
+	Save(ctx context.Context, userProfile models.UserProfile) error
 }
 
 type inmemoryUserProfileRepo struct {
@@ -32,7 +33,7 @@ func (r *inmemoryUserProfileRepo) GetUserProfileByID(userProfileID uuid.UUID) (m
 	return userProfile, nil
 }
 
-func (r *inmemoryUserProfileRepo) Save(userProfile models.UserProfile) error {
+func (r *inmemoryUserProfileRepo) Save(tx context.Context, userProfile models.UserProfile) error {
 	r.userProfiles[userProfile.ProfileID] = userProfile
 	return nil
 }

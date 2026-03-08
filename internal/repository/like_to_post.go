@@ -13,6 +13,7 @@ type inmemoryLIkeToPostRepo struct {
 
 type LikeToPostRepo interface {
 	GetLikeCountOnPost(postID uuid.UUID) int
+	Save(likeToPost models.LikeToPost) error
 }
 
 func NewLikeToPostRepo() LikeToPostRepo {
@@ -33,4 +34,9 @@ func (r *inmemoryLIkeToPostRepo) GetLikeCountOnPost(postID uuid.UUID) int {
 	fmt.Println("Returned GetLikeCountOnPost in Like_To_Post REPO")
 
 	return likesCount
+}
+
+func (r *inmemoryLIkeToPostRepo) Save(likeToPost models.LikeToPost) error {
+	r.likesToPost = append(r.likesToPost, models.NewLikeToPost(likeToPost.LikeID, likeToPost.PostID))
+	return nil
 }
