@@ -11,54 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// ДЛЯ СЕССИИ (НЕ РЕАЛИЗОВАНО):
-// func randHex(n int) string {
-// 	if n < 0 || n > 64 {
-// 		n = 32
-// 	}
-// 	b := make([]byte, n)
-// 	rand.Read(b)
-
-// 	return hex.EncodeToString(b)
-// }
-
-// type session struct {
-// 	token     string
-// 	UserID    int
-// 	CreatedAt int64
-// 	ExpiresAt int64
-// }
-
-// type sessionRepo interface {
-// 	Create(ctx context.Context, session *session) error
-// 	FindByToken(ctx context.Context, token string) (*session, error)
-// 	Delete(ctx context.Context, token string) error
-// }
-
-// type InmemorySessionRepo struct {
-// 	Sessions []session
-// }
-
-// func (r *InmemorySessionRepo) Create(ctx context.Context, session *session) error {
-// 	r.Sessions = append(r.Sessions, *session)
-// 	return nil
-// }
-
-// func (r *InmemorySessionRepo) FindByToken(ctx context.Context, token string) (*session, error) {
-// 	for _, s := range r.Sessions {
-// 		if token == s.token {
-// 			return &s, nil
-// 		}
-// 	}
-// 	return nil, errors.New("Can't find session")
-// }
-
-// func (r *InmemorySessionRepo) Delete(ctx context.Context, token string) error {
-// 	return nil
-// }
-
-// var cookie_name = "session_token"
-
 type feedResponse struct {
 	Items      []postFeedDTO
 	NextCursor string
@@ -89,7 +41,6 @@ type mediaFeedDTO struct {
 }
 
 type FeedHandler struct {
-	//FeedService  service.FeedServide
 	PostService  service.PostService
 	MediaService service.MediaService
 }
@@ -111,28 +62,6 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-
-	/*
-		ПРОВЕРКА КУК (НЕ РЕАЛИЗОВАНО)
-
-		// check cookie
-
-		// обернуть в middleware
-		cookie, err := r.Cookie(cookie_name)
-		if err != nil {
-			fmt.Println(err)
-			fmt.Println("Redirecting login...")
-			return
-		}
-
-		// наверное тоже можно обернуть в middleware
-		if cookie.Expires.Before(time.Now()) {
-			fmt.Println("Cookie expires")
-			// redirect login
-			return
-		}
-
-	*/
 
 	rawCursor := r.URL.Query().Get("cursor")
 
@@ -159,6 +88,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 	var posts []postFeedDTO
 
+	// сборка каждого поста в DTO
 	for _, post := range feed.Posts {
 
 		fmt.Println("Begining of each post in feed handler")
