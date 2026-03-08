@@ -11,13 +11,13 @@ import (
 )
 
 type Cursor struct {
-	ID        uuid.UUID
 	CreatedAt time.Time
+	ID        uuid.UUID
 }
 
 func Encode(cursor Cursor) string {
-	str := fmt.Sprintf("%s_%s", cursor.CreatedAt.UTC().Format(time.RFC3339Nano), cursor.ID.String())
-	return str
+	raw := fmt.Sprintf("%s_%s", cursor.CreatedAt.UTC().Format(time.RFC3339Nano), cursor.ID.String())
+	return base64.StdEncoding.EncodeToString([]byte(raw))
 }
 
 func Decode(str string) (Cursor, error) {
@@ -32,16 +32,17 @@ func Decode(str string) (Cursor, error) {
 	if len(parts) != 2 {
 		return Cursor{}, errors.New("Can't decode cursor")
 	}
+	fmt.Println("cursor parts = ", parts)
 
-	id, err := uuid.Parse(parts[0])
+	t, err := time.Parse(time.RFC3339Nano, parts[0])
 	if err != nil {
-		fmt.Println("Can't parse cursor id")
+		fmt.Println("Can't parse cursor CreatedAt")
 		return Cursor{}, err
 	}
 
-	t, err := time.Parse(time.RFC3339Nano, parts[1])
+	id, err := uuid.Parse(parts[1])
 	if err != nil {
-		fmt.Println("Can't parse cursor CreatedAt")
+		fmt.Println("Can't parse cursor id")
 		return Cursor{}, err
 	}
 
