@@ -51,7 +51,12 @@ func (h *SidebarHandler) GetPopularPosts(w http.ResponseWriter, r *http.Request)
 	var posts []popularPostDTO
 
 	for _, post := range popularPosts {
-		postDTO := popularPostDTO{Text: *post.Text, Link: "still emply"}
+		postText := post.Text
+		if len(*postText) > 40 {
+			*postText = (*postText)[:40] + "..."
+		}
+
+		postDTO := popularPostDTO{Text: *postText, Link: "still emply"}
 		posts = append(posts, postDTO)
 	}
 

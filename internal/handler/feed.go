@@ -12,32 +12,32 @@ import (
 )
 
 type feedResponse struct {
-	Items      []postFeedDTO
-	NextCursor string
-	HasNext    bool
+	Items      []postFeedDTO `json:"items"`
+	NextCursor string        `json:"nextCursor"`
+	HasNext    bool          `json:"hasNext"`
 }
 
 type postFeedDTO struct {
-	Id        uuid.UUID
-	Text      string
-	Author    authorFeedDTO
-	CreatedAt time.Time
-	Likes     int
-	Comments  int
-	Medias    []mediaFeedDTO
+	Id        uuid.UUID      `json:"id"`
+	Text      string         `json:"text"`
+	Author    authorFeedDTO  `json:"author"`
+	CreatedAt time.Time      `json:"createdAt"`
+	Likes     int            `json:"likes"`
+	Comments  int            `json:"comments"`
+	Medias    []mediaFeedDTO `json:"medias"`
 }
 
 type authorFeedDTO struct {
-	Id         uuid.UUID
-	Username   string
-	AvatarLink string
+	Id         uuid.UUID `json:"id"`
+	Username   string    `json:"username"`
+	AvatarLink string    `json:"avatarLink"`
 }
 
 type mediaFeedDTO struct {
-	Id        uuid.UUID
-	MimeType  string
-	Link      string
-	Thumbnail string
+	Id        uuid.UUID `json:"id"`
+	MimeType  string    `json:"mimeType"`
+	Link      string    `json:"link"`
+	Thumbnail string    `json:"thumbnail"`
 }
 
 type FeedHandler struct {
