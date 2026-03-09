@@ -26,6 +26,9 @@ type PostRepo interface {
 	GetPostByID(id uuid.UUID) (*models.Post, error)
 
 	GetFeed(ctx context.Context, params FeedParams) ([]models.Post, error)
+	GetPostCount(ctx context.Context) int
+
+	GetAllPosts(ctx context.Context) []models.Post
 }
 
 type inmemoryPostRepo struct {
@@ -123,4 +126,16 @@ func (r *inmemoryPostRepo) GetPostByID(id uuid.UUID) (*models.Post, error) {
 	}
 
 	return &profile, nil
+}
+
+func (r *inmemoryPostRepo) GetPostCount(ctx context.Context) int {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return len(r.Posts)
+}
+
+func (r *inmemoryPostRepo) GetAllPosts(ctx context.Context) []models.Post {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return slices.Collect(maps.Values(r.Posts))
 }

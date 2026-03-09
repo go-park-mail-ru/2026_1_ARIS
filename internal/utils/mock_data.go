@@ -91,6 +91,8 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	like4 := models.NewLike(*user2)
 	like5 := models.NewLike(*user3)
 	like6 := models.NewLike(*user3)
+	like7 := models.NewLike(*user1)
+	like8 := models.NewLike(*user4)
 	likeRepo := repository.NewLikeRepo()
 	likeRepo.Save(like1)
 	likeRepo.Save(like2)
@@ -98,6 +100,8 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	likeRepo.Save(like4)
 	likeRepo.Save(like5)
 	likeRepo.Save(like6)
+	likeRepo.Save(like7)
+	likeRepo.Save(like8)
 
 	// create and save LikeToPosts
 	likeToPost1 := models.NewLikeToPost(like1.ID, post1.ID)
@@ -106,12 +110,16 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	likeToPost4 := models.NewLikeToPost(like4.ID, post4.ID)
 	likeToPost5 := models.NewLikeToPost(like5.ID, post5.ID)
 	likeToPost6 := models.NewLikeToPost(like6.ID, post2.ID)
+	likeToPost7 := models.NewLikeToPost(like7.ID, post2.ID)
+	likeToPost8 := models.NewLikeToPost(like8.ID, post2.ID)
 	likeToPostRepo.Save(likeToPost1)
 	likeToPostRepo.Save(likeToPost2)
 	likeToPostRepo.Save(likeToPost3)
 	likeToPostRepo.Save(likeToPost4)
 	likeToPostRepo.Save(likeToPost5)
 	likeToPostRepo.Save(likeToPost6)
+	likeToPostRepo.Save(likeToPost7)
+	likeToPostRepo.Save(likeToPost8)
 
 	// create comments
 	comment1 := models.NewComment("comment 1", post1.ID, nil, nil, user2.ID, false)

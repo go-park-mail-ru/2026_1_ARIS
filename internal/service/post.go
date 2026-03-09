@@ -1,7 +1,9 @@
 package service
 
 import (
+	"cmp"
 	"context"
+	"slices"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
@@ -28,6 +30,7 @@ type PostService interface {
 	Save(ctx context.Context, post models.Post) error
 	GetLikeCount(ctx context.Context, postID uuid.UUID) int
 	GetCommentCount(ctx context.Context, postID uuid.UUID) int
+	GerPopular(ctx context.Context, count int) []models.Post
 }
 
 func NewPostService(postRepo repository.PostRepo,
@@ -114,4 +117,23 @@ func (s *postService) GetLikeCount(ctx context.Context, postID uuid.UUID) int {
 
 func (s *postService) GetCommentCount(ctx context.Context, postID uuid.UUID) int {
 	return s.CommentRepo.GetCommentCount(postID)
+}
+
+func (s *postService) GerPopular(ctx context.Context, count int) []models.Post {
+	if count <= 0 {
+		return nil
+	}
+
+	postCount := s.PostRepo.GetPostCount(ctx)
+	if count > postCount {
+		count = postCount
+	}
+
+	posts := s.PostRepo.GetAllPosts(ctx)
+
+	return slices.SortedFunc(slices.Values(posts), func(post1, post2 models.Post) int {
+		post1Likes := s.LikeToPostRepo.GetLikeCountOnPost(post1.ID)
+		post2Likes := s.LikeToPostRepo.GetLikeCountOnPost(post2.ID)
+		return -cmp.Compare(post1Likes, post2Likes)
+	})[:count]
 }

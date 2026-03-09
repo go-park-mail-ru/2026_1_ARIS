@@ -48,7 +48,9 @@ func main() {
 
 	feedHandler := handlers.NewFeedHandler(postService, mediaService)
 
-	router := server.NewRouter(authHandler, sessService, feedHandler)
+	sidebarHandler := handlers.NewSidebarHandler(postService)
+
+	router := server.NewRouter(authHandler, sessService, feedHandler, sidebarHandler)
 
 	srv := &http.Server{
 		Addr:    ":8080",

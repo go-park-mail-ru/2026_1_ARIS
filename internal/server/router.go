@@ -14,6 +14,7 @@ func NewRouter(
 	authHandler *handlers.AuthHandler,
 	sessSvc service.SessionService,
 	feedHandler *handlers.FeedHandler,
+	sidebarHandler *handlers.SidebarHandler,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -35,6 +36,10 @@ func NewRouter(
 	r.Group(func(r chi.Router) {
 		r.Use(mymiddleware.AuthMiddleware(sessSvc))
 		r.Get("/api/feed", feedHandler.GetFeed)
+	})
+
+	r.Route("/api/sidebar", func(r chi.Router) {
+		r.Get("/popularposts", sidebarHandler.GetPopularPosts)
 	})
 
 	return r
