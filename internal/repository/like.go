@@ -2,12 +2,14 @@ package repository
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/google/uuid"
 )
 
 type inmemoryLikeRepo struct {
+	mu    sync.RWMutex
 	likes map[uuid.UUID]models.Like
 }
 
@@ -23,6 +25,9 @@ func NewLikeRepo() LikeRepo {
 }
 
 func (r *inmemoryLikeRepo) Get(likeID uuid.UUID) (models.Like, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	like, ok := r.likes[likeID]
 	if !ok {
 		return models.Like{}, errors.New("Like not found")
@@ -31,6 +36,9 @@ func (r *inmemoryLikeRepo) Get(likeID uuid.UUID) (models.Like, error) {
 }
 
 func (r *inmemoryLikeRepo) Save(like models.Like) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	_, ok := r.likes[like.ID]
 	if !ok {
 		r.likes[like.ID] = like

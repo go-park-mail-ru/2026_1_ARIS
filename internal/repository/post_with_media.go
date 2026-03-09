@@ -2,12 +2,14 @@ package repository
 
 import (
 	"slices"
+	"sync"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/google/uuid"
 )
 
 type inmemoryPostWithMediaRepo struct {
+	mu             sync.RWMutex
 	postWithMedias []models.PostWithMedia
 }
 
@@ -21,6 +23,9 @@ func NewPostWithMediaRepo() PostWithMediaRepo {
 }
 
 func (r *inmemoryPostWithMediaRepo) GetMediaByPost(postID uuid.UUID) []uuid.UUID {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	var mediaIDs []uuid.UUID
 
 	slices.SortFunc(r.postWithMedias, func(i, j models.PostWithMedia) int {
@@ -42,6 +47,9 @@ func (r *inmemoryPostWithMediaRepo) GetMediaByPost(postID uuid.UUID) []uuid.UUID
 }
 
 func (r *inmemoryPostWithMediaRepo) Save(post models.Post, media models.Media, order int) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	postWithMedia := models.NewPostWithMedia(post, media, order)
 	r.postWithMedias = append(r.postWithMedias, postWithMedia)
 	return nil

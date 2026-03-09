@@ -5,6 +5,7 @@ import (
 	"errors"
 	"maps"
 	"slices"
+	"sync"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 
@@ -20,10 +21,11 @@ type UserRepo interface {
 	GetByEmail(ctx context.Context, email string) (models.User, error)
 	GetByPhone(ctx context.Context, phone string) (models.User, error)
 
-	List(ctx context.Context, offset, limit int) ([]models.User, error)
+	List(ctx context.Context, offset, limit int) []models.User
 }
 
 type inmemoryUserRepo struct {
+	mu    sync.RWMutex
 	users map[uuid.UUID]models.User
 }
 
@@ -34,12 +36,17 @@ func NewUserRepo() UserRepo {
 }
 
 func (r *inmemoryUserRepo) Save(ctx context.Context, user models.User) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	r.users[user.ID] = user
-	//r.users = append(r.users, user)
 	return nil
 }
 
 func (r *inmemoryUserRepo) Delete(ctx context.Context, id uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	_, ok := r.users[id]
 
 	if ok {
@@ -51,6 +58,8 @@ func (r *inmemoryUserRepo) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 func (r *inmemoryUserRepo) GetByID(ctx context.Context, id uuid.UUID) (models.User, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 
 	user, ok := r.users[id]
 
@@ -61,6 +70,9 @@ func (r *inmemoryUserRepo) GetByID(ctx context.Context, id uuid.UUID) (models.Us
 }
 
 func (r *inmemoryUserRepo) GetByEmail(ctx context.Context, email string) (models.User, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	for _, u := range r.users {
 		if u.Email == email {
 			return u, nil
@@ -70,6 +82,9 @@ func (r *inmemoryUserRepo) GetByEmail(ctx context.Context, email string) (models
 }
 
 func (r *inmemoryUserRepo) GetByPhone(ctx context.Context, phone string) (models.User, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	for _, u := range r.users {
 		if u.Phone == phone {
 			return u, nil
@@ -78,10 +93,16 @@ func (r *inmemoryUserRepo) GetByPhone(ctx context.Context, phone string) (models
 	return models.User{}, errors.New("user not found")
 }
 
-func (r *inmemoryUserRepo) List(ctx context.Context, offset, limit int) ([]models.User, error) {
+func (r *inmemoryUserRepo) List(ctx context.Context, offset, limit int) []models.User {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if offset >= len(r.users) {
+		return []models.User{}
+	}
 	if offset+limit > len(r.users) {
-		return nil, errors.New("out of range")
+		return slices.Collect(maps.Values(r.users))[offset:]
 	}
 
-	return slices.Collect(maps.Values(r.users))[offset : offset+limit], nil
+	return slices.Collect(maps.Values(r.users))[offset : offset+limit]
 }

@@ -145,7 +145,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 		posts = append(posts, postFeedDTO{
 			Id:        post.ID,
-			Text:      post.Text,
+			Text:      *post.Text,
 			Author:    author,
 			CreatedAt: post.CreatedAt,
 			Likes:     likeCount,

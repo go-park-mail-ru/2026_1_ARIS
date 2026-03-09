@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"sync"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/cursor"
@@ -29,6 +30,7 @@ type PostRepo interface {
 }
 
 type inmemoryPostRepo struct {
+	mu    sync.RWMutex
 	Posts map[uuid.UUID]models.Post
 }
 
@@ -39,6 +41,8 @@ func NewPostRepo() PostRepo {
 }
 
 func (r *inmemoryPostRepo) GetFeed(ctx context.Context, params FeedParams) ([]models.Post, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	fmt.Println("Feed repo start")
 
@@ -80,17 +84,21 @@ func (r *inmemoryPostRepo) GetFeed(ctx context.Context, params FeedParams) ([]mo
 }
 
 func (r *inmemoryPostRepo) Save(ctx context.Context, post models.Post) error {
-	_, ok := r.Posts[post.ID]
-	if ok {
-		return nil
-	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
-	r.Posts[post.ID] = post
+	_, ok := r.Posts[post.ID]
+	if !ok {
+		r.Posts[post.ID] = post
+	}
 
 	return nil
 }
 
 func (r *inmemoryPostRepo) Delete(ctx context.Context, id uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	_, ok := r.Posts[id]
 
 	if !ok {
@@ -102,6 +110,9 @@ func (r *inmemoryPostRepo) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 func (r *inmemoryPostRepo) List(ctx context.Context, offset, limit int) ([]models.Post, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	if offset+limit > len(r.Posts) {
 		return nil, errors.New("out of range")
 	}
@@ -110,6 +121,9 @@ func (r *inmemoryPostRepo) List(ctx context.Context, offset, limit int) ([]model
 }
 
 func (r *inmemoryPostRepo) GetPostByID(id uuid.UUID) (models.Post, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	fmt.Println("Все посты из репо: ", r.Posts)
 	fmt.Println(id)
 	profile, ok := r.Posts[id]

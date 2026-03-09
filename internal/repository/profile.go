@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ type ProfileRepo interface {
 }
 
 type inmemoryProfileRepo struct {
+	mu       sync.RWMutex
 	Profiles map[uuid.UUID]models.Profile
 }
 
@@ -24,6 +26,9 @@ func NewProfileRepo() ProfileRepo {
 }
 
 func (r *inmemoryProfileRepo) GetProfileByID(profileID uuid.UUID) (models.Profile, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	profile, ok := r.Profiles[profileID]
 	if !ok {
 		return models.Profile{}, errors.New("Profile not found")
@@ -32,6 +37,9 @@ func (r *inmemoryProfileRepo) GetProfileByID(profileID uuid.UUID) (models.Profil
 }
 
 func (r *inmemoryProfileRepo) Save(ctx context.Context, profile models.Profile) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	r.Profiles[profile.ID] = profile
 	return nil
 }

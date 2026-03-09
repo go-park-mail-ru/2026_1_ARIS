@@ -25,11 +25,11 @@ type LoginRequest struct {
 }
 
 type AuthHandler struct {
-	authService *service.AuthService
+	authService service.AuthService
 	jwtSecret   []byte
 }
 
-func NewAuthHandler(authService *service.AuthService, jwtSecret string) *AuthHandler {
+func NewAuthHandler(authService service.AuthService, jwtSecret string) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
 		jwtSecret:   []byte(jwtSecret),

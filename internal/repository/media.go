@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ type MediaRepo interface {
 }
 
 type inmemoryMediaRepo struct {
+	mu     sync.RWMutex
 	medias map[uuid.UUID]models.Media
 }
 
@@ -24,6 +26,9 @@ func NewMediaRepo() MediaRepo {
 }
 
 func (r *inmemoryMediaRepo) GetMediaByID(id uuid.UUID) (models.Media, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	media, ok := r.medias[id]
 	if !ok {
 		return models.Media{}, errors.New("Media not found")
@@ -33,6 +38,9 @@ func (r *inmemoryMediaRepo) GetMediaByID(id uuid.UUID) (models.Media, error) {
 }
 
 func (r *inmemoryMediaRepo) Save(ctx context.Context, media models.Media) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	r.medias[media.ID] = media
 	return nil
 }
