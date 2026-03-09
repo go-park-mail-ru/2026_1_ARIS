@@ -13,6 +13,7 @@ import (
 type SessionService interface {
 	Create(ctx context.Context, userID uuid.UUID) (*models.Session, error)
 	Get(ctx context.Context, sessionID models.SessionID) (*models.Session, error)
+	Delete(ctx context.Context, sessionID models.SessionID) error
 }
 
 type sessionService struct {
@@ -24,7 +25,9 @@ func NewSessionService(repo repository.SessionRepo) SessionService {
 		repo: repo,
 	}
 }
-
+func (s *sessionService) Delete(ctx context.Context, sessionID models.SessionID) error {
+	return s.repo.Delete(ctx, sessionID)
+}
 func (s *sessionService) validateSession(userID uuid.UUID) error {
 	if userID == uuid.Nil {
 		return errors.New("invalid user id")

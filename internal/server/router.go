@@ -36,6 +36,10 @@ func NewRouter(
 		r.Use(mymiddleware.AuthMiddleware(sessSvc))
 		r.Get("/api/feed", feedHandler.GetFeed)
 	})
-
+	r.Group(func(r chi.Router) {
+		r.Use(mymiddleware.AuthMiddleware(sessSvc))
+		r.Get("/api/feed", feedHandler.GetFeed)
+		r.Post("/api/auth/logout", authHandler.Logout)
+	})
 	return r
 }
