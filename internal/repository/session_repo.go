@@ -19,6 +19,12 @@ type inmemorySessionRepo struct {
 	sessions map[models.SessionID]models.Session
 }
 
+func NewSessionRepo() SessionRepo {
+	return &inmemorySessionRepo{
+		sessions: make(map[models.SessionID]models.Session),
+	}
+}
+
 func (r *inmemorySessionRepo) Save(ctx context.Context, session models.Session) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -23,11 +23,11 @@ type LoginRequest struct {
 }
 
 type AuthHandler struct {
-	authService    *service.AuthService
+	authService    service.AuthService
 	sessionService service.SessionService
 }
 
-func NewAuthHandler(authService *service.AuthService, sessSvc service.SessionService) *AuthHandler {
+func NewAuthHandler(authService service.AuthService, sessSvc service.SessionService) *AuthHandler {
 	return &AuthHandler{
 		authService:    authService,
 		sessionService: sessSvc,

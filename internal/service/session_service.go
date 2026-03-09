@@ -11,7 +11,7 @@ import (
 )
 
 type SessionService interface {
-	Create(ctx context.Context, userID models.UserID) (models.Session, error)
+	Create(ctx context.Context, userID uuid.UUID) (models.Session, error)
 	Get(ctx context.Context, sessionID models.SessionID) (models.Session, error)
 }
 
@@ -25,8 +25,8 @@ func NewSessionService(repo repository.SessionRepo) SessionService {
 	}
 }
 
-func (s *sessionService) validateSession(userID models.UserID) error {
-	if userID == 0 {
+func (s *sessionService) validateSession(userID uuid.UUID) error {
+	if userID == uuid.Nil {
 		return errors.New("invalid user id")
 	}
 	return nil
@@ -34,7 +34,7 @@ func (s *sessionService) validateSession(userID models.UserID) error {
 
 const sessionTTL = 24 * time.Hour
 
-func (s *sessionService) Create(ctx context.Context, userID models.UserID) (models.Session, error) {
+func (s *sessionService) Create(ctx context.Context, userID uuid.UUID) (models.Session, error) {
 	if err := s.validateSession(userID); err != nil {
 		return models.Session{}, err
 	}

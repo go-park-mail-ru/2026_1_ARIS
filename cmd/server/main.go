@@ -11,18 +11,30 @@ import (
 	"time"
 
 	handlers "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
-	//"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/server"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 )
 
 func main() {
-	db := repository.NewRepository()
-	//db.UserRepo.Save(context.Background(), models.NewUser(1, "KokInside", "KokInside@gmail.com", "+79999999999", "hard_password"))
 
-	authService := service.NewAuthService(db.UserRepo)
-	sessService := service.NewSessionService(db.SessionRepo)
+	// Инициализация репозиториев и сервисов для ленты
+	likeToPostRepo := repository.NewLikeToPostRepo()
+	commentRepo := repository.NewCommentRepo()
+	postRepo := repository.NewPostRepo()
+	profileRepo := repository.NewProfileRepo()
+	postService := service.NewPostService(postRepo, profileRepo, likeToPostRepo, commentRepo)
+
+	// инициализация userProfile service
+	userRepo := repository.NewUserRepo()
+	userProfileRepo := repository.NewUserProfileRepo()
+	userProfileService := service.NewUserProfileService(userRepo, profileRepo, userProfileRepo)
+
+	sessionRepo := repository.NewSessionRepo()
+
+	authService := service.NewAuthService(userRepo)
+	sessService := service.NewSessionService(sessionRepo)
 
 	_, err := authService.Register(context.Background(), "KokInside@gmail.com", "hard_password", "KokInside", "+79999999999")
 	if err != nil {
@@ -30,7 +42,13 @@ func main() {
 	}
 	authHandler := handlers.NewAuthHandler(authService, sessService)
 
-	router := server.NewRouter(authHandler, sessService)
+	mediaRepo := repository.NewMediaRepo()
+	postWithMediaRepo := repository.NewPostWithMediaRepo()
+	mediaService := service.NewMediaService(mediaRepo, postWithMediaRepo)
+
+	feedHandler := handlers.NewFeedHandler(postService, mediaService)
+
+	router := server.NewRouter(authHandler, sessService, feedHandler)
 
 	srv := &http.Server{
 		Addr:    ":8080",
@@ -44,13 +62,10 @@ func main() {
 		}
 	}()
 
-	users, err := db.UserRepo.List(context.Background(), 0, 1)
-	if err != nil {
-		fmt.Println("Error listing users:", err)
-	} else {
-		fmt.Println("Users:", users)
-	}
+	// заполнение тестовыми данными
+	utils.MakeMock(mediaRepo, userProfileService, postService, postWithMediaRepo, likeToPostRepo, commentRepo)
 
+	// gracefull shutdown
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	<-stop

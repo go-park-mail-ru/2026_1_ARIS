@@ -4,15 +4,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
+	"github.com/google/uuid"
 )
 
 func TestSessionLifecycle(t *testing.T) {
-	repo := repository.NewRepository().SessionRepo
+	repo := repository.NewSessionRepo()
 	svc := NewSessionService(repo)
 	ctx := context.Background()
-	userID := models.UserID(42)
+	userID := uuid.New() //models.UserID(42)
 
 	session, err := svc.Create(ctx, userID)
 	if err != nil {

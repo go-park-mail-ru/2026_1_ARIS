@@ -11,28 +11,34 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type AuthService struct {
+type authService struct {
 	mu       sync.RWMutex
 	userRepo repository.UserRepo
-	nextID   models.UserID
 }
 
-func NewAuthService(repo repository.UserRepo) *AuthService {
-	return &AuthService{
-		userRepo: repo,
-		nextID:   1,
+type AuthService interface {
+	Register(ctx context.Context, email, password, username, phone string) (*models.User, error)
+	Login(ctx context.Context, email, password string) (*models.User, error)
+}
+
+func NewAuthService(userRepo repository.UserRepo) AuthService {
+	return &authService{
+		userRepo: userRepo,
 	}
 }
 
-func (s *AuthService) Register(ctx context.Context, email, password, username, phone string) (*models.User, error) {
+func (s *authService) Register(ctx context.Context, email, password, username, phone string) (*models.User, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	email = strings.ToLower(email)
 
-	existingUser, _ := s.userRepo.GetByEmail(ctx, email)
-	if existingUser.Email != "" {
+	if _, err := s.userRepo.GetByEmail(context.Background(), email); err == nil {
 		return nil, errors.New("пользователь с таким email уже существует")
+	}
+
+	if _, err := s.userRepo.GetByPhone(context.Background(), phone); err == nil {
+		return nil, errors.New("пользователь с таким номером телефона уже существует")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -41,28 +47,25 @@ func (s *AuthService) Register(ctx context.Context, email, password, username, p
 	}
 
 	user := models.NewUser(
-		s.nextID,
-		username,
 		email,
 		phone,
 		string(hashedPassword),
 	)
-
-	s.userRepo.Save(ctx, user)
-
-	s.nextID++
+	s.userRepo.Save(context.Background(), user)
 	return &user, nil
 }
 
-func (s *AuthService) Login(ctx context.Context, email, password string) (*models.User, error) {
-	email = strings.ToLower(email)
+func (s *authService) Login(ctx context.Context, email, password string) (*models.User, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	user, err := s.userRepo.GetByEmail(ctx, email)
+	email = strings.ToLower(email)
+	user, err := s.userRepo.GetByEmail(context.Background(), email)
 	if err != nil {
 		return nil, errors.New("недействительные учётные данные")
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
 		return nil, errors.New("недействительные учётные данные")
 	}
