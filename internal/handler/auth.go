@@ -63,8 +63,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	profile, err := h.authService.Register(r.Context(), req.FirstName, req.LastName, req.Login, req.Password1, req.Birthday)
 	if err != nil {
-		if err.Error() == "пользователь с таким email уже существует" {
-			http.Error(w, `{"error":"email already registered"}`, http.StatusConflict)
+		if err.Error() == "пользователь с таким login уже существует" {
+			http.Error(w, `{"error":"login already registered"}`, http.StatusConflict)
 			return
 		} else if err.Error() == "invalid birthday date" {
 			http.Error(w, `{"error":"invalid birthday date"}`, http.StatusConflict)

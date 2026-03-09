@@ -72,7 +72,7 @@ func (s *authService) Login(ctx context.Context, login, password string) (*model
 		return nil, errors.New("недействительные учётные данные")
 	}
 
-	user, err := s.userRepo.GetByID(ctx, userProfile.ID)
+	user, err := s.userRepo.GetByID(ctx, userProfile.UserID)
 	if err != nil {
 		return nil, errors.New("недействительные учётные данные")
 	}
