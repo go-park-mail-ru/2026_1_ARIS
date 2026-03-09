@@ -14,7 +14,7 @@ type inmemoryLikeRepo struct {
 }
 
 type LikeRepo interface {
-	Get(likeID uuid.UUID) (models.Like, error)
+	Get(likeID uuid.UUID) (*models.Like, error)
 	Save(like models.Like) error
 }
 
@@ -24,15 +24,15 @@ func NewLikeRepo() LikeRepo {
 	return &repo
 }
 
-func (r *inmemoryLikeRepo) Get(likeID uuid.UUID) (models.Like, error) {
+func (r *inmemoryLikeRepo) Get(likeID uuid.UUID) (*models.Like, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	like, ok := r.likes[likeID]
 	if !ok {
-		return models.Like{}, errors.New("Like not found")
+		return nil, errors.New("Like not found")
 	}
-	return like, nil
+	return &like, nil
 }
 
 func (r *inmemoryLikeRepo) Save(like models.Like) error {

@@ -23,7 +23,7 @@ type postService struct {
 }
 
 type PostService interface {
-	GetPostAuthor(postID uuid.UUID) (models.Profile, error)
+	GetPostAuthor(postID uuid.UUID) (*models.Profile, error)
 	GetFeed(ctx context.Context, rawCursor string, limit int) (FeedResult, error)
 	Save(ctx context.Context, post models.Post) error
 	GetLikeCount(ctx context.Context, postID uuid.UUID) int
@@ -87,10 +87,10 @@ func (s *postService) GetFeed(ctx context.Context, rawCursor string, limit int) 
 	}, nil
 }
 
-func (s *postService) GetPostAuthor(postID uuid.UUID) (models.Profile, error) {
+func (s *postService) GetPostAuthor(postID uuid.UUID) (*models.Profile, error) {
 	post, err := s.PostRepo.GetPostByID(postID)
 	if err != nil {
-		return models.Profile{}, err
+		return nil, err
 	}
 
 	profileID := post.AuthorID
@@ -98,7 +98,7 @@ func (s *postService) GetPostAuthor(postID uuid.UUID) (models.Profile, error) {
 	profile, err := s.ProfileRepo.GetProfileByID(profileID)
 
 	if err != nil {
-		return models.Profile{}, err
+		return nil, err
 	}
 
 	return profile, nil
