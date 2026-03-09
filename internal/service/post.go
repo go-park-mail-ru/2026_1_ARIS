@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
@@ -45,8 +44,6 @@ func NewPostService(postRepo repository.PostRepo,
 }
 
 func (s *postService) GetFeed(ctx context.Context, rawCursor string, limit int) (FeedResult, error) {
-	fmt.Println("Feed service")
-
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
@@ -63,7 +60,6 @@ func (s *postService) GetFeed(ctx context.Context, rawCursor string, limit int) 
 	}
 
 	params := repository.FeedParams{Cursor: cur, Limit: limit}
-	fmt.Println(params)
 
 	posts, err := s.PostRepo.GetFeed(ctx, params)
 	if err != nil {
@@ -84,8 +80,6 @@ func (s *postService) GetFeed(ctx context.Context, rawCursor string, limit int) 
 		})
 	}
 
-	fmt.Println("Feed service return")
-
 	return FeedResult{
 		Posts:   posts,
 		Cursor:  nextCursor,
@@ -95,7 +89,6 @@ func (s *postService) GetFeed(ctx context.Context, rawCursor string, limit int) 
 
 func (s *postService) GetPostAuthor(postID uuid.UUID) (models.Profile, error) {
 	post, err := s.PostRepo.GetPostByID(postID)
-	fmt.Println("Post get in PostService:", post)
 	if err != nil {
 		return models.Profile{}, err
 	}
@@ -116,11 +109,9 @@ func (s *postService) Save(ctx context.Context, post models.Post) error {
 }
 
 func (s *postService) GetLikeCount(ctx context.Context, postID uuid.UUID) int {
-	fmt.Println("In GetLikeCount in Post Service")
 	return s.LikeToPostRepo.GetLikeCountOnPost(postID)
 }
 
 func (s *postService) GetCommentCount(ctx context.Context, postID uuid.UUID) int {
-	fmt.Println("In GetCommentCount in Post Service")
 	return s.CommentRepo.GetCommentCount(postID)
 }

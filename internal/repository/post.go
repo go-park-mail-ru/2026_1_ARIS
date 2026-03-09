@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"errors"
-	"fmt"
 	"maps"
 	"slices"
 	"sync"
@@ -44,8 +43,6 @@ func (r *inmemoryPostRepo) GetFeed(ctx context.Context, params FeedParams) ([]mo
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	fmt.Println("Feed repo start")
-
 	feedSlice := slices.Collect(maps.Values(r.Posts))
 
 	slices.SortFunc(feedSlice, func(a, b models.Post) int {
@@ -60,8 +57,6 @@ func (r *inmemoryPostRepo) GetFeed(ctx context.Context, params FeedParams) ([]mo
 	limit := params.Limit + 1
 
 	if params.Cursor == nil {
-		fmt.Println("Пустой курсор")
-		fmt.Println("Возвращено из репо", feedSlice)
 		if limit > len(feedSlice) {
 			return feedSlice[:], nil
 		} else {
@@ -77,8 +72,6 @@ func (r *inmemoryPostRepo) GetFeed(ctx context.Context, params FeedParams) ([]mo
 			return feedSlice[i : i+limit], nil
 		}
 	}
-
-	fmt.Println("Feed repo return")
 
 	return nil, errors.New("No more posts")
 }
@@ -124,8 +117,6 @@ func (r *inmemoryPostRepo) GetPostByID(id uuid.UUID) (models.Post, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	fmt.Println("Все посты из репо: ", r.Posts)
-	fmt.Println(id)
 	profile, ok := r.Posts[id]
 	if !ok {
 		return models.Post{}, errors.New("Profile not found")

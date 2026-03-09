@@ -74,7 +74,7 @@ func (r *inmemoryUserRepo) GetByEmail(ctx context.Context, email string) (models
 	defer r.mu.RUnlock()
 
 	for _, u := range r.users {
-		if u.Email == email {
+		if u.Email == &email {
 			return u, nil
 		}
 	}
@@ -86,7 +86,7 @@ func (r *inmemoryUserRepo) GetByPhone(ctx context.Context, phone string) (models
 	defer r.mu.RUnlock()
 
 	for _, u := range r.users {
-		if u.Phone == phone {
+		if u.Phone == &phone {
 			return u, nil
 		}
 	}

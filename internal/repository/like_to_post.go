@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
@@ -28,15 +27,11 @@ func (r *inmemoryLIkeToPostRepo) GetLikeCountOnPost(postID uuid.UUID) int {
 
 	likesCount := 0
 
-	fmt.Println("In GetLikeCountOnPost in Like_To_Post REPO")
-
 	for _, l := range r.likesToPost {
 		if l.PostID == postID {
 			likesCount++
 		}
 	}
-
-	fmt.Println("Returned GetLikeCountOnPost in Like_To_Post REPO")
 
 	return likesCount
 }

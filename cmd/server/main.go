@@ -33,10 +33,10 @@ func main() {
 
 	sessionRepo := repository.NewSessionRepo()
 
-	authService := service.NewAuthService(userRepo)
+	authService := service.NewAuthService(userRepo, profileRepo, userProfileRepo)
 	sessService := service.NewSessionService(sessionRepo)
 
-	_, err := authService.Register(context.Background(), "KokInside@gmail.com", "hard_password", "KokInside", "+79999999999")
+	_, err := authService.Register(context.Background(), "Kok", "Inside", "KokInside", "hard_password_1", "hard_password_1", nil)
 	if err != nil {
 		fmt.Println("Test user already exists or error:", err)
 	}

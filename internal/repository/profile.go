@@ -11,6 +11,7 @@ import (
 
 type ProfileRepo interface {
 	GetProfileByID(profileID uuid.UUID) (models.Profile, error)
+	GetProfileByUsername(username string) (models.Profile, error)
 	Save(ctx context.Context, profile models.Profile) error
 }
 
@@ -42,4 +43,16 @@ func (r *inmemoryProfileRepo) Save(ctx context.Context, profile models.Profile) 
 
 	r.Profiles[profile.ID] = profile
 	return nil
+}
+
+func (r *inmemoryProfileRepo) GetProfileByUsername(username string) (models.Profile, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, p := range r.Profiles {
+		if p.Username == username {
+			return p, nil
+		}
+	}
+	return models.Profile{}, errors.New("Profile not found")
 }

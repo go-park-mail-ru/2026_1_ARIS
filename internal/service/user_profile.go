@@ -28,9 +28,9 @@ func NewUserProfileService(userRepo repository.UserRepo, profileRepo repository.
 }
 
 func (s *userService) CreateRealUserProfile(ctx context.Context, email, phone, password_hash, username, firstName, lastName string, isActive bool, birthdayDate *time.Time, gender models.Gender, avatar *models.Media) models.Profile {
-	user := models.NewUser(email, phone, password_hash)
+	user := models.NewUser(password_hash, &phone, &email)
 	profile := models.NewProfile(username, avatar, isActive)
-	userProfile := models.NewUserProfile(user, profile, firstName, lastName, nil, birthdayDate, gender)
+	userProfile := models.NewUserProfile(user, profile, firstName, lastName, nil, birthdayDate, &gender)
 
 	s.UserRepo.Save(ctx, user)
 	s.ProfileRepo.Save(ctx, profile)

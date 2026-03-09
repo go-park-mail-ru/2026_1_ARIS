@@ -53,7 +53,6 @@ func NewFeedHandler(postService service.PostService, mediaService service.MediaS
 }
 
 func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Feed handler")
 
 	if r.Method != http.MethodGet {
 		fmt.Println("Required method GET")
@@ -64,8 +63,6 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	rawCursor := r.URL.Query().Get("cursor")
-
-	fmt.Println("rawCursor =", rawCursor)
 
 	limit := 20
 
@@ -78,8 +75,6 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		limit = parsed
 	}
 
-	fmt.Println("limit =", limit)
-
 	feed, err := h.PostService.GetFeed(r.Context(), rawCursor, limit)
 	if err != nil {
 		fmt.Println("Feed error", err)
@@ -91,17 +86,11 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	// сборка каждого поста в DTO
 	for _, post := range feed.Posts {
 
-		fmt.Println("Begining of each post in feed handler")
-
 		postAuthor, err := h.PostService.GetPostAuthor(post.ID)
 		if err != nil {
 			fmt.Println("Error in hanlder: ", err)
 			return
 		}
-
-		fmt.Println("Post Author = ", postAuthor)
-
-		fmt.Println("postAuthor avatar = ", postAuthor.AvatarID)
 
 		var authorAvatarLink string
 
@@ -120,11 +109,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 			AvatarLink: authorAvatarLink,
 		}
 
-		fmt.Println("Author DTO = ", author)
-
 		medias := h.MediaService.GetMediaByPost(post.ID)
-
-		fmt.Println("Post's medias = ", medias)
 
 		var mediasDTO []mediaFeedDTO
 
@@ -136,8 +121,6 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 				Thumbnail: media.Link,
 			})
 		}
-
-		fmt.Println("Medias DTO = ", mediasDTO)
 
 		likeCount := h.PostService.GetLikeCount(r.Context(), post.ID)
 
@@ -153,7 +136,6 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 			Medias:    mediasDTO,
 		})
 
-		fmt.Println("Posts DTO = ", posts)
 	}
 
 	response := feedResponse{
@@ -161,8 +143,6 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		NextCursor: feed.Cursor,
 		HasNext:    feed.HasMore,
 	}
-
-	fmt.Println("Feed Responce = ", response)
 
 	json.NewEncoder(w).Encode(response)
 }

@@ -74,14 +74,14 @@ const (
 // credentials данные
 type User struct {
 	ID           uuid.UUID `json:"id"`
-	Email        string    `json:"email"`
-	Phone        string    `json:"phone"`
+	Email        *string   `json:"email"`
+	Phone        *string   `json:"phone"`
 	PasswordHash string    `json:"-"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
-func NewUser(email, phone, passwordHash string) User {
+func NewUser(passwordHash string, phone, email *string) User {
 	now := time.Now()
 	return User{
 		ID:           uuid.New(),
@@ -103,12 +103,12 @@ type UserProfile struct {
 	LastName     string     `json:"lastName"`
 	Bio          *string    `json:"bio,omitempty"`
 	BirthdayDate *time.Time `json:"birthdayDate,omitempty"`
-	Gender       Gender     `json:"gender"`
+	Gender       *Gender    `json:"gender"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	UpdatedAt    time.Time  `json:"updatedAt"`
 }
 
-func NewUserProfile(user User, profile Profile, firstName, lastName string, bio *string, birthday *time.Time, gender Gender) UserProfile {
+func NewUserProfile(user User, profile Profile, firstName, lastName string, bio *string, birthday *time.Time, gender *Gender) UserProfile {
 	now := time.Now()
 
 	return UserProfile{

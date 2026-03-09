@@ -2,7 +2,7 @@ package server
 
 import (
 	handlers "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
-	mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
+	//mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
 
 	"github.com/go-chi/chi/v5"
@@ -33,7 +33,7 @@ func NewRouter(
 	})
 
 	r.Group(func(r chi.Router) {
-		r.Use(mymiddleware.AuthMiddleware(sessSvc))
+		//r.Use(mymiddleware.AuthMiddleware(sessSvc))
 		r.Get("/api/feed", feedHandler.GetFeed)
 	})
 
