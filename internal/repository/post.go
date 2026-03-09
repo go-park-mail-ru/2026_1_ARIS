@@ -23,7 +23,7 @@ type PostRepo interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 
 	List(ctx context.Context, offset, limit int) ([]models.Post, error)
-	GetPostByID(id uuid.UUID) (models.Post, error)
+	GetPostByID(id uuid.UUID) (*models.Post, error)
 
 	GetFeed(ctx context.Context, params FeedParams) ([]models.Post, error)
 }
@@ -113,14 +113,14 @@ func (r *inmemoryPostRepo) List(ctx context.Context, offset, limit int) ([]model
 	return slices.Collect(maps.Values(r.Posts))[offset:offset:limit], nil
 }
 
-func (r *inmemoryPostRepo) GetPostByID(id uuid.UUID) (models.Post, error) {
+func (r *inmemoryPostRepo) GetPostByID(id uuid.UUID) (*models.Post, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	profile, ok := r.Posts[id]
 	if !ok {
-		return models.Post{}, errors.New("Profile not found")
+		return nil, errors.New("Profile not found")
 	}
 
-	return profile, nil
+	return &profile, nil
 }

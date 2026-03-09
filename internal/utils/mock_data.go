@@ -33,11 +33,11 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	mediaRepo.Save(context.Background(), avatar5)
 
 	// create Profiles (users)
-	user1 := userProfileService.CreateRealUserProfile(context.Background(), "email@gmail.com", "+79990001122", "hard password hash", "username 0???", "cool first name", "not so cool last name", true, nil, models.Gender(1), &avatar1)
-	user2 := userProfileService.CreateRealUserProfile(context.Background(), "email1@gmail.com", "+179990001122", "hard password hash", "username 1???", "cool first name", "not so cool last name", true, nil, models.Gender(1), &avatar2)
-	user3 := userProfileService.CreateRealUserProfile(context.Background(), "email2@gmail.com", "+279990001122", "hard password hash", "username 2???", "cool first name", "not so cool last name", true, nil, models.Gender(1), &avatar3)
-	user4 := userProfileService.CreateRealUserProfile(context.Background(), "email3@gmail.com", "+379990001122", "hard password hash", "username 3???", "cool first name", "not so cool last name", true, nil, models.Gender(1), &avatar4)
-	user5 := userProfileService.CreateRealUserProfile(context.Background(), "email4@gmail.com", "+479990001122", "hard password hash", "username 4???", "cool first name", "not so cool last name", true, nil, models.Gender(1), &avatar5)
+	user1, _ := userProfileService.CreateRealUserProfile(context.Background(), "email@gmail.com", "+79990001122", "hard password hash", "username 0???", "cool first name", "not so cool last name", true, nil, models.Gender(1), &avatar1)
+	user2, _ := userProfileService.CreateRealUserProfile(context.Background(), "email1@gmail.com", "+179990001122", "hard password hash", "username 1???", "cool first name", "not so cool last name", true, nil, models.Gender(1), &avatar2)
+	user3, _ := userProfileService.CreateRealUserProfile(context.Background(), "email2@gmail.com", "+279990001122", "hard password hash", "username 2???", "cool first name", "not so cool last name", true, nil, models.Gender(1), &avatar3)
+	user4, _ := userProfileService.CreateRealUserProfile(context.Background(), "email3@gmail.com", "+379990001122", "hard password hash", "username 3???", "cool first name", "not so cool last name", true, nil, models.Gender(1), &avatar4)
+	user5, _ := userProfileService.CreateRealUserProfile(context.Background(), "email4@gmail.com", "+479990001122", "hard password hash", "username 4???", "cool first name", "not so cool last name", true, nil, models.Gender(1), &avatar5)
 
 	// create medias
 	mediaDesctiption1 := "Media description 1"
@@ -65,11 +65,11 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	postText3 := "post text 3"
 	postText4 := "post text 4"
 	postText5 := "post text 5"
-	post1 := models.NewPost(&postText1, user1, true)
-	post2 := models.NewPost(&postText2, user2, true)
-	post3 := models.NewPost(&postText3, user3, true)
-	post4 := models.NewPost(&postText4, user4, true)
-	post5 := models.NewPost(&postText5, user5, true)
+	post1 := models.NewPost(&postText1, *user1, true)
+	post2 := models.NewPost(&postText2, *user2, true)
+	post3 := models.NewPost(&postText3, *user3, true)
+	post4 := models.NewPost(&postText4, *user4, true)
+	post5 := models.NewPost(&postText5, *user5, true)
 	postService.Save(context.Background(), post1)
 	postService.Save(context.Background(), post2)
 	postService.Save(context.Background(), post3)
@@ -85,12 +85,12 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	postWithMediaRepo.Save(post5, media5, 0)
 
 	// create likes & init LikeRepo
-	like1 := models.NewLike(user4)
-	like2 := models.NewLike(user5)
-	like3 := models.NewLike(user1)
-	like4 := models.NewLike(user2)
-	like5 := models.NewLike(user3)
-	like6 := models.NewLike(user3)
+	like1 := models.NewLike(*user4)
+	like2 := models.NewLike(*user5)
+	like3 := models.NewLike(*user1)
+	like4 := models.NewLike(*user2)
+	like5 := models.NewLike(*user3)
+	like6 := models.NewLike(*user3)
 	likeRepo := repository.NewLikeRepo()
 	likeRepo.Save(like1)
 	likeRepo.Save(like2)

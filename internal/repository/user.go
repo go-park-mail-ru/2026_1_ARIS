@@ -15,11 +15,10 @@ import (
 type UserRepo interface {
 	Save(ctx context.Context, user models.User) error
 	Delete(ctx context.Context, id uuid.UUID) error
-	//Update(ctx context.Context, id uuid.UUID, user models.User) error
 
-	GetByID(ctx context.Context, id uuid.UUID) (models.User, error)
-	GetByEmail(ctx context.Context, email string) (models.User, error)
-	GetByPhone(ctx context.Context, phone string) (models.User, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*models.User, error)
+	GetByEmail(ctx context.Context, email string) (*models.User, error)
+	GetByPhone(ctx context.Context, phone string) (*models.User, error)
 
 	List(ctx context.Context, offset, limit int) []models.User
 }
@@ -57,40 +56,40 @@ func (r *inmemoryUserRepo) Delete(ctx context.Context, id uuid.UUID) error {
 	return errors.New("user not found")
 }
 
-func (r *inmemoryUserRepo) GetByID(ctx context.Context, id uuid.UUID) (models.User, error) {
+func (r *inmemoryUserRepo) GetByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	user, ok := r.users[id]
 
 	if !ok {
-		return models.User{}, errors.New("user not found")
+		return nil, errors.New("user not found")
 	}
-	return user, nil
+	return &user, nil
 }
 
-func (r *inmemoryUserRepo) GetByEmail(ctx context.Context, email string) (models.User, error) {
+func (r *inmemoryUserRepo) GetByEmail(ctx context.Context, email string) (*models.User, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	for _, u := range r.users {
 		if u.Email == &email {
-			return u, nil
+			return &u, nil
 		}
 	}
-	return models.User{}, errors.New("user not found")
+	return nil, errors.New("user not found")
 }
 
-func (r *inmemoryUserRepo) GetByPhone(ctx context.Context, phone string) (models.User, error) {
+func (r *inmemoryUserRepo) GetByPhone(ctx context.Context, phone string) (*models.User, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	for _, u := range r.users {
 		if u.Phone == &phone {
-			return u, nil
+			return &u, nil
 		}
 	}
-	return models.User{}, errors.New("user not found")
+	return nil, errors.New("user not found")
 }
 
 func (r *inmemoryUserRepo) List(ctx context.Context, offset, limit int) []models.User {

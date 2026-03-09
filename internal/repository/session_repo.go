@@ -11,7 +11,7 @@ import (
 type SessionRepo interface {
 	Save(ctx context.Context, session models.Session)
 	Delete(ctx context.Context, id models.SessionID) error
-	GetByID(ctx context.Context, id models.SessionID) (models.Session, error)
+	GetByID(ctx context.Context, id models.SessionID) (*models.Session, error)
 }
 
 type inmemorySessionRepo struct {
@@ -44,12 +44,12 @@ func (r *inmemorySessionRepo) Delete(ctx context.Context, id models.SessionID) e
 	return nil
 }
 
-func (r *inmemorySessionRepo) GetByID(ctx context.Context, id models.SessionID) (models.Session, error) {
+func (r *inmemorySessionRepo) GetByID(ctx context.Context, id models.SessionID) (*models.Session, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	val, ok := r.sessions[id]
 	if !ok {
-		return models.Session{}, errors.New("session not found")
+		return nil, errors.New("session not found")
 	}
-	return val, nil
+	return &val, nil
 }

@@ -14,7 +14,7 @@ type mediaService struct {
 }
 
 type MediaService interface {
-	GetAvatarByID(avatarID uuid.UUID) (models.Media, error)
+	GetAvatarByID(avatarID uuid.UUID) (*models.Media, error)
 	GetMediaByPost(postID uuid.UUID) []models.Media
 }
 
@@ -25,14 +25,14 @@ func NewMediaService(mediaRepo repository.MediaRepo, postWithMediaRepo repositor
 	}
 }
 
-func (s *mediaService) GetAvatarByID(avatarID uuid.UUID) (models.Media, error) {
+func (s *mediaService) GetAvatarByID(avatarID uuid.UUID) (*models.Media, error) {
 	media, err := s.mediaRepo.GetMediaByID(avatarID)
 	if err != nil {
-		return models.Media{}, err
+		return nil, err
 	}
 
 	if media.MimeType != "image" {
-		return models.Media{}, errors.New("Avatar has not \"image\" MIME-type")
+		return nil, errors.New("Avatar has not \"image\" MIME-type")
 	}
 
 	return media, nil
@@ -46,7 +46,7 @@ func (s *mediaService) GetMediaByPost(postID uuid.UUID) []models.Media {
 	for _, mediaID := range mediaIDs {
 		media, err := s.mediaRepo.GetMediaByID(mediaID)
 		if err == nil {
-			medias = append(medias, media)
+			medias = append(medias, *media)
 		}
 	}
 

@@ -19,9 +19,8 @@ type authService struct {
 }
 
 type AuthService interface {
-	//Register(ctx context.Context, email, password, username, phone string) (*models.User, error)
-	CreateRealUserProfile(ctx context.Context, password_hash, username, firstName, lastName string, email, phone *string, isActive bool, birthdayDate *time.Time, gender *models.Gender, avatar *models.Media) models.Profile
-	Register(ctx context.Context, firstName, lastName, login, password1, password2 string, birthday *time.Time) (models.Profile, error)
+	CreateRealUserProfile(ctx context.Context, password_hash, username, firstName, lastName string, email, phone *string, isActive bool, birthdayDate *time.Time, gender *models.Gender, avatar *models.Media) (*models.Profile, error)
+	Register(ctx context.Context, firstName, lastName, login, password1, birthday string) (*models.Profile, error)
 	Login(ctx context.Context, email, password string) (*models.User, error)
 }
 
@@ -33,31 +32,28 @@ func NewAuthService(userRepo repository.UserRepo, profileRepo repository.Profile
 	}
 }
 
-// func (s *authService) Register(ctx context.Context, firstName, lastName, birthday, login, password1, password2 string) (*models.User, error) {
-func (s *authService) Register(ctx context.Context, firstName, lastName, login, password1, password2 string, birthday *time.Time) (models.Profile, error) {
+func (s *authService) Register(ctx context.Context, firstName, lastName, login, password1, birthday string) (*models.Profile, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	//email = strings.ToLower(email)
-
 	if _, err := s.profileRepo.GetProfileByUsername(login); err == nil {
-		return models.Profile{}, errors.New("пользователь с таким login уже существует")
+		return nil, errors.New("пользователь с таким login уже существует")
 	}
 
-	// if _, err := s.userRepo.GetByEmail(context.Background(), email); err == nil {
-	// 	return nil, errors.New("пользователь с таким email уже существует")
-	// }
-
-	// if _, err := s.userRepo.GetByPhone(context.Background(), phone); err == nil {
-	// 	return nil, errors.New("пользователь с таким номером телефона уже существует")
-	// }
+	birthdayDate, err := time.Parse("02/01/2006", birthday)
+	if err != nil {
+		return nil, errors.New("invalid birthday date")
+	}
+	if birthdayDate.AddDate(12, 0, 0).After(time.Now()) {
+		return nil, errors.New("you are too young, buddy")
+	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password1), bcrypt.DefaultCost)
 	if err != nil {
-		return models.Profile{}, errors.New("ошибка при обработке пароля")
+		return nil, errors.New("ошибка при обработке пароля")
 	}
 
-	profile := s.CreateRealUserProfile(ctx, string(hashedPassword), login, firstName, lastName, nil, nil, true, birthday, nil, nil)
+	profile, err := s.CreateRealUserProfile(ctx, string(hashedPassword), login, firstName, lastName, nil, nil, true, &birthdayDate, nil, nil)
 
 	return profile, nil
 }
@@ -86,10 +82,10 @@ func (s *authService) Login(ctx context.Context, login, password string) (*model
 		return nil, errors.New("недействительные учётные данные")
 	}
 
-	return &user, nil
+	return user, nil
 }
 
-func (s *authService) CreateRealUserProfile(ctx context.Context, password_hash, username, firstName, lastName string, email, phone *string, isActive bool, birthdayDate *time.Time, gender *models.Gender, avatar *models.Media) models.Profile {
+func (s *authService) CreateRealUserProfile(ctx context.Context, password_hash, username, firstName, lastName string, email, phone *string, isActive bool, birthdayDate *time.Time, gender *models.Gender, avatar *models.Media) (*models.Profile, error) {
 	user := models.NewUser(password_hash, phone, email)
 	profile := models.NewProfile(username, avatar, isActive)
 	userProfile := models.NewUserProfile(user, profile, firstName, lastName, nil, birthdayDate, gender)
@@ -98,5 +94,5 @@ func (s *authService) CreateRealUserProfile(ctx context.Context, password_hash, 
 	s.profileRepo.Save(ctx, profile)
 	s.userProfileRepo.Save(ctx, userProfile)
 
-	return profile
+	return &profile, nil
 }

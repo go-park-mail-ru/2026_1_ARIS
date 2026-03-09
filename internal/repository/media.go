@@ -10,7 +10,7 @@ import (
 )
 
 type MediaRepo interface {
-	GetMediaByID(id uuid.UUID) (models.Media, error)
+	GetMediaByID(id uuid.UUID) (*models.Media, error)
 	Save(ctx context.Context, media models.Media) error
 }
 
@@ -25,16 +25,16 @@ func NewMediaRepo() MediaRepo {
 	return &repo
 }
 
-func (r *inmemoryMediaRepo) GetMediaByID(id uuid.UUID) (models.Media, error) {
+func (r *inmemoryMediaRepo) GetMediaByID(id uuid.UUID) (*models.Media, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	media, ok := r.medias[id]
 	if !ok {
-		return models.Media{}, errors.New("Media not found")
+		return nil, errors.New("Media not found")
 	}
 
-	return media, nil
+	return &media, nil
 }
 
 func (r *inmemoryMediaRepo) Save(ctx context.Context, media models.Media) error {

@@ -10,8 +10,8 @@ import (
 )
 
 type ProfileRepo interface {
-	GetProfileByID(profileID uuid.UUID) (models.Profile, error)
-	GetProfileByUsername(username string) (models.Profile, error)
+	GetProfileByID(profileID uuid.UUID) (*models.Profile, error)
+	GetProfileByUsername(username string) (*models.Profile, error)
 	Save(ctx context.Context, profile models.Profile) error
 }
 
@@ -26,15 +26,15 @@ func NewProfileRepo() ProfileRepo {
 	return &repo
 }
 
-func (r *inmemoryProfileRepo) GetProfileByID(profileID uuid.UUID) (models.Profile, error) {
+func (r *inmemoryProfileRepo) GetProfileByID(profileID uuid.UUID) (*models.Profile, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	profile, ok := r.Profiles[profileID]
 	if !ok {
-		return models.Profile{}, errors.New("Profile not found")
+		return nil, errors.New("Profile not found")
 	}
-	return profile, nil
+	return &profile, nil
 }
 
 func (r *inmemoryProfileRepo) Save(ctx context.Context, profile models.Profile) error {
@@ -45,14 +45,14 @@ func (r *inmemoryProfileRepo) Save(ctx context.Context, profile models.Profile) 
 	return nil
 }
 
-func (r *inmemoryProfileRepo) GetProfileByUsername(username string) (models.Profile, error) {
+func (r *inmemoryProfileRepo) GetProfileByUsername(username string) (*models.Profile, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	for _, p := range r.Profiles {
 		if p.Username == username {
-			return p, nil
+			return &p, nil
 		}
 	}
-	return models.Profile{}, errors.New("Profile not found")
+	return nil, errors.New("Profile not found")
 }

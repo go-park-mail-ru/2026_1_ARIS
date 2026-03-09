@@ -11,8 +11,8 @@ import (
 )
 
 type SessionService interface {
-	Create(ctx context.Context, userID uuid.UUID) (models.Session, error)
-	Get(ctx context.Context, sessionID models.SessionID) (models.Session, error)
+	Create(ctx context.Context, userID uuid.UUID) (*models.Session, error)
+	Get(ctx context.Context, sessionID models.SessionID) (*models.Session, error)
 }
 
 type sessionService struct {
@@ -34,9 +34,9 @@ func (s *sessionService) validateSession(userID uuid.UUID) error {
 
 const sessionTTL = 24 * time.Hour
 
-func (s *sessionService) Create(ctx context.Context, userID uuid.UUID) (models.Session, error) {
+func (s *sessionService) Create(ctx context.Context, userID uuid.UUID) (*models.Session, error) {
 	if err := s.validateSession(userID); err != nil {
-		return models.Session{}, err
+		return nil, err
 	}
 
 	sess := models.Session{
@@ -47,9 +47,9 @@ func (s *sessionService) Create(ctx context.Context, userID uuid.UUID) (models.S
 	}
 
 	s.repo.Save(ctx, sess)
-	return sess, nil
+	return &sess, nil
 }
 
-func (s *sessionService) Get(ctx context.Context, sessionID models.SessionID) (models.Session, error) {
+func (s *sessionService) Get(ctx context.Context, sessionID models.SessionID) (*models.Session, error) {
 	return s.repo.GetByID(ctx, sessionID)
 }
