@@ -52,19 +52,19 @@ func (mr *MockUserServiceMockRecorder) CreateRealUserProfile(arg0, arg1, arg2, a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRealUserProfile", reflect.TypeOf((*MockUserService)(nil).CreateRealUserProfile), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10)
 }
 
-// GerUserProfileByProfile mocks base method.
-func (m *MockUserService) GerUserProfileByProfile(arg0 context.Context, arg1 uuid.UUID) (*models.UserProfile, error) {
+// GetUserProfileByProfile mocks base method.
+func (m *MockUserService) GetUserProfileByProfile(arg0 context.Context, arg1 uuid.UUID) (*models.UserProfile, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GerUserProfileByProfile", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetUserProfileByProfile", arg0, arg1)
 	ret0, _ := ret[0].(*models.UserProfile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GerUserProfileByProfile indicates an expected call of GerUserProfileByProfile.
-func (mr *MockUserServiceMockRecorder) GerUserProfileByProfile(arg0, arg1 interface{}) *gomock.Call {
+// GetUserProfileByProfile indicates an expected call of GetUserProfileByProfile.
+func (mr *MockUserServiceMockRecorder) GetUserProfileByProfile(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GerUserProfileByProfile", reflect.TypeOf((*MockUserService)(nil).GerUserProfileByProfile), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserProfileByProfile", reflect.TypeOf((*MockUserService)(nil).GetUserProfileByProfile), arg0, arg1)
 }
 
 // GetUserList mocks base method.

@@ -61,7 +61,7 @@ func TestAuthHandler_Register_Success(t *testing.T) {
 		Return(expectedProfile, nil)
 
 	mockUserSvc.EXPECT().
-		GerUserProfileByProfile(gomock.Any(), profileID).
+		GetUserProfileByProfile(gomock.Any(), profileID).
 		Return(expectedUserProfile, nil)
 
 	mockSessionSvc.EXPECT().
@@ -284,7 +284,7 @@ func TestAuthHandler_Register_SessionCreationError(t *testing.T) {
 		Return(expectedProfile, nil)
 
 	mockUserSvc.EXPECT().
-		GerUserProfileByProfile(gomock.Any(), profileID).
+		GetUserProfileByProfile(gomock.Any(), profileID).
 		Return(expectedUserProfile, nil)
 
 	mockSessionSvc.EXPECT().
