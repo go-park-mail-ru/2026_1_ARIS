@@ -20,7 +20,7 @@ func NewRouter(
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"*"},
+		AllowedOrigins:   []string{"http://localhost:3000"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
 		AllowCredentials: true,
@@ -28,19 +28,17 @@ func NewRouter(
 	}))
 
 	r.Route("/api/auth", func(r chi.Router) {
-		r.Use(mymiddleware.CorsMiddleware)
 		r.Post("/register", authHandler.Register)
 		r.Post("/login", authHandler.Login)
 	})
 
 	r.Group(func(r chi.Router) {
-		r.Use(mymiddleware.CorsMiddleware)
 		r.Use(mymiddleware.AuthMiddleware(sessSvc))
 		r.Get("/api/feed", feedHandler.GetFeed)
 	})
+
 	r.Group(func(r chi.Router) {
 		r.Use(mymiddleware.AuthMiddleware(sessSvc))
-		r.Get("/api/feed", feedHandler.GetFeed)
 		r.Post("/api/auth/logout", authHandler.Logout)
 	})
 	return r
