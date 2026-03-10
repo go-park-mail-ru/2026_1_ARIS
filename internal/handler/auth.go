@@ -103,12 +103,14 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     "session_id",
-		Value:    string(session.SessionID),
-		Expires:  session.ExpiredAt,
-		HttpOnly: true,
-		Path:     "/",
-	})
+    Name:     "session_id",
+    Value:    string(session.SessionID),
+    Expires:  session.ExpiredAt,
+    HttpOnly: true,
+    Secure:   true, 
+    SameSite: http.SameSiteLaxMode,
+    Path:     "/",
+})
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
