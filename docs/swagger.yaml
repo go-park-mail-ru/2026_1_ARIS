@@ -1,0 +1,306 @@
+basePath: /api
+consumes:
+- application/json
+definitions:
+  handlers.CommonResponse:
+    properties:
+      massage:
+        type: string
+    type: object
+  handlers.FeedResponse:
+    properties:
+      hasMore:
+        type: boolean
+      nextCursor:
+        type: string
+      posts:
+        items:
+          $ref: '#/definitions/handlers.postFeedDTO'
+        type: array
+    type: object
+  handlers.LoginRequest:
+    properties:
+      login:
+        type: string
+      password:
+        type: string
+    required:
+    - login
+    - password
+    type: object
+  handlers.LoginResponse:
+    properties:
+      createdAt:
+        type: string
+      firstName:
+        type: string
+      id:
+        type: string
+      lastName:
+        type: string
+    type: object
+  handlers.RegisterRequest:
+    properties:
+      birthday:
+        example: 24/02/2005
+        maxLength: 10
+        minLength: 8
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+      login:
+        type: string
+      password1:
+        maxLength: 72
+        minLength: 6
+        type: string
+      password2:
+        maxLength: 72
+        minLength: 6
+        type: string
+    required:
+    - birthday
+    - firstName
+    - lastName
+    - login
+    - password1
+    - password2
+    type: object
+  handlers.authorFeedDTO:
+    properties:
+      avatarLink:
+        type: string
+      firstName:
+        type: string
+      id:
+        type: string
+      lastName:
+        type: string
+      username:
+        type: string
+    type: object
+  handlers.mediaFeedDTO:
+    properties:
+      id:
+        type: string
+      link:
+        type: string
+      mimeType:
+        type: string
+    type: object
+  handlers.postFeedDTO:
+    properties:
+      author:
+        $ref: '#/definitions/handlers.authorFeedDTO'
+      comments:
+        type: integer
+      createdAt:
+        type: string
+      id:
+        type: string
+      likes:
+        type: integer
+      medias:
+        items:
+          $ref: '#/definitions/handlers.mediaFeedDTO'
+        type: array
+      reposts:
+        type: integer
+      text:
+        type: string
+    type: object
+  models.Profile:
+    properties:
+      avatar:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      isActive:
+        type: boolean
+      updatedAt:
+        type: string
+      username:
+        type: string
+    type: object
+  models.User:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      phone:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Description of ARIS backend API
+  title: ARIS backend API
+  version: 1.0.0
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: User login
+      operationId: login
+      parameters:
+      - description: post data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.CommonResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.CommonResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.CommonResponse'
+      summary: Login user
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: User logout
+      operationId: lohout
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.CommonResponse'
+      security:
+      - SessionAuth: []
+      summary: Logout user
+      tags:
+      - auth
+  /auth/me:
+    get:
+      description: Get current user from context
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.User'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.CommonResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.CommonResponse'
+      security:
+      - SessionAuth: []
+      summary: Get current user
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: User registration
+      operationId: registration
+      parameters:
+      - description: post data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Profile'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.CommonResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/handlers.CommonResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.CommonResponse'
+      summary: Register user
+      tags:
+      - auth
+  /feed:
+    get:
+      consumes:
+      - application/json
+      description: Getting feed
+      operationId: get-feed
+      parameters:
+      - description: number of posts
+        in: query
+        name: limit
+        type: integer
+      - description: cursor string responded by feed request
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.FeedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.CommonResponse'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/handlers.CommonResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.CommonResponse'
+      security:
+      - SessionAuth: []
+      summary: Get feed
+      tags:
+      - feed
+produces:
+- application/json
+schemes:
+- http
+securityDefinitions:
+  SessionAuth:
+    in: cookie
+    name: session_id
+    type: apiKey
+swagger: "2.0"

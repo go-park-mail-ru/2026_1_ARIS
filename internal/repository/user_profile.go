@@ -14,6 +14,7 @@ type UserProfileRepo interface {
 	GetUserProfileByID(userProfileID uuid.UUID) (*models.UserProfile, error)
 	GetUserProfileByProfileID(profileID uuid.UUID) (*models.UserProfile, error)
 	GetUserProfileByUserProfileID(userProfileID uuid.UUID) (*models.UserProfile, error)
+	GetUserProfileByUserID(userID uuid.UUID) (*models.UserProfile, error)
 	Save(ctx context.Context, userProfile models.UserProfile) error
 }
 
@@ -49,6 +50,9 @@ func (r *inmemoryUserProfileRepo) Save(tx context.Context, userProfile models.Us
 }
 
 func (r *inmemoryUserProfileRepo) GetUserProfileByProfileID(profileID uuid.UUID) (*models.UserProfile, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	for _, p := range r.userProfiles {
 		if p.ProfileID == profileID {
 			return &p, nil
@@ -58,10 +62,26 @@ func (r *inmemoryUserProfileRepo) GetUserProfileByProfileID(profileID uuid.UUID)
 }
 
 func (r *inmemoryUserProfileRepo) GetUserProfileByUserProfileID(userProfileID uuid.UUID) (*models.UserProfile, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	for _, p := range r.userProfiles {
 		if p.ID == userProfileID {
 			return &p, nil
 		}
 	}
+	return nil, errors.New("UserProfile not found")
+}
+
+func (r *inmemoryUserProfileRepo) GetUserProfileByUserID(userID uuid.UUID) (*models.UserProfile, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, p := range r.userProfiles {
+		if p.UserID == userID {
+			return &p, nil
+		}
+	}
+
 	return nil, errors.New("UserProfile not found")
 }
