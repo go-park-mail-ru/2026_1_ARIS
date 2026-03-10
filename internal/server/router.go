@@ -20,7 +20,7 @@ func NewRouter(
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedOrigins:   []string{"http://localhost:3000", "http://arisnet.ru", "https://arisnet.ru"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
 		AllowCredentials: true,
@@ -28,18 +28,23 @@ func NewRouter(
 	}))
 
 	r.Route("/api/auth", func(r chi.Router) {
+		// Публичные роуты
 		r.Post("/register", authHandler.Register)
 		r.Post("/login", authHandler.Login)
+
+		// Защищённые роуты
+		r.Group(func(r chi.Router) {
+			r.Use(mymiddleware.AuthMiddleware(sessSvc))
+			r.Get("/me", authHandler.Me)
+			r.Post("/logout", authHandler.Logout)
+		})
 	})
 
+	// Остальные защищённые роуты вне /api/auth
 	r.Group(func(r chi.Router) {
 		r.Use(mymiddleware.AuthMiddleware(sessSvc))
 		r.Get("/api/feed", feedHandler.GetFeed)
 	})
 
-	r.Group(func(r chi.Router) {
-		r.Use(mymiddleware.AuthMiddleware(sessSvc))
-		r.Post("/api/auth/logout", authHandler.Logout)
-	})
 	return r
 }

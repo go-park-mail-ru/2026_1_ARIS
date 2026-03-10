@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 )
 
 var validate = validator.New()
@@ -30,6 +32,7 @@ type LoginRequest struct {
 type AuthHandler struct {
 	authService    service.AuthService
 	sessionService service.SessionService
+	userService    service.UserService
 }
 
 type UserDTO struct {
@@ -38,10 +41,11 @@ type UserDTO struct {
 	profile     models.Profile
 }
 
-func NewAuthHandler(authService service.AuthService, sessSvc service.SessionService) *AuthHandler {
+func NewAuthHandler(authService service.AuthService, sessSvc service.SessionService, usService service.UserService) *AuthHandler {
 	return &AuthHandler{
 		authService:    authService,
 		sessionService: sessSvc,
+		userService:    usService,
 	}
 }
 
@@ -62,6 +66,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+
 	profile, err := h.authService.Register(r.Context(), req.FirstName, req.LastName, req.Login, req.Password1, req.Birthday)
 	if err != nil {
 		if err.Error() == "пользователь с таким login уже существует" {
@@ -78,7 +84,28 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	user, err := h.userService.GerUserProfileByProfile(r.Context(), profile.ID)
+	if err != nil {
+		fmt.Println("Errrrrrrrrrrrrrrrrrrrrrr")
+		return
+	}
+
+	session, err := h.sessionService.Create(r.Context(), user.ID)
+	if err != nil {
+		http.Error(w, `{"error":"не удалось создать сессию"}`, http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Println("кука поставлена для пользователя")
+	fmt.Println(user.ID)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    string(session.SessionID),
+		Expires:  session.ExpiredAt,
+		HttpOnly: true,
+		Path:     "/",
+	})
+
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(profile)
 }
@@ -102,15 +129,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println("кука поставлена")
 	http.SetCookie(w, &http.Cookie{
-    Name:     "session_id",
-    Value:    string(session.SessionID),
-    Expires:  session.ExpiredAt,
-    HttpOnly: true,
-    // Secure:   true, 
-    SameSite: http.SameSiteLaxMode,
-    Path:     "/",
-}))
+		Name:     "session_id",
+		Value:    string(session.SessionID),
+		Expires:  session.ExpiredAt,
+		HttpOnly: true,
+		// Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+	})
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
@@ -143,4 +171,28 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "successfully logged out"})
+}
+
+func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Ответ me")
+	userID, ok := r.Context().Value("user_id").(uuid.UUID)
+	if !ok {
+		fmt.Println("error: не авторизован")
+		http.Error(w, `{"error":"не авторизован"}`, http.StatusUnauthorized)
+		return
+	}
+
+	fmt.Println(userID)
+	//user, err := h.userService.GerUserProfileByProfile(r.Context(), userID)
+	user, err := h.userService.GetUserProfileByUserProfileID(userID)
+	fmt.Println(user)
+	if err != nil {
+		fmt.Println("error: пользователь не найден")
+		http.Error(w, `{"error":"пользователь не найден"}`, http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(user)
 }

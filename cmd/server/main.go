@@ -41,7 +41,7 @@ func main() {
 	if err != nil {
 		fmt.Println("Test user already exists or error:", err)
 	}
-	authHandler := handlers.NewAuthHandler(authService, sessService)
+	authHandler := handlers.NewAuthHandler(authService, sessService, userProfileService)
 
 	mediaRepo := repository.NewMediaRepo()
 	postWithMediaRepo := repository.NewPostWithMediaRepo()
