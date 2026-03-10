@@ -107,10 +107,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
     Value:    string(session.SessionID),
     Expires:  session.ExpiredAt,
     HttpOnly: true,
-    Secure:   true, 
+    // Secure:   true, 
     SameSite: http.SameSiteLaxMode,
     Path:     "/",
-})
+}))
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
