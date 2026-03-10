@@ -1,5 +1,6 @@
 package service
 
+//go:generate mockgen -destination=./mocks/user_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/service UserService
 import (
 	"context"
 	"time"

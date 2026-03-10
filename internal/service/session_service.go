@@ -1,5 +1,6 @@
 package service
 
+//go:generate mockgen -destination=./mocks/session_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/service SessionService
 import (
 	"context"
 	"errors"

@@ -1,5 +1,6 @@
 package service
 
+//go:generate mockgen -destination=./mocks/auth_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/service AuthService
 import (
 	"context"
 	"errors"
