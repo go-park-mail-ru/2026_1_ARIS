@@ -48,7 +48,7 @@ func (r *inmemoryPostRepo) GetFeed(ctx context.Context, params FeedParams) ([]mo
 	slices.SortFunc(feedSlice, func(a, b models.Post) int {
 		if a.CreatedAt.Before(b.CreatedAt) {
 			return -1
-		} else if a.CreatedAt.After(a.CreatedAt) {
+		} else if a.CreatedAt.After(b.CreatedAt) {
 			return 1
 		}
 		return 0

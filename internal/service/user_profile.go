@@ -18,8 +18,9 @@ type userService struct {
 type UserService interface {
 	CreateRealUserProfile(ctx context.Context, email, phone, password_hash, username, firstName, lastName string, isActive bool, birthdayDate *time.Time, gender models.Gender, avatar *models.Media) (*models.Profile, error)
 	GetUserList(ctx context.Context, offset, limit int) []models.User
-	GerUserProfileByProfile(ctx context.Context, profileID uuid.UUID) (*models.UserProfile, error)
+	GetUserProfileByProfile(ctx context.Context, profileID uuid.UUID) (*models.UserProfile, error)
 	GetUserProfileByUserProfileID(userProfileID uuid.UUID) (*models.UserProfile, error)
+	GetUserProfileByUser(ctx context.Context, userID uuid.UUID) (*models.UserProfile, error)
 }
 
 func NewUserProfileService(userRepo repository.UserRepo, profileRepo repository.ProfileRepo, userProfileRepo repository.UserProfileRepo) UserService {
@@ -46,10 +47,14 @@ func (s *userService) GetUserList(ctx context.Context, offset, limit int) []mode
 	return s.UserRepo.List(ctx, offset, limit)
 }
 
-func (s *userService) GerUserProfileByProfile(ctx context.Context, profileID uuid.UUID) (*models.UserProfile, error) {
+func (s *userService) GetUserProfileByProfile(ctx context.Context, profileID uuid.UUID) (*models.UserProfile, error) {
 	return s.UserProfileRepo.GetUserProfileByProfileID(profileID)
 }
 
 func (s *userService) GetUserProfileByUserProfileID(userProfileID uuid.UUID) (*models.UserProfile, error) {
 	return s.UserProfileRepo.GetUserProfileByUserProfileID(userProfileID)
+}
+
+func (s *userService) GetUserProfileByUser(ctx context.Context, userID uuid.UUID) (*models.UserProfile, error) {
+	return s.UserProfileRepo.GetUserProfileByUserID(userID)
 }

@@ -18,7 +18,7 @@ var validate = validator.New()
 type RegisterRequest struct {
 	FirstName string `json:"firstName" validate:"required,alphaunicode"`
 	LastName  string `json:"lastName" validate:"required,alphaunicode"`
-	Birthday  string `json:"birthday" validate:"required,min=8,max=10"`
+	Birthday  string `json:"birthday" validate:"required,min=8,max=10" example:"24/02/2005"`
 	Login     string `json:"login" validate:"required,alphanumunicode"`
 	Password1 string `json:"password1" validate:"required,min=6,max=72,printascii"`
 	Password2 string `json:"password2" validate:"required,min=6,max=72,printascii"`
@@ -35,10 +35,25 @@ type AuthHandler struct {
 	userService    service.UserService
 }
 
+type LoginResponse struct {
+	ID        string `json:"id"`
+	CreatedAt string `json:"createdAt"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+}
+
 type UserDTO struct {
 	user        models.User
 	userProfile models.UserProfile
 	profile     models.Profile
+}
+
+type CommonResponse struct {
+	Message string `json:"massage"`
+}
+
+type CommonErrorResponse struct {
+	Message string `json:"error"`
 }
 
 func NewAuthHandler(authService service.AuthService, sessSvc service.SessionService, usService service.UserService) *AuthHandler {
@@ -49,10 +64,22 @@ func NewAuthHandler(authService service.AuthService, sessSvc service.SessionServ
 	}
 }
 
+// @Description User registration
+// @ID registration
+// @Summary Register user
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param input body RegisterRequest true "post data"
+// @Success 201 {object} models.Profile
+// @Failure 400 {object} CommonResponse
+// @Failure 409 {object} CommonResponse
+// @Failure 500 {object} CommonResponse
+// @Router /auth/register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"неправильное тело запроса"}`, http.StatusBadRequest)
+		utils.WriteError(w, "неправильное тело запроса", http.StatusBadRequest)
 		return
 	}
 
@@ -62,7 +89,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Password1 != req.Password2 {
-		http.Error(w, "passwords dont match", http.StatusBadRequest)
+		utils.WriteError(w, "passwords dont match", http.StatusBadRequest)
 		return
 	}
 
@@ -71,28 +98,28 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	profile, err := h.authService.Register(r.Context(), req.FirstName, req.LastName, req.Login, req.Password1, req.Birthday)
 	if err != nil {
 		if err.Error() == "пользователь с таким login уже существует" {
-			http.Error(w, `{"error":"login already registered"}`, http.StatusConflict)
+			utils.WriteError(w, "login already registered", http.StatusConflict)
 			return
 		} else if err.Error() == "invalid birthday date" {
-			http.Error(w, `{"error":"invalid birthday date"}`, http.StatusConflict)
+			utils.WriteError(w, "invalid birthday date", http.StatusConflict)
 			return
 		} else if err.Error() == "you are too young, buddy" {
-			http.Error(w, `{"error":"you are too young, buddy"}`, http.StatusConflict)
+			utils.WriteError(w, "you are too young, buddy", http.StatusConflict)
 			return
 		}
-		http.Error(w, `{"error":"ошибка на стороне сервера"}`, http.StatusInternalServerError)
+		utils.WriteError(w, "ошибка на стороне сервера", http.StatusInternalServerError)
 		return
 	}
 
-	user, err := h.userService.GerUserProfileByProfile(r.Context(), profile.ID)
+	user, err := h.userService.GetUserProfileByProfile(r.Context(), profile.ID)
 	if err != nil {
-		fmt.Println("Errrrrrrrrrrrrrrrrrrrrrr")
+		utils.WriteError(w, "Use not found", http.StatusInternalServerError)
 		return
 	}
 
 	session, err := h.sessionService.Create(r.Context(), user.ID)
 	if err != nil {
-		http.Error(w, `{"error":"не удалось создать сессию"}`, http.StatusInternalServerError)
+		utils.WriteError(w, "не удалось создать сессию", http.StatusInternalServerError)
 		return
 	}
 
@@ -110,26 +137,37 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(profile)
 }
 
+// @Description User login
+// @ID login
+// @Summary Login user
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param input body LoginRequest true "post data"
+// @Success 201 {object} LoginResponse
+// @Failure 400 {object} CommonResponse
+// @Failure 401 {object} CommonResponse
+// @Failure 500 {object} CommonResponse
+// @Router /auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"неверный запрос"}`, http.StatusBadRequest)
+		utils.WriteError(w, "неверный запрос", http.StatusBadRequest)
 		return
 	}
 
 	user, err := h.authService.Login(r.Context(), req.Login, req.Password)
 	if err != nil {
-		http.Error(w, `{"error":"неверные учетные данные"}`, http.StatusUnauthorized)
+		utils.WriteError(w, "неверные учетные данные", http.StatusUnauthorized)
 		return
 	}
 
 	session, err := h.sessionService.Create(r.Context(), user.ID)
 	if err != nil {
-		http.Error(w, `{"error":"не удалось создать сессию"}`, http.StatusInternalServerError)
+		utils.WriteError(w, "не удалось создать сессию", http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Println("кука поставлена")
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_id",
 		Value:    string(session.SessionID),
@@ -140,16 +178,38 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 	})
 
+	userProfile, err := h.userService.GetUserProfileByUser(r.Context(), user.ID)
+	if err != nil {
+		utils.WriteError(w, "user not found", http.StatusInternalServerError)
+		return
+	}
+
+	loginResponse := LoginResponse{
+		ID:        userProfile.ID.String(),
+		CreatedAt: userProfile.CreatedAt.UTC().Format(time.RFC3339Nano),
+		FirstName: userProfile.FirstName,
+		LastName:  userProfile.LastName,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(loginResponse)
 }
+
+// @Description User logout
+// @ID lohout
+// @Summary Logout user
+// @Tags auth
+// @Produce json
+// @Security SessionAuth
+// @Success 200 {object} CommonResponse
+// @Router /auth/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"message": "already logged out"})
+		json.NewEncoder(w).Encode(CommonResponse{Message: "already logged out"})
 		return
 	}
 
@@ -170,25 +230,31 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "successfully logged out"})
+	json.NewEncoder(w).Encode(CommonResponse{Message: "successfully logged out"})
 }
 
+// @Description Get current user from context
+// @Summary Get current user
+// @Tags auth
+// @Produce json
+// @Success 200 {object} models.User
+// @Failure 401 {object} CommonResponse
+// @Failure 404 {object} CommonResponse
+// @Security SessionAuth
+// @Router /auth/me [get]
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Ответ me")
 	userID, ok := r.Context().Value("user_id").(uuid.UUID)
 	if !ok {
-		fmt.Println("error: не авторизован")
-		http.Error(w, `{"error":"не авторизован"}`, http.StatusUnauthorized)
+		utils.WriteError(w, "не авторизован", http.StatusUnauthorized)
 		return
 	}
 
 	fmt.Println(userID)
-	//user, err := h.userService.GerUserProfileByProfile(r.Context(), userID)
 	user, err := h.userService.GetUserProfileByUserProfileID(userID)
 	fmt.Println(user)
 	if err != nil {
-		fmt.Println("error: пользователь не найден")
-		http.Error(w, `{"error":"пользователь не найден"}`, http.StatusNotFound)
+		utils.WriteError(w, "пользователь не найден", http.StatusNotFound)
 		return
 	}
 

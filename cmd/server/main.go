@@ -10,12 +10,25 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/go-park-mail-ru/2026_1_ARIS/docs"
 	handlers "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/server"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 )
+
+// @title ARIS backend API
+// @version 1.0.0
+// @description Description of ARIS backend API
+// @host localhost:8080
+// @BasePath /api
+// @accept json
+// @produce json
+// @schemes http
+// @securityDefinitions.apikey SessionAuth
+// @in cookie
+// @name session_id
 
 func main() {
 

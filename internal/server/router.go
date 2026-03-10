@@ -4,6 +4,7 @@ import (
 	handlers "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
 	mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
+	httpSwagger "github.com/swaggo/http-swagger"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -28,11 +29,9 @@ func NewRouter(
 	}))
 
 	r.Route("/api/auth", func(r chi.Router) {
-		// Публичные роуты
 		r.Post("/register", authHandler.Register)
 		r.Post("/login", authHandler.Login)
 
-		// Защищённые роуты
 		r.Group(func(r chi.Router) {
 			r.Use(mymiddleware.AuthMiddleware(sessSvc))
 			r.Get("/me", authHandler.Me)
@@ -40,11 +39,12 @@ func NewRouter(
 		})
 	})
 
-	// Остальные защищённые роуты вне /api/auth
 	r.Group(func(r chi.Router) {
 		r.Use(mymiddleware.AuthMiddleware(sessSvc))
 		r.Get("/api/feed", feedHandler.GetFeed)
 	})
+
+	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	return r
 }

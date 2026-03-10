@@ -2,16 +2,16 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/google/uuid"
 )
 
-type feedResponse struct {
+type FeedResponse struct {
 	Items      []postFeedDTO `json:"posts"`
 	NextCursor string        `json:"nextCursor"`
 	HasMore    bool          `json:"hasMore"`
@@ -56,13 +56,23 @@ func NewFeedHandler(postService service.PostService, mediaService service.MediaS
 	}
 }
 
+// @Description Getting feed
+// @ID get-feed
+// @Summary Get feed
+// @Tags feed
+// @Security SessionAuth
+// @Accept json
+// @Produce json
+// @Success 200 {object} FeedResponse
+// @Failure 400 {object} CommonResponse
+// @Failure 405 {object} CommonResponse
+// @Failure 500 {object} CommonResponse
+// @Param limit query int false "number of posts"
+// @Param cursor query string false "cursor string responded by feed request"
+// @Router /feed [get]
 func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
-
-	fmt.Println("start feed handler")
-
 	if r.Method != http.MethodGet {
-		fmt.Println("Required method GET")
-		http.Error(w, "Required method GET", http.StatusMethodNotAllowed)
+		utils.WriteError(w, "Required method GET", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -75,8 +85,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	if l := r.URL.Query().Get("limit"); l != "" {
 		parsed, err := strconv.Atoi(l)
 		if err != nil {
-			fmt.Println(err)
-			http.Error(w, "Cant parse limit", http.StatusBadRequest)
+			utils.WriteError(w, "Cant parse limit", http.StatusBadRequest)
 			return
 		}
 		limit = parsed
@@ -84,8 +93,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 	feed, err := h.PostService.GetFeed(r.Context(), rawCursor, limit)
 	if err != nil {
-		fmt.Println("Feed error", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -96,7 +104,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 		postAuthor, err := h.PostService.GetPostAuthor(post.ID)
 		if err != nil {
-			fmt.Println("Error in hanlder: ", err)
+			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -105,13 +113,13 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		if postAuthor.AvatarID != nil {
 			authorAvatar, err := h.MediaService.GetAvatarByID(*postAuthor.AvatarID)
 			if err != nil {
-				fmt.Println("Error in feed handler: ", err)
+				utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			authorAvatarLink = authorAvatar.Link
 		}
 
-		authorProfile, err := h.UserProfileService.GerUserProfileByProfile(r.Context(), postAuthor.ID)
+		authorProfile, err := h.UserProfileService.GetUserProfileByProfile(r.Context(), postAuthor.ID)
 
 		author := authorFeedDTO{
 			Id:         postAuthor.ID,
@@ -152,7 +160,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	response := feedResponse{
+	response := FeedResponse{
 		Items:      posts,
 		NextCursor: feed.Cursor,
 		HasMore:    feed.HasMore,
