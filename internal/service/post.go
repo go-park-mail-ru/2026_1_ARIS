@@ -20,6 +20,7 @@ type postService struct {
 	ProfileRepo    repository.ProfileRepo
 	LikeToPostRepo repository.LikeToPostRepo
 	CommentRepo    repository.CommentRepo
+	RepostRepo     repository.RepostRepo
 }
 
 type PostService interface {
@@ -28,18 +29,21 @@ type PostService interface {
 	Save(ctx context.Context, post models.Post) error
 	GetLikeCount(ctx context.Context, postID uuid.UUID) int
 	GetCommentCount(ctx context.Context, postID uuid.UUID) int
+	GetRepostCount(ctx context.Context, postID uuid.UUID) int
 }
 
 func NewPostService(postRepo repository.PostRepo,
 	profileRepo repository.ProfileRepo,
 	likeToPostRepo repository.LikeToPostRepo,
-	commentRepo repository.CommentRepo) PostService {
+	commentRepo repository.CommentRepo,
+	repostRepo repository.RepostRepo) PostService {
 
 	return &postService{
 		PostRepo:       postRepo,
 		ProfileRepo:    profileRepo,
 		LikeToPostRepo: likeToPostRepo,
 		CommentRepo:    commentRepo,
+		RepostRepo:     repostRepo,
 	}
 }
 
@@ -114,4 +118,8 @@ func (s *postService) GetLikeCount(ctx context.Context, postID uuid.UUID) int {
 
 func (s *postService) GetCommentCount(ctx context.Context, postID uuid.UUID) int {
 	return s.CommentRepo.GetCommentCount(postID)
+}
+
+func (s *postService) GetRepostCount(ctx context.Context, postID uuid.UUID) int {
+	return s.RepostRepo.GetRepostCount(ctx, postID)
 }

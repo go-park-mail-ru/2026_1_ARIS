@@ -418,3 +418,19 @@ type Reaction struct {
 	CreatedAt time.Time    `json:"createdAt"`
 	UpdatedAt time.Time    `json:"updatedAt"`
 }
+
+type Repost struct {
+	ID       uuid.UUID `json:"id"`
+	AuthorID uuid.UUID `json:"authorId"` // Profile
+	ChatID   uuid.UUID `json:"chatId"`
+	PostID   uuid.UUID `json:"postId"`
+}
+
+func NewRepost(authorID, chatID, postID uuid.UUID) Repost {
+	return Repost{
+		ID:       uuid.New(),
+		AuthorID: authorID,
+		ChatID:   chatID,
+		PostID:   postID,
+	}
+}

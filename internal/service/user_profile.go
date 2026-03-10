@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
+	"github.com/google/uuid"
 )
 
 type userService struct {
@@ -17,6 +18,7 @@ type userService struct {
 type UserService interface {
 	CreateRealUserProfile(ctx context.Context, email, phone, password_hash, username, firstName, lastName string, isActive bool, birthdayDate *time.Time, gender models.Gender, avatar *models.Media) (*models.Profile, error)
 	GetUserList(ctx context.Context, offset, limit int) []models.User
+	GerUserProfileByProfile(ctx context.Context, profileID uuid.UUID) (*models.UserProfile, error)
 }
 
 func NewUserProfileService(userRepo repository.UserRepo, profileRepo repository.ProfileRepo, userProfileRepo repository.UserProfileRepo) UserService {
@@ -41,4 +43,8 @@ func (s *userService) CreateRealUserProfile(ctx context.Context, email, phone, p
 
 func (s *userService) GetUserList(ctx context.Context, offset, limit int) []models.User {
 	return s.UserRepo.List(ctx, offset, limit)
+}
+
+func (s *userService) GerUserProfileByProfile(ctx context.Context, profileID uuid.UUID) (*models.UserProfile, error) {
+	return s.UserProfileRepo.GetUserProfileByProfileID(profileID)
 }

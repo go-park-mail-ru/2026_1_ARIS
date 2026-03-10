@@ -6,6 +6,7 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
+	"github.com/google/uuid"
 )
 
 func MakeMock(mediaRepo repository.MediaRepo,
@@ -13,19 +14,20 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	postService service.PostService,
 	postWithMediaRepo repository.PostWithMediaRepo,
 	likeToPostRepo repository.LikeToPostRepo,
-	commentRepo repository.CommentRepo) {
+	commentRepo repository.CommentRepo,
+	repostRepo repository.RepostRepo) {
 
 	// create user avatars
-	userAvatar1 := "user avatar 1"
-	userAvatar2 := "user avatar 2"
-	userAvatar3 := "user avatar 3"
-	userAvatar4 := "user avatar 4"
-	userAvatar5 := "user avatar 5"
-	avatar1 := models.NewMedia("avatar 1", "png", &userAvatar1, "image", "media/link/avatars/1.png", 1000, false)
-	avatar2 := models.NewMedia("avatar 2", "png", &userAvatar2, "image", "media/link/avatars/2.png", 2000, false)
-	avatar3 := models.NewMedia("avatar 3", "png", &userAvatar3, "image", "media/link/avatars/3.png", 3000, false)
-	avatar4 := models.NewMedia("avatar 4", "png", &userAvatar4, "image", "media/link/avatars/4.png", 4000, false)
-	avatar5 := models.NewMedia("avatar 5", "png", &userAvatar5, "image", "media/link/avatars/5.png", 5000, false)
+	userAvatar1 := "user avatar 1 description"
+	userAvatar2 := "user avatar 2 description"
+	userAvatar3 := "user avatar 3 description"
+	userAvatar4 := "user avatar 4 description"
+	userAvatar5 := "user avatar 5 description"
+	avatar1 := models.NewMedia("avatar_1_name", "jpg", &userAvatar1, "image", "https://img02.rl0.ru/afisha/e750x-i/daily.afisha.ru/uploads/images/6/e5/6e5a713fb8d534791c6eed2e47be9640.jpg", 1000, false)
+	avatar2 := models.NewMedia("avatar_2_name", "jpg", &userAvatar2, "image", "https://avatarko.ru/img/kartinka/1/Crazy_Frog.jpg", 2000, false)
+	avatar3 := models.NewMedia("avatar_3_name", "jpg", &userAvatar3, "image", "https://avatarko.ru/img/kartinka/1/multfilm_pingviny.jpg", 3000, false)
+	avatar4 := models.NewMedia("avatar_4_name", "jpg", &userAvatar4, "image", "https://avatarko.ru/img/kartinka/2/kot_uzhasy_1770.jpg", 4000, false)
+	avatar5 := models.NewMedia("avatar_5_name", "jpg", &userAvatar5, "image", "https://spbcult.ru/upload/iblock/7b9/9n0tc4etzlpw3t1h1021gjzhwl226j5k.jpg", 5000, false)
 	mediaRepo.Save(context.Background(), avatar1)
 	mediaRepo.Save(context.Background(), avatar2)
 	mediaRepo.Save(context.Background(), avatar3)
@@ -33,11 +35,11 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	mediaRepo.Save(context.Background(), avatar5)
 
 	// create Profiles (users)
-	user1, _ := userProfileService.CreateRealUserProfile(context.Background(), "email@gmail.com", "+79990001122", "hard password hash", "username 0???", "cool first name", "not so cool last name", true, nil, models.Gender(1), &avatar1)
-	user2, _ := userProfileService.CreateRealUserProfile(context.Background(), "email1@gmail.com", "+179990001122", "hard password hash", "username 1???", "cool first name", "not so cool last name", true, nil, models.Gender(1), &avatar2)
-	user3, _ := userProfileService.CreateRealUserProfile(context.Background(), "email2@gmail.com", "+279990001122", "hard password hash", "username 2???", "cool first name", "not so cool last name", true, nil, models.Gender(1), &avatar3)
-	user4, _ := userProfileService.CreateRealUserProfile(context.Background(), "email3@gmail.com", "+379990001122", "hard password hash", "username 3???", "cool first name", "not so cool last name", true, nil, models.Gender(1), &avatar4)
-	user5, _ := userProfileService.CreateRealUserProfile(context.Background(), "email4@gmail.com", "+479990001122", "hard password hash", "username 4???", "cool first name", "not so cool last name", true, nil, models.Gender(1), &avatar5)
+	user1, _ := userProfileService.CreateRealUserProfile(context.Background(), "email000@gmail.com", "+799900011222", "hard password hash", "KokInside", "Stas", "Ignatov", true, nil, models.Gender(1), &avatar1)
+	user2, _ := userProfileService.CreateRealUserProfile(context.Background(), "email111@gmail.com", "+179990001122", "hard password hash", "NotationFR", "Ashot", "Ivanovich", true, nil, models.Gender(1), &avatar2)
+	user3, _ := userProfileService.CreateRealUserProfile(context.Background(), "email222@gmail.com", "+279990001122", "hard password hash", "Dorifuta", "Potap", "Pogodin", true, nil, models.Gender(1), &avatar3)
+	user4, _ := userProfileService.CreateRealUserProfile(context.Background(), "email333@gmail.com", "+379990001122", "hard password hash", "Domik", "Nikita", "Grib", true, nil, models.Gender(1), &avatar4)
+	user5, _ := userProfileService.CreateRealUserProfile(context.Background(), "email444@gmail.com", "+479990001122", "hard password hash", "Whiteroom", "Max", "Polezhaev", true, nil, models.Gender(1), &avatar5)
 
 	// create medias
 	mediaDesctiption1 := "Media description 1"
@@ -46,12 +48,12 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	mediaDesctiption4 := "Media description 4"
 	mediaDesctiption5 := "Media description 5"
 	mediaDesctiption6 := "Media description 6"
-	media1 := models.NewMedia("Media name 1", "png", &mediaDesctiption1, "image", "media/link/media1.png", 10241, false)
-	media2 := models.NewMedia("Media name 2", "png", &mediaDesctiption2, "image", "media/link/media2.png", 10242, false)
-	media3 := models.NewMedia("Media name 3", "png", &mediaDesctiption3, "image", "media/link/media3.png", 10243, false)
-	media4 := models.NewMedia("Media name 4", "png", &mediaDesctiption4, "image", "media/link/media4.png", 10244, false)
-	media5 := models.NewMedia("Media name 5", "png", &mediaDesctiption5, "image", "media/link/media5.png", 10245, false)
-	media6 := models.NewMedia("Media name 6", "png", &mediaDesctiption6, "image", "media/link/media6.png", 10246, false)
+	media1 := models.NewMedia("Media name 1", "jpg", &mediaDesctiption1, "image", "https://moika78.ru/wp-content/uploads/2021/10/ia.jpg", 10241, false)
+	media2 := models.NewMedia("Media name 2", "jpg", &mediaDesctiption2, "image", "https://img01.rl0.ru/afisha/e1200x800i/daily.afisha.ru/uploads/images/2/7f/27f311fa0cc7d66b57fd8622350356bf.jpg", 10242, false)
+	media3 := models.NewMedia("Media name 3", "jpg", &mediaDesctiption3, "image", "https://img-webcalypt.ru/img/thumb/lg/403/202510/THqUQVWPsZO2aayBVD4Ljc82NTI5PqeTwci2hrvOgxL6FIXy3180PT4Vi9G4m2WWXxDJ2PWuCAKKnayGXRGX8YpxLegrfNnJk06UM4L9e8HZnwr6daNNU8VxijQRvPaZ.jpeg.jpg", 10243, false)
+	media4 := models.NewMedia("Media name 4", "jpg", &mediaDesctiption4, "image", "https://icdn.lenta.ru/images/2025/12/09/16/20251209160255692/preview_c8ae7a0a40b6255df50771f8b845c008.jpg", 10244, false)
+	media5 := models.NewMedia("Media name 5", "jpg", &mediaDesctiption5, "image", "https://media.tenor.com/nv7JN8Xbx6AAAAAe/%D0%BE%D0%B1%D0%B5%D0%B7%D1%8C%D1%8F%D0%BD%D0%B0-%D0%BE%D0%B1%D0%B5%D0%B7%D1%8C%D1%8F%D0%BD%D0%B0-%D0%BC%D0%B5%D0%BC.png", 10245, false)
+	media6 := models.NewMedia("Media name 6", "jpg", &mediaDesctiption6, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
 	mediaRepo.Save(context.Background(), media1)
 	mediaRepo.Save(context.Background(), media2)
 	mediaRepo.Save(context.Background(), media3)
@@ -60,11 +62,11 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	mediaRepo.Save(context.Background(), media6)
 
 	// create posts
-	postText1 := "post text 1"
-	postText2 := "post text 2"
-	postText3 := "post text 3"
-	postText4 := "post text 4"
-	postText5 := "post text 5"
+	postText1 := "Сегодня я увидел белку, которая, кажется, изучает экономику. Она сидела на ветке, грызла орех и периодически записывала что-то в маленький блокнот. Я пытался понять, о чём она думает, но у меня только появился вопрос: если белка инвестирует в орехи, это считается стабильной валютой или биржей леса? Между тем кот из соседнего двора наблюдал за мной, как будто я был частью научного эксперимента. Вдруг я понял, что сам стал статистикой в беличьих исследованиях. Возможно, завтра я начну носить очки и шляпу, чтобы казаться умнее. Мир странный, а белки — ещё страннее."
+	postText2 := "Сегодня на завтрак я решил приготовить омлет с сюрпризом. Выложил яйца на сковороду, а потом вспомнил, что забыл купить молоко. Решил заменить его водой из-под крана. Омлет получился очень живой, почти как маленький аквариум на сковороде. Я смотрел на него и думал: «Если бы он мог говорить, что бы он сказал?» Возможно, что-то вроде: «Спасибо за эту плавучую экскурсию». Кофе я пил с осторожностью, чтобы случайно не добавить в него немного фантазии. День прошёл странно, но вкусно, а омлет остался в памяти как самый мокрый и философский завтрак в истории."
+	postText3 := "Сегодня я пытался разговаривать с кактусом. Он, кажется, игнорировал меня, хотя я точно слышал, как он шипел что-то вроде: «Не мешай моему росту». Я подумал, что это хороший урок: иногда молчание говорит больше, чем тысячи слов. Потом я попытался рассказать ему шутку про кактусы, но, видимо, она была слишком колючей. Рядом пёс пытался объяснить мне, что всё это смешно, хотя на самом деле он просто хотел съесть мои носки. Жизнь — это странная смесь растений, животных и моих странных идей, которые, кажется, иногда понимают даже кактусы."
+	postText4 := "Вчера я нашёл носок, который, похоже, ушёл в отпуск без меня. Он лежал на полке, выглядел загорелым и немного усталым. Я пытался его вернуть, но он ускользнул между книгами и исчез, как настоящий турист. Понимаю, что носки тоже мечтают об отдыхе, и, возможно, они собираются на маленькие курорты в шкафах. Пёс рядом наблюдал за этим и пытался понять, зачем люди переживают за носки. А я понял, что иногда потеря — это просто способ носкам обрести свободу. Завтра, наверное, куплю новый носок, но буду помнить о старом как о легенде."
+	postText5 := "Сегодня я решил попробовать новый способ борьбы со скукой: разговаривать с пылесосом. Он сначала молчал, а потом неожиданно загудел так, будто пытался рассказать секреты вселенной. Я пытался повторять его гудение, но звучало скорее как странная симфония из кухонной утвари. Кофе при этом пролился на стол, создавая импровизированный арт-объект. Кот наблюдал за процессом с видом истинного критика, явно недовольного моими экспериментами. В конце концов я понял, что скука побеждена, хотя пылесос остался загадкой. Иногда странные идеи работают лучше любых планов, особенно если у вас есть кот и немного кофе."
 	post1 := models.NewPost(&postText1, *user1, true)
 	post2 := models.NewPost(&postText2, *user2, true)
 	post3 := models.NewPost(&postText3, *user3, true)
@@ -126,4 +128,25 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	commentRepo.Save(comment4)
 	commentRepo.Save(comment5)
 	commentRepo.Save(comment6)
+
+	// create reposts
+	repost1 := models.NewRepost(user2.ID, uuid.Nil, post1.ID)
+	repost2 := models.NewRepost(user3.ID, uuid.Nil, post1.ID)
+	repost3 := models.NewRepost(user4.ID, uuid.Nil, post1.ID)
+	repost4 := models.NewRepost(user5.ID, uuid.Nil, post2.ID)
+	repost5 := models.NewRepost(user3.ID, uuid.Nil, post2.ID)
+	repost6 := models.NewRepost(user1.ID, uuid.Nil, post3.ID)
+	repost7 := models.NewRepost(user1.ID, uuid.Nil, post4.ID)
+	repost8 := models.NewRepost(user1.ID, uuid.Nil, post5.ID)
+	repost9 := models.NewRepost(user1.ID, uuid.Nil, post3.ID)
+
+	repostRepo.Save(context.Background(), repost1)
+	repostRepo.Save(context.Background(), repost2)
+	repostRepo.Save(context.Background(), repost3)
+	repostRepo.Save(context.Background(), repost4)
+	repostRepo.Save(context.Background(), repost5)
+	repostRepo.Save(context.Background(), repost6)
+	repostRepo.Save(context.Background(), repost7)
+	repostRepo.Save(context.Background(), repost8)
+	repostRepo.Save(context.Background(), repost9)
 }

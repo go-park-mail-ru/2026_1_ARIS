@@ -12,43 +12,47 @@ import (
 )
 
 type feedResponse struct {
-	Items      []postFeedDTO
-	NextCursor string
-	HasNext    bool
+	Items      []postFeedDTO `json:"posts"`
+	NextCursor string        `json:"nextCursor"`
+	HasMore    bool          `json:"hasMore"`
 }
 
 type postFeedDTO struct {
-	Id        uuid.UUID
-	Text      string
-	Author    authorFeedDTO
-	CreatedAt time.Time
-	Likes     int
-	Comments  int
-	Medias    []mediaFeedDTO
+	Id        uuid.UUID      `json:"id"`
+	Text      string         `json:"text"`
+	Author    authorFeedDTO  `json:"author"`
+	CreatedAt time.Time      `json:"createdAt"`
+	Likes     int            `json:"likes"`
+	Comments  int            `json:"comments"`
+	Reposts   int            `json:"reposts"`
+	Medias    []mediaFeedDTO `json:"medias"`
 }
 
 type authorFeedDTO struct {
-	Id         uuid.UUID
-	Username   string
-	AvatarLink string
+	Id         uuid.UUID `json:"id"`
+	FirstName  string    `json:"firstName"`
+	LastName   string    `json:"lastName"`
+	Username   string    `json:"username"`
+	AvatarLink string    `json:"avatarLink"`
 }
 
 type mediaFeedDTO struct {
-	Id        uuid.UUID
-	MimeType  string
-	Link      string
-	Thumbnail string
+	Id       uuid.UUID `json:"id"`
+	MimeType string    `json:"mimeType"`
+	Link     string    `json:"link"`
 }
 
 type FeedHandler struct {
-	PostService  service.PostService
-	MediaService service.MediaService
+	PostService        service.PostService
+	MediaService       service.MediaService
+	UserProfileService service.UserService
 }
 
-func NewFeedHandler(postService service.PostService, mediaService service.MediaService) *FeedHandler {
+func NewFeedHandler(postService service.PostService, mediaService service.MediaService, userProfileService service.UserService) *FeedHandler {
 	return &FeedHandler{
-		PostService:  postService,
-		MediaService: mediaService,
+		PostService:        postService,
+		MediaService:       mediaService,
+		UserProfileService: userProfileService,
 	}
 }
 
@@ -70,6 +74,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		parsed, err := strconv.Atoi(l)
 		if err != nil {
 			fmt.Println(err)
+			http.Error(w, "Cant parse limit", http.StatusBadRequest)
 			return
 		}
 		limit = parsed
@@ -78,6 +83,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	feed, err := h.PostService.GetFeed(r.Context(), rawCursor, limit)
 	if err != nil {
 		fmt.Println("Feed error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -103,8 +109,12 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 			authorAvatarLink = authorAvatar.Link
 		}
 
+		authorProfile, err := h.UserProfileService.GerUserProfileByProfile(r.Context(), postAuthor.ID)
+
 		author := authorFeedDTO{
 			Id:         postAuthor.ID,
+			FirstName:  authorProfile.FirstName,
+			LastName:   authorProfile.LastName,
 			Username:   postAuthor.Username,
 			AvatarLink: authorAvatarLink,
 		}
@@ -115,16 +125,17 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 		for _, media := range medias {
 			mediasDTO = append(mediasDTO, mediaFeedDTO{
-				Id:        media.ID,
-				MimeType:  media.MimeType,
-				Link:      media.Link,
-				Thumbnail: media.Link,
+				Id:       media.ID,
+				MimeType: media.MimeType,
+				Link:     media.Link,
 			})
 		}
 
 		likeCount := h.PostService.GetLikeCount(r.Context(), post.ID)
 
 		commentCount := h.PostService.GetCommentCount(r.Context(), post.ID)
+
+		repostCount := h.PostService.GetRepostCount(r.Context(), post.ID)
 
 		posts = append(posts, postFeedDTO{
 			Id:        post.ID,
@@ -133,6 +144,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 			CreatedAt: post.CreatedAt,
 			Likes:     likeCount,
 			Comments:  commentCount,
+			Reposts:   repostCount,
 			Medias:    mediasDTO,
 		})
 
@@ -141,7 +153,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	response := feedResponse{
 		Items:      posts,
 		NextCursor: feed.Cursor,
-		HasNext:    feed.HasMore,
+		HasMore:    feed.HasMore,
 	}
 
 	json.NewEncoder(w).Encode(response)

@@ -22,9 +22,10 @@ func main() {
 	// Инициализация репозиториев и сервисов для ленты
 	likeToPostRepo := repository.NewLikeToPostRepo()
 	commentRepo := repository.NewCommentRepo()
+	repostRepo := repository.NewRepostRepo()
 	postRepo := repository.NewPostRepo()
 	profileRepo := repository.NewProfileRepo()
-	postService := service.NewPostService(postRepo, profileRepo, likeToPostRepo, commentRepo)
+	postService := service.NewPostService(postRepo, profileRepo, likeToPostRepo, commentRepo, repostRepo)
 
 	// инициализация userProfile service
 	userRepo := repository.NewUserRepo()
@@ -46,7 +47,7 @@ func main() {
 	postWithMediaRepo := repository.NewPostWithMediaRepo()
 	mediaService := service.NewMediaService(mediaRepo, postWithMediaRepo)
 
-	feedHandler := handlers.NewFeedHandler(postService, mediaService)
+	feedHandler := handlers.NewFeedHandler(postService, mediaService, userProfileService)
 
 	router := server.NewRouter(authHandler, sessService, feedHandler)
 
@@ -63,7 +64,7 @@ func main() {
 	}()
 
 	// заполнение тестовыми данными
-	utils.MakeMock(mediaRepo, userProfileService, postService, postWithMediaRepo, likeToPostRepo, commentRepo)
+	utils.MakeMock(mediaRepo, userProfileService, postService, postWithMediaRepo, likeToPostRepo, commentRepo, repostRepo)
 
 	// gracefull shutdown
 	stop := make(chan os.Signal, 1)
