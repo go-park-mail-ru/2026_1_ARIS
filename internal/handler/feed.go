@@ -58,6 +58,8 @@ func NewFeedHandler(postService service.PostService, mediaService service.MediaS
 
 func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
+	fmt.Println("start feed handler")
+
 	if r.Method != http.MethodGet {
 		fmt.Println("Required method GET")
 		http.Error(w, "Required method GET", http.StatusMethodNotAllowed)

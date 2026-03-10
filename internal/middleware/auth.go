@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
@@ -12,6 +13,7 @@ func AuthMiddleware(sessionService service.SessionService) func(http.Handler) ht
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie("session_id")
+			fmt.Println("session")
 			if err != nil {
 				http.Error(w, `{"error":"неавторизован"}`, http.StatusUnauthorized)
 				return
