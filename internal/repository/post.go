@@ -106,8 +106,12 @@ func (r *inmemoryPostRepo) List(ctx context.Context, offset, limit int) ([]model
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
+	if offset >= len(r.Posts) {
+		return []models.Post{}, nil
+	}
+
 	if offset+limit > len(r.Posts) {
-		return nil, errors.New("out of range")
+		return slices.Collect(maps.Values(r.Posts))[offset:], nil
 	}
 
 	return slices.Collect(maps.Values(r.Posts))[offset:offset:limit], nil
