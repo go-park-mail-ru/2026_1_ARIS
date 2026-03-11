@@ -38,13 +38,15 @@ func NewRouter(
 			r.Post("/logout", authHandler.Logout)
 		})
 	})
-
+	// Публичная лента (без авторизации)
+	r.Get("/api/public/feed", feedHandler.GetFeed)
 	r.Group(func(r chi.Router) {
 		r.Use(mymiddleware.AuthMiddleware(sessSvc))
 		r.Get("/api/feed", feedHandler.GetFeed)
 	})
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
+	// Раздача статических файлов (изображений)
 
 	return r
 }

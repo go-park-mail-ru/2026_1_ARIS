@@ -4,7 +4,7 @@ test:
 	go test -v ./...
 
 clean:
-	rm -f coverage.out
+	if exist coverage.out del /f coverage.out
 
 coverage: clean
 	go test -coverprofile=coverage.out -coverpkg=./internal/... ./...
