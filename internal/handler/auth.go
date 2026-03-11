@@ -49,7 +49,7 @@ type UserDTO struct {
 }
 
 type CommonResponse struct {
-	Message string `json:"massage"`
+	Message string `json:"message"`
 }
 
 type CommonErrorResponse struct {
