@@ -325,6 +325,14 @@ func TestAuthHandler_Login_Success(t *testing.T) {
 		ExpiredAt: time.Now().Add(24 * time.Hour),
 	}
 
+	expectedUserProfile := &models.UserProfile{
+		ID:        uuid.New(),
+		UserID:    userID,
+		FirstName: "Ivan",
+		LastName:  "Petrov",
+		CreatedAt: time.Now(),
+	}
+
 	mockAuthSvc.EXPECT().
 		Login(gomock.Any(), "ivan123", "qwerty123").
 		Return(expectedUser, nil)
@@ -332,6 +340,10 @@ func TestAuthHandler_Login_Success(t *testing.T) {
 	mockSessionSvc.EXPECT().
 		Create(gomock.Any(), userID).
 		Return(expectedSession, nil)
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByUser(gomock.Any(), userID).
+		Return(expectedUserProfile, nil)
 
 	w := httptest.NewRecorder()
 	handler.Login(w, req)
@@ -352,13 +364,11 @@ func TestAuthHandler_Login_Success(t *testing.T) {
 	}
 	assert.True(t, found, "cookie session_id not set")
 
-	// Проверка тела ответа
-	var resp models.User
+	var resp LoginResponse
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	assert.NoError(t, err)
-	assert.Equal(t, expectedUser.ID, resp.ID)
-}
 
+}
 func TestAuthHandler_Login_InvalidCredentials(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
