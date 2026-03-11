@@ -67,16 +67,30 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	postText3 := "Сегодня я пытался разговаривать с кактусом. Он, кажется, игнорировал меня, хотя я точно слышал, как он шипел что-то вроде: «Не мешай моему росту». Я подумал, что это хороший урок: иногда молчание говорит больше, чем тысячи слов. Потом я попытался рассказать ему шутку про кактусы, но, видимо, она была слишком колючей. Рядом пёс пытался объяснить мне, что всё это смешно, хотя на самом деле он просто хотел съесть мои носки. Жизнь — это странная смесь растений, животных и моих странных идей, которые, кажется, иногда понимают даже кактусы."
 	postText4 := "Вчера я нашёл носок, который, похоже, ушёл в отпуск без меня. Он лежал на полке, выглядел загорелым и немного усталым. Я пытался его вернуть, но он ускользнул между книгами и исчез, как настоящий турист. Понимаю, что носки тоже мечтают об отдыхе, и, возможно, они собираются на маленькие курорты в шкафах. Пёс рядом наблюдал за этим и пытался понять, зачем люди переживают за носки. А я понял, что иногда потеря — это просто способ носкам обрести свободу. Завтра, наверное, куплю новый носок, но буду помнить о старом как о легенде."
 	postText5 := "Сегодня я решил попробовать новый способ борьбы со скукой: разговаривать с пылесосом. Он сначала молчал, а потом неожиданно загудел так, будто пытался рассказать секреты вселенной. Я пытался повторять его гудение, но звучало скорее как странная симфония из кухонной утвари. Кофе при этом пролился на стол, создавая импровизированный арт-объект. Кот наблюдал за процессом с видом истинного критика, явно недовольного моими экспериментами. В конце концов я понял, что скука побеждена, хотя пылесос остался загадкой. Иногда странные идеи работают лучше любых планов, особенно если у вас есть кот и немного кофе."
+	postText6 := `Привет! Добро пожаловать в ARIS :) Мы хотели создать нашу социальную сеть в том виде, как она задумывалась изначально - с акцентом на общение со знакомыми нам людьми и поиском новых, схожих с нами по интересам.
+
+После регистрации у тебя появится своя персональная страничка и лента.`
+	postText7 := `В ARIS можно прикреплять к постам изображения и писать длинные тексты.
+
+Лента может отображаться:
+— по времени
+— по рекомендациям ("Для вас")
+
+Попробуй переключить режим в левом меню :)`
 	post1 := models.NewPost(&postText1, *user1, true)
 	post2 := models.NewPost(&postText2, *user2, true)
 	post3 := models.NewPost(&postText3, *user3, true)
 	post4 := models.NewPost(&postText4, *user4, true)
 	post5 := models.NewPost(&postText5, *user5, true)
+	post6 := models.NewPost(&postText6, *user1, true)
+	post7 := models.NewPost(&postText7, *user1, true)
 	postService.Save(context.Background(), post1)
 	postService.Save(context.Background(), post2)
 	postService.Save(context.Background(), post3)
 	postService.Save(context.Background(), post4)
 	postService.Save(context.Background(), post5)
+	postService.Save(context.Background(), post6)
+	postService.Save(context.Background(), post7)
 
 	// connect post with medias to get PostWithMedia
 	postWithMediaRepo.Save(post1, media1, 0)
@@ -85,6 +99,12 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	postWithMediaRepo.Save(post3, media6, 1)
 	postWithMediaRepo.Save(post4, media4, 0)
 	postWithMediaRepo.Save(post5, media5, 0)
+	postWithMediaRepo.Save(post6, media1, 0)
+	postWithMediaRepo.Save(post6, media2, 1)
+	postWithMediaRepo.Save(post6, media3, 2)
+	postWithMediaRepo.Save(post7, media6, 0)
+	postWithMediaRepo.Save(post7, media5, 1)
+	postWithMediaRepo.Save(post7, media4, 2)
 
 	// create likes & init LikeRepo
 	like1 := models.NewLike(*user4)
