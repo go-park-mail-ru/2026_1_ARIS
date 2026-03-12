@@ -162,7 +162,13 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.sessionService.Create(r.Context(), user.ID)
+	userProfile, err := h.userService.GetUserProfileByUser(r.Context(), user.ID)
+	if err != nil {
+		utils.WriteError(w, "user not found", http.StatusInternalServerError)
+		return
+	}
+
+	session, err := h.sessionService.Create(r.Context(), userProfile.ID)
 	if err != nil {
 		utils.WriteError(w, "не удалось создать сессию", http.StatusInternalServerError)
 		return
@@ -173,16 +179,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Value:    string(session.SessionID),
 		Expires:  session.ExpiredAt,
 		HttpOnly: true,
-		// Secure:   true,
-		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
 	})
-
-	userProfile, err := h.userService.GetUserProfileByUser(r.Context(), user.ID)
-	if err != nil {
-		utils.WriteError(w, "user not found", http.StatusInternalServerError)
-		return
-	}
 
 	loginResponse := LoginResponse{
 		ID:        userProfile.ID.String(),
@@ -244,15 +242,16 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 // @Router /auth/me [get]
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Ответ me")
-	userID, ok := r.Context().Value("user_id").(uuid.UUID)
-	if !ok {
+	userIDfromCtx := r.Context().Value("user_id")
+	if userIDfromCtx == nil {
 		utils.WriteError(w, "не авторизован", http.StatusUnauthorized)
 		return
 	}
 
-	fmt.Println(userID)
+	userID := userIDfromCtx.(uuid.UUID)
+
 	user, err := h.userService.GetUserProfileByUserProfileID(userID)
-	fmt.Println(user)
+
 	if err != nil {
 		utils.WriteError(w, "пользователь не найден", http.StatusNotFound)
 		return

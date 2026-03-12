@@ -253,7 +253,7 @@
         "handlers.CommonResponse": {
             "type": "object",
             "properties": {
-                "massage": {
+                "message": {
                     "type": "string"
                 }
             }
@@ -371,7 +371,7 @@
                 "id": {
                     "type": "string"
                 },
-                "link": {
+                "mediaLink": {
                     "type": "string"
                 },
                 "mimeType": {

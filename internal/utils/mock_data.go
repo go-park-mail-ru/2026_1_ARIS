@@ -54,12 +54,18 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	media4 := models.NewMedia("Media name 4", "jpg", &mediaDesctiption4, "image", "https://icdn.lenta.ru/images/2025/12/09/16/20251209160255692/preview_c8ae7a0a40b6255df50771f8b845c008.jpg", 10244, false)
 	media5 := models.NewMedia("Media name 5", "jpg", &mediaDesctiption5, "image", "https://media.tenor.com/nv7JN8Xbx6AAAAAe/%D0%BE%D0%B1%D0%B5%D0%B7%D1%8C%D1%8F%D0%BD%D0%B0-%D0%BE%D0%B1%D0%B5%D0%B7%D1%8C%D1%8F%D0%BD%D0%B0-%D0%BC%D0%B5%D0%BC.png", 10245, false)
 	media6 := models.NewMedia("Media name 6", "jpg", &mediaDesctiption6, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
+	media7 := models.NewMedia("Media name 7", "png", &mediaDesctiption6, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
+	media8 := models.NewMedia("Media name 7", "jpg", &mediaDesctiption6, "image", "http://batona.net/uploads/posts/2026-03/1773243002_2.jpg", 10246, false)
+	media9 := models.NewMedia("Media name 7", "jpg", &mediaDesctiption6, "image", "http://batona.net/uploads/posts/2026-03/1772617789_1.jpg", 10246, false)
 	mediaRepo.Save(context.Background(), media1)
 	mediaRepo.Save(context.Background(), media2)
 	mediaRepo.Save(context.Background(), media3)
 	mediaRepo.Save(context.Background(), media4)
 	mediaRepo.Save(context.Background(), media5)
 	mediaRepo.Save(context.Background(), media6)
+	mediaRepo.Save(context.Background(), media7)
+	mediaRepo.Save(context.Background(), media8)
+	mediaRepo.Save(context.Background(), media9)
 
 	// create posts
 	postText1 := "Сегодня я увидел белку, которая, кажется, изучает экономику. Она сидела на ветке, грызла орех и периодически записывала что-то в маленький блокнот. Я пытался понять, о чём она думает, но у меня только появился вопрос: если белка инвестирует в орехи, это считается стабильной валютой или биржей леса? Между тем кот из соседнего двора наблюдал за мной, как будто я был частью научного эксперимента. Вдруг я понял, что сам стал статистикой в беличьих исследованиях. Возможно, завтра я начну носить очки и шляпу, чтобы казаться умнее. Мир странный, а белки — ещё страннее."
@@ -94,14 +100,32 @@ func MakeMock(mediaRepo repository.MediaRepo,
 
 	// connect post with medias to get PostWithMedia
 	postWithMediaRepo.Save(post1, media1, 0)
+	postWithMediaRepo.Save(post1, media6, 1)
+
 	postWithMediaRepo.Save(post2, media2, 0)
+	postWithMediaRepo.Save(post2, media8, 1)
+	postWithMediaRepo.Save(post2, media3, 2)
+	postWithMediaRepo.Save(post2, media4, 3)
+	postWithMediaRepo.Save(post2, media5, 4)
+
 	postWithMediaRepo.Save(post3, media3, 0)
 	postWithMediaRepo.Save(post3, media6, 1)
+
 	postWithMediaRepo.Save(post4, media4, 0)
-	postWithMediaRepo.Save(post5, media5, 0)
+
+	postWithMediaRepo.Save(post5, media6, 0)
+	postWithMediaRepo.Save(post5, media4, 2)
+	postWithMediaRepo.Save(post5, media9, 2)
+	postWithMediaRepo.Save(post5, media2, 2)
+	postWithMediaRepo.Save(post5, media5, 2)
+	postWithMediaRepo.Save(post5, media1, 2)
+	postWithMediaRepo.Save(post5, media8, 2)
+
 	postWithMediaRepo.Save(post6, media1, 0)
 	postWithMediaRepo.Save(post6, media2, 1)
 	postWithMediaRepo.Save(post6, media3, 2)
+	postWithMediaRepo.Save(post6, media7, 3)
+
 	postWithMediaRepo.Save(post7, media6, 0)
 	postWithMediaRepo.Save(post7, media5, 1)
 	postWithMediaRepo.Save(post7, media4, 2)

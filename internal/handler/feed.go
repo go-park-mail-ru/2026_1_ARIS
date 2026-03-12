@@ -39,7 +39,7 @@ type authorFeedDTO struct {
 type mediaFeedDTO struct {
 	Id       uuid.UUID `json:"id"`
 	MimeType string    `json:"mimeType"`
-	Link     string    `json:"link"`
+	Link     string    `json:"mediaLink"`
 }
 
 type FeedHandler struct {
