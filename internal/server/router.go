@@ -40,6 +40,7 @@ func NewRouter(
 	})
 	// Публичная лента (без авторизации)
 	r.Get("/api/public/feed", feedHandler.GetFeed)
+	r.Get("/image-proxy", handlers.ImageProxy)
 	r.Group(func(r chi.Router) {
 		r.Use(mymiddleware.AuthMiddleware(sessSvc))
 		r.Get("/api/feed", feedHandler.GetFeed)
