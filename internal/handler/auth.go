@@ -19,6 +19,7 @@ type RegisterRequest struct {
 	FirstName string `json:"firstName" validate:"required,alphaunicode"`
 	LastName  string `json:"lastName" validate:"required,alphaunicode"`
 	Birthday  string `json:"birthday" validate:"required,min=8,max=10" example:"24/02/2005"`
+	Gender    int    `json:"gender" validate:"required,oneof=1 2"`
 	Login     string `json:"login" validate:"required,alphanumunicode"`
 	Password1 string `json:"password1" validate:"required,min=6,max=72,printascii"`
 	Password2 string `json:"password2" validate:"required,min=6,max=72,printascii"`
@@ -95,7 +96,15 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	profile, err := h.authService.Register(r.Context(), req.FirstName, req.LastName, req.Login, req.Password1, req.Birthday)
+	profile, err := h.authService.Register(
+		r.Context(),
+		req.FirstName,
+		req.LastName,
+		req.Login,
+		req.Password1,
+		req.Birthday,
+		models.Gender(req.Gender-1),
+	)
 	if err != nil {
 		if err.Error() == "пользователь с таким login уже существует" {
 			utils.WriteError(w, "login already registered", http.StatusConflict)

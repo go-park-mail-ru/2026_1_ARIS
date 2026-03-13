@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
@@ -23,23 +24,39 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	userAvatar3 := "user avatar 3 description"
 	userAvatar4 := "user avatar 4 description"
 	userAvatar5 := "user avatar 5 description"
-	avatar1 := models.NewMedia("avatar_1_name", "jpg", &userAvatar1, "image", "https://img02.rl0.ru/afisha/e750x-i/daily.afisha.ru/uploads/images/6/e5/6e5a713fb8d534791c6eed2e47be9640.jpg", 1000, false)
-	avatar2 := models.NewMedia("avatar_2_name", "jpg", &userAvatar2, "image", "https://avatarko.ru/img/kartinka/1/Crazy_Frog.jpg", 2000, false)
-	avatar3 := models.NewMedia("avatar_3_name", "jpg", &userAvatar3, "image", "https://avatarko.ru/img/kartinka/1/multfilm_pingviny.jpg", 3000, false)
-	avatar4 := models.NewMedia("avatar_4_name", "jpg", &userAvatar4, "image", "https://avatarko.ru/img/kartinka/2/kot_uzhasy_1770.jpg", 4000, false)
-	avatar5 := models.NewMedia("avatar_5_name", "jpg", &userAvatar5, "image", "https://spbcult.ru/upload/iblock/7b9/9n0tc4etzlpw3t1h1021gjzhwl226j5k.jpg", 5000, false)
+	userAvatar6 := "user avatar 6 description"
+	userAvatar7 := "user avatar 7 description"
+	userAvatar8 := "user avatar 8 description"
+	avatar1 := models.NewMedia("avatar_1_name", "jpg", &userAvatar1, "image", "https://forum.stitch.su/uploads/monthly_2017_10/A.png.b16d1fa2bd3bb388f2122a0c87fbcf5f.png", 5000, false)
+	avatar2 := models.NewMedia("avatar_2_name", "jpg", &userAvatar2, "image", "https://i.ibb.co/C3c6HCjb/pop-User1.png", 1000, false)
+	avatar3 := models.NewMedia("avatar_3_name", "jpg", &userAvatar3, "image", "https://i.ibb.co/mQvfkNY/pop-User2.png", 2000, false)
+	avatar4 := models.NewMedia("avatar_4_name", "jpg", &userAvatar4, "image", "https://i.ibb.co/6RS96KC7/pop-User3.png", 3000, false)
+	avatar5 := models.NewMedia("avatar_5_name", "jpg", &userAvatar5, "image", "https://i.ibb.co/mCpKjmxK/pop-User4.png", 4000, false)
+	avatar6 := models.NewMedia("avatar_6_name", "jpg", &userAvatar6, "image", "https://i.ibb.co/60HMXYh6/6.jpg", 4000, false)
+	avatar7 := models.NewMedia("avatar_7_name", "jpg", &userAvatar7, "image", "https://i.ibb.co/s9rN3qD9/7.jpg", 4000, false)
+	avatar8 := models.NewMedia("avatar_8_name", "jpg", &userAvatar8, "image", "https://sun9-5.userapi.com/s/v1/ig2/uGYEtsdSK4QHpAyiRnb5vCasxGZy7dR-MYECGzReWIivHlfmnfQP2DaVY6_UOJHzPG4yzjnVbty6aWqM8kjydEAS.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640&from=bu&cs=640x0", 4000, false)
+	//avatar9 := models.NewMedia("avatar_9_name", "jpg", &userAvatar9, "image", "https://i.ibb.co/s9rN3qD9/7.jpg", 4000, false)
+
 	mediaRepo.Save(context.Background(), avatar1)
 	mediaRepo.Save(context.Background(), avatar2)
 	mediaRepo.Save(context.Background(), avatar3)
 	mediaRepo.Save(context.Background(), avatar4)
 	mediaRepo.Save(context.Background(), avatar5)
+	mediaRepo.Save(context.Background(), avatar6)
+	mediaRepo.Save(context.Background(), avatar7)
+	mediaRepo.Save(context.Background(), avatar8)
 
 	// create Profiles (users)
-	user1, _ := userProfileService.CreateRealUserProfile(context.Background(), "email000@gmail.com", "+799900011222", "hard password hash", "KokInside", "Stas", "Ignatov", true, nil, models.Gender(1), &avatar1)
-	user2, _ := userProfileService.CreateRealUserProfile(context.Background(), "email111@gmail.com", "+179990001122", "hard password hash", "NotationFR", "Ashot", "Ivanovich", true, nil, models.Gender(1), &avatar2)
-	user3, _ := userProfileService.CreateRealUserProfile(context.Background(), "email222@gmail.com", "+279990001122", "hard password hash", "Dorifuta", "Potap", "Pogodin", true, nil, models.Gender(1), &avatar3)
-	user4, _ := userProfileService.CreateRealUserProfile(context.Background(), "email333@gmail.com", "+379990001122", "hard password hash", "Domik", "Nikita", "Grib", true, nil, models.Gender(1), &avatar4)
-	user5, _ := userProfileService.CreateRealUserProfile(context.Background(), "email444@gmail.com", "+479990001122", "hard password hash", "Whiteroom", "Max", "Polezhaev", true, nil, models.Gender(1), &avatar5)
+
+	user1, _ := userProfileService.CreateRealUserProfile(context.Background(), "email444@gmail.com", "+479990001122", "hard password hash", "KomandaARIS", "Команда", "АРИС", true, nil, models.Gender(1), &avatar1)
+	user2, _ := userProfileService.CreateRealUserProfile(context.Background(), "email000@gmail.com", "+799900011222", "hard password hash", "SergeyShulginenko", "Сергей", "Шульгиненко", true, nil, models.Gender(0), &avatar2)
+	user3, _ := userProfileService.CreateRealUserProfile(context.Background(), "email111@gmail.com", "+179990001122", "hard password hash", "AnnaOparina", "Анна", "Опарина", true, nil, models.Gender(1), &avatar3)
+	user4, _ := userProfileService.CreateRealUserProfile(context.Background(), "email222@gmail.com", "+279990001122", "hard password hash", "IvanKhvostov", "Иван", "Хвостов", true, nil, models.Gender(0), &avatar4)
+	user5, _ := userProfileService.CreateRealUserProfile(context.Background(), "email333@gmail.com", "+379990001122", "hard password hash", "RinatBaikov", "Ринат", "Байков", true, nil, models.Gender(0), &avatar5)
+	user6, _ := userProfileService.CreateRealUserProfile(context.Background(), "email444@gmail.com", "+479990001122", "hard password hash", "SofiaSitnichenko", "Софья", "Ситниченко", true, nil, models.Gender(1), &avatar6)
+	user7, _ := userProfileService.CreateRealUserProfile(context.Background(), "email444@gmail.com", "+479990001122", "hard password hash", "KonstantinGalanin", "Константин", "Галанин", true, nil, models.Gender(0), &avatar7)
+	user8, _ := userProfileService.CreateRealUserProfile(context.Background(), "email444@gmail.com", "+479990001122", "hard password hash", "DaniilKhasyanov", "Даниил", "Хасьянов", true, nil, models.Gender(0), &avatar8)
+	//user9, _ := userProfileService.CreateRealUserProfile(context.Background(), "email444@gmail.com", "+479990001122", "hard password hash", "VladislavAlyokhin", "Владислав", "Алехин", true, nil, models.Gender(1), &avatar9)
 
 	// create medias
 	mediaDesctiption1 := "Media description 1"
@@ -48,15 +65,57 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	mediaDesctiption4 := "Media description 4"
 	mediaDesctiption5 := "Media description 5"
 	mediaDesctiption6 := "Media description 6"
-	media1 := models.NewMedia("Media name 1", "jpg", &mediaDesctiption1, "image", "https://moika78.ru/wp-content/uploads/2021/10/ia.jpg", 10241, false)
-	media2 := models.NewMedia("Media name 2", "jpg", &mediaDesctiption2, "image", "https://img01.rl0.ru/afisha/e1200x800i/daily.afisha.ru/uploads/images/2/7f/27f311fa0cc7d66b57fd8622350356bf.jpg", 10242, false)
-	media3 := models.NewMedia("Media name 3", "jpg", &mediaDesctiption3, "image", "https://img-webcalypt.ru/img/thumb/lg/403/202510/THqUQVWPsZO2aayBVD4Ljc82NTI5PqeTwci2hrvOgxL6FIXy3180PT4Vi9G4m2WWXxDJ2PWuCAKKnayGXRGX8YpxLegrfNnJk06UM4L9e8HZnwr6daNNU8VxijQRvPaZ.jpeg.jpg", 10243, false)
-	media4 := models.NewMedia("Media name 4", "jpg", &mediaDesctiption4, "image", "https://icdn.lenta.ru/images/2025/12/09/16/20251209160255692/preview_c8ae7a0a40b6255df50771f8b845c008.jpg", 10244, false)
-	media5 := models.NewMedia("Media name 5", "jpg", &mediaDesctiption5, "image", "https://media.tenor.com/nv7JN8Xbx6AAAAAe/%D0%BE%D0%B1%D0%B5%D0%B7%D1%8C%D1%8F%D0%BD%D0%B0-%D0%BE%D0%B1%D0%B5%D0%B7%D1%8C%D1%8F%D0%BD%D0%B0-%D0%BC%D0%B5%D0%BC.png", 10245, false)
-	media6 := models.NewMedia("Media name 6", "jpg", &mediaDesctiption6, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
-	media7 := models.NewMedia("Media name 7", "png", &mediaDesctiption6, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
-	media8 := models.NewMedia("Media name 7", "jpg", &mediaDesctiption6, "image", "http://batona.net/uploads/posts/2026-03/1773243002_2.jpg", 10246, false)
-	media9 := models.NewMedia("Media name 7", "jpg", &mediaDesctiption6, "image", "http://batona.net/uploads/posts/2026-03/1772617789_1.jpg", 10246, false)
+	mediaDesctiption7 := "Media description 7"
+	mediaDesctiption8 := "Media description 8"
+	mediaDesctiption9 := "Media description 9"
+	mediaDesctiption10 := "Media description 10"
+	mediaDesctiption11 := "Media description 11"
+	mediaDesctiption12 := "Media description 12"
+	mediaDesctiption13 := "Media description 13"
+	mediaDesctiption14 := "Media description 14"
+	mediaDesctiption15 := "Media description 15"
+	mediaDesctiption16 := "Media description 16"
+	mediaDesctiption17 := "Media description 17"
+	mediaDesctiption18 := "Media description 18"
+	mediaDesctiption19 := "Media description 19"
+	mediaDesctiption20 := "Media description 20"
+	mediaDesctiption21 := "Media description 21"
+	mediaDesctiption22 := "Media description 22"
+	mediaDesctiption23 := "Media description 23"
+
+	media1 := models.NewMedia("Media name 1", "jpg", &mediaDesctiption1, "image", "https://img.freepik.com/free-photo/mountains-lake_1398-1150.jpg", 10246, false)
+	media2 := models.NewMedia("Media name 2", "jpg", &mediaDesctiption2, "image", "https://images.pexels.com/photos/417074/pexels-photo-417074.jpeg", 10246, false)
+
+	media3 := models.NewMedia("Media name 3", "jpg", &mediaDesctiption3, "image", "https://moya-planeta.ru/upload/images/l/eb/e2/ebe21cb5a55a808b104f3d51c3ff96284bae5182.jpg", 10241, false)
+	media4 := models.NewMedia("Media name 4", "jpg", &mediaDesctiption4, "image", "https://www.svitstyle.com.ua/wp-content/uploads/2025/09/pryroda-svitu.jpg", 10242, false)
+	media5 := models.NewMedia("Media name 5", "jpg", &mediaDesctiption5, "image", "https://oboitd.ru/images/goods/big/20200125110231_Priroda_10-344.jpg", 10243, false)
+	media6 := models.NewMedia("Media name 6", "jpg", &mediaDesctiption6, "image", "https://i.pinimg.com/736x/1d/aa/63/1daa63e83bdc9a565e4604caf1d0465c.jpg", 10244, false)
+	media7 := models.NewMedia("Media name 7", "jpg", &mediaDesctiption7, "image", "https://img.goodfon.com/wallpaper/big/5/18/italiia-gory-ozero-peizazh-otrazhenie-priroda.webp", 10245, false)
+
+	media8 := models.NewMedia("Media name 8", "jpg", &mediaDesctiption8, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
+	media9 := models.NewMedia("Media name 9", "png", &mediaDesctiption9, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
+
+	media10 := models.NewMedia("Media name 10", "jpg", &mediaDesctiption10, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
+	media11 := models.NewMedia("Media name 11", "png", &mediaDesctiption11, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
+
+	media12 := models.NewMedia("Media name 12", "jpg", &mediaDesctiption12, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
+	media13 := models.NewMedia("Media name 13", "png", &mediaDesctiption13, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
+
+	media14 := models.NewMedia("Media name 14", "jpg", &mediaDesctiption14, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
+	media15 := models.NewMedia("Media name 15", "png", &mediaDesctiption15, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
+
+	media16 := models.NewMedia("Media name 16", "jpg", &mediaDesctiption16, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
+	media17 := models.NewMedia("Media name 17", "png", &mediaDesctiption17, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
+
+	media18 := models.NewMedia("Media name 18", "jpg", &mediaDesctiption18, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
+	media19 := models.NewMedia("Media name 19", "png", &mediaDesctiption19, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
+
+	media20 := models.NewMedia("Media name 20", "jpg", &mediaDesctiption20, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
+	media21 := models.NewMedia("Media name 21", "png", &mediaDesctiption21, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
+
+	media22 := models.NewMedia("Media name 22", "jpg", &mediaDesctiption22, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
+	media23 := models.NewMedia("Media name 23", "png", &mediaDesctiption23, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
+
 	mediaRepo.Save(context.Background(), media1)
 	mediaRepo.Save(context.Background(), media2)
 	mediaRepo.Save(context.Background(), media3)
@@ -68,28 +127,102 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	mediaRepo.Save(context.Background(), media9)
 
 	// create posts
-	postText1 := "Сегодня я увидел белку, которая, кажется, изучает экономику. Она сидела на ветке, грызла орех и периодически записывала что-то в маленький блокнот. Я пытался понять, о чём она думает, но у меня только появился вопрос: если белка инвестирует в орехи, это считается стабильной валютой или биржей леса? Между тем кот из соседнего двора наблюдал за мной, как будто я был частью научного эксперимента. Вдруг я понял, что сам стал статистикой в беличьих исследованиях. Возможно, завтра я начну носить очки и шляпу, чтобы казаться умнее. Мир странный, а белки — ещё страннее."
-	postText2 := "Сегодня на завтрак я решил приготовить омлет с сюрпризом. Выложил яйца на сковороду, а потом вспомнил, что забыл купить молоко. Решил заменить его водой из-под крана. Омлет получился очень живой, почти как маленький аквариум на сковороде. Я смотрел на него и думал: «Если бы он мог говорить, что бы он сказал?» Возможно, что-то вроде: «Спасибо за эту плавучую экскурсию». Кофе я пил с осторожностью, чтобы случайно не добавить в него немного фантазии. День прошёл странно, но вкусно, а омлет остался в памяти как самый мокрый и философский завтрак в истории."
-	postText3 := "Сегодня я пытался разговаривать с кактусом. Он, кажется, игнорировал меня, хотя я точно слышал, как он шипел что-то вроде: «Не мешай моему росту». Я подумал, что это хороший урок: иногда молчание говорит больше, чем тысячи слов. Потом я попытался рассказать ему шутку про кактусы, но, видимо, она была слишком колючей. Рядом пёс пытался объяснить мне, что всё это смешно, хотя на самом деле он просто хотел съесть мои носки. Жизнь — это странная смесь растений, животных и моих странных идей, которые, кажется, иногда понимают даже кактусы."
-	postText4 := "Вчера я нашёл носок, который, похоже, ушёл в отпуск без меня. Он лежал на полке, выглядел загорелым и немного усталым. Я пытался его вернуть, но он ускользнул между книгами и исчез, как настоящий турист. Понимаю, что носки тоже мечтают об отдыхе, и, возможно, они собираются на маленькие курорты в шкафах. Пёс рядом наблюдал за этим и пытался понять, зачем люди переживают за носки. А я понял, что иногда потеря — это просто способ носкам обрести свободу. Завтра, наверное, куплю новый носок, но буду помнить о старом как о легенде."
-	postText5 := "Сегодня я решил попробовать новый способ борьбы со скукой: разговаривать с пылесосом. Он сначала молчал, а потом неожиданно загудел так, будто пытался рассказать секреты вселенной. Я пытался повторять его гудение, но звучало скорее как странная симфония из кухонной утвари. Кофе при этом пролился на стол, создавая импровизированный арт-объект. Кот наблюдал за процессом с видом истинного критика, явно недовольного моими экспериментами. В конце концов я понял, что скука побеждена, хотя пылесос остался загадкой. Иногда странные идеи работают лучше любых планов, особенно если у вас есть кот и немного кофе."
-	postText6 := `Привет! Добро пожаловать в ARIS :) Мы хотели создать нашу социальную сеть в том виде, как она задумывалась изначально - с акцентом на общение со знакомыми нам людьми и поиском новых, схожих с нами по интересам.
 
-После регистрации у тебя появится своя персональная страничка и лента.`
-	postText7 := `В ARIS можно прикреплять к постам изображения и писать длинные тексты.
+	postText1 := `Привет! Добро пожаловать в ARIS :) Мы хотели создать нашу социальную сеть в том виде, как она задумывалась изначально - с акцентом на общение со знакомыми нам людьми и поиском новых, схожих с нами по интересам.
+
+После регистрации у тебя появится своя персональная страничка и лента.
+
+К этому сообщению мы прикрепили картинки. После регистрации ты сможешь публиковать такие же посты со своими изображениями.`
+	postText2 := `Это второй пост в ленте. Лента — это место, куда ты сможешь заглядывать за новыми постами, которые оставили твои друзья или другие пользователей нашей с тобой социальной сети.
 
 Лента может отображаться:
+
 — по времени
 — по рекомендациям ("Для вас")
 
-Попробуй переключить режим в левом меню :)`
-	post1 := models.NewPost(&postText1, *user1, true)
-	post2 := models.NewPost(&postText2, *user2, true)
-	post3 := models.NewPost(&postText3, *user3, true)
-	post4 := models.NewPost(&postText4, *user4, true)
-	post5 := models.NewPost(&postText5, *user5, true)
-	post6 := models.NewPost(&postText6, *user1, true)
-	post7 := models.NewPost(&postText7, *user1, true)
+Попробуй попереключать режим в левом меню :) 
+
+В твоем случае посты поменяются местами, но у авторизованных пользователей это две совершенно разные ленты.`
+	postText3 := `Сегодня впервые за долгое время решил выйти на пробежку утром, а не вечером.
+
+Город в это время выглядит совсем по-другому: почти нет людей, воздух свежий, а солнце только начинает подниматься.
+
+Пробежал всего пять километров, но ощущение будто день уже начался правильно.
+
+Иногда кажется, что именно такие маленькие привычки сильнее всего меняют жизнь.
+
+Думаю попробовать бегать утром хотя бы пару раз в неделю.
+
+А вы когда предпочитаете тренироваться — утром или вечером?`
+	postText4 := `Сегодня весь день пыталась разобраться с новой библиотекой для фронтенда.
+
+Сначала всё казалось довольно простым, но потом начались неожиданные ошибки.
+
+Самое интересное, что проблема оказалась всего в одной строке кода.
+
+Каждый раз удивляюсь, как одна мелочь может сломать половину приложения.
+
+Зато теперь стало гораздо понятнее, как работает архитектура проекта.
+
+Люблю это ощущение, когда после долгих попыток всё наконец начинает работать.`
+	postText5 := `Недавно начал читать книгу про историю интернета.
+
+Оказывается, многие вещи, которые сегодня кажутся очевидными, появлялись почти случайно.
+
+Например, первые социальные сети выглядели совсем иначе и были очень простыми.
+
+Никаких алгоритмов рекомендаций, сложных интерфейсов и бесконечных лент.
+
+Просто люди писали сообщения и общались.
+
+Интересно наблюдать, как технологии меняют то, как мы взаимодействуем друг с другом.
+
+Иногда полезно посмотреть на истоки современных сервисов.`
+	postText6 := `Сегодня попробовала приготовить новый рецепт пасты.
+
+На удивление получилось намного лучше, чем ожидала.
+
+Иногда кажется, что готовка — это почти как программирование.
+
+Есть набор ингредиентов, есть последовательность действий и всегда есть шанс что-то испортить.
+
+Но когда всё получается — результат радует гораздо больше.
+
+Теперь думаю попробовать ещё пару похожих рецептов.
+
+Если у вас есть любимые блюда, которые легко приготовить — поделитесь.
+`
+	postText7 := `Последние пару недель пытаюсь меньше сидеть в телефоне.
+
+Заметил, что если просто убрать уведомления, то времени становится гораздо больше.
+
+Начал читать книги по вечерам вместо того, чтобы бесконечно листать ленты.
+
+Сначала было непривычно, но теперь даже нравится.
+
+Появилось ощущение, что день стал длиннее.
+
+Иногда полезно немного замедлиться и отвлечься от экранов.
+
+А у вас получается ограничивать время в соцсетях?`
+	postText8 := `Сегодня решил немного изменить рабочую обстановку и поработать не дома, а в кофейне.
+
+Иногда смена места помогает взглянуть на задачи по-новому. Вокруг шум, люди разговаривают, играет музыка — но при этом почему-то легче сосредоточиться.
+
+Удалось закрыть несколько задач, до которых долго не доходили руки.
+
+Наверное, буду иногда устраивать такие небольшие “рабочие вылазки”.
+
+А вы где предпочитаете работать или учиться — дома, в офисе или в каких-нибудь спокойных местах вроде кофеен?`
+
+	post1 := models.NewPost(&postText1, *user1, true, true)
+	post2 := models.NewPost(&postText2, *user1, true, true)
+	post3 := models.NewPost(&postText3, *user3, true, false)
+	post4 := models.NewPost(&postText4, *user4, true, false)
+	post5 := models.NewPost(&postText5, *user5, true, false)
+	post6 := models.NewPost(&postText6, *user6, true, false)
+	post7 := models.NewPost(&postText7, *user7, true, false)
+	post8 := models.NewPost(&postText8, *user8, true, false)
 	postService.Save(context.Background(), post1)
 	postService.Save(context.Background(), post2)
 	postService.Save(context.Background(), post3)
@@ -97,38 +230,50 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	postService.Save(context.Background(), post5)
 	postService.Save(context.Background(), post6)
 	postService.Save(context.Background(), post7)
+	postService.Save(context.Background(), post8)
+	now := time.Now()
+
+	post1.CreatedAt = now.Add(0 * time.Minute)
+	post2.CreatedAt = now.Add(-1 * time.Minute)
+	post3.CreatedAt = now.Add(-1 * time.Hour)
+	post4.CreatedAt = now.Add(-2 * time.Hour)
+	post5.CreatedAt = now.Add(-5 * time.Hour)
+	post6.CreatedAt = now.Add(-10 * time.Hour)
+	post7.CreatedAt = now.Add(-24 * time.Hour)
+	post8.CreatedAt = now.Add(-48 * time.Hour)
 
 	// connect post with medias to get PostWithMedia
 	postWithMediaRepo.Save(post1, media1, 0)
-	postWithMediaRepo.Save(post1, media6, 1)
+	postWithMediaRepo.Save(post1, media2, 1)
 
-	postWithMediaRepo.Save(post2, media2, 0)
-	postWithMediaRepo.Save(post2, media8, 1)
-	postWithMediaRepo.Save(post2, media3, 2)
-	postWithMediaRepo.Save(post2, media4, 3)
-	postWithMediaRepo.Save(post2, media5, 4)
+	postWithMediaRepo.Save(post2, media3, 0)
+	postWithMediaRepo.Save(post2, media4, 1)
+	postWithMediaRepo.Save(post2, media5, 2)
+	postWithMediaRepo.Save(post2, media6, 3)
+	postWithMediaRepo.Save(post2, media7, 4)
 
-	postWithMediaRepo.Save(post3, media3, 0)
-	postWithMediaRepo.Save(post3, media6, 1)
+	postWithMediaRepo.Save(post3, media8, 0)
+	postWithMediaRepo.Save(post3, media9, 1)
 
-	postWithMediaRepo.Save(post4, media4, 0)
+	postWithMediaRepo.Save(post4, media10, 0)
 
-	postWithMediaRepo.Save(post5, media6, 0)
-	postWithMediaRepo.Save(post5, media4, 2)
-	postWithMediaRepo.Save(post5, media9, 2)
-	postWithMediaRepo.Save(post5, media2, 2)
-	postWithMediaRepo.Save(post5, media5, 2)
-	postWithMediaRepo.Save(post5, media1, 2)
-	postWithMediaRepo.Save(post5, media8, 2)
+	postWithMediaRepo.Save(post5, media11, 0)
+	postWithMediaRepo.Save(post5, media12, 2)
+	postWithMediaRepo.Save(post5, media13, 2)
+	postWithMediaRepo.Save(post5, media14, 2)
+	postWithMediaRepo.Save(post5, media15, 2)
+	postWithMediaRepo.Save(post5, media16, 2)
+	postWithMediaRepo.Save(post5, media17, 2)
 
-	postWithMediaRepo.Save(post6, media1, 0)
-	postWithMediaRepo.Save(post6, media2, 1)
-	postWithMediaRepo.Save(post6, media3, 2)
-	postWithMediaRepo.Save(post6, media7, 3)
+	postWithMediaRepo.Save(post6, media18, 0)
+	postWithMediaRepo.Save(post6, media19, 1)
+	postWithMediaRepo.Save(post6, media20, 2)
+	postWithMediaRepo.Save(post6, media21, 3)
 
-	postWithMediaRepo.Save(post7, media6, 0)
-	postWithMediaRepo.Save(post7, media5, 1)
-	postWithMediaRepo.Save(post7, media4, 2)
+	postWithMediaRepo.Save(post7, media22, 0)
+	postWithMediaRepo.Save(post7, media23, 1)
+
+	postWithMediaRepo.Save(post8, media23, 1)
 
 	// create likes & init LikeRepo
 	like1 := models.NewLike(*user4)

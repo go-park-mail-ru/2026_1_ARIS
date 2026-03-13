@@ -15,6 +15,7 @@ func NewRouter(
 	authHandler *handlers.AuthHandler,
 	sessSvc service.SessionService,
 	feedHandler *handlers.FeedHandler,
+	userHandler *handlers.UserHandler,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -39,11 +40,16 @@ func NewRouter(
 		})
 	})
 	// Публичная лента (без авторизации)
-	r.Get("/api/public/feed", feedHandler.GetFeed)
+	r.Get("/api/public/feed", feedHandler.GetPublicFeed)
+	r.Get("/api/public/popular-users", userHandler.GetPublicPopularUsers)
+	r.Get("/api/public/popular-posts", feedHandler.GetPublicPopularPosts)
 	r.Get("/image-proxy", handlers.ImageProxy)
 	r.Group(func(r chi.Router) {
 		r.Use(mymiddleware.AuthMiddleware(sessSvc))
+		r.Get("/api/users/suggested", userHandler.GetSuggestedUsers)
+		r.Get("/api/users/latest-events", userHandler.GetLatestEvents)
 		r.Get("/api/feed", feedHandler.GetFeed)
+		r.Get("/api/posts/popular", feedHandler.GetPopularPosts)
 	})
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
