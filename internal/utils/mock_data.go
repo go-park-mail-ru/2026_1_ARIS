@@ -92,29 +92,27 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	media6 := models.NewMedia("Media name 6", "jpg", &mediaDesctiption6, "image", "https://i.pinimg.com/736x/1d/aa/63/1daa63e83bdc9a565e4604caf1d0465c.jpg", 10244, false)
 	media7 := models.NewMedia("Media name 7", "jpg", &mediaDesctiption7, "image", "https://img.goodfon.com/wallpaper/big/5/18/italiia-gory-ozero-peizazh-otrazhenie-priroda.webp", 10245, false)
 
-	media8 := models.NewMedia("Media name 8", "jpg", &mediaDesctiption8, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
-	media9 := models.NewMedia("Media name 9", "png", &mediaDesctiption9, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
+	media8 := models.NewMedia("Media name 8", "jpg", &mediaDesctiption8, "image", "https://marathonec.ru/wp-content/uploads/2019/07/utrennyaya-probezhka-1.jpg", 10246, false)
+	media9 := models.NewMedia("Media name 9", "png", &mediaDesctiption9, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlVOAM_1swHsumck2XbdMEeEKauDRDiXn86g&s", 10246, false)
 
-	media10 := models.NewMedia("Media name 10", "jpg", &mediaDesctiption10, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
-	media11 := models.NewMedia("Media name 11", "png", &mediaDesctiption11, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
+	media10 := models.NewMedia("Media name 10", "jpg", &mediaDesctiption10, "image", "https://media.licdn.com/dms/image/v2/D5612AQGuHFW9idrbfw/article-cover_image-shrink_720_1280/article-cover_image-shrink_720_1280/0/1714747679466?e=2147483647&v=beta&t=c9gny1mV4A13_niAAW-2wjP9iglUYtsdoXiMzxfoAxo", 10246, false)
 
-	media12 := models.NewMedia("Media name 12", "jpg", &mediaDesctiption12, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
-	media13 := models.NewMedia("Media name 13", "png", &mediaDesctiption13, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
+	media11 := models.NewMedia("Media name 11", "png", &mediaDesctiption11, "image", "https://ubifi.net/wp-content/uploads/2025/06/Kinds-of-Internet-Connection.webp", 10246, false)
+	media12 := models.NewMedia("Media name 12", "jpg", &mediaDesctiption12, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTs3HaWprjBE3nMGKyH-Myd8D3jK0U0EUqTLw&s", 10246, false)
+	media13 := models.NewMedia("Media name 13", "png", &mediaDesctiption13, "image", "https://image.geo.de/30140508/t/r4/v4/w1440/r0/-/internetz-f-209777524-jpg--79960-.jpg", 10246, false)
+	media14 := models.NewMedia("Media name 14", "jpg", &mediaDesctiption14, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS7N25ADdSYwSC-m7qUSqlwPsKd4ALT9F425Q&s", 10246, false)
+	media15 := models.NewMedia("Media name 15", "png", &mediaDesctiption15, "image", "https://www.wiwi.uni-wuerzburg.de/fileadmin/_processed_/3/9/csm_computer-1209641_1920_3a999762b2.jpg", 10246, false)
+	media16 := models.NewMedia("Media name 16", "jpg", &mediaDesctiption16, "image", "https://res.cloudinary.com/jerrick/image/upload/v1682443907/64480e82daabca001da8fbbc.jpg", 10246, false)
 
-	media14 := models.NewMedia("Media name 14", "jpg", &mediaDesctiption14, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
-	media15 := models.NewMedia("Media name 15", "png", &mediaDesctiption15, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
+	media17 := models.NewMedia("Media name 17", "png", &mediaDesctiption17, "image", "https://fitaliancook.com/wp-content/uploads/2025/07/pasta-e-fagioli-rezept-beitragsbild.jpg", 10246, false)
+	media18 := models.NewMedia("Media name 18", "jpg", &mediaDesctiption18, "image", "https://eat.de/wp-content/uploads/2025/03/tuerkische-pasta-7014.jpg", 10246, false)
+	media19 := models.NewMedia("Media name 19", "png", &mediaDesctiption19, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT0kWh_aX8DW5H8BkMJ3xqzXsRXPY2kyZu5ww&s", 10246, false)
+	media20 := models.NewMedia("Media name 20", "jpg", &mediaDesctiption20, "image", "https://images.gastronom.ru/TYj7-7529vyMsVom2kYJQl8MFrkWsrOY5hgaQPa1zsk/pr:article-cover-image/g:ce/rs:auto:0:0:0/L2Ntcy9hbGwtaW1hZ2VzL2IzY2RlN2ZjLTgzZjEtNGJlYi1iOGZmLWZhMzM3YzY1ODFlYy5qcGc.webp", 10246, false)
 
-	media16 := models.NewMedia("Media name 16", "jpg", &mediaDesctiption16, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
-	media17 := models.NewMedia("Media name 17", "png", &mediaDesctiption17, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
+	media21 := models.NewMedia("Media name 21", "png", &mediaDesctiption21, "image", "https://upload.wikimedia.org/wikipedia/commons/2/22/%D0%A1%D0%BE%D0%B2%D0%B5%D1%82%D1%81%D0%BA%D0%B8%D0%B9_%D1%82%D0%B5%D0%BB%D0%B5%D1%84%D0%BE%D0%BD_%D0%A2%D0%90-68.JPG", 10246, false)
+	media22 := models.NewMedia("Media name 22", "jpg", &mediaDesctiption22, "image", "https://s1.stc.all.kpcdn.net/putevoditel/projectid_346574/images/tild3037-3837-4461-a261-663863336336__photo.jpg", 10246, false)
 
-	media18 := models.NewMedia("Media name 18", "jpg", &mediaDesctiption18, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
-	media19 := models.NewMedia("Media name 19", "png", &mediaDesctiption19, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
-
-	media20 := models.NewMedia("Media name 20", "jpg", &mediaDesctiption20, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
-	media21 := models.NewMedia("Media name 21", "png", &mediaDesctiption21, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
-
-	media22 := models.NewMedia("Media name 22", "jpg", &mediaDesctiption22, "image", "https://i.pinimg.com/736x/ba/5e/12/ba5e12e316ac4df8552e637b70677b81.jpg", 10246, false)
-	media23 := models.NewMedia("Media name 23", "png", &mediaDesctiption23, "image", "http://batona.net/uploads/posts/2026-03/1773240937_2.png", 10246, false)
+	media23 := models.NewMedia("Media name 23", "png", &mediaDesctiption23, "image", "https://space-pm.ru/uploads/market/stati/small/1719495934.jpg", 10246, false)
 
 	mediaRepo.Save(context.Background(), media1)
 	mediaRepo.Save(context.Background(), media2)
@@ -125,6 +123,20 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	mediaRepo.Save(context.Background(), media7)
 	mediaRepo.Save(context.Background(), media8)
 	mediaRepo.Save(context.Background(), media9)
+	mediaRepo.Save(context.Background(), media10)
+	mediaRepo.Save(context.Background(), media11)
+	mediaRepo.Save(context.Background(), media12)
+	mediaRepo.Save(context.Background(), media13)
+	mediaRepo.Save(context.Background(), media14)
+	mediaRepo.Save(context.Background(), media15)
+	mediaRepo.Save(context.Background(), media16)
+	mediaRepo.Save(context.Background(), media17)
+	mediaRepo.Save(context.Background(), media18)
+	mediaRepo.Save(context.Background(), media19)
+	mediaRepo.Save(context.Background(), media20)
+	mediaRepo.Save(context.Background(), media21)
+	mediaRepo.Save(context.Background(), media22)
+	mediaRepo.Save(context.Background(), media23)
 
 	// create posts
 
@@ -165,7 +177,7 @@ func MakeMock(mediaRepo repository.MediaRepo,
 Зато теперь стало гораздо понятнее, как работает архитектура проекта.
 
 Люблю это ощущение, когда после долгих попыток всё наконец начинает работать.`
-	postText5 := `Недавно начал читать книгу про историю интернета.
+	postText5 := `Недавно начала читать книгу про историю интернета.
 
 Оказывается, многие вещи, которые сегодня кажутся очевидными, появлялись почти случайно.
 
@@ -223,6 +235,31 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	post6 := models.NewPost(&postText6, *user6, true, false)
 	post7 := models.NewPost(&postText7, *user7, true, false)
 	post8 := models.NewPost(&postText8, *user8, true, false)
+	now := time.Now()
+
+	post1.CreatedAt = now.Add(0 * time.Minute)
+	post1.UpdatedAt = post1.CreatedAt
+
+	post2.CreatedAt = now.Add(-1 * time.Minute)
+	post2.UpdatedAt = post2.CreatedAt
+
+	post3.CreatedAt = now.Add(-1 * time.Hour)
+	post3.UpdatedAt = post3.CreatedAt
+
+	post4.CreatedAt = now.Add(-2 * time.Hour)
+	post4.UpdatedAt = post4.CreatedAt
+
+	post5.CreatedAt = now.Add(-5 * time.Hour)
+	post5.UpdatedAt = post5.CreatedAt
+
+	post6.CreatedAt = now.Add(-10 * time.Hour)
+	post6.UpdatedAt = post6.CreatedAt
+
+	post7.CreatedAt = now.Add(-24 * time.Hour)
+	post7.UpdatedAt = post7.CreatedAt
+
+	post8.CreatedAt = now.Add(-48 * time.Hour)
+	post8.UpdatedAt = post8.CreatedAt
 	postService.Save(context.Background(), post1)
 	postService.Save(context.Background(), post2)
 	postService.Save(context.Background(), post3)
@@ -231,16 +268,6 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	postService.Save(context.Background(), post6)
 	postService.Save(context.Background(), post7)
 	postService.Save(context.Background(), post8)
-	now := time.Now()
-
-	post1.CreatedAt = now.Add(0 * time.Minute)
-	post2.CreatedAt = now.Add(-1 * time.Minute)
-	post3.CreatedAt = now.Add(-1 * time.Hour)
-	post4.CreatedAt = now.Add(-2 * time.Hour)
-	post5.CreatedAt = now.Add(-5 * time.Hour)
-	post6.CreatedAt = now.Add(-10 * time.Hour)
-	post7.CreatedAt = now.Add(-24 * time.Hour)
-	post8.CreatedAt = now.Add(-48 * time.Hour)
 
 	// connect post with medias to get PostWithMedia
 	postWithMediaRepo.Save(post1, media1, 0)
@@ -258,20 +285,19 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	postWithMediaRepo.Save(post4, media10, 0)
 
 	postWithMediaRepo.Save(post5, media11, 0)
-	postWithMediaRepo.Save(post5, media12, 2)
+	postWithMediaRepo.Save(post5, media12, 1)
 	postWithMediaRepo.Save(post5, media13, 2)
-	postWithMediaRepo.Save(post5, media14, 2)
-	postWithMediaRepo.Save(post5, media15, 2)
-	postWithMediaRepo.Save(post5, media16, 2)
-	postWithMediaRepo.Save(post5, media17, 2)
+	postWithMediaRepo.Save(post5, media14, 3)
+	postWithMediaRepo.Save(post5, media15, 4)
+	postWithMediaRepo.Save(post5, media16, 5)
 
-	postWithMediaRepo.Save(post6, media18, 0)
-	postWithMediaRepo.Save(post6, media19, 1)
-	postWithMediaRepo.Save(post6, media20, 2)
-	postWithMediaRepo.Save(post6, media21, 3)
+	postWithMediaRepo.Save(post6, media17, 0)
+	postWithMediaRepo.Save(post6, media18, 1)
+	postWithMediaRepo.Save(post6, media19, 2)
+	postWithMediaRepo.Save(post6, media20, 3)
 
-	postWithMediaRepo.Save(post7, media22, 0)
-	postWithMediaRepo.Save(post7, media23, 1)
+	postWithMediaRepo.Save(post7, media21, 0)
+	postWithMediaRepo.Save(post7, media22, 1)
 
 	postWithMediaRepo.Save(post8, media23, 1)
 
