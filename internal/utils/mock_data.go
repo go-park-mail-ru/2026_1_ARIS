@@ -84,12 +84,12 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	mediaDesctiption23 := "Media description 23"
 
 	media1 := models.NewMedia("Media name 1", "jpg", &mediaDesctiption1, "image", "https://img.freepik.com/free-photo/mountains-lake_1398-1150.jpg", 10246, false)
-	media2 := models.NewMedia("Media name 2", "jpg", &mediaDesctiption2, "image", "https://images.pexels.com/photos/417074/pexels-photo-417074.jpeg", 10246, false)
+	media2 := models.NewMedia("Media name 2", "jpg", &mediaDesctiption2, "image", "https://img51994.kanal-o.ru/img/2024-09-09/fmt_81_24_shutterstock_2141488197.jpg", 10246, false)
 
 	media3 := models.NewMedia("Media name 3", "jpg", &mediaDesctiption3, "image", "https://moya-planeta.ru/upload/images/l/eb/e2/ebe21cb5a55a808b104f3d51c3ff96284bae5182.jpg", 10241, false)
 	media4 := models.NewMedia("Media name 4", "jpg", &mediaDesctiption4, "image", "https://www.svitstyle.com.ua/wp-content/uploads/2025/09/pryroda-svitu.jpg", 10242, false)
 	media5 := models.NewMedia("Media name 5", "jpg", &mediaDesctiption5, "image", "https://oboitd.ru/images/goods/big/20200125110231_Priroda_10-344.jpg", 10243, false)
-	media6 := models.NewMedia("Media name 6", "jpg", &mediaDesctiption6, "image", "https://i.pinimg.com/736x/1d/aa/63/1daa63e83bdc9a565e4604caf1d0465c.jpg", 10244, false)
+	media6 := models.NewMedia("Media name 6", "jpg", &mediaDesctiption6, "image", "https://www.advantour.com/img/kazakhstan/images/nature.jpg", 10244, false)
 	media7 := models.NewMedia("Media name 7", "jpg", &mediaDesctiption7, "image", "https://img.goodfon.com/wallpaper/big/5/18/italiia-gory-ozero-peizazh-otrazhenie-priroda.webp", 10245, false)
 
 	media8 := models.NewMedia("Media name 8", "jpg", &mediaDesctiption8, "image", "https://marathonec.ru/wp-content/uploads/2019/07/utrennyaya-probezhka-1.jpg", 10246, false)
@@ -109,7 +109,7 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	media19 := models.NewMedia("Media name 19", "png", &mediaDesctiption19, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT0kWh_aX8DW5H8BkMJ3xqzXsRXPY2kyZu5ww&s", 10246, false)
 	media20 := models.NewMedia("Media name 20", "jpg", &mediaDesctiption20, "image", "https://images.gastronom.ru/TYj7-7529vyMsVom2kYJQl8MFrkWsrOY5hgaQPa1zsk/pr:article-cover-image/g:ce/rs:auto:0:0:0/L2Ntcy9hbGwtaW1hZ2VzL2IzY2RlN2ZjLTgzZjEtNGJlYi1iOGZmLWZhMzM3YzY1ODFlYy5qcGc.webp", 10246, false)
 
-	media21 := models.NewMedia("Media name 21", "png", &mediaDesctiption21, "image", "https://upload.wikimedia.org/wikipedia/commons/2/22/%D0%A1%D0%BE%D0%B2%D0%B5%D1%82%D1%81%D0%BA%D0%B8%D0%B9_%D1%82%D0%B5%D0%BB%D0%B5%D1%84%D0%BE%D0%BD_%D0%A2%D0%90-68.JPG", 10246, false)
+	media21 := models.NewMedia("Media name 21", "png", &mediaDesctiption21, "image", "https://boxru.ru/upload/resize_cache/iblock/1af/400_400_140cd750bba9870f18aada2478b24840a/q3bxff3vhe8iljlcbpn4jlbx3szt2p1w.jpg", 10246, false)
 	media22 := models.NewMedia("Media name 22", "jpg", &mediaDesctiption22, "image", "https://s1.stc.all.kpcdn.net/putevoditel/projectid_346574/images/tild3037-3837-4461-a261-663863336336__photo.jpg", 10246, false)
 
 	media23 := models.NewMedia("Media name 23", "png", &mediaDesctiption23, "image", "https://space-pm.ru/uploads/market/stati/small/1719495934.jpg", 10246, false)
