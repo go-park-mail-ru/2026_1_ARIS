@@ -62,7 +62,7 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	mediaDesctiption1 := "Media description 1"
 	mediaDesctiption2 := "Media description 2"
 	mediaDesctiption3 := "Media description 3"
-	mediaDesctiption4 := "Media description 4"
+	//mediaDesctiption4 := "Media description 4"
 	mediaDesctiption5 := "Media description 5"
 	mediaDesctiption6 := "Media description 6"
 	mediaDesctiption7 := "Media description 7"
@@ -74,7 +74,7 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	mediaDesctiption13 := "Media description 13"
 	mediaDesctiption14 := "Media description 14"
 	mediaDesctiption15 := "Media description 15"
-	mediaDesctiption16 := "Media description 16"
+	//mediaDesctiption16 := "Media description 16"
 	mediaDesctiption17 := "Media description 17"
 	mediaDesctiption18 := "Media description 18"
 	mediaDesctiption19 := "Media description 19"
@@ -87,7 +87,7 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	media2 := models.NewMedia("Media name 2", "jpg", &mediaDesctiption2, "image", "https://img51994.kanal-o.ru/img/2024-09-09/fmt_81_24_shutterstock_2141488197.jpg", 10246, false)
 
 	media3 := models.NewMedia("Media name 3", "jpg", &mediaDesctiption3, "image", "https://moya-planeta.ru/upload/images/l/eb/e2/ebe21cb5a55a808b104f3d51c3ff96284bae5182.jpg", 10241, false)
-	media4 := models.NewMedia("Media name 4", "jpg", &mediaDesctiption4, "image", "https://www.svitstyle.com.ua/wp-content/uploads/2025/09/pryroda-svitu.jpg", 10242, false)
+	//media4 := models.NewMedia("Media name 4", "jpg", &mediaDesctiption4, "image", "https://www.svitstyle.com.ua/wp-content/uploads/2025/09/pryroda-svitu.jpg", 10242, false)
 	media5 := models.NewMedia("Media name 5", "jpg", &mediaDesctiption5, "image", "https://oboitd.ru/images/goods/big/20200125110231_Priroda_10-344.jpg", 10243, false)
 	media6 := models.NewMedia("Media name 6", "jpg", &mediaDesctiption6, "image", "https://www.advantour.com/img/kazakhstan/images/nature.jpg", 10244, false)
 	media7 := models.NewMedia("Media name 7", "jpg", &mediaDesctiption7, "image", "https://img.goodfon.com/wallpaper/big/5/18/italiia-gory-ozero-peizazh-otrazhenie-priroda.webp", 10245, false)
@@ -102,7 +102,7 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	media13 := models.NewMedia("Media name 13", "png", &mediaDesctiption13, "image", "https://image.geo.de/30140508/t/r4/v4/w1440/r0/-/internetz-f-209777524-jpg--79960-.jpg", 10246, false)
 	media14 := models.NewMedia("Media name 14", "jpg", &mediaDesctiption14, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS7N25ADdSYwSC-m7qUSqlwPsKd4ALT9F425Q&s", 10246, false)
 	media15 := models.NewMedia("Media name 15", "png", &mediaDesctiption15, "image", "https://www.wiwi.uni-wuerzburg.de/fileadmin/_processed_/3/9/csm_computer-1209641_1920_3a999762b2.jpg", 10246, false)
-	media16 := models.NewMedia("Media name 16", "jpg", &mediaDesctiption16, "image", "https://res.cloudinary.com/jerrick/image/upload/v1682443907/64480e82daabca001da8fbbc.jpg", 10246, false)
+	//media16 := models.NewMedia("Media name 16", "jpg", &mediaDesctiption16, "image", "https://res.cloudinary.com/jerrick/image/upload/v1682443907/64480e82daabca001da8fbbc.jpg", 10246, false)
 
 	media17 := models.NewMedia("Media name 17", "png", &mediaDesctiption17, "image", "https://fitaliancook.com/wp-content/uploads/2025/07/pasta-e-fagioli-rezept-beitragsbild.jpg", 10246, false)
 	media18 := models.NewMedia("Media name 18", "jpg", &mediaDesctiption18, "image", "https://eat.de/wp-content/uploads/2025/03/tuerkische-pasta-7014.jpg", 10246, false)
@@ -117,7 +117,7 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	mediaRepo.Save(context.Background(), media1)
 	mediaRepo.Save(context.Background(), media2)
 	mediaRepo.Save(context.Background(), media3)
-	mediaRepo.Save(context.Background(), media4)
+	//mediaRepo.Save(context.Background(), media4)
 	mediaRepo.Save(context.Background(), media5)
 	mediaRepo.Save(context.Background(), media6)
 	mediaRepo.Save(context.Background(), media7)
@@ -129,7 +129,7 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	mediaRepo.Save(context.Background(), media13)
 	mediaRepo.Save(context.Background(), media14)
 	mediaRepo.Save(context.Background(), media15)
-	mediaRepo.Save(context.Background(), media16)
+	//mediaRepo.Save(context.Background(), media16)
 	mediaRepo.Save(context.Background(), media17)
 	mediaRepo.Save(context.Background(), media18)
 	mediaRepo.Save(context.Background(), media19)
@@ -274,7 +274,7 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	postWithMediaRepo.Save(post1, media2, 1)
 
 	postWithMediaRepo.Save(post2, media3, 0)
-	postWithMediaRepo.Save(post2, media4, 1)
+	//postWithMediaRepo.Save(post2, media4, 1)
 	postWithMediaRepo.Save(post2, media5, 2)
 	postWithMediaRepo.Save(post2, media6, 3)
 	postWithMediaRepo.Save(post2, media7, 4)
@@ -289,7 +289,7 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	postWithMediaRepo.Save(post5, media13, 2)
 	postWithMediaRepo.Save(post5, media14, 3)
 	postWithMediaRepo.Save(post5, media15, 4)
-	postWithMediaRepo.Save(post5, media16, 5)
+	//postWithMediaRepo.Save(post5, media16, 5)
 
 	postWithMediaRepo.Save(post6, media17, 0)
 	postWithMediaRepo.Save(post6, media18, 1)
