@@ -4,7 +4,7 @@ consumes:
 definitions:
   handlers.CommonResponse:
     properties:
-      massage:
+      message:
         type: string
     type: object
   handlers.FeedResponse:
@@ -85,7 +85,7 @@ definitions:
     properties:
       id:
         type: string
-      link:
+      mediaLink:
         type: string
       mimeType:
         type: string

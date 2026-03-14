@@ -18,8 +18,8 @@ func TestNewRouter(t *testing.T) {
 		service.MediaService(nil),
 		service.UserService(nil),
 	)
-
-	router := NewRouter(authHandler, nil, feedHandler)
+	userHandler := &handlers.UserHandler{}
+	router := NewRouter(authHandler, nil, feedHandler, userHandler)
 	assert.NotNil(t, router)
 	assert.IsType(t, &chi.Mux{}, router)
 }

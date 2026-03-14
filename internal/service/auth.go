@@ -4,6 +4,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,7 +22,7 @@ type authService struct {
 
 type AuthService interface {
 	CreateRealUserProfile(ctx context.Context, password_hash, username, firstName, lastName string, email, phone *string, isActive bool, birthdayDate *time.Time, gender *models.Gender, avatar *models.Media) (*models.Profile, error)
-	Register(ctx context.Context, firstName, lastName, login, password1, birthday string) (*models.Profile, error)
+	Register(ctx context.Context, firstName, lastName, login, password1, birthday string, gender models.Gender) (*models.Profile, error)
 	Login(ctx context.Context, email, password string) (*models.User, error)
 }
 
@@ -33,9 +34,10 @@ func NewAuthService(userRepo repository.UserRepo, profileRepo repository.Profile
 	}
 }
 
-func (s *authService) Register(ctx context.Context, firstName, lastName, login, password1, birthday string) (*models.Profile, error) {
+func (s *authService) Register(ctx context.Context, firstName, lastName, login, password1, birthday string, gender models.Gender) (*models.Profile, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	login = strings.ToLower(strings.TrimSpace(login))
 
 	if _, err := s.profileRepo.GetProfileByUsername(login); err == nil {
 		return nil, errors.New("пользователь с таким login уже существует")
@@ -54,7 +56,7 @@ func (s *authService) Register(ctx context.Context, firstName, lastName, login, 
 		return nil, errors.New("ошибка при обработке пароля")
 	}
 
-	profile, err := s.CreateRealUserProfile(ctx, string(hashedPassword), login, firstName, lastName, nil, nil, true, &birthdayDate, nil, nil)
+	profile, err := s.CreateRealUserProfile(ctx, string(hashedPassword), login, firstName, lastName, nil, nil, true, &birthdayDate, &gender, nil)
 
 	return profile, nil
 }
@@ -62,6 +64,7 @@ func (s *authService) Register(ctx context.Context, firstName, lastName, login, 
 func (s *authService) Login(ctx context.Context, login, password string) (*models.User, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	login = strings.ToLower(strings.TrimSpace(login))
 
 	profile, err := s.profileRepo.GetProfileByUsername(login)
 	if err != nil {

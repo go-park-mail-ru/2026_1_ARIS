@@ -13,6 +13,7 @@ type ProfileRepo interface {
 	GetProfileByID(profileID uuid.UUID) (*models.Profile, error)
 	GetProfileByUsername(username string) (*models.Profile, error)
 	Save(ctx context.Context, profile models.Profile) error
+	GetAll(ctx context.Context) ([]models.Profile, error)
 }
 
 type inmemoryProfileRepo struct {
@@ -55,4 +56,16 @@ func (r *inmemoryProfileRepo) GetProfileByUsername(username string) (*models.Pro
 		}
 	}
 	return nil, errors.New("Profile not found")
+}
+
+func (r *inmemoryProfileRepo) GetAll(ctx context.Context) ([]models.Profile, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	profiles := make([]models.Profile, 0, len(r.Profiles))
+	for _, p := range r.Profiles {
+		profiles = append(profiles, p)
+	}
+
+	return profiles, nil
 }
