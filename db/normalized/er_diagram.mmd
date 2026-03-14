@@ -6,254 +6,277 @@ config:
 erDiagram
     %% Entities
 
-    USER {
-        int id PK
+    USER_ACCOUNT {
+        bigint id PK
+        uuid uid
         string email
         string phone
         string password_hash
-        datetime updatedAt
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
     USER_PROFILE {
-        int user_id FK
-        int profile_id FK
+        bigint id PK
+        uuid uid
+        bigint user_account_id FK
+        bigint profile_id FK
         string firstName
         string lastName
         string bio
-        date birthdayDate
-        int gender
-        datetime updatedAt
+        date birthday_date
+        string gender
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
     PROFILE {
-        int id PK
-        int avatar_id FK
+        bigint id PK
+        uuid uid
+        bigint avatar_id FK
         string username
-        datetime createdAt
-        datetime updatedAt
-        bool isActive
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
-    "MEDIA (MinIO)" {
-        int id PK
-        string name
+    "MEDIA (MinIO, S3)" {
+        bigint id PK
+        uuid uid
+        string media_name
         string extension
         string description
-        string link
-        string mimeType
-        int size
-        datetime createdAt
-        bool isDeleted
+        string mime_type
+        bigint size
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
     POST {
-        int id PK
-        string text
-        int author_id FK
-        datetime createdAt
-        datetime updatedAt
-        bool isActive
+        bigint id PK
+        uuid uid
+        string post_text
+        bigint author_id FK
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
     POST_WITH_MEDIA {
-        int post_id FK
-        int media_id FK
-        int order
+        bigint post_id FK
+        bigint media_id FK
+        bigint sort_order
     }
 
     CHAT {
-        int id PK
-        string type
+        bigint id PK
+        uuid uid
+        string chat_type
         string title
-        int avatar_id FK
-        datetime createdAt
-        datetime updatedAt
-        bool isDeleted
+        bigint avatar_id FK
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
     CHAT_MEMBER {
-        int id PK
-        int chat_id FK
-        int profile_id FK
-        datetime joinedAt
+        bigint id PK
+        uuid uid
+        bigint chat_id FK
+        bigint profile_id FK
+        datetime joined_at
         datetime leaveAt
         string role
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
     MESSAGE {
-        int id PK
-        string text
-        int parentMessage_id FK
-        int chat_id FK
-        string status
-        int sticker_id FK
-        int author_id FK
-        datetime createdAt
-        datetime updatedAt
-        bool isDeleted
+        bigint id PK
+        uuid uid
+        string message_text
+        bigint parent_message_id FK
+        bigint chat_id FK
+        bigint sticker_id FK
+        bigint author_id FK
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
     MESSAGE_WITH_MEDIA {
-        int message_id FK
-        int media_id FK
-        int order
+        bigint message_id FK
+        bigint media_id FK
+        bigint sort_order
     }
 
-    GROUP {
-        int id PK
+    COMMUNITY {
+        bigint id PK
+        uuid uid
         string title
         string bio
-        string type
-        int owner_id FK
-        int profile_id FK
-        datetime updatedAt
+        string community_type
+        bigint profile_id FK
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
-    GROUP_MEMBER {
-        int id PK
-        int profile_id FK
-        int group_id FK
-        datetime joinedAt
-        datetime leaveAt
-        int role
+    COMMUNITY_MEMBER {
+        bigint id PK
+        uuid uid
+        bigint profile_id FK
+        bigint community_id FK
+        string community_role
+        datetime joined_at
+        datetime leave_at
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
     COMMENT {
-        int id PK
-        string text
-        int post_id FK
-        int parentComment_id FK
-        int sticker_id FK
-        int author_id FK
-        datetime createdAt
-        datetime updatedAt
-        bool isDeleted
+        bigint id PK
+        uuid uid
+        string comment_text
+        bigint post_id FK
+        bigint parent_comment_id FK
+        bigint sticker_id FK
+        bigint author_id FK
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
     COMMENT_WITH_MEDIA {
-        int comment_id FK
-        int media_id FK
-        int order
+        bigint comment_id FK
+        bigint media_id FK
+        bigint sort_order
     }
 
-    LIKE {
-        int id PK
-        int author_id FK
-        datetime createdAt
-    }
-
-    LIKE_TO_POST {
-        int like_id FK
-        int post_id FK
-    }
-
-    LIKE_TO_COMMENT {
-        int like_id FK
-        int comment_id FK
+    LIKE_RECORD {
+        bigint id PK
+        uuid uid
+        bigint post_id FK
+        bigint comment_id FK
+        bigint author_id FK
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
     REACTION {
-        int id PK
-        int message_id FK
-        string type
-        int author_id FK
-        datetime createdAt
+        bigint id PK
+        uuid uid
+        bigint message_id FK
+        string reaction_type
+        bigint author_id FK
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
     FRIENDSHIP {
-        int friend1_id FK
-        int friend2_id FK
-        string status
-        datetime createdAt
-        datetime updatedAt
+        bigint friend1_id FK
+        bigint friend2_id FK
+        bigint requester_id FK
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
     STICKERPACK {
-        int id PK
+        bigint id PK
+        uuid uid
         string title
-        int author_id FK
-        datetime createdAt
-        datetime updatedAt
-        bool isDeleted
+        bigint author_id FK
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
     STICKER {
-        int id PK
-        string link
-        int size
-        int indexOrder
-        int pack_id FK
-        datetime createdAt
-        bool isDeleted
-    }
-
-    "SESSION (REDIS)" {
-        int id PK
-        int profile_id FK
-        string ip
-        string userAgent
-        datetime createdAt
-        datetime expiresAt
-        datetime lastActivityAt
+        bigint id PK
+        uuid uid
+        bigint size
+        bigint sort_order
+        bigint pack_id FK
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
     AD {
-        int id PK
+        bigint id PK
+        uuid uid
         string title
         string description
         string link
-        int media_id FK
-        int author_id FK
-        datetime createdAt
-        datetime updatedAt
-        bool isDeleted
+        bigint media_id FK
+        bigint author_id FK
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
     AD_META {
-        int ad_id FK
-        string key
-        string value
+        bigint id PK
+        uuid uid
+        bigint ad_id FK
+        string meta_key
+        string meta_value
+    }
+
+    "SESSION (REDIS)" {
+        bigint id
+        bigint profile_id
+        datetime created_at
+        datetime expires_at
+        bool is_active
+        datetime created_at
+        datetime updated_at
     }
 
     %% Relationships
 
-    USER ||--|| USER_PROFILE : has
-    PROFILE ||--o{ USER_PROFILE : has
+    USER_ACCOUNT ||--|| USER_PROFILE : has
+    PROFILE ||--|| USER_PROFILE : has
+    "MEDIA (MinIO, S3)" ||--o{ PROFILE : "avatars"
     PROFILE ||--o{ POST : "authors"
+    POST ||--o{ POST_WITH_MEDIA : "MEDIA (MinIO, S3)"
+    "MEDIA (MinIO, S3)" ||--o{ POST_WITH_MEDIA : "posts"
+    "MEDIA (MinIO, S3)" ||--o{ CHAT : "avatars"
+    CHAT ||--o{ CHAT_MEMBER : "members"
+    PROFILE ||--|| CHAT_MEMBER : "members"
+    MESSAGE ||--o{ MESSAGE : "replies"
+    CHAT ||--o{ MESSAGE : "messages"
+    MESSAGE ||--o| STICKER : "sticker"
     PROFILE ||--o{ MESSAGE : "authors"
+    MESSAGE ||--o{ MESSAGE_WITH_MEDIA : "MEDIA (MinIO, S3)"
+    "MEDIA (MinIO, S3)" ||--o{ MESSAGE_WITH_MEDIA : "messages"
+    PROFILE ||--o{ "COMMUNITY" : "group profile"
+    PROFILE ||--|| COMMUNITY_MEMBER : "members"
+    COMMUNITY ||--o{ COMMUNITY_MEMBER : "members"
+    POST ||--o{ COMMENT : "comments"
+    COMMENT ||--o{ COMMENT : "replies"
+    MESSAGE ||--o| STICKER : "sticker"
     PROFILE ||--o{ COMMENT : "authors"
-    PROFILE ||--o{ LIKE : "authors"
+    COMMENT ||--o{ COMMENT_WITH_MEDIA : "MEDIA (MinIO, S3)"
+    "MEDIA (MinIO, S3)" ||--o{ COMMENT_WITH_MEDIA : "comments"
+    POST ||--o{ "LIKE_RECORD" : "likes"
+    COMMENT ||--o{ "LIKE_RECORD" : "likes"
+    PROFILE ||--o{ LIKE_RECORD : "authors"
+    MESSAGE ||--o{ REACTION : "reactions"
     PROFILE ||--o{ REACTION : "authors"
     PROFILE ||--o{ FRIENDSHIP : "friend1"
     PROFILE ||--o{ FRIENDSHIP : "friend2"
+    PROFILE ||--o{ FRIENDSHIP : "requester"
     PROFILE ||--o{ STICKERPACK : "authors"
-    PROFILE ||--o{ "SESSION (REDIS)" : "sessions"
-    PROFILE ||--o{ AD : "authors"
-    PROFILE ||--|| CHAT_MEMBER : "members"
-    PROFILE ||--|| GROUP_MEMBER : "members"
-    PROFILE ||--o{ "GROUP" : "group profile"
-    CHAT ||--o{ CHAT_MEMBER : "members"
-    CHAT ||--o{ MESSAGE : "messages"
-    POST ||--o{ COMMENT : "comments"
-    POST ||--o{ "LIKE_TO_POST" : "likes"
-    POST ||--o{ POST_WITH_MEDIA : "MEDIA (MinIO)"
-    "MEDIA (MinIO)" ||--o{ POST_WITH_MEDIA : "posts"
-    "MEDIA (MinIO)" ||--o{ MESSAGE_WITH_MEDIA : "messages"
-    "MEDIA (MinIO)" ||--o{ COMMENT_WITH_MEDIA : "comments"
-    "MEDIA (MinIO)" ||--o{ CHAT : "avatars"
-    "MEDIA (MinIO)" ||--o{ PROFILE : "avatars"
-    "MEDIA (MinIO)" ||--o{ AD : "MEDIA (MinIO)"
-    MESSAGE ||--o{ MESSAGE_WITH_MEDIA : "MEDIA (MinIO)"
-    MESSAGE ||--o{ REACTION : "reactions"
-    MESSAGE ||--o{ MESSAGE : "replies"
-    MESSAGE ||--o| STICKER : "sticker"
-    COMMENT ||--o{ COMMENT_WITH_MEDIA : "MEDIA (MinIO)"
-    COMMENT ||--o{ COMMENT : "replies"
-    COMMENT ||--o| STICKER : "sticker"
-    COMMENT ||--o{ "LIKE_TO_COMMENT" : "likes"
-    LIKE ||--o{ "LIKE_TO_POST" : "likes"
-    LIKE ||--o{ "LIKE_TO_COMMENT" : "likes"
-    GROUP ||--o{ GROUP_MEMBER : "members"
-    GROUP ||--|| USER_PROFILE : "owner"
     STICKERPACK ||--o{ STICKER : "stickers"
+    "MEDIA (MinIO, S3)" ||--o{ AD : "MEDIA (MinIO, S3)"
+    PROFILE ||--o{ AD : "authors"
     AD ||--o{ AD_META : "meta"
