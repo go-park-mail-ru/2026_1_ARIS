@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS user_account (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    uid UUID UNIQUE NOT NULL,
+    uid UUID NOT NULL,
     email TEXT UNIQUE CHECK (
         email ~ '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$' AND LENGTH(email) >= 5 AND LENGTH(email) <= 255
     ),
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS user_account (
 
 CREATE TABLE IF NOT EXISTS media (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    uid UUID UNIQUE NOT NULL,
+    uid UUID NOT NULL,
     media_name TEXT NOT NULL CHECK(LENGTH(media_name) <= 255 AND LENGTH(media_name) >= 1),
     extension TEXT NOT NULL,
     mime_type TEXT NOT NULL,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS media (
 
 CREATE TABLE IF NOT EXISTS profile (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    uid UUID UNIQUE NOT NULL,
+    uid UUID NOT NULL,
     avatar_id BIGINT REFERENCES media(id) ON DELETE SET NULL,
     username TEXT NOT NULL UNIQUE CHECK(LENGTH(username) >= 3 AND LENGTH(username) <= 20),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS profile (
 
 CREATE TABLE IF NOT EXISTS user_profile (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    uid UUID UNIQUE NOT NULL,
+    uid UUID NOT NULL,
     user_account_id BIGINT unique NOT NULL REFERENCES user_account(id) ON DELETE CASCADE,
     profile_id BIGINT unique NOT NULL REFERENCES profile(id) ON DELETE CASCADE,
     first_name TEXT NOT NULL CHECK(LENGTH(first_name) >= 1 AND LENGTH(first_name) <= 255 AND first_name ~ '^[A-Za-zА-Яа-яЁё]{1,}$'),
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS user_profile (
 
 CREATE TABLE IF NOT EXISTS post (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    uid UUID UNIQUE NOT NULL,
+    uid UUID NOT NULL,
     post_text TEXT DEFAULT NULL CHECK(LENGTH(post_text) <= 5000),
     author_id BIGINT NOT NULL REFERENCES profile(id),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS post_with_media (
 
 CREATE TABLE IF NOT EXISTS chat (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    uid UUID UNIQUE NOT NULL,
+    uid UUID NOT NULL,
     chat_type chat_type NOT NULL,
     title TEXT NOT NULL CHECK(LENGTH(title) >= 1 AND LENGTH(title) <= 63),
     avatar_id BIGINT REFERENCES media(id) ON DELETE SET NULL,
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS chat (
 
 CREATE TABLE IF NOT EXISTS chat_member (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    uid UUID UNIQUE NOT NULL,
+    uid UUID NOT NULL,
     chat_id BIGINT NOT NULL REFERENCES chat(id) ON DELETE CASCADE,
     profile_id BIGINT NOT NULL REFERENCES profile(id),
     chat_role chat_member_role NOT NULL DEFAULT 'member',
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS chat_member (
 
 CREATE TABLE IF NOT EXISTS sticker_pack (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    uid UUID UNIQUE NOT NULL,
+    uid UUID NOT NULL,
     title TEXT NOT NULL CHECK(LENGTH(title) >= 1 AND LENGTH(title) <= 63),
     author_id BIGINT REFERENCES profile(id),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS sticker_pack (
 
 CREATE TABLE IF NOT EXISTS sticker (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    uid UUID UNIQUE NOT NULL,
+    uid UUID NOT NULL,
     size BIGINT NOT NULL CHECK (size >= 0 AND size <= 1024*1024),
     sort_order INT NOT NULL DEFAULT 0 CHECK (sort_order >= 0 AND sort_order <= 100),
     pack_id BIGINT REFERENCES sticker_pack(id) ON DELETE SET NULL,
@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS sticker (
 
 CREATE TABLE IF NOT EXISTS message (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    uid UUID UNIQUE NOT NULL,
+    uid UUID NOT NULL,
     message_text TEXT CHEcK(LENGTH(message_text) >= 1 AND LENGTH(message_text) <= 5000),
     parent_message_id BIGINT REFERENCES message(id) ON DELETE SET NULL,
     chat_id BIGINT NOT NULL REFERENCES chat(id) ON DELETE CASCADE,
@@ -164,7 +164,7 @@ CREATE TABLE IF NOT EXISTS message_with_media (
 
 CREATE TABLE IF NOT EXISTS community (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    uid UUID UNIQUE NOT NULL,
+    uid UUID NOT NULL,
     title TEXT NOT NULL CHECK(LENGTH(title) >= 1 AND LENGTH(title) <= 64),
     bio TEXT CHECK(LENGTH(bio) <= 2047),
     community_type community_type NOT NULL DEFAULT 'public',
@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS community (
 
 CREATE TABLE IF NOT EXISTS community_member (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    uid UUID UNIQUE NOT NULL,
+    uid UUID NOT NULL,
     profile_id BIGINT NOT NULL REFERENCES profile(id),
     community_id BIGINT NOT NULL REFERENCES community(id) ON DELETE CASCADE,
     community_role community_member_role NOT NULL DEFAULT 'member',
@@ -199,7 +199,7 @@ CREATE TABLE IF NOT EXISTS community_member (
 
 CREATE TABLE IF NOT EXISTS comment (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    uid UUID UNIQUE NOT NULL,
+    uid UUID NOT NULL,
     comment_text TEXT,
     post_id BIGINT NOT NULL REFERENCES post(id) ON DELETE CASCADE,
     parent_comment_id BIGINT REFERENCES comment(id) ON DELETE SET NULL,
@@ -225,7 +225,7 @@ CREATE TABLE IF NOT EXISTS comment_with_media (
 
 CREATE TABLE IF NOT EXISTS like_record (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    uid UUID UNIQUE NOT NULL,
+    uid UUID NOT NULL,
     post_id BIGINT REFERENCES post(id),
     comment_id BIGINT REFERENCES comment(id),
     author_id BIGINT NOT NULL REFERENCES profile(id),
@@ -239,7 +239,7 @@ CREATE TABLE IF NOT EXISTS like_record (
 
 CREATE TABLE IF NOT EXISTS reaction (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    uid UUID UNIQUE NOT NULL,
+    uid UUID NOT NULL,
     message_id BIGINT NOT NULL REFERENCES message(id) ON DELETE CASCADE,
     reaction_type reaction_type NOT NULL,
     author_id BIGINT NOT NULL REFERENCES profile(id),
@@ -265,7 +265,7 @@ CREATE TABLE IF NOT EXISTS friendship (
 
 CREATE TABLE IF NOT EXISTS ad (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    uid UUID UNIQUE NOT NULL,
+    uid UUID NOT NULL,
     title TEXT NOT NULL CHECK(LENGTH(title) >= 1 AND LENGTH(title) <= 1023),
     description TEXT CHECK(LENGTH(description) <= 2047),
     link TEXT NOT NULL,
@@ -278,7 +278,7 @@ CREATE TABLE IF NOT EXISTS ad (
 
 CREATE TABLE IF NOT EXISTS ad_meta (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    uid UUID UNIQUE NOT NULL,
+    uid UUID NOT NULL,
     ad_id BIGINT NOT NULL REFERENCES ad(id) ON DELETE CASCADE,
     meta_key TEXT NOT NULL CHECK(LENGTH(meta_key) >= 1 AND LENGTH(meta_key) <= 255),
     meta_value TEXT NOT NULL CHECK(LENGTH(meta_value) >=1 AND LENGTH(meta_value) <= 255),
