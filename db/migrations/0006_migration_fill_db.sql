@@ -20,24 +20,24 @@ INSERT INTO media (uid, media_name, extension, mime_type, description, size) VAL
 ('aa000001-0000-0000-0000-000000000019', 'comm_travel_avatar', 'png',  'image/png',  'Аватар туристического сообщества',      125000),
 ('aa000001-0000-0000-0000-000000000020', 'ad_food_banner',     'jpg',  'image/jpeg', 'Баннер рекламы кофе',                   280000);
 
-INSERT INTO profile (uid, avatar_id, username) VALUES
-('bb000001-0000-0000-0000-000000000001',  1, 'gleb_g'),
-('bb000001-0000-0000-0000-000000000002',  2, 'ivan_petrov'),
-('bb000001-0000-0000-0000-000000000003',  3, 'anna_k'),
-('bb000001-0000-0000-0000-000000000004',  4, 'dima_code'),
-('bb000001-0000-0000-0000-000000000005',  5, 'masha_m'),
-('bb000001-0000-0000-0000-000000000006', 15, 'dev_community'),
-('bb000001-0000-0000-0000-000000000007', 16, 'music_vibes'),
-('bb000001-0000-0000-0000-000000000008', 17, 'sport_life'),
-('bb000001-0000-0000-0000-000000000009', 18, 'food_lovers'),
-('bb000001-0000-0000-0000-000000000010', 19, 'travel_club');
+INSERT INTO profile (uid, avatar_id) VALUES
+('bb000001-0000-0000-0000-000000000001',  1),
+('bb000001-0000-0000-0000-000000000002',  2),
+('bb000001-0000-0000-0000-000000000003',  3),
+('bb000001-0000-0000-0000-000000000004',  4),
+('bb000001-0000-0000-0000-000000000005',  5),
+('bb000001-0000-0000-0000-000000000006', 15),
+('bb000001-0000-0000-0000-000000000007', 16),
+('bb000001-0000-0000-0000-000000000008', 17),
+('bb000001-0000-0000-0000-000000000009', 18),
+('bb000001-0000-0000-0000-000000000010', 19);
 
-INSERT INTO user_account (uid, email, phone, password_hash) VALUES
-('cc000001-0000-0000-0000-000000000001', 'gleb@gmail.com',   '+79991112233', 'bcrypt$2a$10$glebhash'),
-('cc000001-0000-0000-0000-000000000002', 'ivan@mail.ru',     '+79992223344', 'bcrypt$2a$10$ivanhash'),
-('cc000001-0000-0000-0000-000000000003', 'anna@yandex.ru',   '+79993334455', 'bcrypt$2a$10$annahash'),
-('cc000001-0000-0000-0000-000000000004', 'dmitry@gmail.com', '+79994445566', 'bcrypt$2a$10$dimahash'),
-('cc000001-0000-0000-0000-000000000005', 'maria@mail.ru',    '+79995556677', 'bcrypt$2a$10$mariahash');
+INSERT INTO user_account (uid, email, phone, username, password_hash) VALUES
+('cc000001-0000-0000-0000-000000000001', 'gleb@gmail.com',   '+79991112233', 'gleb_g',      'bcrypt$2a$10$glebhash'),
+('cc000001-0000-0000-0000-000000000002', 'ivan@mail.ru',     '+79992223344', 'ivan_petrov', 'bcrypt$2a$10$ivanhash'),
+('cc000001-0000-0000-0000-000000000003', 'anna@yandex.ru',   '+79993334455', 'anna_k',      'bcrypt$2a$10$annahash'),
+('cc000001-0000-0000-0000-000000000004', 'dmitry@gmail.com', '+79994445566', 'dima_code',   'bcrypt$2a$10$dimahash'),
+('cc000001-0000-0000-0000-000000000005', 'maria@mail.ru',    '+79995556677', 'masha_m',     'bcrypt$2a$10$mariahash');
 
 INSERT INTO user_profile (uid, user_account_id, profile_id, first_name, last_name, bio, birthday_date, gender) VALUES
 ('dd000001-0000-0000-0000-000000000001', 1, 1, 'Глеб',    'Гапонов',  'Backend-разработчик, люблю Go и базы данных', '2001-05-15', 'male'),
@@ -115,12 +115,12 @@ INSERT INTO message_with_media (message_id, media_id, sort_order) VALUES
 (4,  6, 0),
 (5,  7, 0);
 
-INSERT INTO community (uid, title, bio, community_type, profile_id) VALUES
-('f664b6cc-d2a4-4fab-8843-dd6d1a133b7a', 'Go Разработчики',  'Сообщество Go-разработчиков России',  'public',   6),
-('f664b6cc-d2a4-4fab-8843-dd6d1a233b7a', 'Музыкальный клуб', 'Обсуждаем музыку всех жанров',        'public',   7),
-('f664b6cc-d2a4-4fab-8843-dd6d1a333b7a', 'Спорт и здоровье', 'ЗОЖ, тренировки, правильное питание', 'public',   8),
-('f664b6cc-d2a4-4fab-8843-dd6d1a433b7a', 'Кулинары',         'Рецепты и советы для гурманов',       'private',  9),
-('f664b6cc-d2a4-4fab-8843-dd6d1a533b7a', 'Путешественники',  'Делимся маршрутами и лайфхаками',     'public',   10);
+INSERT INTO community (uid, title, bio, username, community_type, profile_id) VALUES
+('f664b6cc-d2a4-4fab-8843-dd6d1a133b7a', 'Go Разработчики',  'Сообщество Go-разработчиков России',  'dev_community', 'public',   6),
+('f664b6cc-d2a4-4fab-8843-dd6d1a233b7a', 'Музыкальный клуб', 'Обсуждаем музыку всех жанров',        'music_vibes',   'public',   7),
+('f664b6cc-d2a4-4fab-8843-dd6d1a333b7a', 'Спорт и здоровье', 'ЗОЖ, тренировки, правильное питание', 'sport_life',    'public',   8),
+('f664b6cc-d2a4-4fab-8843-dd6d1a433b7a', 'Кулинары',         'Рецепты и советы для гурманов',       'food_lovers',   'private',  9),
+('f664b6cc-d2a4-4fab-8843-dd6d1a533b7a', 'Путешественники',  'Делимся маршрутами и лайфхаками',     'travel_club'    'public',   10);
 
 INSERT INTO community_member (uid, profile_id, community_id, community_role) VALUES
 ('941b1996-340a-451d-a339-e885d82ce320', 1, 1, 'owner'),
