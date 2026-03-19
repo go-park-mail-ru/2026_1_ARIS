@@ -12,6 +12,7 @@ erDiagram
         string email
         string phone
         string password_hash
+        string username
         bool is_active
         datetime created_at
         datetime updated_at
@@ -36,7 +37,6 @@ erDiagram
         bigint id PK
         uuid uid
         bigint avatar_id FK
-        string username
         bool is_active
         datetime created_at
         datetime updated_at
@@ -121,6 +121,7 @@ erDiagram
         string bio
         string community_type
         bigint profile_id FK
+        string username
         bool is_active
         datetime created_at
         datetime updated_at

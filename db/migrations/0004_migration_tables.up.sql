@@ -6,13 +6,14 @@ CREATE TABLE IF NOT EXISTS user_account (
     ),
     phone TEXT UNIQUE CHECK (phone ~ '^\+?\d{4,15}$' AND LENGTH(phone) >= 11 AND LENGTH(phone) <= 16),
     password_hash TEXT NOT NULL,
+    username TEXT UNIQUE NOT NULL CHECK(LENGTH(username) >= 3 AND LENGTH(username) <= 20),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    CONSTRAINT user_account_contact_check CHECK (
-        email IS NOT NULL
-        OR phone IS NOT NULL
-    )
+    -- CONSTRAINT user_account_contact_check CHECK (
+    --     email IS NOT NULL
+    --     OR phone IS NOT NULL
+    -- )
 );
 
 CREATE TABLE IF NOT EXISTS media (
@@ -36,7 +37,6 @@ CREATE TABLE IF NOT EXISTS profile (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     uid UUID NOT NULL,
     avatar_id BIGINT REFERENCES media(id) ON DELETE SET NULL,
-    username TEXT NOT NULL UNIQUE CHECK(LENGTH(username) >= 3 AND LENGTH(username) <= 20),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
@@ -169,6 +169,7 @@ CREATE TABLE IF NOT EXISTS community (
     bio TEXT CHECK(LENGTH(bio) <= 2047),
     community_type community_type NOT NULL DEFAULT 'public',
     profile_id BIGINT NOT NULL UNIQUE REFERENCES profile(id) ON DELETE CASCADE,
+    username TEXT NOT NULL UNIQUE CHECK(LENGTH(username) >= 3 AND LENGTH(username) <= 20),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
