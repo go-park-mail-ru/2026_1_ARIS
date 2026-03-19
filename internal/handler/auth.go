@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -11,6 +10,13 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+)
+
+const (
+	ErrUserExists      = "пользователь с таким login уже существует"
+	ErrInvalidBirthday = "invalid birthday date"
+	ErrTooYoung        = "you are too young, buddy"
+	ErrUserNotFound    = "user not found"
 )
 
 var validate = validator.New()
@@ -53,10 +59,6 @@ type CommonResponse struct {
 	Message string `json:"message"`
 }
 
-type CommonErrorResponse struct {
-	Message string `json:"error"`
-}
-
 func NewAuthHandler(authService service.AuthService, sessSvc service.SessionService, usService service.UserService) *AuthHandler {
 	return &AuthHandler{
 		authService:    authService,
@@ -74,13 +76,14 @@ func NewAuthHandler(authService service.AuthService, sessSvc service.SessionServ
 // @Param input body RegisterRequest true "post data"
 // @Success 201 {object} models.Profile
 // @Failure 400 {object} CommonResponse
+// @Failure 404 {object} CommonResponse
 // @Failure 409 {object} CommonResponse
 // @Failure 500 {object} CommonResponse
 // @Router /auth/register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteError(w, "неправильное тело запроса", http.StatusBadRequest)
+		utils.WriteError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
@@ -90,7 +93,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Password1 != req.Password2 {
-		utils.WriteError(w, "passwords dont match", http.StatusBadRequest)
+		utils.WriteError(w, "passwords do not match", http.StatusBadRequest)
 		return
 	}
 
@@ -106,34 +109,33 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		models.Gender(req.Gender-1),
 	)
 	if err != nil {
-		if err.Error() == "пользователь с таким login уже существует" {
-			utils.WriteError(w, "login already registered", http.StatusConflict)
-			return
-		} else if err.Error() == "invalid birthday date" {
-			utils.WriteError(w, "invalid birthday date", http.StatusConflict)
-			return
-		} else if err.Error() == "you are too young, buddy" {
-			utils.WriteError(w, "you are too young, buddy", http.StatusConflict)
-			return
+		errMsg := err.Error()
+
+		switch errMsg {
+		case ErrUserExists:
+			utils.WriteError(w, "login already exists", http.StatusConflict)
+		case ErrInvalidBirthday:
+			utils.WriteError(w, "invalid birthday date", http.StatusBadRequest)
+		case ErrTooYoung:
+			utils.WriteError(w, "user is too young", http.StatusBadRequest)
+		default:
+			utils.WriteError(w, "internal server error", http.StatusInternalServerError)
 		}
-		utils.WriteError(w, "ошибка на стороне сервера", http.StatusInternalServerError)
 		return
 	}
 
-	user, err := h.userService.GetUserProfileByProfile(r.Context(), profile.ID)
+	userProfile, err := h.userService.GetUserProfileByProfile(r.Context(), profile.ID)
 	if err != nil {
-		utils.WriteError(w, "User not found", http.StatusInternalServerError)
+		utils.WriteError(w, "user profile not found", http.StatusInternalServerError)
 		return
 	}
 
-	session, err := h.sessionService.Create(r.Context(), user.ID)
+	session, err := h.sessionService.Create(r.Context(), userProfile.ID)
 	if err != nil {
-		utils.WriteError(w, "не удалось создать сессию", http.StatusInternalServerError)
+		utils.WriteError(w, "failed to create session", http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Println("кука поставлена для пользователя")
-	fmt.Println(user.ID)
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_id",
 		Value:    string(session.SessionID),
@@ -153,28 +155,30 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 // @Accept json
 // @Produce json
 // @Param input body LoginRequest true "post data"
-// @Success 201 {object} LoginResponse
+// @Success 200 {object} LoginResponse
 // @Failure 400 {object} CommonResponse
 // @Failure 401 {object} CommonResponse
+// @Failure 404 {object} CommonResponse
 // @Failure 500 {object} CommonResponse
 // @Router /auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteError(w, "неверный запрос", http.StatusBadRequest)
+		utils.WriteError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
 	user, err := h.authService.Login(r.Context(), req.Login, req.Password)
 	if err != nil {
-		utils.WriteError(w, "неверные учетные данные", http.StatusUnauthorized)
+		utils.WriteError(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
 
 	userProfile, err := h.userService.GetUserProfileByUser(r.Context(), user.ID)
 	if err != nil {
-		if err.Error() == "user not found" {
-			utils.WriteError(w, "user not found", http.StatusNotFound)
+		errMsg := err.Error()
+		if errMsg == ErrUserNotFound {
+			utils.WriteError(w, ErrUserNotFound, http.StatusNotFound)
 			return
 		}
 
@@ -184,7 +188,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	session, err := h.sessionService.Create(r.Context(), userProfile.ID)
 	if err != nil {
-		utils.WriteError(w, "не удалось создать сессию", http.StatusInternalServerError)
+		utils.WriteError(w, "failed to create session", http.StatusInternalServerError)
 		return
 	}
 
@@ -204,11 +208,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(loginResponse)
 }
 
 // @Description User logout
-// @ID lohout
+// @ID logout
 // @Summary Logout user
 // @Tags auth
 // @Produce json
@@ -216,10 +221,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} CommonResponse
 // @Router /auth/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
-
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(CommonResponse{Message: "already logged out"})
 		return
@@ -227,9 +230,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	sessionID := models.SessionID(cookie.Value)
 
-	if err := h.sessionService.Delete(r.Context(), sessionID); err != nil {
-
-	}
+	_ = h.sessionService.Delete(r.Context(), sessionID)
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_id",
@@ -255,19 +256,22 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 // @Security SessionAuth
 // @Router /auth/me [get]
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Ответ me")
-	userIDfromCtx := r.Context().Value("user_id")
-	if userIDfromCtx == nil {
-		utils.WriteError(w, "не авторизован", http.StatusUnauthorized)
+	userIDFromCtx := r.Context().Value("user_id")
+	if userIDFromCtx == nil {
+		utils.WriteError(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	userID := userIDfromCtx.(uuid.UUID)
+	userID, ok := userIDFromCtx.(uuid.UUID)
+	if !ok {
+		utils.WriteError(w, "invalid user id in context", http.StatusUnauthorized)
+		return
+	}
 
-	user, err := h.userService.GetUserProfileByUserProfileID(userID)
+	user, err := h.userService.GetUserProfileByUser(r.Context(), userID)
 
 	if err != nil {
-		utils.WriteError(w, "пользователь не найден", http.StatusNotFound)
+		utils.WriteError(w, ErrUserNotFound, http.StatusNotFound)
 		return
 	}
 
