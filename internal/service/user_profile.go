@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const maxSuggestedUsers = 4
+
 type userService struct {
 	UserRepo        repository.UserRepo
 	ProfileRepo     repository.ProfileRepo
@@ -18,7 +20,7 @@ type userService struct {
 }
 
 type UserService interface {
-	CreateRealUserProfile(ctx context.Context, email, phone, password_hash, username, firstName, lastName string, isActive bool, birthdayDate *time.Time, gender models.Gender, avatar *models.Media) (*models.Profile, error)
+	CreateRealUserProfile(ctx context.Context, email, phone, passwordHash, username, firstName, lastName string, isActive bool, birthdayDate *time.Time, gender models.Gender, avatar *models.Media) (*models.Profile, error)
 	GetUserList(ctx context.Context, offset, limit int) []models.User
 	GetUserProfileByProfile(ctx context.Context, profileID uuid.UUID) (*models.UserProfile, error)
 	GetUserProfileByUserProfileID(userProfileID uuid.UUID) (*models.UserProfile, error)
@@ -41,8 +43,8 @@ func NewUserProfileService(userRepo repository.UserRepo, profileRepo repository.
 	}
 }
 
-func (s *userService) CreateRealUserProfile(ctx context.Context, email, phone, password_hash, username, firstName, lastName string, isActive bool, birthdayDate *time.Time, gender models.Gender, avatar *models.Media) (*models.Profile, error) {
-	user := models.NewUser(password_hash, &phone, &email)
+func (s *userService) CreateRealUserProfile(ctx context.Context, email, phone, passwordHash, username, firstName, lastName string, isActive bool, birthdayDate *time.Time, gender models.Gender, avatar *models.Media) (*models.Profile, error) {
+	user := models.NewUser(passwordHash, &phone, &email)
 	profile := models.NewProfile(username, avatar, isActive)
 	userProfile := models.NewUserProfile(user, profile, firstName, lastName, nil, birthdayDate, &gender)
 
@@ -75,36 +77,38 @@ func (s *userService) GetSuggestedUsers(ctx context.Context, currentUserID uuid.
 		return nil, err
 	}
 
-	currentUserProfile, err := s.UserProfileRepo.GetUserProfileByUserProfileID(currentUserID)
+	currentUserProfile, err := s.UserProfileRepo.GetUserProfileByUserID(currentUserID)
 	if err != nil {
 		return nil, err
 	}
 
 	currentProfileID := currentUserProfile.ProfileID
+	filtered := make([]models.Profile, 0, len(profiles))
 
-	var filtered []models.Profile
-
-	for _, p := range profiles {
-		if p.ID == currentProfileID {
+	for _, profile := range profiles {
+		if profile.ID == currentProfileID {
 			continue
 		}
 
-		if p.Username == "KomandaARIS" {
+		if profile.Username == "KomandaARIS" {
 			continue
 		}
 
-		filtered = append(filtered, p)
+		filtered = append(filtered, profile)
+	}
+
+	if len(filtered) <= maxSuggestedUsers {
+		rand.Shuffle(len(filtered), func(i, j int) {
+			filtered[i], filtered[j] = filtered[j], filtered[i]
+		})
+		return filtered, nil
 	}
 
 	rand.Shuffle(len(filtered), func(i, j int) {
 		filtered[i], filtered[j] = filtered[j], filtered[i]
 	})
 
-	if len(filtered) > 4 {
-		filtered = filtered[:4]
-	}
-
-	return filtered, nil
+	return filtered[:maxSuggestedUsers], nil
 }
 
 func (s *userService) GetPublicPopularUsers(ctx context.Context) ([]models.Profile, error) {

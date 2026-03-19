@@ -122,7 +122,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.userService.GetUserProfileByProfile(r.Context(), profile.ID)
 	if err != nil {
-		utils.WriteError(w, "Use not found", http.StatusInternalServerError)
+		utils.WriteError(w, "User not found", http.StatusInternalServerError)
 		return
 	}
 
@@ -173,7 +173,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	userProfile, err := h.userService.GetUserProfileByUser(r.Context(), user.ID)
 	if err != nil {
-		utils.WriteError(w, "user not found", http.StatusInternalServerError)
+		if err.Error() == "user not found" {
+			utils.WriteError(w, "user not found", http.StatusNotFound)
+			return
+		}
+
+		utils.WriteError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
