@@ -29,5 +29,6 @@ DROP TYPE IF EXISTS community_type;
 DROP TYPE IF EXISTS community_member_role;
 DROP TYPE IF EXISTS friendship_status;
 DROP TYPE IF EXISTS message_status;
+DROP TYPE IF EXISTS reaction_type;
 
 DROP FUNCTION IF EXISTS set_updated_at();
