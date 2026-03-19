@@ -26,6 +26,7 @@ type PostRepo interface {
 	GetPostByID(id uuid.UUID) (*models.Post, error)
 
 	GetFeed(ctx context.Context, params FeedParams) ([]models.Post, error)
+	GetPublicFeed(ctx context.Context, params FeedParams) ([]models.Post, error)
 }
 
 type inmemoryPostRepo struct {
@@ -44,6 +45,49 @@ func (r *inmemoryPostRepo) GetFeed(ctx context.Context, params FeedParams) ([]mo
 	defer r.mu.Unlock()
 
 	feedSlice := slices.Collect(maps.Values(r.Posts))
+
+	slices.SortFunc(feedSlice, func(a, b models.Post) int {
+		if a.CreatedAt.Before(b.CreatedAt) {
+			return -1
+		} else if a.CreatedAt.After(b.CreatedAt) {
+			return 1
+		}
+		return 0
+	})
+
+	limit := params.Limit + 1
+
+	if params.Cursor == nil {
+		if limit > len(feedSlice) {
+			return feedSlice[:], nil
+		} else {
+			return feedSlice[:limit], nil
+		}
+	}
+
+	for i, p := range feedSlice {
+		if p.CreatedAt.After(params.Cursor.CreatedAt) && p.ID.String() != params.Cursor.ID.String() {
+			if i+limit > len(feedSlice) {
+				return feedSlice[i:], nil
+			}
+			return feedSlice[i : i+limit], nil
+		}
+	}
+
+	return nil, errors.New("No more posts")
+}
+
+func (r *inmemoryPostRepo) GetPublicFeed(ctx context.Context, params FeedParams) ([]models.Post, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var feedSlice []models.Post
+
+	for _, p := range r.Posts {
+		if p.IsPublicDemo {
+			feedSlice = append(feedSlice, p)
+		}
+	}
 
 	slices.SortFunc(feedSlice, func(a, b models.Post) int {
 		if a.CreatedAt.Before(b.CreatedAt) {

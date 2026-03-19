@@ -3,12 +3,15 @@ package service
 //go:generate mockgen -destination=./mocks/user_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/service UserService
 import (
 	"context"
+	"math/rand"
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
 	"github.com/google/uuid"
 )
+
+const maxSuggestedUsers = 4
 
 type userService struct {
 	UserRepo        repository.UserRepo
@@ -17,11 +20,19 @@ type userService struct {
 }
 
 type UserService interface {
-	CreateRealUserProfile(ctx context.Context, email, phone, password_hash, username, firstName, lastName string, isActive bool, birthdayDate *time.Time, gender models.Gender, avatar *models.Media) (*models.Profile, error)
+	CreateRealUserProfile(ctx context.Context, email, phone, passwordHash, username, firstName, lastName string, isActive bool, birthdayDate *time.Time, gender models.Gender, avatar *models.Media) (*models.Profile, error)
 	GetUserList(ctx context.Context, offset, limit int) []models.User
 	GetUserProfileByProfile(ctx context.Context, profileID uuid.UUID) (*models.UserProfile, error)
 	GetUserProfileByUserProfileID(userProfileID uuid.UUID) (*models.UserProfile, error)
 	GetUserProfileByUser(ctx context.Context, userID uuid.UUID) (*models.UserProfile, error)
+	GetSuggestedUsers(ctx context.Context, currentUserID uuid.UUID) ([]models.Profile, error)
+	GetPublicPopularUsers(ctx context.Context) ([]models.Profile, error)
+	GetLatestEvents(ctx context.Context) ([]LatestEvent, error)
+}
+
+type LatestEvent struct {
+	Profile models.Profile
+	Type    int
 }
 
 func NewUserProfileService(userRepo repository.UserRepo, profileRepo repository.ProfileRepo, userProfileRepo repository.UserProfileRepo) UserService {
@@ -32,8 +43,8 @@ func NewUserProfileService(userRepo repository.UserRepo, profileRepo repository.
 	}
 }
 
-func (s *userService) CreateRealUserProfile(ctx context.Context, email, phone, password_hash, username, firstName, lastName string, isActive bool, birthdayDate *time.Time, gender models.Gender, avatar *models.Media) (*models.Profile, error) {
-	user := models.NewUser(password_hash, &phone, &email)
+func (s *userService) CreateRealUserProfile(ctx context.Context, email, phone, passwordHash, username, firstName, lastName string, isActive bool, birthdayDate *time.Time, gender models.Gender, avatar *models.Media) (*models.Profile, error) {
+	user := models.NewUser(passwordHash, &phone, &email)
 	profile := models.NewProfile(username, avatar, isActive)
 	userProfile := models.NewUserProfile(user, profile, firstName, lastName, nil, birthdayDate, &gender)
 
@@ -58,4 +69,107 @@ func (s *userService) GetUserProfileByUserProfileID(userProfileID uuid.UUID) (*m
 
 func (s *userService) GetUserProfileByUser(ctx context.Context, userID uuid.UUID) (*models.UserProfile, error) {
 	return s.UserProfileRepo.GetUserProfileByUserID(userID)
+}
+
+func (s *userService) GetSuggestedUsers(ctx context.Context, currentUserID uuid.UUID) ([]models.Profile, error) {
+	profiles, err := s.ProfileRepo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	currentUserProfile, err := s.UserProfileRepo.GetUserProfileByUserID(currentUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	currentProfileID := currentUserProfile.ProfileID
+	filtered := make([]models.Profile, 0, len(profiles))
+
+	for _, profile := range profiles {
+		if profile.ID == currentProfileID {
+			continue
+		}
+
+		if profile.Username == "KomandaARIS" {
+			continue
+		}
+
+		filtered = append(filtered, profile)
+	}
+
+	if len(filtered) <= maxSuggestedUsers {
+		rand.Shuffle(len(filtered), func(i, j int) {
+			filtered[i], filtered[j] = filtered[j], filtered[i]
+		})
+		return filtered, nil
+	}
+
+	rand.Shuffle(len(filtered), func(i, j int) {
+		filtered[i], filtered[j] = filtered[j], filtered[i]
+	})
+
+	return filtered[:maxSuggestedUsers], nil
+}
+
+func (s *userService) GetPublicPopularUsers(ctx context.Context) ([]models.Profile, error) {
+	allProfiles, err := s.ProfileRepo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	targetUsernames := []string{
+		"SergeyShulginenko",
+		"AnnaOparina",
+		"IvanKhvostov",
+		"RinatBaikov",
+	}
+
+	profilesByUsername := make(map[string]models.Profile)
+	for _, profile := range allProfiles {
+		profilesByUsername[profile.Username] = profile
+	}
+
+	result := make([]models.Profile, 0, len(targetUsernames))
+	for _, username := range targetUsernames {
+		profile, ok := profilesByUsername[username]
+		if ok {
+			result = append(result, profile)
+		}
+	}
+
+	return result, nil
+}
+
+func (s *userService) GetLatestEvents(ctx context.Context) ([]LatestEvent, error) {
+	allProfiles, err := s.ProfileRepo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	targets := []struct {
+		Username string
+		Type     int
+	}{
+		{Username: "SofiaSitnichenko", Type: 1},
+		{Username: "DaniilKhasyanov", Type: 2},
+		{Username: "KonstantinGalanin", Type: 3},
+	}
+
+	profilesByUsername := make(map[string]models.Profile)
+	for _, profile := range allProfiles {
+		profilesByUsername[profile.Username] = profile
+	}
+
+	result := make([]LatestEvent, 0, len(targets))
+	for _, target := range targets {
+		profile, ok := profilesByUsername[target.Username]
+		if ok {
+			result = append(result, LatestEvent{
+				Profile: profile,
+				Type:    target.Type,
+			})
+		}
+	}
+
+	return result, nil
 }

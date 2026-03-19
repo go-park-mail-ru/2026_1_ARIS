@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
@@ -47,9 +46,7 @@ func (r *inmemoryRepostRepo) GetRepostCount(ctx context.Context, postID uuid.UUI
 		if repost.PostID == postID {
 			count++
 		}
-		fmt.Println(repost)
 	}
-	fmt.Println("")
 
 	return count
 }

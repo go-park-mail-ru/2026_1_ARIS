@@ -10,6 +10,7 @@ import (
 	time "time"
 
 	models "github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	service "github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
 	gomock "github.com/golang/mock/gomock"
 	uuid "github.com/google/uuid"
 )
@@ -50,6 +51,51 @@ func (m *MockUserService) CreateRealUserProfile(arg0 context.Context, arg1, arg2
 func (mr *MockUserServiceMockRecorder) CreateRealUserProfile(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRealUserProfile", reflect.TypeOf((*MockUserService)(nil).CreateRealUserProfile), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10)
+}
+
+// GetLatestEvents mocks base method.
+func (m *MockUserService) GetLatestEvents(arg0 context.Context) ([]service.LatestEvent, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLatestEvents", arg0)
+	ret0, _ := ret[0].([]service.LatestEvent)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLatestEvents indicates an expected call of GetLatestEvents.
+func (mr *MockUserServiceMockRecorder) GetLatestEvents(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestEvents", reflect.TypeOf((*MockUserService)(nil).GetLatestEvents), arg0)
+}
+
+// GetPublicPopularUsers mocks base method.
+func (m *MockUserService) GetPublicPopularUsers(arg0 context.Context) ([]models.Profile, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPublicPopularUsers", arg0)
+	ret0, _ := ret[0].([]models.Profile)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPublicPopularUsers indicates an expected call of GetPublicPopularUsers.
+func (mr *MockUserServiceMockRecorder) GetPublicPopularUsers(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublicPopularUsers", reflect.TypeOf((*MockUserService)(nil).GetPublicPopularUsers), arg0)
+}
+
+// GetSuggestedUsers mocks base method.
+func (m *MockUserService) GetSuggestedUsers(arg0 context.Context, arg1 uuid.UUID) ([]models.Profile, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSuggestedUsers", arg0, arg1)
+	ret0, _ := ret[0].([]models.Profile)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSuggestedUsers indicates an expected call of GetSuggestedUsers.
+func (mr *MockUserServiceMockRecorder) GetSuggestedUsers(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSuggestedUsers", reflect.TypeOf((*MockUserService)(nil).GetSuggestedUsers), arg0, arg1)
 }
 
 // GetUserList mocks base method.

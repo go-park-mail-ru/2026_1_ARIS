@@ -50,19 +50,23 @@ func main() {
 	authService := service.NewAuthService(userRepo, profileRepo, userProfileRepo)
 	sessService := service.NewSessionService(sessionRepo)
 
-	_, err := authService.Register(context.Background(), "Kok", "Inside", "KokInside", "hard_password_1", "24/02/2005")
-	if err != nil {
-		fmt.Println("Test user already exists or error:", err)
-	}
+	// _, err := authService.Register(context.Background(), "Kok", "Inside", "KokInside", "hard_password_1", "24/02/2005")
+	// if err != nil {
+	// 	fmt.Println("Test user already exists or error:", err)
+	// }
 	authHandler := handlers.NewAuthHandler(authService, sessService, userProfileService)
 
 	mediaRepo := repository.NewMediaRepo()
 	postWithMediaRepo := repository.NewPostWithMediaRepo()
 	mediaService := service.NewMediaService(mediaRepo, postWithMediaRepo)
 
+	userHandler := &handlers.UserHandler{
+		UserService:  userProfileService,
+		MediaService: mediaService,
+	}
 	feedHandler := handlers.NewFeedHandler(postService, mediaService, userProfileService)
 
-	router := server.NewRouter(authHandler, sessService, feedHandler)
+	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler)
 
 	srv := &http.Server{
 		Addr:    ":8080",

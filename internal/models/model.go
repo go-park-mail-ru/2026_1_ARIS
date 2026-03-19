@@ -185,24 +185,26 @@ func NewProfile(username string, avatar *Media, isActive bool) Profile {
 }
 
 type Post struct {
-	ID        uuid.UUID `json:"id"`
-	Text      *string   `json:"text,omitempty"`
-	AuthorID  uuid.UUID `json:"authorId"` // to Profile
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
-	IsActive  bool      `json:"isActive"`
+	ID           uuid.UUID `json:"id"`
+	Text         *string   `json:"text,omitempty"`
+	AuthorID     uuid.UUID `json:"authorId"` // to Profile
+	CreatedAt    time.Time `json:"createdAt"`
+	UpdatedAt    time.Time `json:"updatedAt"`
+	IsActive     bool      `json:"isActive"`
+	IsPublicDemo bool      `json:"isPublicDemo"`
 }
 
-func NewPost(text *string, author Profile, isActive bool) Post {
+func NewPost(text *string, author Profile, isActive bool, isPublicDemo bool) Post {
 	now := time.Now()
 
 	return Post{
-		ID:        uuid.New(),
-		Text:      text,
-		AuthorID:  author.ID,
-		CreatedAt: now,
-		UpdatedAt: now,
-		IsActive:  isActive,
+		ID:           uuid.New(),
+		Text:         text,
+		AuthorID:     author.ID,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+		IsActive:     isActive,
+		IsPublicDemo: isPublicDemo,
 	}
 }
 

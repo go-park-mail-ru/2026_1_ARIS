@@ -30,6 +30,9 @@ type PostService interface {
 	GetLikeCount(ctx context.Context, postID uuid.UUID) int
 	GetCommentCount(ctx context.Context, postID uuid.UUID) int
 	GetRepostCount(ctx context.Context, postID uuid.UUID) int
+	GetPublicFeed(ctx context.Context, params repository.FeedParams) ([]models.Post, error)
+	GetPublicPopularPosts(ctx context.Context) ([]models.Post, error)
+	GetPopularPosts(ctx context.Context) ([]models.Post, error)
 }
 
 func NewPostService(postRepo repository.PostRepo,
@@ -70,6 +73,17 @@ func (s *postService) GetFeed(ctx context.Context, rawCursor string, limit int) 
 		return FeedResult{}, err
 	}
 
+	filtered := make([]models.Post, 0, len(posts))
+
+	for _, post := range posts {
+		if post.IsPublicDemo {
+			continue
+		}
+		filtered = append(filtered, post)
+	}
+
+	posts = filtered
+
 	hasMore := len(posts) > limit
 	if hasMore {
 		posts = posts[:limit]
@@ -89,6 +103,10 @@ func (s *postService) GetFeed(ctx context.Context, rawCursor string, limit int) 
 		Cursor:  nextCursor,
 		HasMore: hasMore,
 	}, nil
+}
+
+func (s *postService) GetPublicFeed(ctx context.Context, params repository.FeedParams) ([]models.Post, error) {
+	return s.PostRepo.GetPublicFeed(ctx, params)
 }
 
 func (s *postService) GetPostAuthor(postID uuid.UUID) (*models.Profile, error) {
@@ -122,4 +140,12 @@ func (s *postService) GetCommentCount(ctx context.Context, postID uuid.UUID) int
 
 func (s *postService) GetRepostCount(ctx context.Context, postID uuid.UUID) int {
 	return s.RepostRepo.GetRepostCount(ctx, postID)
+}
+
+func (s *postService) GetPublicPopularPosts(ctx context.Context) ([]models.Post, error) {
+	return nil, nil
+}
+
+func (s *postService) GetPopularPosts(ctx context.Context) ([]models.Post, error) {
+	return nil, nil
 }

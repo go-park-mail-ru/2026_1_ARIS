@@ -256,7 +256,7 @@ const docTemplate = `{
         "handlers.CommonResponse": {
             "type": "object",
             "properties": {
-                "massage": {
+                "message": {
                     "type": "string"
                 }
             }
@@ -374,7 +374,7 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "link": {
+                "mediaLink": {
                     "type": "string"
                 },
                 "mimeType": {

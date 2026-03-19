@@ -67,16 +67,16 @@ func (mr *MockAuthServiceMockRecorder) Login(arg0, arg1, arg2 interface{}) *gomo
 }
 
 // Register mocks base method.
-func (m *MockAuthService) Register(arg0 context.Context, arg1, arg2, arg3, arg4, arg5 string) (*models.Profile, error) {
+func (m *MockAuthService) Register(arg0 context.Context, arg1, arg2, arg3, arg4, arg5 string, arg6 models.Gender) (*models.Profile, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Register", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret := m.ctrl.Call(m, "Register", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 	ret0, _ := ret[0].(*models.Profile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Register indicates an expected call of Register.
-func (mr *MockAuthServiceMockRecorder) Register(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+func (mr *MockAuthServiceMockRecorder) Register(arg0, arg1, arg2, arg3, arg4, arg5, arg6 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockAuthService)(nil).Register), arg0, arg1, arg2, arg3, arg4, arg5)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockAuthService)(nil).Register), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 }
