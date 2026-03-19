@@ -40,13 +40,17 @@ type suggestedUsersResponse struct {
 
 func (h *UserHandler) GetSuggestedUsers(w http.ResponseWriter, r *http.Request) {
 
-	userIDfromCtx := r.Context().Value("user_id")
-	if userIDfromCtx == nil {
+	userIDFromCtx := r.Context().Value("user_id")
+	if userIDFromCtx == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	userID := userIDfromCtx.(uuid.UUID)
+	userID, ok := userIDFromCtx.(uuid.UUID)
+	if !ok {
+		http.Error(w, "invalid user id in context", http.StatusUnauthorized)
+		return
+	}
 
 	users, err := h.UserService.GetSuggestedUsers(r.Context(), userID)
 	if err != nil {
@@ -56,25 +60,25 @@ func (h *UserHandler) GetSuggestedUsers(w http.ResponseWriter, r *http.Request) 
 
 	var items []suggestedUserDTO
 
-	for _, u := range users {
+	for _, user := range users {
 
 		avatar := ""
 
-		if u.AvatarID != nil && h.MediaService != nil {
-			media, err := h.MediaService.GetAvatarByID(*u.AvatarID)
+		if user.AvatarID != nil && h.MediaService != nil {
+			media, err := h.MediaService.GetAvatarByID(*user.AvatarID)
 			if err == nil && media != nil {
 				avatar = media.Link
 			}
 		}
-		profile, err := h.UserService.GetUserProfileByProfile(r.Context(), u.ID)
+		profile, err := h.UserService.GetUserProfileByProfile(r.Context(), user.ID)
 		if err != nil {
 			continue
 		}
 		items = append(items, suggestedUserDTO{
-			Id:         u.ID.String(),
+			Id:         user.ID.String(),
 			FirstName:  profile.FirstName,
 			LastName:   profile.LastName,
-			Username:   u.Username,
+			Username:   user.Username,
 			AvatarLink: avatar,
 		})
 	}
@@ -93,26 +97,26 @@ func (h *UserHandler) GetPublicPopularUsers(w http.ResponseWriter, r *http.Reque
 
 	var items []suggestedUserDTO
 
-	for _, u := range users {
+	for _, user := range users {
 		avatar := ""
 
-		if u.AvatarID != nil && h.MediaService != nil {
-			media, err := h.MediaService.GetAvatarByID(*u.AvatarID)
+		if user.AvatarID != nil && h.MediaService != nil {
+			media, err := h.MediaService.GetAvatarByID(*user.AvatarID)
 			if err == nil && media != nil {
 				avatar = media.Link
 			}
 		}
 
-		profile, err := h.UserService.GetUserProfileByProfile(r.Context(), u.ID)
+		profile, err := h.UserService.GetUserProfileByProfile(r.Context(), user.ID)
 		if err != nil {
 			continue
 		}
 
 		items = append(items, suggestedUserDTO{
-			Id:         u.ID.String(),
+			Id:         user.ID.String(),
 			FirstName:  profile.FirstName,
 			LastName:   profile.LastName,
-			Username:   u.Username,
+			Username:   user.Username,
 			AvatarLink: avatar,
 		})
 	}
@@ -133,26 +137,26 @@ func (h *UserHandler) GetLatestEvents(w http.ResponseWriter, r *http.Request) {
 	var items []latestEventDTO
 
 	for _, event := range events {
-		u := event.Profile
+		user := event.Profile
 		avatar := ""
 
-		if u.AvatarID != nil && h.MediaService != nil {
-			media, err := h.MediaService.GetAvatarByID(*u.AvatarID)
+		if user.AvatarID != nil && h.MediaService != nil {
+			media, err := h.MediaService.GetAvatarByID(*user.AvatarID)
 			if err == nil && media != nil {
 				avatar = media.Link
 			}
 		}
 
-		profile, err := h.UserService.GetUserProfileByProfile(r.Context(), u.ID)
+		profile, err := h.UserService.GetUserProfileByProfile(r.Context(), user.ID)
 		if err != nil {
 			continue
 		}
 
 		items = append(items, latestEventDTO{
-			Id:         u.ID.String(),
+			Id:         user.ID.String(),
 			FirstName:  profile.FirstName,
 			LastName:   profile.LastName,
-			Username:   u.Username,
+			Username:   user.Username,
 			AvatarLink: avatar,
 			Type:       event.Type,
 		})
