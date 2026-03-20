@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS user_account (
     username TEXT UNIQUE NOT NULL CHECK(LENGTH(username) >= 3 AND LENGTH(username) <= 20),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
     -- CONSTRAINT user_account_contact_check CHECK (
     --     email IS NOT NULL
     --     OR phone IS NOT NULL
@@ -260,7 +260,7 @@ CREATE TABLE IF NOT EXISTS friendship (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     CONSTRAINT friendship_no_self_reference CHECK (friend1_id <> friend2_id),
     CONSTRAINT friendship_order CHECK (friend1_id < friend2_id),
-    CONSTRAINT requester CHECK(requester_id = friend1_id OR requester_id = friend2_id)
+    CONSTRAINT requester CHECK(requester_id = friend1_id OR requester_id = friend2_id),
     PRIMARY KEY (friend1_id, friend2_id)
 );
 

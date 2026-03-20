@@ -120,7 +120,7 @@ INSERT INTO community (uid, title, bio, username, community_type, profile_id) VA
 ('f664b6cc-d2a4-4fab-8843-dd6d1a233b7a', 'Музыкальный клуб', 'Обсуждаем музыку всех жанров',        'music_vibes',   'public',   7),
 ('f664b6cc-d2a4-4fab-8843-dd6d1a333b7a', 'Спорт и здоровье', 'ЗОЖ, тренировки, правильное питание', 'sport_life',    'public',   8),
 ('f664b6cc-d2a4-4fab-8843-dd6d1a433b7a', 'Кулинары',         'Рецепты и советы для гурманов',       'food_lovers',   'private',  9),
-('f664b6cc-d2a4-4fab-8843-dd6d1a533b7a', 'Путешественники',  'Делимся маршрутами и лайфхаками',     'travel_club'    'public',   10);
+('f664b6cc-d2a4-4fab-8843-dd6d1a533b7a', 'Путешественники',  'Делимся маршрутами и лайфхаками',     'travel_club',    'public',   10);
 
 INSERT INTO community_member (uid, profile_id, community_id, community_role) VALUES
 ('941b1996-340a-451d-a339-e885d82ce320', 1, 1, 'owner'),
