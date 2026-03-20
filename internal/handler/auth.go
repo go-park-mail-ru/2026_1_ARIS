@@ -130,7 +130,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.sessionService.Create(r.Context(), userProfile.ID)
+	session, err := h.sessionService.Create(r.Context(), userProfile.UserID)
 	if err != nil {
 		utils.WriteError(w, "failed to create session", http.StatusInternalServerError)
 		return
@@ -186,7 +186,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.sessionService.Create(r.Context(), userProfile.ID)
+	session, err := h.sessionService.Create(r.Context(), user.ID)
 	if err != nil {
 		utils.WriteError(w, "failed to create session", http.StatusInternalServerError)
 		return
