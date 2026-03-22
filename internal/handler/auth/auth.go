@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -12,7 +13,6 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 )
 
 const (
@@ -138,7 +138,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.sessionService.Create(r.Context(), userAccount.Uid)
+	session, err := h.sessionService.Create(r.Context(), userAccount.ID)
 	if err != nil {
 		utils.WriteError(w, "failed to create session", http.StatusInternalServerError)
 		return
@@ -176,13 +176,13 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.authService.Login(r.Context(), req.Login, req.Password)
+	userAccount, err := h.authService.Login(r.Context(), req.Login, req.Password)
 	if err != nil {
 		utils.WriteError(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
 
-	userProfile, err := h.userService.GetUserProfileByUserID(r.Context(), user.ID)
+	userProfile, err := h.userService.GetUserProfileByUserID(r.Context(), userAccount.ID)
 	if err != nil {
 		errMsg := err.Error()
 		if errMsg == ErrUserNotFound {
@@ -194,7 +194,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.sessionService.Create(r.Context(), user.Uid)
+	session, err := h.sessionService.Create(r.Context(), userAccount.ID)
 	if err != nil {
 		utils.WriteError(w, "failed to create session", http.StatusInternalServerError)
 		return
@@ -266,19 +266,21 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	userIDFromCtx := r.Context().Value("user_id")
 	if userIDFromCtx == nil {
+		fmt.Println("Нет контекста")
 		utils.WriteError(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	userID, ok := userIDFromCtx.(uuid.UUID)
+	userID, ok := userIDFromCtx.(int64)
 	if !ok {
+		fmt.Println("нельзя считать как int64")
 		utils.WriteError(w, "invalid user id in context", http.StatusUnauthorized)
 		return
 	}
 
 	//userProfile, err := h.userService.GetUserProfileByUser(r.Context(), userID)
 
-	userProfile, err := h.userService.GetUserProfileByUserAccountUid(r.Context(), userID)
+	userProfile, err := h.userService.GetUserProfileByUserAccountID(r.Context(), userID)
 
 	if err != nil {
 		utils.WriteError(w, ErrUserNotFound, http.StatusNotFound)

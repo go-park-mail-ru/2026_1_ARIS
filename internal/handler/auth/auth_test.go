@@ -49,17 +49,18 @@ func TestAuthHandler_Register_Success(t *testing.T) {
 		Uid:           uuid.Nil,
 		UserAccountID: 112,
 	}
+	userAccountUid := uuid.New()
+	userAccountID := int64(43)
+	expectedUserAccount := &models.UserAccount{
+		ID:  userAccountID,
+		Uid: userAccountUid,
+	}
+
 	sessionID := "sess123"
 	expectedSession := &models.Session{
 		SessionID: models.SessionID(sessionID),
-		UserID:    expectedUserProfile.Uid,
+		UserID:    expectedUserAccount.ID,
 		ExpiredAt: time.Now().Add(24 * time.Hour),
-	}
-
-	userAccountUid := uuid.New()
-	expectedUserAccount := &models.UserAccount{
-		ID:  0,
-		Uid: userAccountUid,
 	}
 
 	mockAuthSvc.EXPECT().
@@ -75,7 +76,7 @@ func TestAuthHandler_Register_Success(t *testing.T) {
 		Return(expectedUserAccount, nil)
 
 	mockSessionSvc.EXPECT().
-		Create(gomock.Any(), userAccountUid).
+		Create(gomock.Any(), userAccountID).
 		Return(expectedSession, nil)
 
 	// Выполнение
@@ -297,7 +298,8 @@ func TestAuthHandler_Register_SessionCreationError(t *testing.T) {
 	expectedUserProfile := &models.UserProfile{Uid: userProfileUid, ID: 0}
 
 	userAccountUid := uuid.New()
-	expectedUserAccount := &models.UserAccount{ID: 22, Uid: userAccountUid}
+	userAccountID := int64(22)
+	expectedUserAccount := &models.UserAccount{ID: userAccountID, Uid: userAccountUid}
 
 	mockAuthSvc.EXPECT().
 		Register(gomock.Any(), "Ivan", "Petrov", "ivan123", "qwerty123", "24/02/2005", models.Gender(0)).
@@ -312,7 +314,7 @@ func TestAuthHandler_Register_SessionCreationError(t *testing.T) {
 		Return(expectedUserAccount, nil)
 
 	mockSessionSvc.EXPECT().
-		Create(gomock.Any(), userAccountUid).
+		Create(gomock.Any(), userAccountID).
 		Return(nil, errors.New("session error"))
 
 	w := httptest.NewRecorder()
@@ -346,7 +348,7 @@ func TestAuthHandler_Login_Success(t *testing.T) {
 	sessionID := "sess456"
 	expectedSession := &models.Session{
 		SessionID: models.SessionID(sessionID),
-		UserID:    userID,
+		UserID:    userAccountID,
 		ExpiredAt: time.Now().Add(24 * time.Hour),
 	}
 
@@ -366,7 +368,7 @@ func TestAuthHandler_Login_Success(t *testing.T) {
 		Return(expectedUserAccount, nil)
 
 	mockSessionSvc.EXPECT().
-		Create(gomock.Any(), userID).
+		Create(gomock.Any(), userAccountID).
 		Return(expectedSession, nil)
 
 	mockUserSvc.EXPECT().
@@ -443,8 +445,9 @@ func TestAuthHandler_Login_SessionCreationError(t *testing.T) {
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 
-	userID := uuid.New()
-	expectedUser := &models.UserAccount{Uid: userID, ID: 0}
+	userUid := uuid.New()
+	userAccountID := int64(23)
+	expectedUser := &models.UserAccount{Uid: userUid, ID: userAccountID}
 
 	expectedUserProfile := &models.UserProfile{ID: 1}
 
@@ -453,11 +456,11 @@ func TestAuthHandler_Login_SessionCreationError(t *testing.T) {
 		Return(expectedUser, nil)
 
 	mockSessionSvc.EXPECT().
-		Create(gomock.Any(), userID).
+		Create(gomock.Any(), userAccountID).
 		Return(nil, errors.New("session error"))
 
 	mockUserSvc.EXPECT().
-		GetUserProfileByUserID(gomock.Any(), int64(0)).
+		GetUserProfileByUserID(gomock.Any(), userAccountID).
 		Return(expectedUserProfile, nil)
 
 	w := httptest.NewRecorder()
@@ -582,10 +585,18 @@ func TestAuthHandler_Me_Success(t *testing.T) {
 	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
 
 	//var expectedID int64 = 1
-	userUid := uuid.New()
+	userID := int64(2)
+	//userUid := uuid.New()
 	req := httptest.NewRequest("GET", "/api/auth/me", nil)
-	ctx := context.WithValue(req.Context(), "user_id", userUid)
+	ctx := context.WithValue(req.Context(), "user_id", userID)
 	req = req.WithContext(ctx)
+
+	// expectedUserAccount := &models.UserAccount{
+	// 	ID:  userID,
+	// 	Uid: userUid,
+	// }
+
+	//*mocks.MockUserService.GetUserProfileByUserAccountUid
 
 	expectedUserProfile := &models.UserProfile{
 		ID:            2,
@@ -596,8 +607,12 @@ func TestAuthHandler_Me_Success(t *testing.T) {
 	}
 
 	mockUserSvc.EXPECT().
-		GetUserProfileByUserAccountUid(ctx, userUid).
+		GetUserProfileByUserAccountID(ctx, userID).
 		Return(expectedUserProfile, nil)
+
+	// mockUserSvc.EXPECT().
+	// 	GetUserProfileByUserAccountUid(ctx, userUid).
+	// 	Return(expectedUserProfile, nil)
 
 	w := httptest.NewRecorder()
 	handler.Me(w, req)
@@ -640,13 +655,13 @@ func TestAuthHandler_Me_UserNotFound(t *testing.T) {
 
 	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
 
-	userID := uuid.New()
+	userID := int64(44)
 	req := httptest.NewRequest("GET", "/api/auth/me", nil)
 	ctx := context.WithValue(req.Context(), "user_id", userID)
 	req = req.WithContext(ctx)
 
 	mockUserSvc.EXPECT().
-		GetUserProfileByUserAccountUid(ctx, userID).
+		GetUserProfileByUserAccountID(ctx, userID).
 		Return(nil, errors.New("not found"))
 
 	w := httptest.NewRecorder()

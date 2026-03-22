@@ -6,15 +6,15 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestSessionRepo(t *testing.T) {
 	repo := NewSessionRepo().(*inmemorySessionRepo)
+	userAccountID := int64(33)
 	session := models.Session{
 		SessionID: "test-id",
-		UserID:    uuid.New(),
+		UserID:    userAccountID,
 		CreatedAt: time.Now(),
 		ExpiredAt: time.Now().Add(time.Hour),
 	}

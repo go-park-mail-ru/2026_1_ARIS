@@ -3,6 +3,7 @@ package userprofile
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
@@ -53,9 +54,11 @@ func (r *inmemoryUserProfileRepo) GetByProfileID(ctx context.Context, profileID 
 
 	for _, p := range r.userProfiles {
 		if p.ProfileID == profileID {
+			fmt.Println("returned GetByProfileID. profileID =", profileID)
 			return &p, nil
 		}
 	}
+	fmt.Println("error in GetByProfileID. profileID =", profileID)
 	return nil, errors.New("UserProfile not found")
 }
 

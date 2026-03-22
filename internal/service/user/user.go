@@ -28,6 +28,7 @@ type UserService interface {
 	GetUserProfileByUserProfileID(ctx context.Context, userProfileID int64) (*models.UserProfile, error)
 	GetUserProfileByUserID(ctx context.Context, userID int64) (*models.UserProfile, error)
 	GetUserProfileByUserAccountUid(ctx context.Context, userAccountUid uuid.UUID) (*models.UserProfile, error)
+	GetUserProfileByUserAccountID(ctx context.Context, userAccountID int64) (*models.UserProfile, error)
 	GetUserAccountByUserProfileID(ctx context.Context, userProfileID int64) (*models.UserAccount, error)
 	GetUserAccountByProfileID(ctx context.Context, profileID int64) (*models.UserAccount, error)
 	GetSuggestedUsers(ctx context.Context, currentUserID int64) ([]models.Profile, error)
@@ -68,6 +69,8 @@ func (s *userService) CreateRealUserProfile(ctx context.Context, email, phone *s
 	if err != nil {
 		return nil, err
 	}
+
+	//fmt.Printf("%s: userAccount: %v, profile: %v, userProfile, %v\n", userAccount.Username, userAccount.ID, profile.ID, userProfile.ID)
 
 	return profile, nil
 }
@@ -250,4 +253,18 @@ func (s *userService) GetUserProfileByUserAccountUid(ctx context.Context, userAc
 
 func (s *userService) GetUserAccountByUserAccountUid(ctx context.Context, userAccountUid uuid.UUID) (*models.UserAccount, error) {
 	return s.UserAccountRepo.GetByUid(ctx, userAccountUid)
+}
+
+func (s *userService) GetUserProfileByUserAccountID(ctx context.Context, userAccountID int64) (*models.UserProfile, error) {
+	userAccount, err := s.UserAccountRepo.Get(ctx, userAccountID)
+	if err != nil {
+		return nil, err
+	}
+
+	userProfile, err := s.UserProfileRepo.GetByUserAccountID(ctx, userAccount.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return userProfile, nil
 }

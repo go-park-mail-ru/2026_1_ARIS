@@ -2,6 +2,7 @@ package user
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -78,19 +79,19 @@ func (h *UserHandler) GetSuggestedUsers(w http.ResponseWriter, r *http.Request) 
 				avatar = media.Link
 			}
 		}
-		profile, err := h.UserService.GetUserProfileByProfileID(r.Context(), user.ID)
+		userProfile, err := h.UserService.GetUserProfileByProfileID(r.Context(), user.ID)
 		if err != nil {
 			continue
 		}
-		userAccount, err := h.UserService.GetUserAccountByProfileID(r.Context(), profile.ID)
+		userAccount, err := h.UserService.GetUserAccountByUserProfileID(r.Context(), userProfile.ID)
 		if err != nil {
 			continue
 		}
 
 		items = append(items, suggestedUserDTO{
 			Id:         strconv.FormatInt(user.ID, 10),
-			FirstName:  profile.FirstName,
-			LastName:   profile.LastName,
+			FirstName:  userProfile.FirstName,
+			LastName:   userProfile.LastName,
 			Username:   userAccount.Username,
 			AvatarLink: avatar,
 		})
@@ -102,15 +103,19 @@ func (h *UserHandler) GetSuggestedUsers(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *UserHandler) GetPublicPopularUsers(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("GetPublicPopularUsers")
 	users, err := h.UserService.GetPublicPopularUsers(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	fmt.Println("not error h.UserService.GetPublicPopularUsers(r.Context())")
+	fmt.Println(users)
 
 	var items []suggestedUserDTO
 
 	for _, user := range users {
+		fmt.Println("User:", user)
 		avatar := ""
 
 		if user.AvatarID != nil && h.MediaService != nil {
@@ -120,23 +125,28 @@ func (h *UserHandler) GetPublicPopularUsers(w http.ResponseWriter, r *http.Reque
 			}
 		}
 
-		profile, err := h.UserService.GetUserProfileByProfileID(r.Context(), user.ID)
+		userProfile, err := h.UserService.GetUserProfileByProfileID(r.Context(), user.ID)
 		if err != nil {
+			fmt.Println("Err != nil: h.UserService.GetUserProfileByProfileID", err.Error())
 			continue
 		}
-		userAccount, err := h.UserService.GetUserAccountByProfileID(r.Context(), profile.ID)
+		userAccount, err := h.UserService.GetUserAccountByUserProfileID(r.Context(), userProfile.ID)
 		if err != nil {
+			fmt.Println(userProfile.ID, err.Error())
 			continue
 		}
 
 		items = append(items, suggestedUserDTO{
 			Id:         strconv.FormatInt(user.ID, 10),
-			FirstName:  profile.FirstName,
-			LastName:   profile.LastName,
+			FirstName:  userProfile.FirstName,
+			LastName:   userProfile.LastName,
 			Username:   userAccount.Username,
 			AvatarLink: avatar,
 		})
 	}
+
+	fmt.Println("Items:")
+	fmt.Println(items)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(suggestedUsersResponse{
@@ -164,19 +174,19 @@ func (h *UserHandler) GetLatestEvents(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		profile, err := h.UserService.GetUserProfileByProfileID(r.Context(), user.ID)
+		userProfile, err := h.UserService.GetUserProfileByProfileID(r.Context(), user.ID)
 		if err != nil {
 			continue
 		}
-		userAccount, err := h.UserService.GetUserAccountByProfileID(r.Context(), profile.ID)
+		userAccount, err := h.UserService.GetUserAccountByUserProfileID(r.Context(), userProfile.ID)
 		if err != nil {
 			continue
 		}
 
 		items = append(items, latestEventDTO{
 			Id:         strconv.FormatInt(user.ID, 10),
-			FirstName:  profile.FirstName,
-			LastName:   profile.LastName,
+			FirstName:  userProfile.FirstName,
+			LastName:   userProfile.LastName,
 			Username:   userAccount.Username,
 			AvatarLink: avatar,
 			Type:       event.Type,

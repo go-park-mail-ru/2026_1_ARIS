@@ -408,7 +408,7 @@ type Sticker struct {
 
 type Session struct {
 	SessionID SessionID `json:"id"`
-	UserID    uuid.UUID `json:"user"`
+	UserID    int64     `json:"user"`
 	CreatedAt time.Time `json:"createdAt"`
 	ExpiredAt time.Time `json:"expiredAt"`
 }
