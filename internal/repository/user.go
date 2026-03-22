@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/google/uuid"
 )
@@ -26,6 +27,16 @@ type UserRepo interface {
 type inmemoryUserRepo struct {
 	mu    sync.RWMutex
 	users map[uuid.UUID]models.User
+}
+
+type UserStorage struct {
+	DB *pgxpool.Pool
+	// logger
+}
+
+func (repo *UserStorage) Save(ctx context.Context, user models.User) error {
+	repo.DB.Exec(ctx, `INSERT INTO user_account (uid, email, phone, password_hash) VALUES ($1, $2, $3, $4);`, user.ID, user.Email, user.Phone, user.PasswordHash)
+	return nil
 }
 
 func NewUserRepo() UserRepo {
