@@ -1,15 +1,15 @@
-package service
+package session
 
 import (
 	"context"
 	"testing"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/session"
 	"github.com/google/uuid"
 )
 
 func TestSessionLifecycle(t *testing.T) {
-	repo := repository.NewSessionRepo()
+	repo := session.NewSessionRepo()
 	svc := NewSessionService(repo)
 	ctx := context.Background()
 	userID := uuid.New() //models.UserID(42)

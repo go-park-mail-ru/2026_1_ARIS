@@ -5,18 +5,22 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
-	"github.com/google/uuid"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/comment"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/like"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
+	postrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/post"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/repost"
+	postservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 )
 
-func MakeMock(mediaRepo repository.MediaRepo,
-	userProfileService service.UserService,
-	postService service.PostService,
-	postWithMediaRepo repository.PostWithMediaRepo,
-	likeToPostRepo repository.LikeToPostRepo,
-	commentRepo repository.CommentRepo,
-	repostRepo repository.RepostRepo) {
+func MakeMock(mediaRepo media.MediaRepo,
+	userProfileService user.UserService,
+	postService postservice.PostService,
+	postWithMediaRepo postrepo.PostWithMediaRepo,
+	//likeToPostRepo repository.LikeToPostRepo,
+	commentRepo comment.CommentRepo,
+	repostRepo repost.RepostRepo) {
 
 	// create user avatars
 	userAvatar1 := "user avatar 1 description"
@@ -27,35 +31,62 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	userAvatar6 := "user avatar 6 description"
 	userAvatar7 := "user avatar 7 description"
 	userAvatar8 := "user avatar 8 description"
-	avatar1 := models.NewMedia("avatar_1_name", "jpg", &userAvatar1, "image", "https://forum.stitch.su/uploads/monthly_2017_10/A.png.b16d1fa2bd3bb388f2122a0c87fbcf5f.png", 5000, false)
-	avatar2 := models.NewMedia("avatar_2_name", "jpg", &userAvatar2, "image", "https://i.ibb.co/C3c6HCjb/pop-User1.png", 1000, false)
-	avatar3 := models.NewMedia("avatar_3_name", "jpg", &userAvatar3, "image", "https://i.ibb.co/mQvfkNY/pop-User2.png", 2000, false)
-	avatar4 := models.NewMedia("avatar_4_name", "jpg", &userAvatar4, "image", "https://i.ibb.co/6RS96KC7/pop-User3.png", 3000, false)
-	avatar5 := models.NewMedia("avatar_5_name", "jpg", &userAvatar5, "image", "https://i.ibb.co/mCpKjmxK/pop-User4.png", 4000, false)
-	avatar6 := models.NewMedia("avatar_6_name", "jpg", &userAvatar6, "image", "https://i.ibb.co/60HMXYh6/6.jpg", 4000, false)
-	avatar7 := models.NewMedia("avatar_7_name", "jpg", &userAvatar7, "image", "https://i.ibb.co/s9rN3qD9/7.jpg", 4000, false)
-	avatar8 := models.NewMedia("avatar_8_name", "jpg", &userAvatar8, "image", "https://sun9-5.userapi.com/s/v1/ig2/uGYEtsdSK4QHpAyiRnb5vCasxGZy7dR-MYECGzReWIivHlfmnfQP2DaVY6_UOJHzPG4yzjnVbty6aWqM8kjydEAS.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640&from=bu&cs=640x0", 4000, false)
+	avatar1 := models.NewMedia("avatar_1_name", "jpg", &userAvatar1, "image", "https://forum.stitch.su/uploads/monthly_2017_10/A.png.b16d1fa2bd3bb388f2122a0c87fbcf5f.png")
+	avatar2 := models.NewMedia("avatar_2_name", "jpg", &userAvatar2, "image", "https://i.ibb.co/C3c6HCjb/pop-User1.png")
+	avatar3 := models.NewMedia("avatar_3_name", "jpg", &userAvatar3, "image", "https://i.ibb.co/mQvfkNY/pop-User2.png")
+	avatar4 := models.NewMedia("avatar_4_name", "jpg", &userAvatar4, "image", "https://i.ibb.co/6RS96KC7/pop-User3.png")
+	avatar5 := models.NewMedia("avatar_5_name", "jpg", &userAvatar5, "image", "https://i.ibb.co/mCpKjmxK/pop-User4.png")
+	avatar6 := models.NewMedia("avatar_6_name", "jpg", &userAvatar6, "image", "https://i.ibb.co/60HMXYh6/6.jpg")
+	avatar7 := models.NewMedia("avatar_7_name", "jpg", &userAvatar7, "image", "https://i.ibb.co/s9rN3qD9/7.jpg")
+	avatar8 := models.NewMedia("avatar_8_name", "jpg", &userAvatar8, "image", "https://sun9-5.userapi.com/s/v1/ig2/uGYEtsdSK4QHpAyiRnb5vCasxGZy7dR-MYECGzReWIivHlfmnfQP2DaVY6_UOJHzPG4yzjnVbty6aWqM8kjydEAS.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640&from=bu&cs=640x0")
 	//avatar9 := models.NewMedia("avatar_9_name", "jpg", &userAvatar9, "image", "https://i.ibb.co/s9rN3qD9/7.jpg", 4000, false)
 
-	mediaRepo.Save(context.Background(), avatar1)
-	mediaRepo.Save(context.Background(), avatar2)
-	mediaRepo.Save(context.Background(), avatar3)
-	mediaRepo.Save(context.Background(), avatar4)
-	mediaRepo.Save(context.Background(), avatar5)
-	mediaRepo.Save(context.Background(), avatar6)
-	mediaRepo.Save(context.Background(), avatar7)
-	mediaRepo.Save(context.Background(), avatar8)
+	mediaRepo.Save(context.Background(), *avatar1)
+	mediaRepo.Save(context.Background(), *avatar2)
+	mediaRepo.Save(context.Background(), *avatar3)
+	mediaRepo.Save(context.Background(), *avatar4)
+	mediaRepo.Save(context.Background(), *avatar5)
+	mediaRepo.Save(context.Background(), *avatar6)
+	mediaRepo.Save(context.Background(), *avatar7)
+	mediaRepo.Save(context.Background(), *avatar8)
 
 	// create Profiles (users)
 
-	user1, _ := userProfileService.CreateRealUserProfile(context.Background(), "email444@gmail.com", "+479990001122", "hard password hash", "KomandaARIS", "Команда", "АРИС", true, nil, models.Gender(1), &avatar1)
-	user2, _ := userProfileService.CreateRealUserProfile(context.Background(), "email000@gmail.com", "+799900011222", "hard password hash", "SergeyShulginenko", "Сергей", "Шульгиненко", true, nil, models.Gender(0), &avatar2)
-	user3, _ := userProfileService.CreateRealUserProfile(context.Background(), "email111@gmail.com", "+179990001122", "hard password hash", "AnnaOparina", "Анна", "Опарина", true, nil, models.Gender(1), &avatar3)
-	user4, _ := userProfileService.CreateRealUserProfile(context.Background(), "email222@gmail.com", "+279990001122", "hard password hash", "IvanKhvostov", "Иван", "Хвостов", true, nil, models.Gender(0), &avatar4)
-	user5, _ := userProfileService.CreateRealUserProfile(context.Background(), "email333@gmail.com", "+379990001122", "hard password hash", "RinatBaikov", "Ринат", "Байков", true, nil, models.Gender(0), &avatar5)
-	user6, _ := userProfileService.CreateRealUserProfile(context.Background(), "email444@gmail.com", "+479990001122", "hard password hash", "SofiaSitnichenko", "Софья", "Ситниченко", true, nil, models.Gender(1), &avatar6)
-	user7, _ := userProfileService.CreateRealUserProfile(context.Background(), "email444@gmail.com", "+479990001122", "hard password hash", "KonstantinGalanin", "Константин", "Галанин", true, nil, models.Gender(0), &avatar7)
-	user8, _ := userProfileService.CreateRealUserProfile(context.Background(), "email444@gmail.com", "+479990001122", "hard password hash", "DaniilKhasyanov", "Даниил", "Хасьянов", true, nil, models.Gender(0), &avatar8)
+	email1 := "email444@gmail.com"
+	email2 := "email000@gmail.com"
+	email3 := "email111@gmail.com"
+	email4 := "email222@gmail.com"
+	email5 := "email333@gmail.com"
+	email6 := "email444@gmail.com"
+	email7 := "email444@gmail.com"
+	email8 := "email444@gmail.com"
+
+	phone1 := "+479990001122"
+	phone2 := "+799900011222"
+	phone3 := "+179990001122"
+	phone4 := "+279990001122"
+	phone5 := "+379990001122"
+	phone6 := "+479990001122"
+	phone7 := "+479990001122"
+	phone8 := "+479990001122"
+
+	birthdayDate1, _ := time.Parse("02/01/2006", "24/02/2005")
+	birthdayDate2, _ := time.Parse("02/01/2006", "24/02/2005")
+	birthdayDate3, _ := time.Parse("02/01/2006", "24/02/2005")
+	birthdayDate4, _ := time.Parse("02/01/2006", "24/02/2005")
+	birthdayDate5, _ := time.Parse("02/01/2006", "24/02/2005")
+	birthdayDate6, _ := time.Parse("02/01/2006", "24/02/2005")
+	birthdayDate7, _ := time.Parse("02/01/2006", "24/02/2005")
+	birthdayDate8, _ := time.Parse("02/01/2006", "24/02/2005")
+
+	user1, _ := userProfileService.CreateRealUserProfile(context.Background(), &email1, &phone1, "hard password hash", "KomandaARIS", "Команда", "АРИС", birthdayDate1, models.Gender(1), &avatar1.ID)
+	user2, _ := userProfileService.CreateRealUserProfile(context.Background(), &email2, &phone2, "hard password hash", "SergeyShulginenko", "Сергей", "Шульгиненко", birthdayDate2, models.Gender(0), &avatar2.ID)
+	user3, _ := userProfileService.CreateRealUserProfile(context.Background(), &email3, &phone3, "hard password hash", "AnnaOparina", "Анна", "Опарина", birthdayDate3, models.Gender(1), &avatar3.ID)
+	user4, _ := userProfileService.CreateRealUserProfile(context.Background(), &email4, &phone4, "hard password hash", "IvanKhvostov", "Иван", "Хвостов", birthdayDate4, models.Gender(0), &avatar4.ID)
+	user5, _ := userProfileService.CreateRealUserProfile(context.Background(), &email5, &phone5, "hard password hash", "RinatBaikov", "Ринат", "Байков", birthdayDate5, models.Gender(0), &avatar5.ID)
+	user6, _ := userProfileService.CreateRealUserProfile(context.Background(), &email6, &phone6, "hard password hash", "SofiaSitnichenko", "Софья", "Ситниченко", birthdayDate6, models.Gender(1), &avatar6.ID)
+	user7, _ := userProfileService.CreateRealUserProfile(context.Background(), &email7, &phone7, "hard password hash", "KonstantinGalanin", "Константин", "Галанин", birthdayDate7, models.Gender(0), &avatar7.ID)
+	user8, _ := userProfileService.CreateRealUserProfile(context.Background(), &email8, &phone8, "hard password hash", "DaniilKhasyanov", "Даниил", "Хасьянов", birthdayDate8, models.Gender(0), &avatar8.ID)
 	//user9, _ := userProfileService.CreateRealUserProfile(context.Background(), "email444@gmail.com", "+479990001122", "hard password hash", "VladislavAlyokhin", "Владислав", "Алехин", true, nil, models.Gender(1), &avatar9)
 
 	// create medias
@@ -83,60 +114,60 @@ func MakeMock(mediaRepo repository.MediaRepo,
 	mediaDesctiption22 := "Media description 22"
 	mediaDesctiption23 := "Media description 23"
 
-	media1 := models.NewMedia("Media name 1", "jpg", &mediaDesctiption1, "image", "https://img.freepik.com/free-photo/mountains-lake_1398-1150.jpg", 10246, false)
-	media2 := models.NewMedia("Media name 2", "jpg", &mediaDesctiption2, "image", "https://img51994.kanal-o.ru/img/2024-09-09/fmt_81_24_shutterstock_2141488197.jpg", 10246, false)
+	media1 := models.NewMedia("Media name 1", "jpg", &mediaDesctiption1, "image", "https://img.freepik.com/free-photo/mountains-lake_1398-1150.jpg")
+	media2 := models.NewMedia("Media name 2", "jpg", &mediaDesctiption2, "image", "https://img51994.kanal-o.ru/img/2024-09-09/fmt_81_24_shutterstock_2141488197.jpg")
 
-	media3 := models.NewMedia("Media name 3", "jpg", &mediaDesctiption3, "image", "https://moya-planeta.ru/upload/images/l/eb/e2/ebe21cb5a55a808b104f3d51c3ff96284bae5182.jpg", 10241, false)
+	media3 := models.NewMedia("Media name 3", "jpg", &mediaDesctiption3, "image", "https://moya-planeta.ru/upload/images/l/eb/e2/ebe21cb5a55a808b104f3d51c3ff96284bae5182.jpg")
 	//media4 := models.NewMedia("Media name 4", "jpg", &mediaDesctiption4, "image", "https://www.svitstyle.com.ua/wp-content/uploads/2025/09/pryroda-svitu.jpg", 10242, false)
-	media5 := models.NewMedia("Media name 5", "jpg", &mediaDesctiption5, "image", "https://oboitd.ru/images/goods/big/20200125110231_Priroda_10-344.jpg", 10243, false)
-	media6 := models.NewMedia("Media name 6", "jpg", &mediaDesctiption6, "image", "https://www.advantour.com/img/kazakhstan/images/nature.jpg", 10244, false)
-	media7 := models.NewMedia("Media name 7", "jpg", &mediaDesctiption7, "image", "https://img.goodfon.com/wallpaper/big/5/18/italiia-gory-ozero-peizazh-otrazhenie-priroda.webp", 10245, false)
+	media5 := models.NewMedia("Media name 5", "jpg", &mediaDesctiption5, "image", "https://oboitd.ru/images/goods/big/20200125110231_Priroda_10-344.jpg")
+	media6 := models.NewMedia("Media name 6", "jpg", &mediaDesctiption6, "image", "https://www.advantour.com/img/kazakhstan/images/nature.jpg")
+	media7 := models.NewMedia("Media name 7", "jpg", &mediaDesctiption7, "image", "https://img.goodfon.com/wallpaper/big/5/18/italiia-gory-ozero-peizazh-otrazhenie-priroda.webp")
 
-	media8 := models.NewMedia("Media name 8", "jpg", &mediaDesctiption8, "image", "https://marathonec.ru/wp-content/uploads/2019/07/utrennyaya-probezhka-1.jpg", 10246, false)
-	media9 := models.NewMedia("Media name 9", "png", &mediaDesctiption9, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlVOAM_1swHsumck2XbdMEeEKauDRDiXn86g&s", 10246, false)
+	media8 := models.NewMedia("Media name 8", "jpg", &mediaDesctiption8, "image", "https://marathonec.ru/wp-content/uploads/2019/07/utrennyaya-probezhka-1.jpg")
+	media9 := models.NewMedia("Media name 9", "png", &mediaDesctiption9, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlVOAM_1swHsumck2XbdMEeEKauDRDiXn86g&s")
 
-	media10 := models.NewMedia("Media name 10", "jpg", &mediaDesctiption10, "image", "https://media.licdn.com/dms/image/v2/D5612AQGuHFW9idrbfw/article-cover_image-shrink_720_1280/article-cover_image-shrink_720_1280/0/1714747679466?e=2147483647&v=beta&t=c9gny1mV4A13_niAAW-2wjP9iglUYtsdoXiMzxfoAxo", 10246, false)
+	media10 := models.NewMedia("Media name 10", "jpg", &mediaDesctiption10, "image", "https://media.licdn.com/dms/image/v2/D5612AQGuHFW9idrbfw/article-cover_image-shrink_720_1280/article-cover_image-shrink_720_1280/0/1714747679466?e=2147483647&v=beta&t=c9gny1mV4A13_niAAW-2wjP9iglUYtsdoXiMzxfoAxo")
 
-	media11 := models.NewMedia("Media name 11", "png", &mediaDesctiption11, "image", "https://ubifi.net/wp-content/uploads/2025/06/Kinds-of-Internet-Connection.webp", 10246, false)
-	media12 := models.NewMedia("Media name 12", "jpg", &mediaDesctiption12, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTs3HaWprjBE3nMGKyH-Myd8D3jK0U0EUqTLw&s", 10246, false)
-	media13 := models.NewMedia("Media name 13", "png", &mediaDesctiption13, "image", "https://image.geo.de/30140508/t/r4/v4/w1440/r0/-/internetz-f-209777524-jpg--79960-.jpg", 10246, false)
-	media14 := models.NewMedia("Media name 14", "jpg", &mediaDesctiption14, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS7N25ADdSYwSC-m7qUSqlwPsKd4ALT9F425Q&s", 10246, false)
-	media15 := models.NewMedia("Media name 15", "png", &mediaDesctiption15, "image", "https://www.wiwi.uni-wuerzburg.de/fileadmin/_processed_/3/9/csm_computer-1209641_1920_3a999762b2.jpg", 10246, false)
+	media11 := models.NewMedia("Media name 11", "png", &mediaDesctiption11, "image", "https://ubifi.net/wp-content/uploads/2025/06/Kinds-of-Internet-Connection.webp")
+	media12 := models.NewMedia("Media name 12", "jpg", &mediaDesctiption12, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTs3HaWprjBE3nMGKyH-Myd8D3jK0U0EUqTLw&s")
+	media13 := models.NewMedia("Media name 13", "png", &mediaDesctiption13, "image", "https://image.geo.de/30140508/t/r4/v4/w1440/r0/-/internetz-f-209777524-jpg--79960-.jpg")
+	media14 := models.NewMedia("Media name 14", "jpg", &mediaDesctiption14, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS7N25ADdSYwSC-m7qUSqlwPsKd4ALT9F425Q&s")
+	media15 := models.NewMedia("Media name 15", "png", &mediaDesctiption15, "image", "https://www.wiwi.uni-wuerzburg.de/fileadmin/_processed_/3/9/csm_computer-1209641_1920_3a999762b2.jpg")
 	//media16 := models.NewMedia("Media name 16", "jpg", &mediaDesctiption16, "image", "https://res.cloudinary.com/jerrick/image/upload/v1682443907/64480e82daabca001da8fbbc.jpg", 10246, false)
 
-	media17 := models.NewMedia("Media name 17", "png", &mediaDesctiption17, "image", "https://fitaliancook.com/wp-content/uploads/2025/07/pasta-e-fagioli-rezept-beitragsbild.jpg", 10246, false)
-	media18 := models.NewMedia("Media name 18", "jpg", &mediaDesctiption18, "image", "https://eat.de/wp-content/uploads/2025/03/tuerkische-pasta-7014.jpg", 10246, false)
-	media19 := models.NewMedia("Media name 19", "png", &mediaDesctiption19, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT0kWh_aX8DW5H8BkMJ3xqzXsRXPY2kyZu5ww&s", 10246, false)
-	media20 := models.NewMedia("Media name 20", "jpg", &mediaDesctiption20, "image", "https://images.gastronom.ru/TYj7-7529vyMsVom2kYJQl8MFrkWsrOY5hgaQPa1zsk/pr:article-cover-image/g:ce/rs:auto:0:0:0/L2Ntcy9hbGwtaW1hZ2VzL2IzY2RlN2ZjLTgzZjEtNGJlYi1iOGZmLWZhMzM3YzY1ODFlYy5qcGc.webp", 10246, false)
+	media17 := models.NewMedia("Media name 17", "png", &mediaDesctiption17, "image", "https://fitaliancook.com/wp-content/uploads/2025/07/pasta-e-fagioli-rezept-beitragsbild.jpg")
+	media18 := models.NewMedia("Media name 18", "jpg", &mediaDesctiption18, "image", "https://eat.de/wp-content/uploads/2025/03/tuerkische-pasta-7014.jpg")
+	media19 := models.NewMedia("Media name 19", "png", &mediaDesctiption19, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT0kWh_aX8DW5H8BkMJ3xqzXsRXPY2kyZu5ww&s")
+	media20 := models.NewMedia("Media name 20", "jpg", &mediaDesctiption20, "image", "https://images.gastronom.ru/TYj7-7529vyMsVom2kYJQl8MFrkWsrOY5hgaQPa1zsk/pr:article-cover-image/g:ce/rs:auto:0:0:0/L2Ntcy9hbGwtaW1hZ2VzL2IzY2RlN2ZjLTgzZjEtNGJlYi1iOGZmLWZhMzM3YzY1ODFlYy5qcGc.webp")
 
-	media21 := models.NewMedia("Media name 21", "png", &mediaDesctiption21, "image", "https://boxru.ru/upload/resize_cache/iblock/1af/400_400_140cd750bba9870f18aada2478b24840a/q3bxff3vhe8iljlcbpn4jlbx3szt2p1w.jpg", 10246, false)
-	media22 := models.NewMedia("Media name 22", "jpg", &mediaDesctiption22, "image", "https://s1.stc.all.kpcdn.net/putevoditel/projectid_346574/images/tild3037-3837-4461-a261-663863336336__photo.jpg", 10246, false)
+	media21 := models.NewMedia("Media name 21", "png", &mediaDesctiption21, "image", "https://boxru.ru/upload/resize_cache/iblock/1af/400_400_140cd750bba9870f18aada2478b24840a/q3bxff3vhe8iljlcbpn4jlbx3szt2p1w.jpg")
+	media22 := models.NewMedia("Media name 22", "jpg", &mediaDesctiption22, "image", "https://s1.stc.all.kpcdn.net/putevoditel/projectid_346574/images/tild3037-3837-4461-a261-663863336336__photo.jpg")
 
-	media23 := models.NewMedia("Media name 23", "png", &mediaDesctiption23, "image", "https://space-pm.ru/uploads/market/stati/small/1719495934.jpg", 10246, false)
+	media23 := models.NewMedia("Media name 23", "png", &mediaDesctiption23, "image", "https://space-pm.ru/uploads/market/stati/small/1719495934.jpg")
 
-	mediaRepo.Save(context.Background(), media1)
-	mediaRepo.Save(context.Background(), media2)
-	mediaRepo.Save(context.Background(), media3)
+	mediaRepo.Save(context.Background(), *media1)
+	mediaRepo.Save(context.Background(), *media2)
+	mediaRepo.Save(context.Background(), *media3)
 	//mediaRepo.Save(context.Background(), media4)
-	mediaRepo.Save(context.Background(), media5)
-	mediaRepo.Save(context.Background(), media6)
-	mediaRepo.Save(context.Background(), media7)
-	mediaRepo.Save(context.Background(), media8)
-	mediaRepo.Save(context.Background(), media9)
-	mediaRepo.Save(context.Background(), media10)
-	mediaRepo.Save(context.Background(), media11)
-	mediaRepo.Save(context.Background(), media12)
-	mediaRepo.Save(context.Background(), media13)
-	mediaRepo.Save(context.Background(), media14)
-	mediaRepo.Save(context.Background(), media15)
+	mediaRepo.Save(context.Background(), *media5)
+	mediaRepo.Save(context.Background(), *media6)
+	mediaRepo.Save(context.Background(), *media7)
+	mediaRepo.Save(context.Background(), *media8)
+	mediaRepo.Save(context.Background(), *media9)
+	mediaRepo.Save(context.Background(), *media10)
+	mediaRepo.Save(context.Background(), *media11)
+	mediaRepo.Save(context.Background(), *media12)
+	mediaRepo.Save(context.Background(), *media13)
+	mediaRepo.Save(context.Background(), *media14)
+	mediaRepo.Save(context.Background(), *media15)
 	//mediaRepo.Save(context.Background(), media16)
-	mediaRepo.Save(context.Background(), media17)
-	mediaRepo.Save(context.Background(), media18)
-	mediaRepo.Save(context.Background(), media19)
-	mediaRepo.Save(context.Background(), media20)
-	mediaRepo.Save(context.Background(), media21)
-	mediaRepo.Save(context.Background(), media22)
-	mediaRepo.Save(context.Background(), media23)
+	mediaRepo.Save(context.Background(), *media17)
+	mediaRepo.Save(context.Background(), *media18)
+	mediaRepo.Save(context.Background(), *media19)
+	mediaRepo.Save(context.Background(), *media20)
+	mediaRepo.Save(context.Background(), *media21)
+	mediaRepo.Save(context.Background(), *media22)
+	mediaRepo.Save(context.Background(), *media23)
 
 	// create posts
 
@@ -227,14 +258,14 @@ func MakeMock(mediaRepo repository.MediaRepo,
 
 А вы где предпочитаете работать или учиться — дома, в офисе или в каких-нибудь спокойных местах вроде кофеен?`
 
-	post1 := models.NewPost(&postText1, *user1, true, true)
-	post2 := models.NewPost(&postText2, *user1, true, true)
-	post3 := models.NewPost(&postText3, *user3, true, false)
-	post4 := models.NewPost(&postText4, *user4, true, false)
-	post5 := models.NewPost(&postText5, *user5, true, false)
-	post6 := models.NewPost(&postText6, *user6, true, false)
-	post7 := models.NewPost(&postText7, *user7, true, false)
-	post8 := models.NewPost(&postText8, *user8, true, false)
+	post1 := models.NewPost(&postText1, user1.ID)
+	post2 := models.NewPost(&postText2, user1.ID)
+	post3 := models.NewPost(&postText3, user3.ID)
+	post4 := models.NewPost(&postText4, user4.ID)
+	post5 := models.NewPost(&postText5, user5.ID)
+	post6 := models.NewPost(&postText6, user6.ID)
+	post7 := models.NewPost(&postText7, user7.ID)
+	post8 := models.NewPost(&postText8, user8.ID)
 	now := time.Now()
 
 	post1.CreatedAt = now.Add(0 * time.Minute)
@@ -260,108 +291,130 @@ func MakeMock(mediaRepo repository.MediaRepo,
 
 	post8.CreatedAt = now.Add(-48 * time.Hour)
 	post8.UpdatedAt = post8.CreatedAt
-	postService.Save(context.Background(), post1)
-	postService.Save(context.Background(), post2)
-	postService.Save(context.Background(), post3)
-	postService.Save(context.Background(), post4)
-	postService.Save(context.Background(), post5)
-	postService.Save(context.Background(), post6)
-	postService.Save(context.Background(), post7)
-	postService.Save(context.Background(), post8)
+	postService.Save(context.Background(), *post1)
+	postService.Save(context.Background(), *post2)
+	postService.Save(context.Background(), *post3)
+	postService.Save(context.Background(), *post4)
+	postService.Save(context.Background(), *post5)
+	postService.Save(context.Background(), *post6)
+	postService.Save(context.Background(), *post7)
+	postService.Save(context.Background(), *post8)
+
+	postWithMedia1 := models.NewPostWithMedia(post1.ID, media1.ID, 0)
+	postWithMedia2 := models.NewPostWithMedia(post1.ID, media2.ID, 1)
+
+	postWithMedia3 := models.NewPostWithMedia(post2.ID, media3.ID, 0)
+	postWithMedia4 := models.NewPostWithMedia(post2.ID, media5.ID, 2)
+	postWithMedia5 := models.NewPostWithMedia(post2.ID, media6.ID, 3)
+	postWithMedia6 := models.NewPostWithMedia(post2.ID, media7.ID, 4)
+
+	postWithMedia7 := models.NewPostWithMedia(post3.ID, media8.ID, 0)
+	postWithMedia8 := models.NewPostWithMedia(post3.ID, media9.ID, 1)
+
+	postWithMedia9 := models.NewPostWithMedia(post4.ID, media10.ID, 0)
+
+	postWithMedia10 := models.NewPostWithMedia(post5.ID, media11.ID, 0)
+	postWithMedia11 := models.NewPostWithMedia(post5.ID, media12.ID, 1)
+	postWithMedia12 := models.NewPostWithMedia(post5.ID, media13.ID, 2)
+	postWithMedia13 := models.NewPostWithMedia(post5.ID, media14.ID, 3)
+	postWithMedia14 := models.NewPostWithMedia(post5.ID, media15.ID, 4)
+
+	postWithMedia15 := models.NewPostWithMedia(post6.ID, media17.ID, 0)
+	postWithMedia16 := models.NewPostWithMedia(post6.ID, media18.ID, 1)
+	postWithMedia17 := models.NewPostWithMedia(post6.ID, media19.ID, 2)
+	postWithMedia18 := models.NewPostWithMedia(post6.ID, media20.ID, 3)
+
+	postWithMedia19 := models.NewPostWithMedia(post7.ID, media21.ID, 0)
+	postWithMedia20 := models.NewPostWithMedia(post7.ID, media22.ID, 1)
+
+	postWithMedia21 := models.NewPostWithMedia(post8.ID, media23.ID, 1)
 
 	// connect post with medias to get PostWithMedia
-	postWithMediaRepo.Save(post1, media1, 0)
-	postWithMediaRepo.Save(post1, media2, 1)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia1)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia2)
 
-	postWithMediaRepo.Save(post2, media3, 0)
 	//postWithMediaRepo.Save(post2, media4, 1)
-	postWithMediaRepo.Save(post2, media5, 2)
-	postWithMediaRepo.Save(post2, media6, 3)
-	postWithMediaRepo.Save(post2, media7, 4)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia3)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia4)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia5)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia6)
 
-	postWithMediaRepo.Save(post3, media8, 0)
-	postWithMediaRepo.Save(post3, media9, 1)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia7)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia8)
 
-	postWithMediaRepo.Save(post4, media10, 0)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia9)
 
-	postWithMediaRepo.Save(post5, media11, 0)
-	postWithMediaRepo.Save(post5, media12, 1)
-	postWithMediaRepo.Save(post5, media13, 2)
-	postWithMediaRepo.Save(post5, media14, 3)
-	postWithMediaRepo.Save(post5, media15, 4)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia10)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia11)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia12)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia13)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia14)
 	//postWithMediaRepo.Save(post5, media16, 5)
 
-	postWithMediaRepo.Save(post6, media17, 0)
-	postWithMediaRepo.Save(post6, media18, 1)
-	postWithMediaRepo.Save(post6, media19, 2)
-	postWithMediaRepo.Save(post6, media20, 3)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia15)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia16)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia17)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia18)
 
-	postWithMediaRepo.Save(post7, media21, 0)
-	postWithMediaRepo.Save(post7, media22, 1)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia19)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia20)
 
-	postWithMediaRepo.Save(post8, media23, 1)
+	postWithMediaRepo.Save(context.Background(), *postWithMedia21)
 
 	// create likes & init LikeRepo
-	like1 := models.NewLike(*user4)
-	like2 := models.NewLike(*user5)
-	like3 := models.NewLike(*user1)
-	like4 := models.NewLike(*user2)
-	like5 := models.NewLike(*user3)
-	like6 := models.NewLike(*user3)
-	likeRepo := repository.NewLikeRepo()
-	likeRepo.Save(like1)
-	likeRepo.Save(like2)
-	likeRepo.Save(like3)
-	likeRepo.Save(like4)
-	likeRepo.Save(like5)
-	likeRepo.Save(like6)
+	like1 := models.NewLikeToPost(post1.ID, user4.ID)
+	like2 := models.NewLikeToPost(post2.ID, user5.ID)
+	like3 := models.NewLikeToPost(post3.ID, user1.ID)
+	like4 := models.NewLikeToPost(post4.ID, user2.ID)
+	like5 := models.NewLikeToPost(post5.ID, user3.ID)
+	like6 := models.NewLikeToPost(post6.ID, user3.ID)
+	likeRepo := like.NewLikeRepo()
+	likeRepo.Save(context.Background(), *like1)
+	likeRepo.Save(context.Background(), *like2)
+	likeRepo.Save(context.Background(), *like3)
+	likeRepo.Save(context.Background(), *like4)
+	likeRepo.Save(context.Background(), *like5)
+	likeRepo.Save(context.Background(), *like6)
 
-	// create and save LikeToPosts
-	likeToPost1 := models.NewLikeToPost(like1.ID, post1.ID)
-	likeToPost2 := models.NewLikeToPost(like2.ID, post2.ID)
-	likeToPost3 := models.NewLikeToPost(like3.ID, post3.ID)
-	likeToPost4 := models.NewLikeToPost(like4.ID, post4.ID)
-	likeToPost5 := models.NewLikeToPost(like5.ID, post5.ID)
-	likeToPost6 := models.NewLikeToPost(like6.ID, post2.ID)
-	likeToPostRepo.Save(likeToPost1)
-	likeToPostRepo.Save(likeToPost2)
-	likeToPostRepo.Save(likeToPost3)
-	likeToPostRepo.Save(likeToPost4)
-	likeToPostRepo.Save(likeToPost5)
-	likeToPostRepo.Save(likeToPost6)
+	commentText1 := "comment 1"
+	commentText2 := "comment 2"
+	commentText3 := "comment 3"
+	commentText4 := "comment 4"
+	commentText5 := "comment 5"
+	commentText6 := "comment 6"
 
 	// create comments
-	comment1 := models.NewComment("comment 1", post1.ID, nil, nil, user2.ID, false)
-	comment2 := models.NewComment("comment 2", post2.ID, nil, nil, user3.ID, false)
-	comment3 := models.NewComment("comment 3", post3.ID, nil, nil, user4.ID, false)
-	comment4 := models.NewComment("comment 4", post4.ID, nil, nil, user5.ID, false)
-	comment5 := models.NewComment("comment 5", post5.ID, nil, nil, user1.ID, false)
-	comment6 := models.NewComment("comment 6", post1.ID, nil, nil, user4.ID, false)
-	commentRepo.Save(comment1)
-	commentRepo.Save(comment2)
-	commentRepo.Save(comment3)
-	commentRepo.Save(comment4)
-	commentRepo.Save(comment5)
-	commentRepo.Save(comment6)
+	comment1 := models.NewComment(&commentText1, post1.ID, nil, nil, user2.ID)
+	comment2 := models.NewComment(&commentText2, post2.ID, nil, nil, user3.ID)
+	comment3 := models.NewComment(&commentText3, post3.ID, nil, nil, user4.ID)
+	comment4 := models.NewComment(&commentText4, post4.ID, nil, nil, user5.ID)
+	comment5 := models.NewComment(&commentText5, post5.ID, nil, nil, user1.ID)
+	comment6 := models.NewComment(&commentText6, post1.ID, nil, nil, user4.ID)
+	commentRepo.Save(context.Background(), *comment1)
+	commentRepo.Save(context.Background(), *comment2)
+	commentRepo.Save(context.Background(), *comment3)
+	commentRepo.Save(context.Background(), *comment4)
+	commentRepo.Save(context.Background(), *comment5)
+	commentRepo.Save(context.Background(), *comment6)
 
 	// create reposts
-	repost1 := models.NewRepost(user2.ID, uuid.Nil, post1.ID)
-	repost2 := models.NewRepost(user3.ID, uuid.Nil, post1.ID)
-	repost3 := models.NewRepost(user4.ID, uuid.Nil, post1.ID)
-	repost4 := models.NewRepost(user5.ID, uuid.Nil, post2.ID)
-	repost5 := models.NewRepost(user3.ID, uuid.Nil, post2.ID)
-	repost6 := models.NewRepost(user1.ID, uuid.Nil, post3.ID)
-	repost7 := models.NewRepost(user1.ID, uuid.Nil, post4.ID)
-	repost8 := models.NewRepost(user1.ID, uuid.Nil, post5.ID)
-	repost9 := models.NewRepost(user1.ID, uuid.Nil, post3.ID)
+	repost1 := models.NewRepost(user2.ID, 1, post1.ID)
+	repost2 := models.NewRepost(user3.ID, 1, post1.ID)
+	repost3 := models.NewRepost(user4.ID, 1, post1.ID)
+	repost4 := models.NewRepost(user5.ID, 1, post2.ID)
+	repost5 := models.NewRepost(user3.ID, 1, post2.ID)
+	repost6 := models.NewRepost(user1.ID, 1, post3.ID)
+	repost7 := models.NewRepost(user1.ID, 1, post4.ID)
+	repost8 := models.NewRepost(user1.ID, 1, post5.ID)
+	repost9 := models.NewRepost(user1.ID, 1, post3.ID)
 
-	repostRepo.Save(context.Background(), repost1)
-	repostRepo.Save(context.Background(), repost2)
-	repostRepo.Save(context.Background(), repost3)
-	repostRepo.Save(context.Background(), repost4)
-	repostRepo.Save(context.Background(), repost5)
-	repostRepo.Save(context.Background(), repost6)
-	repostRepo.Save(context.Background(), repost7)
-	repostRepo.Save(context.Background(), repost8)
-	repostRepo.Save(context.Background(), repost9)
+	repostRepo.Save(context.Background(), *repost1)
+	repostRepo.Save(context.Background(), *repost2)
+	repostRepo.Save(context.Background(), *repost3)
+	repostRepo.Save(context.Background(), *repost4)
+	repostRepo.Save(context.Background(), *repost5)
+	repostRepo.Save(context.Background(), *repost6)
+	repostRepo.Save(context.Background(), *repost7)
+	repostRepo.Save(context.Background(), *repost8)
+	repostRepo.Save(context.Background(), *repost9)
 }

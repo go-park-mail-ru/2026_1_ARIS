@@ -1,13 +1,13 @@
-package service
+package session
 
-//go:generate mockgen -destination=./mocks/session_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/service SessionService
+//go:generate mockgen -destination=./../mocks/session_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session SessionService
 import (
 	"context"
 	"errors"
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/session"
 	"github.com/google/uuid"
 )
 
@@ -18,10 +18,10 @@ type SessionService interface {
 }
 
 type sessionService struct {
-	repo repository.SessionRepo
+	repo session.SessionRepo
 }
 
-func NewSessionService(repo repository.SessionRepo) SessionService {
+func NewSessionService(repo session.SessionRepo) SessionService {
 	return &sessionService{
 		repo: repo,
 	}

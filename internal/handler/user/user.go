@@ -1,16 +1,17 @@
-package handlers
+package user
 
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
-	"github.com/google/uuid"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 )
 
 type UserHandler struct {
-	UserService  service.UserService
-	MediaService service.MediaService
+	UserService  user.UserService
+	MediaService media.MediaService
 }
 
 type latestEventDTO struct {
@@ -38,6 +39,13 @@ type suggestedUsersResponse struct {
 	Items []suggestedUserDTO `json:"items"`
 }
 
+func NewUserHandler(userProfileService user.UserService, mediaService media.MediaService) *UserHandler {
+	return &UserHandler{
+		UserService:  userProfileService,
+		MediaService: mediaService,
+	}
+}
+
 func (h *UserHandler) GetSuggestedUsers(w http.ResponseWriter, r *http.Request) {
 
 	userIDFromCtx := r.Context().Value("user_id")
@@ -46,7 +54,7 @@ func (h *UserHandler) GetSuggestedUsers(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	userID, ok := userIDFromCtx.(uuid.UUID)
+	userID, ok := userIDFromCtx.(int64)
 	if !ok {
 		http.Error(w, "invalid user id in context", http.StatusUnauthorized)
 		return
@@ -65,20 +73,25 @@ func (h *UserHandler) GetSuggestedUsers(w http.ResponseWriter, r *http.Request) 
 		avatar := ""
 
 		if user.AvatarID != nil && h.MediaService != nil {
-			media, err := h.MediaService.GetAvatarByID(*user.AvatarID)
+			media, err := h.MediaService.GetAvatarByID(r.Context(), user.AvatarID)
 			if err == nil && media != nil {
 				avatar = media.Link
 			}
 		}
-		profile, err := h.UserService.GetUserProfileByProfile(r.Context(), user.ID)
+		profile, err := h.UserService.GetUserProfileByProfileID(r.Context(), user.ID)
 		if err != nil {
 			continue
 		}
+		userAccount, err := h.UserService.GetUserAccountByProfileID(r.Context(), profile.ID)
+		if err != nil {
+			continue
+		}
+
 		items = append(items, suggestedUserDTO{
-			Id:         user.ID.String(),
+			Id:         strconv.FormatInt(user.ID, 10),
 			FirstName:  profile.FirstName,
 			LastName:   profile.LastName,
-			Username:   user.Username,
+			Username:   userAccount.Username,
 			AvatarLink: avatar,
 		})
 	}
@@ -101,22 +114,26 @@ func (h *UserHandler) GetPublicPopularUsers(w http.ResponseWriter, r *http.Reque
 		avatar := ""
 
 		if user.AvatarID != nil && h.MediaService != nil {
-			media, err := h.MediaService.GetAvatarByID(*user.AvatarID)
+			media, err := h.MediaService.GetAvatarByID(r.Context(), user.AvatarID)
 			if err == nil && media != nil {
 				avatar = media.Link
 			}
 		}
 
-		profile, err := h.UserService.GetUserProfileByProfile(r.Context(), user.ID)
+		profile, err := h.UserService.GetUserProfileByProfileID(r.Context(), user.ID)
+		if err != nil {
+			continue
+		}
+		userAccount, err := h.UserService.GetUserAccountByProfileID(r.Context(), profile.ID)
 		if err != nil {
 			continue
 		}
 
 		items = append(items, suggestedUserDTO{
-			Id:         user.ID.String(),
+			Id:         strconv.FormatInt(user.ID, 10),
 			FirstName:  profile.FirstName,
 			LastName:   profile.LastName,
-			Username:   user.Username,
+			Username:   userAccount.Username,
 			AvatarLink: avatar,
 		})
 	}
@@ -141,22 +158,26 @@ func (h *UserHandler) GetLatestEvents(w http.ResponseWriter, r *http.Request) {
 		avatar := ""
 
 		if user.AvatarID != nil && h.MediaService != nil {
-			media, err := h.MediaService.GetAvatarByID(*user.AvatarID)
+			media, err := h.MediaService.GetAvatarByID(r.Context(), user.AvatarID)
 			if err == nil && media != nil {
 				avatar = media.Link
 			}
 		}
 
-		profile, err := h.UserService.GetUserProfileByProfile(r.Context(), user.ID)
+		profile, err := h.UserService.GetUserProfileByProfileID(r.Context(), user.ID)
+		if err != nil {
+			continue
+		}
+		userAccount, err := h.UserService.GetUserAccountByProfileID(r.Context(), profile.ID)
 		if err != nil {
 			continue
 		}
 
 		items = append(items, latestEventDTO{
-			Id:         user.ID.String(),
+			Id:         strconv.FormatInt(user.ID, 10),
 			FirstName:  profile.FirstName,
 			LastName:   profile.LastName,
-			Username:   user.Username,
+			Username:   userAccount.Username,
 			AvatarLink: avatar,
 			Type:       event.Type,
 		})
