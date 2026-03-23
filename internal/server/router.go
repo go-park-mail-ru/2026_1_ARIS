@@ -31,6 +31,7 @@ func NewRouter(
 
 	r.Route("/api/auth", func(r chi.Router) {
 		r.Post("/register", authHandler.Register)
+		r.Post("/register/step-one", authHandler.ValidateRegisterStepOne)
 		r.Post("/login", authHandler.Login)
 
 		r.Group(func(r chi.Router) {

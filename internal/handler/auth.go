@@ -31,6 +31,17 @@ type RegisterRequest struct {
 	Password2 string `json:"password2" validate:"required,min=6,max=72,printascii"`
 }
 
+type RegisterStepOneRequest struct {
+	Login     string `json:"login" validate:"required,alphanumunicode"`
+	Password1 string `json:"password1" validate:"required,min=6,max=72,printascii"`
+	Password2 string `json:"password2" validate:"required,min=6,max=72,printascii"`
+}
+
+type ValidationErrorsResponse struct {
+	Ok     bool              `json:"ok"`
+	Errors map[string]string `json:"errors"`
+}
+
 type LoginRequest struct {
 	Login    string `json:"login" validate:"required,alphanumunicode"`
 	Password string `json:"password" validate:"required"`
@@ -278,4 +289,81 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(user)
+}
+
+// @Description Validate register first step
+// @ID validate-register-step-one
+// @Summary Validate register step one
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param input body RegisterStepOneRequest true "step one data"
+// @Success 200 {object} ValidationErrorsResponse
+// @Failure 400 {object} CommonResponse
+// @Failure 500 {object} CommonResponse
+// @Router /auth/register/step-one [post]
+func (h *AuthHandler) ValidateRegisterStepOne(w http.ResponseWriter, r *http.Request) {
+	var req RegisterStepOneRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	errorsMap := make(map[string]string)
+
+	if err := validate.Struct(req); err != nil {
+		if req.Login == "" {
+			errorsMap["login"] = "Обязательное поле"
+		}
+		if req.Password1 == "" {
+			errorsMap["password1"] = "Обязательное поле"
+		}
+		if req.Password2 == "" {
+			errorsMap["password2"] = "Обязательное поле"
+		}
+	}
+
+	if req.Password1 != "" && len(req.Password1) < 7 {
+		errorsMap["password1"] = "Пароль слишком короткий (мин. 7 символов)"
+	}
+
+	if req.Password1 != "" && len(req.Password1) > 20 {
+		errorsMap["password1"] = "Пароль может содержать максимум 20 символов"
+	}
+
+	if req.Password2 != "" && req.Password1 != req.Password2 {
+		errorsMap["password2"] = "Пароли не совпадают"
+	}
+
+	if req.Login != "" {
+		if len(req.Login) < 6 {
+			errorsMap["login"] = "Логин слишком короткий (мин. 6 символов)"
+		} else if len(req.Login) > 12 {
+			errorsMap["login"] = "Логин может содержать максимум 12 символов"
+		}
+	}
+
+	if len(errorsMap) == 0 {
+		serviceErrors, err := h.authService.ValidateRegisterStepOne(
+			r.Context(),
+			req.Login,
+			req.Password1,
+			req.Password2,
+		)
+		if err != nil {
+			utils.WriteError(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		for key, value := range serviceErrors {
+			errorsMap[key] = value
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(ValidationErrorsResponse{
+		Ok:     len(errorsMap) == 0,
+		Errors: errorsMap,
+	})
 }

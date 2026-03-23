@@ -24,6 +24,7 @@ type AuthService interface {
 	CreateRealUserProfile(ctx context.Context, password_hash, username, firstName, lastName string, email, phone *string, isActive bool, birthdayDate *time.Time, gender *models.Gender, avatar *models.Media) (*models.Profile, error)
 	Register(ctx context.Context, firstName, lastName, login, password1, birthday string, gender models.Gender) (*models.Profile, error)
 	Login(ctx context.Context, email, password string) (*models.User, error)
+	ValidateRegisterStepOne(ctx context.Context, login, password1, password2 string) (map[string]string, error)
 }
 
 func NewAuthService(userRepo repository.UserRepo, profileRepo repository.ProfileRepo, userProfileRepo repository.UserProfileRepo) AuthService {
@@ -87,6 +88,21 @@ func (s *authService) Login(ctx context.Context, login, password string) (*model
 	}
 
 	return user, nil
+}
+
+func (s *authService) ValidateRegisterStepOne(ctx context.Context, login, password1, password2 string) (map[string]string, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	errorsMap := make(map[string]string)
+
+	login = strings.ToLower(strings.TrimSpace(login))
+
+	if _, err := s.profileRepo.GetProfileByUsername(login); err == nil {
+		errorsMap["login"] = "Такой логин уже существует"
+	}
+
+	return errorsMap, nil
 }
 
 func (s *authService) CreateRealUserProfile(ctx context.Context, password_hash, username, firstName, lastName string, email, phone *string, isActive bool, birthdayDate *time.Time, gender *models.Gender, avatar *models.Media) (*models.Profile, error) {
