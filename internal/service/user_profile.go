@@ -5,7 +5,7 @@ import (
 	"context"
 	"math/rand"
 	"time"
-
+"fmt"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
 	"github.com/google/uuid"
@@ -76,12 +76,12 @@ func (s *userService) GetSuggestedUsers(ctx context.Context, currentUserID uuid.
 	if err != nil {
 		return nil, err
 	}
-
+fmt.Println("GetSuggestedUsers currentUserID:", currentUserID)
 	currentUserProfile, err := s.UserProfileRepo.GetUserProfileByUserID(currentUserID)
 	if err != nil {
 		return nil, err
 	}
-
+fmt.Println("currentUserProfile found:", currentUserProfile.ID)
 	currentProfileID := currentUserProfile.ProfileID
 	filtered := make([]models.Profile, 0, len(profiles))
 
