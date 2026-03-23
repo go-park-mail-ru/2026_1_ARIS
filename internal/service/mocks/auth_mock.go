@@ -80,3 +80,18 @@ func (mr *MockAuthServiceMockRecorder) Register(arg0, arg1, arg2, arg3, arg4, ar
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockAuthService)(nil).Register), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 }
+
+// ValidateRegisterStepOne mocks base method.
+func (m *MockAuthService) ValidateRegisterStepOne(arg0 context.Context, arg1, arg2, arg3 string) (map[string]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ValidateRegisterStepOne", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(map[string]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ValidateRegisterStepOne indicates an expected call of ValidateRegisterStepOne.
+func (mr *MockAuthServiceMockRecorder) ValidateRegisterStepOne(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateRegisterStepOne", reflect.TypeOf((*MockAuthService)(nil).ValidateRegisterStepOne), arg0, arg1, arg2, arg3)
+}
