@@ -12,6 +12,8 @@ import (
 
 	_ "github.com/go-park-mail-ru/2026_1_ARIS/docs"
 
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/server"
+
 	commentrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/comment"
 	likerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/like"
 	mediarepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
@@ -22,18 +24,21 @@ import (
 	useraccountrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_account"
 	userprofilerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_profile"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/server"
-
 	authservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/auth"
 	mediaservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
 	postservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
 	sessionservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
 	userservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 
 	authhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
 	feedhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
 	userhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
+
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/config"
+	connectdb "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/connect_db"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 )
 
 // @title ARIS backend API
@@ -49,6 +54,43 @@ import (
 // @name session_id
 
 func main() {
+	// загружаем переменные окружения из файла или systemd
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("No .env file found, reading from environment")
+	}
+
+	// подключаем БД
+
+	// парсим переменные окружения
+	envConf, err := config.NewConfig()
+	if err != nil {
+		log.Fatal("can't get env config", err)
+	}
+
+	// создаём URL подключения к Postgres
+	confStr, err := connectdb.GetConnectURL(envConf)
+	if err != nil {
+		log.Fatal("can't get db connection string", err)
+	}
+
+	ctx := context.Background()
+
+	// создаём пул подключений
+	db, err := pgxpool.New(ctx, confStr)
+	if err != nil {
+		log.Fatal("can't connect to db", err)
+	}
+	defer db.Close()
+
+	// пингуем БД для проверки
+	err = db.Ping(ctx)
+	if err != nil {
+		log.Fatal("Bad db connection", err)
+	}
+
+	fmt.Println("Successfully connected to PostgreSQL")
+
 	// Инициализация репозиториев
 	commentRepo := commentrepo.NewCommentRepo()
 	repostRepo := repostrepo.NewRepostRepo()
@@ -76,13 +118,16 @@ func main() {
 	}
 	feedHandler := feedhandler.NewFeedHandler(postService, mediaService, userService)
 
+	// создаём роутер
 	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler)
 
+	// создаём сервер
 	srv := &http.Server{
 		Addr:    ":8080",
 		Handler: router,
 	}
 
+	// запускаем сервер
 	go func() {
 		fmt.Println("Server is running on http://localhost:8080")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
