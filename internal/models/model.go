@@ -254,17 +254,22 @@ type ChatMember struct {
 }
 
 type Message struct {
-	ID              int64         `json:"id"`
-	Uid             uuid.UUID     `json:"uid"`
-	Text            *string       `json:"text,omitempty"`
-	ParentMessageID *int64        `json:"parentMessage,omitempty"`
-	ChatID          int64         `json:"chat"`
-	Status          MessageStatus `json:"status"`
-	AuthorID        int64         `json:"authorId,omitempty"`
-	StickerID       *int64        `json:"sticker,omitempty"`
-	IsActive        bool          `json:"isActive"`
-	CreatedAt       time.Time     `json:"createdAt"`
-	UpdatedAt       time.Time     `json:"updatedAt"`
+	ID              int64     `json:"id"`
+	Uid             uuid.UUID `json:"uid"`
+	Text            *string   `json:"text,omitempty"`
+	ParentMessageID *int64    `json:"parentMessage,omitempty"`
+	ChatID          int64     `json:"chat"`
+	AuthorID        int64     `json:"authorId,omitempty"`
+	StickerID       *int64    `json:"sticker,omitempty"`
+	IsActive        bool      `json:"isActive"`
+	CreatedAt       time.Time `json:"createdAt"`
+	UpdatedAt       time.Time `json:"updatedAt"`
+}
+
+type UserMessageStatus struct {
+	ProfileID int64
+	MessageID int64
+	Status    MessageStatus
 }
 
 // MessageWithMedia - junction table for messages and media
