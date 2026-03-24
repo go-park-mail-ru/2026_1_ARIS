@@ -1,11 +1,11 @@
-package repository
+package post
 
 import (
+	"context"
 	"slices"
 	"sync"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
-	"github.com/google/uuid"
 )
 
 type inmemoryPostWithMediaRepo struct {
@@ -14,19 +14,20 @@ type inmemoryPostWithMediaRepo struct {
 }
 
 type PostWithMediaRepo interface {
-	GetMediaByPost(postID uuid.UUID) []uuid.UUID
-	Save(post models.Post, media models.Media, order int) error
+	GetMediaByPostID(ctx context.Context, postID int64) []int64
+	Save(ctx context.Context, postWithMedia models.PostWithMedia) error
 }
 
 func NewPostWithMediaRepo() PostWithMediaRepo {
 	return &inmemoryPostWithMediaRepo{}
 }
 
-func (r *inmemoryPostWithMediaRepo) GetMediaByPost(postID uuid.UUID) []uuid.UUID {
+// убрать отсюда, переложить в сервис
+func (r *inmemoryPostWithMediaRepo) GetMediaByPostID(ctx context.Context, postID int64) []int64 {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	var mediaIDs []uuid.UUID
+	var mediaIDs []int64
 
 	slices.SortFunc(r.postWithMedias, func(i, j models.PostWithMedia) int {
 		if i.Order < j.Order {
@@ -46,11 +47,10 @@ func (r *inmemoryPostWithMediaRepo) GetMediaByPost(postID uuid.UUID) []uuid.UUID
 	return mediaIDs
 }
 
-func (r *inmemoryPostWithMediaRepo) Save(post models.Post, media models.Media, order int) error {
+func (r *inmemoryPostWithMediaRepo) Save(ctx context.Context, postWithMedia models.PostWithMedia) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	postWithMedia := models.NewPostWithMedia(post, media, order)
 	r.postWithMedias = append(r.postWithMedias, postWithMedia)
 	return nil
 }

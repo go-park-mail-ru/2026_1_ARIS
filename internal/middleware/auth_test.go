@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
@@ -24,7 +23,7 @@ func TestAuthMiddleware_ValidSession(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 	req.AddCookie(&http.Cookie{Name: "session_id", Value: "valid-session-id"})
 
-	expectedUserID := uuid.New()
+	expectedUserID := int64(12)
 	mockSessSvc.EXPECT().
 		Get(gomock.Any(), models.SessionID("valid-session-id")).
 		Return(&models.Session{UserID: expectedUserID}, nil)

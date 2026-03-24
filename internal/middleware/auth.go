@@ -6,10 +6,10 @@ import (
 	"net/http"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
 )
 
-func AuthMiddleware(sessionService service.SessionService) func(http.Handler) http.Handler {
+func AuthMiddleware(sessionService session.SessionService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie("session_id")

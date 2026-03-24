@@ -1,4 +1,4 @@
-package handlers
+package feed
 
 import (
 	"encoding/json"
@@ -7,8 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/cursor"
 	"github.com/google/uuid"
@@ -54,12 +55,12 @@ type mediaFeedDTO struct {
 }
 
 type FeedHandler struct {
-	PostService        service.PostService
-	MediaService       service.MediaService
-	UserProfileService service.UserService
+	PostService        post.PostService
+	MediaService       media.MediaService
+	UserProfileService user.UserService
 }
 
-func NewFeedHandler(postService service.PostService, mediaService service.MediaService, userProfileService service.UserService) *FeedHandler {
+func NewFeedHandler(postService post.PostService, mediaService media.MediaService, userProfileService user.UserService) *FeedHandler {
 	return &FeedHandler{
 		PostService:        postService,
 		MediaService:       mediaService,
@@ -112,8 +113,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 	// сборка каждого поста в DTO
 	for _, post := range feed.Posts {
-
-		postAuthor, err := h.PostService.GetPostAuthor(post.ID)
+		postAuthor, err := h.PostService.GetPostAuthor(r.Context(), post.ID)
 		if err != nil {
 			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -122,7 +122,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		var authorAvatarLink string
 
 		if postAuthor.AvatarID != nil {
-			authorAvatar, err := h.MediaService.GetAvatarByID(*postAuthor.AvatarID)
+			authorAvatar, err := h.MediaService.GetAvatarByID(r.Context(), postAuthor.AvatarID)
 			if err != nil {
 				utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -130,36 +130,43 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 			authorAvatarLink = authorAvatar.Link
 		}
 
-		authorProfile, err := h.UserProfileService.GetUserProfileByProfile(r.Context(), postAuthor.ID)
+		authorUserProfile, err := h.UserProfileService.GetUserProfileByProfileID(r.Context(), postAuthor.ID)
+		if err != nil {
+			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		authorUserAccount, err := h.UserProfileService.GetUserAccountByUserProfileID(r.Context(), authorUserProfile.ID)
+		if err != nil {
+			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		author := authorFeedDTO{
-			Id:         postAuthor.ID,
-			FirstName:  authorProfile.FirstName,
-			LastName:   authorProfile.LastName,
-			Username:   postAuthor.Username,
+			Id:         postAuthor.Uid,
+			FirstName:  authorUserProfile.FirstName,
+			LastName:   authorUserProfile.LastName,
+			Username:   authorUserAccount.Username,
 			AvatarLink: authorAvatarLink,
 		}
 
-		medias := h.MediaService.GetMediaByPost(post.ID)
-
+		medias := h.MediaService.GetMediasByPostID(r.Context(), post.ID)
 		var mediasDTO []mediaFeedDTO
 
 		for _, media := range medias {
 			mediasDTO = append(mediasDTO, mediaFeedDTO{
-				Id:       media.ID,
+				Id:       media.Uid,
 				MimeType: media.MimeType,
 				Link:     media.Link,
 			})
 		}
 
 		likeCount := h.PostService.GetLikeCount(r.Context(), post.ID)
-
 		commentCount := h.PostService.GetCommentCount(r.Context(), post.ID)
-
 		repostCount := h.PostService.GetRepostCount(r.Context(), post.ID)
 
 		posts = append(posts, postFeedDTO{
-			Id:        post.ID,
+			Id:        post.Uid,
 			Text:      *post.Text,
 			Author:    author,
 			CreatedAt: post.CreatedAt,
@@ -168,7 +175,6 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 			Reposts:   repostCount,
 			Medias:    mediasDTO,
 		})
-
 	}
 
 	response := FeedResponse{
@@ -237,7 +243,7 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 		limit = parsed
 	}
 
-	params := repository.FeedParams{Limit: limit}
+	params := post.FeedParams{Limit: limit}
 
 	if rawCursor != "" {
 		decoded, err := cursor.Decode(rawCursor)
@@ -248,7 +254,7 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 		params.Cursor = &decoded
 	}
 
-	postsData, err := h.PostService.GetPublicFeed(r.Context(), params)
+	feed, err := h.PostService.GetPublicFeed(r.Context(), rawCursor, limit)
 	if err != nil {
 		utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -256,8 +262,8 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 
 	var posts []postFeedDTO
 
-	for _, post := range postsData {
-		postAuthor, err := h.PostService.GetPostAuthor(post.ID)
+	for _, post := range feed.Posts {
+		postAuthor, err := h.PostService.GetPostAuthor(r.Context(), post.ID)
 		if err != nil {
 			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -266,7 +272,7 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 		var authorAvatarLink string
 
 		if postAuthor.AvatarID != nil {
-			authorAvatar, err := h.MediaService.GetAvatarByID(*postAuthor.AvatarID)
+			authorAvatar, err := h.MediaService.GetAvatarByID(r.Context(), postAuthor.AvatarID)
 			if err != nil {
 				utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -274,26 +280,32 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 			authorAvatarLink = authorAvatar.Link
 		}
 
-		authorProfile, err := h.UserProfileService.GetUserProfileByProfile(r.Context(), postAuthor.ID)
+		authorUserProfile, err := h.UserProfileService.GetUserProfileByProfileID(r.Context(), postAuthor.ID)
+		if err != nil {
+			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		authorUserAccount, err := h.UserProfileService.GetUserAccountByUserProfileID(r.Context(), authorUserProfile.ID)
 		if err != nil {
 			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		author := authorFeedDTO{
-			Id:         postAuthor.ID,
-			FirstName:  authorProfile.FirstName,
-			LastName:   authorProfile.LastName,
-			Username:   postAuthor.Username,
+			Id:         postAuthor.Uid,
+			FirstName:  authorUserProfile.FirstName,
+			LastName:   authorUserProfile.LastName,
+			Username:   authorUserAccount.Username,
 			AvatarLink: authorAvatarLink,
 		}
 
-		medias := h.MediaService.GetMediaByPost(post.ID)
+		medias := h.MediaService.GetMediasByPostID(r.Context(), post.ID)
 		var mediasDTO []mediaFeedDTO
 
 		for _, media := range medias {
 			mediasDTO = append(mediasDTO, mediaFeedDTO{
-				Id:       media.ID,
+				Id:       media.Uid,
 				MimeType: media.MimeType,
 				Link:     media.Link,
 			})
@@ -304,7 +316,7 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 		repostCount := h.PostService.GetRepostCount(r.Context(), post.ID)
 
 		posts = append(posts, postFeedDTO{
-			Id:        post.ID,
+			Id:        post.Uid,
 			Text:      *post.Text,
 			Author:    author,
 			CreatedAt: post.CreatedAt,

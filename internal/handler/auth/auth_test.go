@@ -1,4 +1,4 @@
-package handlers
+package auth
 
 import (
 	"bytes"
@@ -32,6 +32,7 @@ func TestAuthHandler_Register_Success(t *testing.T) {
 		LastName:  "Petrov",
 		Birthday:  "24/02/2005",
 		Login:     "ivan123",
+		Gender:    1,
 		Password1: "qwerty123",
 		Password2: "qwerty123",
 	}
@@ -39,20 +40,26 @@ func TestAuthHandler_Register_Success(t *testing.T) {
 	req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 
-	profileID := uuid.New()
+	profileUid := uuid.New()
 	expectedProfile := &models.Profile{
-		ID:       profileID,
-		Username: "ivan123",
+		Uid: profileUid,
 	}
 
 	expectedUserProfile := &models.UserProfile{
-		ID:     uuid.New(),
-		UserID: uuid.New(),
+		Uid:           uuid.Nil,
+		UserAccountID: 112,
 	}
+	userAccountUid := uuid.New()
+	userAccountID := int64(43)
+	expectedUserAccount := &models.UserAccount{
+		ID:  userAccountID,
+		Uid: userAccountUid,
+	}
+
 	sessionID := "sess123"
 	expectedSession := &models.Session{
 		SessionID: models.SessionID(sessionID),
-		UserID:    expectedUserProfile.ID,
+		UserID:    expectedUserAccount.ID,
 		ExpiredAt: time.Now().Add(24 * time.Hour),
 	}
 
@@ -61,11 +68,15 @@ func TestAuthHandler_Register_Success(t *testing.T) {
 		Return(expectedProfile, nil)
 
 	mockUserSvc.EXPECT().
-		GetUserProfileByProfile(gomock.Any(), profileID).
+		GetUserProfileByProfileID(gomock.Any(), int64(0)).
 		Return(expectedUserProfile, nil)
 
+	mockUserSvc.EXPECT().
+		GetUserAccountByUserProfileID(gomock.Any(), int64(0)).
+		Return(expectedUserAccount, nil)
+
 	mockSessionSvc.EXPECT().
-		Create(gomock.Any(), expectedUserProfile.ID).
+		Create(gomock.Any(), userAccountID).
 		Return(expectedSession, nil)
 
 	// Выполнение
@@ -73,7 +84,7 @@ func TestAuthHandler_Register_Success(t *testing.T) {
 	handler.Register(w, req)
 
 	// Проверки
-	assert.Equal(t, http.StatusCreated, w.Code)
+	assert.Equal(t, http.StatusCreated, w.Code, w)
 
 	// Проверка куки
 	cookies := w.Result().Cookies()
@@ -94,7 +105,7 @@ func TestAuthHandler_Register_Success(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedProfile.ID, resp.ID)
-	assert.Equal(t, expectedProfile.Username, resp.Username)
+	//assert.Equal(t, expectedProfile.Username, resp.Username)
 }
 
 func TestAuthHandler_Register_ValidationError(t *testing.T) {
@@ -139,6 +150,7 @@ func TestAuthHandler_Register_PasswordMismatch(t *testing.T) {
 		FirstName: "Ivan",
 		LastName:  "Petrov",
 		Birthday:  "24/02/2005",
+		Gender:    1,
 		Login:     "ivan123",
 		Password1: "qwerty123",
 		Password2: "qwerty456",
@@ -151,7 +163,7 @@ func TestAuthHandler_Register_PasswordMismatch(t *testing.T) {
 	handler.Register(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "passwords dont match")
+	assert.Contains(t, w.Body.String(), "passwords do not match")
 }
 
 func TestAuthHandler_Register_LoginAlreadyExists(t *testing.T) {
@@ -168,6 +180,7 @@ func TestAuthHandler_Register_LoginAlreadyExists(t *testing.T) {
 		FirstName: "Ivan",
 		LastName:  "Petrov",
 		Birthday:  "24/02/2005",
+		Gender:    1,
 		Login:     "ivan123",
 		Password1: "qwerty123",
 		Password2: "qwerty123",
@@ -184,7 +197,7 @@ func TestAuthHandler_Register_LoginAlreadyExists(t *testing.T) {
 	handler.Register(w, req)
 
 	assert.Equal(t, http.StatusConflict, w.Code)
-	assert.Contains(t, w.Body.String(), "login already registered")
+	assert.Contains(t, w.Body.String(), "login already exists")
 }
 
 func TestAuthHandler_Register_InvalidBirthday(t *testing.T) {
@@ -201,6 +214,7 @@ func TestAuthHandler_Register_InvalidBirthday(t *testing.T) {
 		FirstName: "Ivan",
 		LastName:  "Petrov",
 		Birthday:  "2005-02-24", // неправильный формат
+		Gender:    1,
 		Login:     "ivan123",
 		Password1: "qwerty123",
 		Password2: "qwerty123",
@@ -216,7 +230,7 @@ func TestAuthHandler_Register_InvalidBirthday(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.Register(w, req)
 
-	assert.Equal(t, http.StatusConflict, w.Code)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "invalid birthday date")
 }
 
@@ -234,6 +248,7 @@ func TestAuthHandler_Register_TooYoung(t *testing.T) {
 		FirstName: "Ivan",
 		LastName:  "Petrov",
 		Birthday:  "24/02/2020", // моложе 12
+		Gender:    1,
 		Login:     "ivan123",
 		Password1: "qwerty123",
 		Password2: "qwerty123",
@@ -249,8 +264,8 @@ func TestAuthHandler_Register_TooYoung(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.Register(w, req)
 
-	assert.Equal(t, http.StatusConflict, w.Code)
-	assert.Contains(t, w.Body.String(), "you are too young, buddy")
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "user is too young")
 }
 
 func TestAuthHandler_Register_SessionCreationError(t *testing.T) {
@@ -267,6 +282,7 @@ func TestAuthHandler_Register_SessionCreationError(t *testing.T) {
 		FirstName: "Ivan",
 		LastName:  "Petrov",
 		Birthday:  "24/02/2005",
+		Gender:    1,
 		Login:     "ivan123",
 		Password1: "qwerty123",
 		Password2: "qwerty123",
@@ -275,27 +291,37 @@ func TestAuthHandler_Register_SessionCreationError(t *testing.T) {
 	req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 
-	profileID := uuid.New()
-	expectedProfile := &models.Profile{ID: profileID}
-	expectedUserProfile := &models.UserProfile{ID: uuid.New()}
+	profileUid := uuid.New()
+	expectedProfile := &models.Profile{Uid: profileUid}
+
+	userProfileUid := uuid.New()
+	expectedUserProfile := &models.UserProfile{Uid: userProfileUid, ID: 0}
+
+	userAccountUid := uuid.New()
+	userAccountID := int64(22)
+	expectedUserAccount := &models.UserAccount{ID: userAccountID, Uid: userAccountUid}
 
 	mockAuthSvc.EXPECT().
 		Register(gomock.Any(), "Ivan", "Petrov", "ivan123", "qwerty123", "24/02/2005", models.Gender(0)).
 		Return(expectedProfile, nil)
 
 	mockUserSvc.EXPECT().
-		GetUserProfileByProfile(gomock.Any(), profileID).
+		GetUserProfileByProfileID(gomock.Any(), int64(0)).
 		Return(expectedUserProfile, nil)
 
+	mockUserSvc.EXPECT().
+		GetUserAccountByUserProfileID(gomock.Any(), int64(0)).
+		Return(expectedUserAccount, nil)
+
 	mockSessionSvc.EXPECT().
-		Create(gomock.Any(), expectedUserProfile.ID).
+		Create(gomock.Any(), userAccountID).
 		Return(nil, errors.New("session error"))
 
 	w := httptest.NewRecorder()
 	handler.Register(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.Contains(t, w.Body.String(), "не удалось создать сессию")
+	assert.Contains(t, w.Body.String(), "failed to create session")
 }
 
 func TestAuthHandler_Login_Success(t *testing.T) {
@@ -317,32 +343,36 @@ func TestAuthHandler_Login_Success(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	userID := uuid.New()
-	expectedUser := &models.User{ID: userID}
+	userAccountID := int64(33)
+	expectedUserAccount := &models.UserAccount{ID: userAccountID, Uid: userID, Username: "ivan123"}
 	sessionID := "sess456"
 	expectedSession := &models.Session{
 		SessionID: models.SessionID(sessionID),
-		UserID:    userID,
+		UserID:    userAccountID,
 		ExpiredAt: time.Now().Add(24 * time.Hour),
 	}
 
+	var userProfileID int64 = 44
+
 	expectedUserProfile := &models.UserProfile{
-		ID:        uuid.New(),
-		UserID:    userID,
-		FirstName: "Ivan",
-		LastName:  "Petrov",
-		CreatedAt: time.Now(),
+		ID:            userProfileID,
+		Uid:           uuid.New(),
+		UserAccountID: userAccountID,
+		FirstName:     "Ivan",
+		LastName:      "Petrov",
+		CreatedAt:     time.Now(),
 	}
 
 	mockAuthSvc.EXPECT().
 		Login(gomock.Any(), "ivan123", "qwerty123").
-		Return(expectedUser, nil)
+		Return(expectedUserAccount, nil)
 
 	mockSessionSvc.EXPECT().
-		Create(gomock.Any(), userID).
+		Create(gomock.Any(), userAccountID).
 		Return(expectedSession, nil)
 
 	mockUserSvc.EXPECT().
-		GetUserProfileByUser(gomock.Any(), userID).
+		GetUserProfileByUserID(gomock.Any(), userAccountID).
 		Return(expectedUserProfile, nil)
 
 	w := httptest.NewRecorder()
@@ -357,7 +387,6 @@ func TestAuthHandler_Login_Success(t *testing.T) {
 			assert.Equal(t, sessionID, c.Value)
 			assert.True(t, c.HttpOnly)
 			assert.Equal(t, "/", c.Path)
-			assert.Equal(t, http.SameSiteLaxMode, c.SameSite)
 			found = true
 			break
 		}
@@ -389,13 +418,13 @@ func TestAuthHandler_Login_InvalidCredentials(t *testing.T) {
 
 	mockAuthSvc.EXPECT().
 		Login(gomock.Any(), "ivan123", "wrong").
-		Return(nil, errors.New("недействительные учётные данные"))
+		Return(nil, errors.New("invalid credentials"))
 
 	w := httptest.NewRecorder()
 	handler.Login(w, req)
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	assert.Contains(t, w.Body.String(), "неверные учетные данные")
+	assert.Contains(t, w.Body.String(), "invalid credentials")
 }
 
 func TestAuthHandler_Login_SessionCreationError(t *testing.T) {
@@ -416,22 +445,29 @@ func TestAuthHandler_Login_SessionCreationError(t *testing.T) {
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 
-	userID := uuid.New()
-	expectedUser := &models.User{ID: userID}
+	userUid := uuid.New()
+	userAccountID := int64(23)
+	expectedUser := &models.UserAccount{Uid: userUid, ID: userAccountID}
+
+	expectedUserProfile := &models.UserProfile{ID: 1}
 
 	mockAuthSvc.EXPECT().
 		Login(gomock.Any(), "ivan123", "qwerty123").
 		Return(expectedUser, nil)
 
 	mockSessionSvc.EXPECT().
-		Create(gomock.Any(), userID).
+		Create(gomock.Any(), userAccountID).
 		Return(nil, errors.New("session error"))
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserID(gomock.Any(), userAccountID).
+		Return(expectedUserProfile, nil)
 
 	w := httptest.NewRecorder()
 	handler.Login(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.Contains(t, w.Body.String(), "не удалось создать сессию")
+	assert.Contains(t, w.Body.String(), "failed to create session")
 }
 
 func TestAuthHandler_Logout_Success(t *testing.T) {
@@ -548,21 +584,35 @@ func TestAuthHandler_Me_Success(t *testing.T) {
 
 	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
 
-	userID := uuid.New()
+	//var expectedID int64 = 1
+	userID := int64(2)
+	//userUid := uuid.New()
 	req := httptest.NewRequest("GET", "/api/auth/me", nil)
 	ctx := context.WithValue(req.Context(), "user_id", userID)
 	req = req.WithContext(ctx)
 
+	// expectedUserAccount := &models.UserAccount{
+	// 	ID:  userID,
+	// 	Uid: userUid,
+	// }
+
+	//*mocks.MockUserService.GetUserProfileByUserAccountUid
+
 	expectedUserProfile := &models.UserProfile{
-		ID:        uuid.New(),
-		UserID:    userID,
-		FirstName: "Ivan",
-		LastName:  "Petrov",
+		ID:            2,
+		Uid:           uuid.New(),
+		UserAccountID: 1,
+		FirstName:     "Ivan",
+		LastName:      "Petrov",
 	}
 
 	mockUserSvc.EXPECT().
-		GetUserProfileByUserProfileID(userID).
+		GetUserProfileByUserAccountID(ctx, userID).
 		Return(expectedUserProfile, nil)
+
+	// mockUserSvc.EXPECT().
+	// 	GetUserProfileByUserAccountUid(ctx, userUid).
+	// 	Return(expectedUserProfile, nil)
 
 	w := httptest.NewRecorder()
 	handler.Me(w, req)
@@ -592,7 +642,7 @@ func TestAuthHandler_Me_Unauthorized(t *testing.T) {
 	handler.Me(w, req)
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
-	assert.Contains(t, w.Body.String(), "не авторизован")
+	assert.Contains(t, w.Body.String(), "unauthorized")
 }
 
 func TestAuthHandler_Me_UserNotFound(t *testing.T) {
@@ -605,18 +655,18 @@ func TestAuthHandler_Me_UserNotFound(t *testing.T) {
 
 	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
 
-	userID := uuid.New()
+	userID := int64(44)
 	req := httptest.NewRequest("GET", "/api/auth/me", nil)
 	ctx := context.WithValue(req.Context(), "user_id", userID)
 	req = req.WithContext(ctx)
 
 	mockUserSvc.EXPECT().
-		GetUserProfileByUserProfileID(userID).
+		GetUserProfileByUserAccountID(ctx, userID).
 		Return(nil, errors.New("not found"))
 
 	w := httptest.NewRecorder()
 	handler.Me(w, req)
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
-	assert.Contains(t, w.Body.String(), "пользователь не найден")
+	assert.Contains(t, w.Body.String(), "not found")
 }

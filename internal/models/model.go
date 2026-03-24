@@ -1,6 +1,7 @@
 package models
 
 import (
+	"math/rand/v2"
 	"time"
 
 	"github.com/google/uuid"
@@ -72,22 +73,28 @@ const (
 
 // models structs
 // credentials данные
-type User struct {
-	ID           uuid.UUID `json:"id"`
+type UserAccount struct {
+	ID           int64     `json:"id"`
+	Uid          uuid.UUID `json:"uid"`
+	Username     string    `json:"username"`
 	Email        *string   `json:"email"`
 	Phone        *string   `json:"phone"`
 	PasswordHash string    `json:"-"`
+	IsActive     bool      `json:"isActive"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
-func NewUser(passwordHash string, phone, email *string) User {
+func NewUserAccount(username string, email, phone *string, passwordHash string) *UserAccount {
 	now := time.Now()
-	return User{
-		ID:           uuid.New(),
+	return &UserAccount{
+		ID:           rand.Int64(),
+		Uid:          uuid.New(),
 		Email:        email,
 		Phone:        phone,
 		PasswordHash: passwordHash,
+		Username:     username,
+		IsActive:     true,
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}
@@ -96,149 +103,150 @@ func NewUser(passwordHash string, phone, email *string) User {
 // UserProfile - user-specific profile information
 // профиль пользователя
 type UserProfile struct {
-	ID           uuid.UUID  `json:"id"`
-	UserID       uuid.UUID  `json:"userId"`
-	ProfileID    uuid.UUID  `json:"profileId"` // Abstract-Profile
-	FirstName    string     `json:"firstName"`
-	LastName     string     `json:"lastName"`
-	Bio          *string    `json:"bio,omitempty"`
-	BirthdayDate *time.Time `json:"birthdayDate,omitempty"`
-	Gender       *Gender    `json:"gender"`
-	CreatedAt    time.Time  `json:"createdAt"`
-	UpdatedAt    time.Time  `json:"updatedAt"`
+	ID            int64     `json:"id"`
+	Uid           uuid.UUID `json:"uid"`
+	UserAccountID int64     `json:"userAccountId"`
+	ProfileID     int64     `json:"profileId"`
+	FirstName     string    `json:"firstName"`
+	LastName      string    `json:"lastName"`
+	Bio           *string   `json:"bio,omitempty"`
+	BirthdayDate  time.Time `json:"birthdayDate,omitempty"`
+	Gender        Gender    `json:"gender"`
+	IsActive      bool      `json:"isActive"`
+	CreatedAt     time.Time `json:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt"`
 }
 
-func NewUserProfile(user User, profile Profile, firstName, lastName string, bio *string, birthday *time.Time, gender *Gender) UserProfile {
+func NewUserProfile(userAccountId, profileID int64, firstName, lastName string, bio *string, birthday time.Time, gender Gender) *UserProfile {
 	now := time.Now()
-
-	return UserProfile{
-		ID:           uuid.New(),
-		UserID:       user.ID,
-		ProfileID:    profile.ID,
-		FirstName:    firstName,
-		LastName:     lastName,
-		Bio:          bio,
-		BirthdayDate: birthday,
-		Gender:       gender,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+	return &UserProfile{
+		ID:            rand.Int64(),
+		Uid:           uuid.New(),
+		UserAccountID: userAccountId,
+		ProfileID:     profileID,
+		FirstName:     firstName,
+		LastName:      lastName,
+		Bio:           bio,
+		BirthdayDate:  birthday,
+		Gender:        gender,
+		IsActive:      true,
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
 }
 
 type Media struct {
-	ID          uuid.UUID `json:"id"`
+	ID          int64     `json:"id"`
+	Uid         uuid.UUID `json:"uid"`
 	Name        string    `json:"name"`
 	Extension   string    `json:"extension"`
 	Description *string   `json:"description,omitempty"`
 	MimeType    string    `json:"mimeType"`
 	Link        string    `json:"link"`
 	Size        int       `json:"size"`
+	IsActive    bool      `json:"isActive"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
-	IsDeleted   bool      `json:"isDeleted"`
 }
 
-func NewMedia(name, extension string, description *string, mimeType, link string, size int, isDeleted bool) Media {
+func NewMedia(name, extension string, description *string, mimeType, link string) *Media {
 	now := time.Now()
-
-	return Media{
-		ID:          uuid.New(),
+	return &Media{
+		ID:          rand.Int64(),
+		Uid:         uuid.New(),
 		Name:        name,
 		Extension:   extension,
 		Description: description,
 		MimeType:    mimeType,
 		Link:        link,
-		Size:        size,
+		IsActive:    true,
 		CreatedAt:   now,
 		UpdatedAt:   now,
-		IsDeleted:   isDeleted,
 	}
 }
 
 // Abstract profile for both users and groups
 type Profile struct {
-	ID        uuid.UUID  `json:"id"`
-	AvatarID  *uuid.UUID `json:"avatar,omitempty"`
-	Username  string     `json:"username"`
-	CreatedAt time.Time  `json:"createdAt"`
-	UpdatedAt time.Time  `json:"updatedAt"`
-	IsActive  bool       `json:"isActive"`
+	ID        int64     `json:"id"`
+	Uid       uuid.UUID `json:"uid"`
+	AvatarID  *int64    `json:"avatar,omitempty"`
+	IsActive  bool      `json:"isActive"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-func NewProfile(username string, avatar *Media, isActive bool) Profile {
-	var avatarID *uuid.UUID
-
-	if avatar != nil {
-		avatarID = &avatar.ID
-	}
-
+func NewProfile(avatarID *int64) *Profile {
 	now := time.Now()
 
-	return Profile{
-		ID:        uuid.New(),
+	return &Profile{
+		ID:        rand.Int64(),
+		Uid:       uuid.New(),
 		AvatarID:  avatarID,
-		Username:  username,
+		IsActive:  true,
 		CreatedAt: now,
 		UpdatedAt: now,
-		IsActive:  isActive,
 	}
 }
 
 type Post struct {
-	ID           uuid.UUID `json:"id"`
+	ID           int64     `json:"id"`
+	Uid          uuid.UUID `json:"uid"`
 	Text         *string   `json:"text,omitempty"`
-	AuthorID     uuid.UUID `json:"authorId"` // to Profile
+	AuthorID     int64     `json:"authorId"` // to Profile
+	IsPublicDemo bool      `json:"isPublicDemo"`
+	IsActive     bool      `json:"isActive"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
-	IsActive     bool      `json:"isActive"`
-	IsPublicDemo bool      `json:"isPublicDemo"`
 }
 
-func NewPost(text *string, author Profile, isActive bool, isPublicDemo bool) Post {
+func NewPost(text *string, authorID int64) *Post {
 	now := time.Now()
 
-	return Post{
-		ID:           uuid.New(),
-		Text:         text,
-		AuthorID:     author.ID,
-		CreatedAt:    now,
-		UpdatedAt:    now,
-		IsActive:     isActive,
-		IsPublicDemo: isPublicDemo,
+	return &Post{
+		ID:        rand.Int64(),
+		Uid:       uuid.New(),
+		Text:      text,
+		AuthorID:  authorID,
+		IsActive:  true,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 }
 
 // PostWithMedia - junction table for posts and media
 type PostWithMedia struct {
-	PostID  uuid.UUID `json:"postId"`
-	MediaID uuid.UUID `json:"mediaId"`
-	Order   int       `json:"order"`
+	PostID  int64 `json:"postId"`
+	MediaID int64 `json:"mediaId"`
+	Order   int   `json:"order"`
 }
 
-func NewPostWithMedia(post Post, media Media, order int) PostWithMedia {
-	return PostWithMedia{
-		PostID:  post.ID,
-		MediaID: media.ID,
+func NewPostWithMedia(postID, mediaID int64, order int) *PostWithMedia {
+	return &PostWithMedia{
+		PostID:  postID,
+		MediaID: mediaID,
 		Order:   order,
 	}
 }
 
 type Chat struct {
-	ID        uuid.UUID  `json:"id"`
-	TypeID    ChatType   `json:"type"`
-	Title     string     `json:"title"`
-	AvatarID  *uuid.UUID `json:"avatar,omitempty"`
-	CreatedAt time.Time  `json:"createdAt"`
-	UpdatedAt time.Time  `json:"updatedAt"`
-	IsDeleted bool       `json:"isDeleted"`
+	ID        int64     `json:"id"`
+	Uid       uuid.UUID `json:"uid"`
+	Type      ChatType  `json:"type"`
+	Title     string    `json:"title"`
+	AvatarID  *int64    `json:"avatar,omitempty"`
+	IsActive  bool      `json:"isActive"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // ChatMember - represents a member in a chat
 type ChatMember struct {
-	ID        uuid.UUID  `json:"id"`
-	ChatID    uuid.UUID  `json:"chat"`
-	MemberID  uuid.UUID  `json:"member"`
+	ID        int64      `json:"id"`
+	Uid       uuid.UUID  `json:"uid"`
+	ChatID    int64      `json:"chat"`
+	MemberID  int64      `json:"member"`
 	JoinedAt  time.Time  `json:"joinedAt"`
+	IsActive  bool       `json:"isActive"`
 	LeaveAt   *time.Time `json:"leaveAt,omitempty"`
 	CreatedAt time.Time  `json:"createdAt"`
 	UpdatedAt time.Time  `json:"updateAt"`
@@ -246,191 +254,218 @@ type ChatMember struct {
 }
 
 type Message struct {
-	ID              uuid.UUID     `json:"id"`
-	Text            *string       `json:"text,omitempty"`
-	ParentMessageID *uuid.UUID    `json:"parentMessage,omitempty"`
-	ChatID          uuid.UUID     `json:"chat"`
-	Status          MessageStatus `json:"status"`
-	AuthorID        *uuid.UUID    `json:"authorId,omitempty"`
-	StickerID       *uuid.UUID    `json:"sticker,omitempty"`
-	CreatedAt       time.Time     `json:"createdAt"`
-	UpdatedAt       time.Time     `json:"updatedAt"`
-	IsDeleted       bool          `json:"isDeleted"`
+	ID              int64     `json:"id"`
+	Uid             uuid.UUID `json:"uid"`
+	Text            *string   `json:"text,omitempty"`
+	ParentMessageID *int64    `json:"parentMessage,omitempty"`
+	ChatID          int64     `json:"chat"`
+	AuthorID        int64     `json:"authorId,omitempty"`
+	StickerID       *int64    `json:"sticker,omitempty"`
+	IsActive        bool      `json:"isActive"`
+	CreatedAt       time.Time `json:"createdAt"`
+	UpdatedAt       time.Time `json:"updatedAt"`
+}
+
+type UserMessageStatus struct {
+	ProfileID int64
+	MessageID int64
+	Status    MessageStatus
 }
 
 // MessageWithMedia - junction table for messages and media
 type MessageWithMedia struct {
-	MessageID uuid.UUID `json:"messageId"`
-	MediaID   uuid.UUID `json:"mediaId"`
-	Order     int       `json:"order"`
+	MessageID int64 `json:"messageId"`
+	MediaID   int64 `json:"mediaId"`
+	Order     int   `json:"order"`
 }
 
 type Community struct {
-	ID        uuid.UUID     `json:"id"`
+	ID        int64         `json:"id"`
+	Uid       uuid.UUID     `json:"uid"`
 	Title     string        `json:"title"`
 	Bio       *string       `json:"bio,omitempty"`
 	Type      CommunityType `json:"type"`
-	OwnerID   uuid.UUID     `json:"owner"`     // Profile
-	ProfileID uuid.UUID     `json:"profileId"` // Abstract-Profile
+	ProfileID int64         `json:"profileId"` // Abstract-Profile
+	IsActive  bool          `json:"isActive"`
 	CreatedAt time.Time     `json:"createdAt"`
 	UpdatedAt time.Time     `json:"updatedAt"`
 }
 
 // CommunityMember - represents a member in a community
 type CommunityMember struct {
-	ID          uuid.UUID           `json:"id"`
-	CommunityID uuid.UUID           `json:"community"`
-	MemberID    uuid.UUID           `json:"member"`
+	ID          int64               `json:"id"`
+	Uid         uuid.UUID           `json:"uid"`
+	CommunityID int64               `json:"community"`
+	MemberID    int64               `json:"member"`
+	Role        CommunityMemberRole `json:"role"`
 	JoinedAt    time.Time           `json:"joinedAt"`
 	LeaveAt     *time.Time          `json:"leaveAt,omitempty"`
+	IsActive    bool                `json:"isActive"`
 	CreatedAt   time.Time           `json:"createdAt"`
 	UpdatedAt   time.Time           `json:"updatedAt"`
-	Role        CommunityMemberRole `json:"role"`
 }
 
 type Comment struct {
-	ID              uuid.UUID  `json:"id"`
-	Text            string     `json:"text"`
-	TargetPostID    uuid.UUID  `json:"post"`
-	ParentCommentID *uuid.UUID `json:"parentComment,omitempty"`
-	StickerID       *uuid.UUID `json:"sticker,omitempty"`
-	AuthorID        uuid.UUID  `json:"author"`
-	CreatedAt       time.Time  `json:"createdAt"`
-	UpdatedAt       time.Time  `json:"updatedAt"`
-	IsDeleted       bool       `json:"isDeleted"`
+	ID              int64     `json:"id"`
+	Uid             uuid.UUID `json:"uid"`
+	Text            *string   `json:"text"`
+	TargetPostID    int64     `json:"post"`
+	ParentCommentID *int64    `json:"parentComment,omitempty"`
+	StickerID       *int64    `json:"sticker,omitempty"`
+	AuthorID        int64     `json:"author"`
+	IsActive        bool      `json:"isActive"`
+	CreatedAt       time.Time `json:"createdAt"`
+	UpdatedAt       time.Time `json:"updatedAt"`
 }
 
-func NewComment(text string, targetPostID uuid.UUID, parentCommentID, stickerID *uuid.UUID, authorID uuid.UUID, isDeleted bool) Comment {
+func NewComment(text *string, targetPostID int64, parentCommentID, stickerID *int64, authorID int64) *Comment {
 	now := time.Now()
-
-	return Comment{
-		ID:              uuid.New(),
+	return &Comment{
+		ID:              rand.Int64(),
+		Uid:             uuid.New(),
 		Text:            text,
 		TargetPostID:    targetPostID,
 		ParentCommentID: parentCommentID,
 		StickerID:       stickerID,
 		AuthorID:        authorID,
+		IsActive:        true,
 		CreatedAt:       now,
 		UpdatedAt:       now,
-		IsDeleted:       isDeleted,
 	}
 }
 
 // CommentWithMedia - junction table for comments and media
 type CommentWithMedia struct {
-	CommentID uuid.UUID `json:"commentId"`
-	MediaID   uuid.UUID `json:"mediaId"`
-	Order     int       `json:"order"`
+	CommentID int64 `json:"commentId"`
+	MediaID   int64 `json:"mediaId"`
+	Order     int   `json:"order"`
 }
 
 type Like struct {
-	ID        uuid.UUID `json:"id"`
-	AuthorID  uuid.UUID `json:"author"`
+	ID        int64     `json:"id"`
+	Uid       uuid.UUID `json:"uid"`
+	PostID    *int64    `json:"postID"`
+	CommentID *int64    `json:"commentID"`
+	AuthorID  int64     `json:"author"`
+	IsActive  bool      `json:"isActive"`
 	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-func NewLike(author Profile) Like {
-	return Like{
-		ID:        uuid.New(),
-		AuthorID:  author.ID,
-		CreatedAt: time.Now(),
+func NewLikeToPost(postID int64, authorID int64) *Like {
+	now := time.Now()
+	return &Like{
+		ID:        rand.Int64(),
+		Uid:       uuid.New(),
+		PostID:    &postID,
+		CommentID: nil,
+		AuthorID:  authorID,
+		IsActive:  true,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 }
 
-// LikeToPost - junction table for likes to posts
-type LikeToPost struct {
-	LikeID uuid.UUID `json:"likeId"`
-	PostID uuid.UUID `json:"postId"`
-}
-
-func NewLikeToPost(likeID, postID uuid.UUID) LikeToPost {
-	return LikeToPost{
-		LikeID: likeID,
-		PostID: postID,
+func NewLikeToComment(commentID int64, authorID int64) *Like {
+	now := time.Now()
+	return &Like{
+		ID:        rand.Int64(),
+		Uid:       uuid.New(),
+		PostID:    nil,
+		CommentID: &commentID,
+		AuthorID:  authorID,
+		IsActive:  true,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
-}
-
-// LikeToComment - junction table for likes to comments
-type LikeToComment struct {
-	LikeID    uuid.UUID `json:"likeId"`
-	CommentID uuid.UUID `json:"commentId"`
 }
 
 type Friendship struct {
-	Friend1ID uuid.UUID        `json:"friend1"`
-	Friend2ID uuid.UUID        `json:"friend2"`
-	Status    FriendshipStatus `json:"status"`
-	CreatedAt time.Time        `json:"createdAt"`
-	UpdatedAt time.Time        `json:"updatedAt"`
+	Friend1ID   int64            `json:"friend1"`
+	Friend2ID   int64            `json:"friend2"`
+	REquesterID int64            `json:"requester"`
+	Status      FriendshipStatus `json:"status"`
+	IsActive    bool             `json:"isActive"`
+	CreatedAt   time.Time        `json:"createdAt"`
+	UpdatedAt   time.Time        `json:"updatedAt"`
 }
 
 type Stickerpack struct {
-	ID        uuid.UUID `json:"id"`
-	Title     string    `json:"title"`
-	AuthorID  uuid.UUID
+	ID        int64     `json:"id"`
+	Uid       uuid.UUID `json:"uid"`
+	Title     *string   `json:"title"`
+	AuthorID  *int64    `json:"author"`
+	IsActive  bool      `json:"isActive"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
-	IsDeleted bool      `json:"isDeleted"`
 }
 
 type Sticker struct {
-	ID         uuid.UUID `json:"id"`
-	Link       string    `json:"link"`
+	ID         int64     `json:"id"`
+	Uid        uuid.UUID `json:"uid"`
 	Size       int       `json:"size"`
 	IndexOrder int       `json:"indexOrder"`
-	PackID     uuid.UUID `json:"pack"`
+	PackID     *int64    `json:"pack"`
+	IsActive   bool      `json:"isActive"`
 	CreatedAt  time.Time `json:"createdAt"`
 	UpdatedAt  time.Time `json:"updateAt"`
-	IsDeleted  bool      `json:"isDeleted"`
 }
 
 type Session struct {
 	SessionID SessionID `json:"id"`
-	UserID    uuid.UUID `json:"user"`
+	UserID    int64     `json:"user"`
 	CreatedAt time.Time `json:"createdAt"`
 	ExpiredAt time.Time `json:"expiredAt"`
 }
 
 type Ad struct {
-	ID          uuid.UUID  `json:"id"`
-	Title       string     `json:"title"`
-	Description *string    `json:"description,omitempty"`
-	Link        string     `json:"link"`
-	MediaID     *uuid.UUID `json:"media,omitempty"`
-	AuthorID    uuid.UUID  `json:"author"`
-	CreatedAt   time.Time  `json:"createdAt"`
-	UpdatedAt   time.Time  `json:"updatedAt"`
-	IsDeleted   bool       `json:"isDeleted"`
+	ID          int64     `json:"id"`
+	Uid         uuid.UUID `json:"uid"`
+	Title       string    `json:"title"`
+	Description string    `json:"description,omitempty"`
+	Link        string    `json:"link"`
+	MediaID     int64     `json:"media,omitempty"`
+	AuthorID    int64     `json:"author"`
+	IsActive    bool      `json:"isActive"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
 // AdMeta - metadata for advertisements
 type AdMeta struct {
-	AdID      uuid.UUID `json:"adId"`
+	ID        int64     `json:"id"`
+	Uid       uuid.UUID `json:"uid"`
+	AdID      int64     `json:"adId"`
 	Key       string    `json:"key"`
 	Value     string    `json:"value"`
+	IsActive  bool      `json:"isActive"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type Reaction struct {
-	ID        uuid.UUID    `json:"id"`
-	MessageID uuid.UUID    `json:"message"`
+	ID        int64        `json:"id"`
+	Uid       uuid.UUID    `json:"uid"`
+	MessageID int64        `json:"message"`
 	Type      ReactionType `json:"type"`
-	AuthorID  uuid.UUID    `json:"author"`
+	AuthorID  int64        `json:"author"`
+	IsActive  bool         `json:"isActive"`
 	CreatedAt time.Time    `json:"createdAt"`
 	UpdatedAt time.Time    `json:"updatedAt"`
 }
 
 type Repost struct {
-	ID       uuid.UUID `json:"id"`
-	AuthorID uuid.UUID `json:"authorId"` // Profile
-	ChatID   uuid.UUID `json:"chatId"`
-	PostID   uuid.UUID `json:"postId"`
+	ID       int64     `json:"id"`
+	Uid      uuid.UUID `json:"uid"`
+	AuthorID int64     `json:"authorId"` // Profile
+	ChatID   int64     `json:"chatId"`
+	PostID   int64     `json:"postId"`
 }
 
-func NewRepost(authorID, chatID, postID uuid.UUID) Repost {
-	return Repost{
-		ID:       uuid.New(),
+func NewRepost(authorID, chatID, postID int64) *Repost {
+	return &Repost{
+		ID:       rand.Int64(),
+		Uid:      uuid.New(),
 		AuthorID: authorID,
 		ChatID:   chatID,
 		PostID:   postID,

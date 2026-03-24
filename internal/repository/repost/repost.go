@@ -1,30 +1,29 @@
-package repository
+package repost
 
 import (
 	"context"
 	"sync"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
-	"github.com/google/uuid"
 )
 
 type RepostRepo interface {
-	Save(ctx context.Context, repost models.Repost) error
-	GetRepostCount(ctx context.Context, postID uuid.UUID) int
+	Save(ctx context.Context, repost models.Repost) (int64, error)
+	GetRepostCount(ctx context.Context, postID int64) int
 }
 
 type inmemoryRepostRepo struct {
-	reposts map[uuid.UUID]models.Repost
+	reposts map[int64]models.Repost
 	mu      sync.RWMutex
 }
 
 func NewRepostRepo() RepostRepo {
 	return &inmemoryRepostRepo{
-		reposts: make(map[uuid.UUID]models.Repost),
+		reposts: make(map[int64]models.Repost),
 	}
 }
 
-func (r *inmemoryRepostRepo) Save(ctx context.Context, repost models.Repost) error {
+func (r *inmemoryRepostRepo) Save(ctx context.Context, repost models.Repost) (int64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -33,10 +32,10 @@ func (r *inmemoryRepostRepo) Save(ctx context.Context, repost models.Repost) err
 		r.reposts[repost.ID] = repost
 	}
 
-	return nil
+	return repost.ID, nil
 }
 
-func (r *inmemoryRepostRepo) GetRepostCount(ctx context.Context, postID uuid.UUID) int {
+func (r *inmemoryRepostRepo) GetRepostCount(ctx context.Context, postID int64) int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 

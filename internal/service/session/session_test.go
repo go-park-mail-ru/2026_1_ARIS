@@ -1,20 +1,19 @@
-package service
+package session
 
 import (
 	"context"
 	"testing"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
-	"github.com/google/uuid"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/session"
 )
 
 func TestSessionLifecycle(t *testing.T) {
-	repo := repository.NewSessionRepo()
+	repo := session.NewSessionRepo()
 	svc := NewSessionService(repo)
 	ctx := context.Background()
-	userID := uuid.New() //models.UserID(42)
+	userAccountID := int64(44) //models.UserID(42)
 
-	session, err := svc.Create(ctx, userID)
+	session, err := svc.Create(ctx, userAccountID)
 	if err != nil {
 		t.Fatalf("Failed to create session: %v", err)
 	}
@@ -28,7 +27,7 @@ func TestSessionLifecycle(t *testing.T) {
 		t.Fatalf("Failed to get session: %v", err)
 	}
 
-	if savedSess.UserID != userID {
-		t.Errorf("Expected UserID %d, got %d", userID, savedSess.UserID)
+	if savedSess.UserID != userAccountID {
+		t.Errorf("Expected UserID %d, got %d", userAccountID, savedSess.UserID)
 	}
 }

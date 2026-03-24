@@ -1,15 +1,18 @@
-package handlers
+package auth
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/auth"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 )
 
 const (
@@ -48,9 +51,9 @@ type LoginRequest struct {
 }
 
 type AuthHandler struct {
-	authService    service.AuthService
-	sessionService service.SessionService
-	userService    service.UserService
+	authService    auth.AuthService
+	sessionService session.SessionService
+	userService    user.UserService
 }
 
 type LoginResponse struct {
@@ -61,7 +64,7 @@ type LoginResponse struct {
 }
 
 type UserDTO struct {
-	user        models.User
+	user        models.UserAccount
 	userProfile models.UserProfile
 	profile     models.Profile
 }
@@ -70,7 +73,7 @@ type CommonResponse struct {
 	Message string `json:"message"`
 }
 
-func NewAuthHandler(authService service.AuthService, sessSvc service.SessionService, usService service.UserService) *AuthHandler {
+func NewAuthHandler(authService auth.AuthService, sessSvc session.SessionService, usService user.UserService) *AuthHandler {
 	return &AuthHandler{
 		authService:    authService,
 		sessionService: sessSvc,
@@ -135,13 +138,18 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userProfile, err := h.userService.GetUserProfileByProfile(r.Context(), profile.ID)
+	userProfile, err := h.userService.GetUserProfileByProfileID(r.Context(), profile.ID)
 	if err != nil {
 		utils.WriteError(w, "user profile not found", http.StatusInternalServerError)
 		return
 	}
+	userAccount, err := h.userService.GetUserAccountByUserProfileID(r.Context(), userProfile.ID)
+	if err != nil {
+		utils.WriteError(w, "user account not found", http.StatusInternalServerError)
+		return
+	}
 
-	session, err := h.sessionService.Create(r.Context(), userProfile.UserID)
+	session, err := h.sessionService.Create(r.Context(), userAccount.ID)
 	if err != nil {
 		utils.WriteError(w, "failed to create session", http.StatusInternalServerError)
 		return
@@ -179,13 +187,13 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.authService.Login(r.Context(), req.Login, req.Password)
+	userAccount, err := h.authService.Login(r.Context(), req.Login, req.Password)
 	if err != nil {
 		utils.WriteError(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
 
-	userProfile, err := h.userService.GetUserProfileByUser(r.Context(), user.ID)
+	userProfile, err := h.userService.GetUserProfileByUserID(r.Context(), userAccount.ID)
 	if err != nil {
 		errMsg := err.Error()
 		if errMsg == ErrUserNotFound {
@@ -197,7 +205,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.sessionService.Create(r.Context(), user.ID)
+	session, err := h.sessionService.Create(r.Context(), userAccount.ID)
 	if err != nil {
 		utils.WriteError(w, "failed to create session", http.StatusInternalServerError)
 		return
@@ -212,7 +220,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	})
 
 	loginResponse := LoginResponse{
-		ID:        userProfile.ID.String(),
+		ID:        strconv.FormatInt(userProfile.ID, 10),
 		CreatedAt: userProfile.CreatedAt.UTC().Format(time.RFC3339Nano),
 		FirstName: userProfile.FirstName,
 		LastName:  userProfile.LastName,
@@ -269,17 +277,21 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	userIDFromCtx := r.Context().Value("user_id")
 	if userIDFromCtx == nil {
+		fmt.Println("Нет контекста")
 		utils.WriteError(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	userID, ok := userIDFromCtx.(uuid.UUID)
+	userID, ok := userIDFromCtx.(int64)
 	if !ok {
+		fmt.Println("нельзя считать как int64")
 		utils.WriteError(w, "invalid user id in context", http.StatusUnauthorized)
 		return
 	}
 
-	user, err := h.userService.GetUserProfileByUser(r.Context(), userID)
+	//userProfile, err := h.userService.GetUserProfileByUser(r.Context(), userID)
+
+	userProfile, err := h.userService.GetUserProfileByUserAccountID(r.Context(), userID)
 
 	if err != nil {
 		utils.WriteError(w, ErrUserNotFound, http.StatusNotFound)
@@ -288,7 +300,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(userProfile)
 }
 
 // @Description Validate register first step
