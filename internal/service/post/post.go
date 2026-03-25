@@ -80,21 +80,10 @@ func (s *postService) getFeed(ctx context.Context, getCursoredPosts func(ctx con
 
 	params := FeedParams{Cursor: cur, Limit: limit}
 
-	posts, err := s.getCursoredPosts(ctx, params)
+	posts, err := getCursoredPosts(ctx, params)
 	if err != nil {
 		return FeedResult{}, err
 	}
-
-	filtered := make([]models.Post, 0, len(posts))
-
-	for _, post := range posts {
-		if post.IsPublicDemo {
-			continue
-		}
-		filtered = append(filtered, post)
-	}
-
-	posts = filtered
 
 	hasMore := len(posts) > limit
 	if hasMore {
@@ -171,9 +160,18 @@ func (s *postService) GetPopularPosts(ctx context.Context) ([]models.Post, error
 
 // получение постов с учётом курсора
 func (s *postService) getCursoredPosts(ctx context.Context, params FeedParams) ([]models.Post, error) {
-	feedSlice, err := s.PostRepo.GetAll(ctx)
+	allPosts, err := s.PostRepo.GetAll(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	feedSlice := make([]models.Post, 0, len(allPosts))
+
+	for _, p := range allPosts {
+		if p.IsPublicDemo {
+			continue
+		}
+		feedSlice = append(feedSlice, p)
 	}
 
 	slices.SortFunc(feedSlice, func(a, b models.Post) int {

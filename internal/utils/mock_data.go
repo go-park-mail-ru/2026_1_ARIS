@@ -270,9 +270,11 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	post1.CreatedAt = now.Add(0 * time.Minute)
 	post1.UpdatedAt = post1.CreatedAt
+	post1.IsPublicDemo = true
 
 	post2.CreatedAt = now.Add(-1 * time.Minute)
 	post2.UpdatedAt = post2.CreatedAt
+	post2.IsPublicDemo = true
 
 	post3.CreatedAt = now.Add(-1 * time.Hour)
 	post3.UpdatedAt = post3.CreatedAt
