@@ -55,11 +55,11 @@ const (
 	ReactionAngry ReactionType = "😡"
 )
 
-type Gender int
+type Gender string
 
 const (
-	Male Gender = iota
-	Female
+	Male   Gender = "male"
+	Female Gender = "female"
 )
 
 type MessageStatus int
@@ -74,15 +74,15 @@ const (
 // models structs
 // credentials данные
 type UserAccount struct {
-	ID           int64     `json:"id"`
-	Uid          uuid.UUID `json:"uid"`
-	Username     string    `json:"username"`
-	Email        *string   `json:"email"`
-	Phone        *string   `json:"phone"`
-	PasswordHash string    `json:"-"`
-	IsActive     bool      `json:"isActive"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	ID           int64     `db:"id"`
+	Uid          uuid.UUID `db:"uid"`
+	Username     string    `db:"username"`
+	Email        *string   `db:"email"`
+	Phone        *string   `db:"phone"`
+	PasswordHash string    `db:"password_hash"`
+	IsActive     bool      `db:"is_active"`
+	CreatedAt    time.Time `db:"created_at"`
+	UpdatedAt    time.Time `db:"updated_at"`
 }
 
 func NewUserAccount(username string, email, phone *string, passwordHash string) *UserAccount {
@@ -103,18 +103,18 @@ func NewUserAccount(username string, email, phone *string, passwordHash string) 
 // UserProfile - user-specific profile information
 // профиль пользователя
 type UserProfile struct {
-	ID            int64     `json:"id"`
-	Uid           uuid.UUID `json:"uid"`
-	UserAccountID int64     `json:"userAccountId"`
-	ProfileID     int64     `json:"profileId"`
-	FirstName     string    `json:"firstName"`
-	LastName      string    `json:"lastName"`
-	Bio           *string   `json:"bio,omitempty"`
-	BirthdayDate  time.Time `json:"birthdayDate,omitempty"`
-	Gender        Gender    `json:"gender"`
-	IsActive      bool      `json:"isActive"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedAt     time.Time `json:"updatedAt"`
+	ID            int64     `db:"id" json:"id"`
+	Uid           uuid.UUID `db:"uid" json:""`
+	UserAccountID int64     `db:"user_account_id" json:"userAccountId"`
+	ProfileID     int64     `db:"profile_id" json:"profileId"`
+	FirstName     string    `db:"first_name" json:"firstName"`
+	LastName      string    `db:"last_name" json:"lastName"`
+	Bio           *string   `db:"bio,omitempty" json:"bio,omitempty"`
+	BirthdayDate  time.Time `db:"birthday_date,omitempty" json:"birthdayDate,omitempty"`
+	Gender        Gender    `db:"gender" json:"gender"`
+	IsActive      bool      `db:"is_active" json:"isActive"`
+	CreatedAt     time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt     time.Time `db:"updated_at" json:"updatedAt"`
 }
 
 func NewUserProfile(userAccountId, profileID int64, firstName, lastName string, bio *string, birthday time.Time, gender Gender) *UserProfile {
@@ -136,17 +136,17 @@ func NewUserProfile(userAccountId, profileID int64, firstName, lastName string, 
 }
 
 type Media struct {
-	ID          int64     `json:"id"`
-	Uid         uuid.UUID `json:"uid"`
-	Name        string    `json:"name"`
-	Extension   string    `json:"extension"`
-	Description *string   `json:"description,omitempty"`
-	MimeType    string    `json:"mimeType"`
-	Link        string    `json:"link"`
-	Size        int       `json:"size"`
-	IsActive    bool      `json:"isActive"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID          int64     `db:"id"`
+	Uid         uuid.UUID `db:"uid"`
+	Name        string    `db:"media_name"`
+	Extension   string    `db:"extension"`
+	Description *string   `db:"description,omitempty"`
+	MimeType    string    `db:"mime_type"`
+	Link        string    `db:"link"`
+	Size        int       `db:"size"`
+	IsActive    bool      `db:"is_active"`
+	CreatedAt   time.Time `db:"created_at"`
+	UpdatedAt   time.Time `db:"updated_at"`
 }
 
 func NewMedia(name, extension string, description *string, mimeType, link string) *Media {
@@ -167,12 +167,13 @@ func NewMedia(name, extension string, description *string, mimeType, link string
 
 // Abstract profile for both users and groups
 type Profile struct {
-	ID        int64     `json:"id"`
-	Uid       uuid.UUID `json:"uid"`
-	AvatarID  *int64    `json:"avatar,omitempty"`
-	IsActive  bool      `json:"isActive"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID        int64     `db:"id"`
+	Uid       uuid.UUID `db:"uid"`
+	AvatarID  *int64    `db:"avatar_id,omitempty"`
+	IsActive  bool      `db:"is_active"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
+	//LastSeenAt time.Time `db:"last_seen_at"`
 }
 
 func NewProfile(avatarID *int64) *Profile {
@@ -189,14 +190,14 @@ func NewProfile(avatarID *int64) *Profile {
 }
 
 type Post struct {
-	ID           int64     `json:"id"`
-	Uid          uuid.UUID `json:"uid"`
-	Text         *string   `json:"text,omitempty"`
-	AuthorID     int64     `json:"authorId"` // to Profile
-	IsPublicDemo bool      `json:"isPublicDemo"`
-	IsActive     bool      `json:"isActive"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	ID           int64     `db:"id"`
+	Uid          uuid.UUID `db:"uid"`
+	Text         *string   `db:"post_text,omitempty"`
+	AuthorID     int64     `db:"author_id"` // to Profile
+	IsPublicDemo bool      `db:"is_public_demo"`
+	IsActive     bool      `db:"is_active"`
+	CreatedAt    time.Time `db:"created_at"`
+	UpdatedAt    time.Time `db:"updated_at"`
 }
 
 func NewPost(text *string, authorID int64) *Post {
@@ -215,9 +216,9 @@ func NewPost(text *string, authorID int64) *Post {
 
 // PostWithMedia - junction table for posts and media
 type PostWithMedia struct {
-	PostID  int64 `json:"postId"`
-	MediaID int64 `json:"mediaId"`
-	Order   int   `json:"order"`
+	PostID  int64 `db:"post_id"`
+	MediaID int64 `db:"media_id"`
+	Order   int   `db:"sort_order"`
 }
 
 func NewPostWithMedia(postID, mediaID int64, order int) *PostWithMedia {
@@ -229,14 +230,28 @@ func NewPostWithMedia(postID, mediaID int64, order int) *PostWithMedia {
 }
 
 type Chat struct {
-	ID        int64     `json:"id"`
-	Uid       uuid.UUID `json:"uid"`
-	Type      ChatType  `json:"type"`
-	Title     string    `json:"title"`
-	AvatarID  *int64    `json:"avatar,omitempty"`
-	IsActive  bool      `json:"isActive"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID        int64     `db:"id"`
+	Uid       uuid.UUID `db:"uid"`
+	Type      ChatType  `db:"chat_type"`
+	Title     string    `db:"title"`
+	AvatarID  *int64    `db:"avatar_id,omitempty"`
+	IsActive  bool      `db:"is_active"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
+}
+
+func NewChat(chat_type ChatType, title string, avatarID *int64) *Chat {
+	now := time.Now()
+	return &Chat{
+		ID:        rand.Int64(),
+		Uid:       uuid.New(),
+		Type:      chat_type,
+		Title:     title,
+		AvatarID:  avatarID,
+		IsActive:  true,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
 }
 
 // ChatMember - represents a member in a chat
@@ -342,14 +357,14 @@ type CommentWithMedia struct {
 }
 
 type Like struct {
-	ID        int64     `json:"id"`
-	Uid       uuid.UUID `json:"uid"`
-	PostID    *int64    `json:"postID"`
-	CommentID *int64    `json:"commentID"`
-	AuthorID  int64     `json:"author"`
-	IsActive  bool      `json:"isActive"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID        int64     `db:"id"`
+	Uid       uuid.UUID `db:"uid"`
+	PostID    *int64    `db:"post_id"`
+	CommentID *int64    `db:"comment_id"`
+	AuthorID  int64     `db:"author_id"`
+	IsActive  bool      `db:"is_active"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 }
 
 func NewLikeToPost(postID int64, authorID int64) *Like {

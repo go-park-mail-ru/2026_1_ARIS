@@ -2,9 +2,11 @@ package utils
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/comment"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/like"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
@@ -20,7 +22,8 @@ func MakeMock(mediaRepo media.MediaRepo,
 	postWithMediaRepo postrepo.PostWithMediaRepo,
 	//likeToPostRepo repository.LikeToPostRepo,
 	commentRepo comment.CommentRepo,
-	repostRepo repost.RepostRepo) {
+	repostRepo repost.RepostRepo,
+	chatRepo chat.ChatRepo) {
 
 	// create user avatars
 	userAvatar1 := "user avatar 1 description"
@@ -41,34 +44,75 @@ func MakeMock(mediaRepo media.MediaRepo,
 	avatar8 := models.NewMedia("avatar_8_name", "jpg", &userAvatar8, "image", "https://sun9-5.userapi.com/s/v1/ig2/uGYEtsdSK4QHpAyiRnb5vCasxGZy7dR-MYECGzReWIivHlfmnfQP2DaVY6_UOJHzPG4yzjnVbty6aWqM8kjydEAS.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640&from=bu&cs=640x0")
 	//avatar9 := models.NewMedia("avatar_9_name", "jpg", &userAvatar9, "image", "https://i.ibb.co/s9rN3qD9/7.jpg", 4000, false)
 
-	mediaRepo.Save(context.Background(), *avatar1)
-	mediaRepo.Save(context.Background(), *avatar2)
-	mediaRepo.Save(context.Background(), *avatar3)
-	mediaRepo.Save(context.Background(), *avatar4)
-	mediaRepo.Save(context.Background(), *avatar5)
-	mediaRepo.Save(context.Background(), *avatar6)
-	mediaRepo.Save(context.Background(), *avatar7)
-	mediaRepo.Save(context.Background(), *avatar8)
+	avatar1ID, err := mediaRepo.Save(context.Background(), *avatar1)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	avatar2ID, err := mediaRepo.Save(context.Background(), *avatar2)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	avatar3ID, err := mediaRepo.Save(context.Background(), *avatar3)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	avatar4ID, err := mediaRepo.Save(context.Background(), *avatar4)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	avatar5ID, err := mediaRepo.Save(context.Background(), *avatar5)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	avatar6ID, err := mediaRepo.Save(context.Background(), *avatar6)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	avatar7ID, err := mediaRepo.Save(context.Background(), *avatar7)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	avatar8ID, err := mediaRepo.Save(context.Background(), *avatar8)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("аватарки успешно созданы")
 
 	// create Profiles (users)
 
-	email1 := "email444@gmail.com"
-	email2 := "email000@gmail.com"
-	email3 := "email111@gmail.com"
-	email4 := "email222@gmail.com"
-	email5 := "email333@gmail.com"
-	email6 := "email444@gmail.com"
-	email7 := "email444@gmail.com"
-	email8 := "email444@gmail.com"
+	email1 := "email4441@gmail.com"
+	email2 := "email0002@gmail.com"
+	email3 := "email1113@gmail.com"
+	email4 := "email2224@gmail.com"
+	email5 := "email3335@gmail.com"
+	email6 := "email4446@gmail.com"
+	email7 := "email4447@gmail.com"
+	email8 := "email4448@gmail.com"
 
-	phone1 := "+479990001122"
-	phone2 := "+799900011222"
-	phone3 := "+179990001122"
-	phone4 := "+279990001122"
-	phone5 := "+379990001122"
-	phone6 := "+479990001122"
-	phone7 := "+479990001122"
-	phone8 := "+479990001122"
+	phone1 := "+479990101122"
+	phone2 := "+799900211222"
+	phone3 := "+179990301122"
+	phone4 := "+279990401122"
+	phone5 := "+379990501122"
+	phone6 := "+479990601122"
+	phone7 := "+479990701122"
+	phone8 := "+479990901122"
 
 	birthdayDate1, _ := time.Parse("02/01/2006", "24/02/2005")
 	birthdayDate2, _ := time.Parse("02/01/2006", "24/02/2005")
@@ -79,14 +123,55 @@ func MakeMock(mediaRepo media.MediaRepo,
 	birthdayDate7, _ := time.Parse("02/01/2006", "24/02/2005")
 	birthdayDate8, _ := time.Parse("02/01/2006", "24/02/2005")
 
-	user1, _ := userProfileService.CreateRealUserProfile(context.Background(), &email1, &phone1, "hard password hash", "KomandaARIS", "Команда", "АРИС", birthdayDate1, models.Gender(1), &avatar1.ID)
-	user2, _ := userProfileService.CreateRealUserProfile(context.Background(), &email2, &phone2, "hard password hash", "SergeyShulginenko", "Сергей", "Шульгиненко", birthdayDate2, models.Gender(0), &avatar2.ID)
-	user3, _ := userProfileService.CreateRealUserProfile(context.Background(), &email3, &phone3, "hard password hash", "AnnaOparina", "Анна", "Опарина", birthdayDate3, models.Gender(1), &avatar3.ID)
-	user4, _ := userProfileService.CreateRealUserProfile(context.Background(), &email4, &phone4, "hard password hash", "IvanKhvostov", "Иван", "Хвостов", birthdayDate4, models.Gender(0), &avatar4.ID)
-	user5, _ := userProfileService.CreateRealUserProfile(context.Background(), &email5, &phone5, "hard password hash", "RinatBaikov", "Ринат", "Байков", birthdayDate5, models.Gender(0), &avatar5.ID)
-	user6, _ := userProfileService.CreateRealUserProfile(context.Background(), &email6, &phone6, "hard password hash", "SofiaSitnichenko", "Софья", "Ситниченко", birthdayDate6, models.Gender(1), &avatar6.ID)
-	user7, _ := userProfileService.CreateRealUserProfile(context.Background(), &email7, &phone7, "hard password hash", "KonstantinGalanin", "Константин", "Галанин", birthdayDate7, models.Gender(0), &avatar7.ID)
-	user8, _ := userProfileService.CreateRealUserProfile(context.Background(), &email8, &phone8, "hard password hash", "DaniilKhasyanov", "Даниил", "Хасьянов", birthdayDate8, models.Gender(0), &avatar8.ID)
+	user1, err := userProfileService.CreateRealUserProfile(context.Background(), &email1, &phone1, "hard password hash", "KomandaARIS", "Команда", "АРИС", birthdayDate1, models.Gender("male"), &avatar1ID)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	user2, err := userProfileService.CreateRealUserProfile(context.Background(), &email2, &phone2, "hard password hash", "SergeyShulginenko", "Сергей", "Шульгиненко", birthdayDate2, models.Gender("female"), &avatar2ID)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	user3, err := userProfileService.CreateRealUserProfile(context.Background(), &email3, &phone3, "hard password hash", "AnnaOparina", "Анна", "Опарина", birthdayDate3, models.Gender("male"), &avatar3ID)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	user4, err := userProfileService.CreateRealUserProfile(context.Background(), &email4, &phone4, "hard password hash", "IvanKhvostov", "Иван", "Хвостов", birthdayDate4, models.Gender("female"), &avatar4ID)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	user5, err := userProfileService.CreateRealUserProfile(context.Background(), &email5, &phone5, "hard password hash", "RinatBaikov", "Ринат", "Байков", birthdayDate5, models.Gender("male"), &avatar5ID)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	user6, err := userProfileService.CreateRealUserProfile(context.Background(), &email6, &phone6, "hard password hash", "SofiaSitnichenko", "Софья", "Ситниченко", birthdayDate6, models.Gender("female"), &avatar6ID)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	user7, err := userProfileService.CreateRealUserProfile(context.Background(), &email7, &phone7, "hard password hash", "KonstantinGalanin", "Константин", "Галанин", birthdayDate7, models.Gender("male"), &avatar7ID)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	user8, err := userProfileService.CreateRealUserProfile(context.Background(), &email8, &phone8, "hard password hash", "DaniilKhasyanov", "Даниил", "Хасьянов", birthdayDate8, models.Gender("female"), &avatar8ID)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("пользователи успешно созданы")
+
 	//user9, _ := userProfileService.CreateRealUserProfile(context.Background(), "email444@gmail.com", "+479990001122", "hard password hash", "VladislavAlyokhin", "Владислав", "Алехин", true, nil, models.Gender(1), &avatar9)
 
 	// create medias
@@ -145,29 +230,137 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	media23 := models.NewMedia("Media name 23", "png", &mediaDesctiption23, "image", "https://space-pm.ru/uploads/market/stati/small/1719495934.jpg")
 
-	mediaRepo.Save(context.Background(), *media1)
-	mediaRepo.Save(context.Background(), *media2)
-	mediaRepo.Save(context.Background(), *media3)
+	media1ID, err := mediaRepo.Save(context.Background(), *media1)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media2ID, err := mediaRepo.Save(context.Background(), *media2)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media3ID, err := mediaRepo.Save(context.Background(), *media3)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	//mediaRepo.Save(context.Background(), media4)
-	mediaRepo.Save(context.Background(), *media5)
-	mediaRepo.Save(context.Background(), *media6)
-	mediaRepo.Save(context.Background(), *media7)
-	mediaRepo.Save(context.Background(), *media8)
-	mediaRepo.Save(context.Background(), *media9)
-	mediaRepo.Save(context.Background(), *media10)
-	mediaRepo.Save(context.Background(), *media11)
-	mediaRepo.Save(context.Background(), *media12)
-	mediaRepo.Save(context.Background(), *media13)
-	mediaRepo.Save(context.Background(), *media14)
-	mediaRepo.Save(context.Background(), *media15)
+
+	media5ID, err := mediaRepo.Save(context.Background(), *media5)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media6ID, err := mediaRepo.Save(context.Background(), *media6)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media7ID, err := mediaRepo.Save(context.Background(), *media7)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media8ID, err := mediaRepo.Save(context.Background(), *media8)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media9ID, err := mediaRepo.Save(context.Background(), *media9)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media10ID, err := mediaRepo.Save(context.Background(), *media10)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media11ID, err := mediaRepo.Save(context.Background(), *media11)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media12ID, err := mediaRepo.Save(context.Background(), *media12)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media13ID, err := mediaRepo.Save(context.Background(), *media13)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media14ID, err := mediaRepo.Save(context.Background(), *media14)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media15ID, err := mediaRepo.Save(context.Background(), *media15)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	//mediaRepo.Save(context.Background(), media16)
-	mediaRepo.Save(context.Background(), *media17)
-	mediaRepo.Save(context.Background(), *media18)
-	mediaRepo.Save(context.Background(), *media19)
-	mediaRepo.Save(context.Background(), *media20)
-	mediaRepo.Save(context.Background(), *media21)
-	mediaRepo.Save(context.Background(), *media22)
-	mediaRepo.Save(context.Background(), *media23)
+
+	media17ID, err := mediaRepo.Save(context.Background(), *media17)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media18ID, err := mediaRepo.Save(context.Background(), *media18)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media19ID, err := mediaRepo.Save(context.Background(), *media19)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media20ID, err := mediaRepo.Save(context.Background(), *media20)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media21ID, err := mediaRepo.Save(context.Background(), *media21)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media22ID, err := mediaRepo.Save(context.Background(), *media22)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	media23ID, err := mediaRepo.Save(context.Background(), *media23)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("медиа успешно созданы")
 
 	// create posts
 
@@ -291,75 +484,209 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	post8.CreatedAt = now.Add(-48 * time.Hour)
 	post8.UpdatedAt = post8.CreatedAt
-	postService.Save(context.Background(), *post1)
-	postService.Save(context.Background(), *post2)
-	postService.Save(context.Background(), *post3)
-	postService.Save(context.Background(), *post4)
-	postService.Save(context.Background(), *post5)
-	postService.Save(context.Background(), *post6)
-	postService.Save(context.Background(), *post7)
-	postService.Save(context.Background(), *post8)
 
-	postWithMedia1 := models.NewPostWithMedia(post1.ID, media1.ID, 0)
-	postWithMedia2 := models.NewPostWithMedia(post1.ID, media2.ID, 1)
+	post1ID, err := postService.Save(context.Background(), *post1)
+	if err != nil {
+		fmt.Println(err)
+		fmt.Println(post1.AuthorID)
+		return
+	}
 
-	postWithMedia3 := models.NewPostWithMedia(post2.ID, media3.ID, 0)
-	postWithMedia4 := models.NewPostWithMedia(post2.ID, media5.ID, 2)
-	postWithMedia5 := models.NewPostWithMedia(post2.ID, media6.ID, 3)
-	postWithMedia6 := models.NewPostWithMedia(post2.ID, media7.ID, 4)
+	post2ID, err := postService.Save(context.Background(), *post2)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	postWithMedia7 := models.NewPostWithMedia(post3.ID, media8.ID, 0)
-	postWithMedia8 := models.NewPostWithMedia(post3.ID, media9.ID, 1)
+	post3ID, err := postService.Save(context.Background(), *post3)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	postWithMedia9 := models.NewPostWithMedia(post4.ID, media10.ID, 0)
+	post4ID, err := postService.Save(context.Background(), *post4)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	postWithMedia10 := models.NewPostWithMedia(post5.ID, media11.ID, 0)
-	postWithMedia11 := models.NewPostWithMedia(post5.ID, media12.ID, 1)
-	postWithMedia12 := models.NewPostWithMedia(post5.ID, media13.ID, 2)
-	postWithMedia13 := models.NewPostWithMedia(post5.ID, media14.ID, 3)
-	postWithMedia14 := models.NewPostWithMedia(post5.ID, media15.ID, 4)
+	post5ID, err := postService.Save(context.Background(), *post5)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	postWithMedia15 := models.NewPostWithMedia(post6.ID, media17.ID, 0)
-	postWithMedia16 := models.NewPostWithMedia(post6.ID, media18.ID, 1)
-	postWithMedia17 := models.NewPostWithMedia(post6.ID, media19.ID, 2)
-	postWithMedia18 := models.NewPostWithMedia(post6.ID, media20.ID, 3)
+	post6ID, err := postService.Save(context.Background(), *post6)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	postWithMedia19 := models.NewPostWithMedia(post7.ID, media21.ID, 0)
-	postWithMedia20 := models.NewPostWithMedia(post7.ID, media22.ID, 1)
+	post7ID, err := postService.Save(context.Background(), *post7)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	postWithMedia21 := models.NewPostWithMedia(post8.ID, media23.ID, 1)
+	post8ID, err := postService.Save(context.Background(), *post8)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("посты успешно созданы")
+
+	postWithMedia1 := models.NewPostWithMedia(post1ID, media1ID, 0)
+	postWithMedia2 := models.NewPostWithMedia(post1ID, media2ID, 1)
+
+	postWithMedia3 := models.NewPostWithMedia(post2ID, media3ID, 0)
+	postWithMedia4 := models.NewPostWithMedia(post2ID, media5ID, 2)
+	postWithMedia5 := models.NewPostWithMedia(post2ID, media6ID, 3)
+	postWithMedia6 := models.NewPostWithMedia(post2ID, media7ID, 4)
+
+	postWithMedia7 := models.NewPostWithMedia(post3ID, media8ID, 0)
+	postWithMedia8 := models.NewPostWithMedia(post3ID, media9ID, 1)
+
+	postWithMedia9 := models.NewPostWithMedia(post4ID, media10ID, 0)
+
+	postWithMedia10 := models.NewPostWithMedia(post5ID, media11ID, 0)
+	postWithMedia11 := models.NewPostWithMedia(post5ID, media12ID, 1)
+	postWithMedia12 := models.NewPostWithMedia(post5ID, media13ID, 2)
+	postWithMedia13 := models.NewPostWithMedia(post5ID, media14ID, 3)
+	postWithMedia14 := models.NewPostWithMedia(post5ID, media15ID, 4)
+
+	postWithMedia15 := models.NewPostWithMedia(post6ID, media17ID, 0)
+	postWithMedia16 := models.NewPostWithMedia(post6ID, media18ID, 1)
+	postWithMedia17 := models.NewPostWithMedia(post6ID, media19ID, 2)
+	postWithMedia18 := models.NewPostWithMedia(post6ID, media20ID, 3)
+
+	postWithMedia19 := models.NewPostWithMedia(post7ID, media21ID, 0)
+	postWithMedia20 := models.NewPostWithMedia(post7ID, media22ID, 1)
+
+	postWithMedia21 := models.NewPostWithMedia(post8ID, media23ID, 1)
 
 	// connect post with medias to get PostWithMedia
 	postWithMediaRepo.Save(context.Background(), *postWithMedia1)
 	postWithMediaRepo.Save(context.Background(), *postWithMedia2)
 
 	//postWithMediaRepo.Save(post2, media4, 1)
-	postWithMediaRepo.Save(context.Background(), *postWithMedia3)
-	postWithMediaRepo.Save(context.Background(), *postWithMedia4)
-	postWithMediaRepo.Save(context.Background(), *postWithMedia5)
-	postWithMediaRepo.Save(context.Background(), *postWithMedia6)
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia3)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	postWithMediaRepo.Save(context.Background(), *postWithMedia7)
-	postWithMediaRepo.Save(context.Background(), *postWithMedia8)
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia4)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	postWithMediaRepo.Save(context.Background(), *postWithMedia9)
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia5)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	postWithMediaRepo.Save(context.Background(), *postWithMedia10)
-	postWithMediaRepo.Save(context.Background(), *postWithMedia11)
-	postWithMediaRepo.Save(context.Background(), *postWithMedia12)
-	postWithMediaRepo.Save(context.Background(), *postWithMedia13)
-	postWithMediaRepo.Save(context.Background(), *postWithMedia14)
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia6)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia7)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia8)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia9)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia10)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia11)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia12)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia13)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia14)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia15)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia16)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia17)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia18)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia19)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia20)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	err = postWithMediaRepo.Save(context.Background(), *postWithMedia21)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("посты-с-медиа успешно созданы")
+
 	//postWithMediaRepo.Save(post5, media16, 5)
-
-	postWithMediaRepo.Save(context.Background(), *postWithMedia15)
-	postWithMediaRepo.Save(context.Background(), *postWithMedia16)
-	postWithMediaRepo.Save(context.Background(), *postWithMedia17)
-	postWithMediaRepo.Save(context.Background(), *postWithMedia18)
-
-	postWithMediaRepo.Save(context.Background(), *postWithMedia19)
-	postWithMediaRepo.Save(context.Background(), *postWithMedia20)
-
-	postWithMediaRepo.Save(context.Background(), *postWithMedia21)
 
 	// create likes & init LikeRepo
 	like1 := models.NewLikeToPost(post1.ID, user4.ID)
@@ -369,12 +696,44 @@ func MakeMock(mediaRepo media.MediaRepo,
 	like5 := models.NewLikeToPost(post5.ID, user3.ID)
 	like6 := models.NewLikeToPost(post6.ID, user3.ID)
 	likeRepo := like.NewLikeRepo()
-	likeRepo.Save(context.Background(), *like1)
-	likeRepo.Save(context.Background(), *like2)
-	likeRepo.Save(context.Background(), *like3)
-	likeRepo.Save(context.Background(), *like4)
-	likeRepo.Save(context.Background(), *like5)
-	likeRepo.Save(context.Background(), *like6)
+
+	_, err = likeRepo.Save(context.Background(), *like1)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = likeRepo.Save(context.Background(), *like2)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = likeRepo.Save(context.Background(), *like3)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = likeRepo.Save(context.Background(), *like4)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = likeRepo.Save(context.Background(), *like5)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = likeRepo.Save(context.Background(), *like6)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("лайки успешно созданы")
 
 	commentText1 := "comment 1"
 	commentText2 := "comment 2"
@@ -384,37 +743,155 @@ func MakeMock(mediaRepo media.MediaRepo,
 	commentText6 := "comment 6"
 
 	// create comments
-	comment1 := models.NewComment(&commentText1, post1.ID, nil, nil, user2.ID)
-	comment2 := models.NewComment(&commentText2, post2.ID, nil, nil, user3.ID)
-	comment3 := models.NewComment(&commentText3, post3.ID, nil, nil, user4.ID)
-	comment4 := models.NewComment(&commentText4, post4.ID, nil, nil, user5.ID)
-	comment5 := models.NewComment(&commentText5, post5.ID, nil, nil, user1.ID)
-	comment6 := models.NewComment(&commentText6, post1.ID, nil, nil, user4.ID)
-	commentRepo.Save(context.Background(), *comment1)
-	commentRepo.Save(context.Background(), *comment2)
-	commentRepo.Save(context.Background(), *comment3)
-	commentRepo.Save(context.Background(), *comment4)
-	commentRepo.Save(context.Background(), *comment5)
-	commentRepo.Save(context.Background(), *comment6)
+	comment1 := models.NewComment(&commentText1, post1ID, nil, nil, user2.ID)
+	comment2 := models.NewComment(&commentText2, post2ID, nil, nil, user3.ID)
+	comment3 := models.NewComment(&commentText3, post3ID, nil, nil, user4.ID)
+	comment4 := models.NewComment(&commentText4, post4ID, nil, nil, user5.ID)
+	comment5 := models.NewComment(&commentText5, post5ID, nil, nil, user1.ID)
+	comment6 := models.NewComment(&commentText6, post1ID, nil, nil, user4.ID)
+
+	_, err = commentRepo.Save(context.Background(), *comment1)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = commentRepo.Save(context.Background(), *comment2)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = commentRepo.Save(context.Background(), *comment3)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = commentRepo.Save(context.Background(), *comment4)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = commentRepo.Save(context.Background(), *comment5)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = commentRepo.Save(context.Background(), *comment6)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("комменты успешно созданы")
+
+	chat1 := models.NewChat(models.ChatType("personal"), "chat 1 title", nil)
+	chat2 := models.NewChat(models.ChatType("personal"), "chat 2 title", nil)
+	chat3 := models.NewChat(models.ChatType("personal"), "chat 3 title", nil)
+	chat4 := models.NewChat(models.ChatType("personal"), "chat 4 title", nil)
+	chat5 := models.NewChat(models.ChatType("personal"), "chat 5 title", nil)
+
+	chat1ID, err := chatRepo.Save(context.Background(), *chat1)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	chat2ID, err := chatRepo.Save(context.Background(), *chat2)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	chat3ID, err := chatRepo.Save(context.Background(), *chat3)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	chat4ID, err := chatRepo.Save(context.Background(), *chat4)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	chat5ID, err := chatRepo.Save(context.Background(), *chat5)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("чаты успешно созданы")
 
 	// create reposts
-	repost1 := models.NewRepost(user2.ID, 1, post1.ID)
-	repost2 := models.NewRepost(user3.ID, 1, post1.ID)
-	repost3 := models.NewRepost(user4.ID, 1, post1.ID)
-	repost4 := models.NewRepost(user5.ID, 1, post2.ID)
-	repost5 := models.NewRepost(user3.ID, 1, post2.ID)
-	repost6 := models.NewRepost(user1.ID, 1, post3.ID)
-	repost7 := models.NewRepost(user1.ID, 1, post4.ID)
-	repost8 := models.NewRepost(user1.ID, 1, post5.ID)
-	repost9 := models.NewRepost(user1.ID, 1, post3.ID)
+	repost1 := models.NewRepost(user2.ID, chat1ID, post1ID)
+	repost2 := models.NewRepost(user3.ID, chat2ID, post1ID)
+	repost3 := models.NewRepost(user4.ID, chat3ID, post1ID)
+	repost4 := models.NewRepost(user5.ID, chat4ID, post2ID)
+	repost5 := models.NewRepost(user3.ID, chat5ID, post2ID)
+	repost6 := models.NewRepost(user1.ID, chat1ID, post3ID)
+	repost7 := models.NewRepost(user1.ID, chat2ID, post4ID)
+	repost8 := models.NewRepost(user1.ID, chat3ID, post5ID)
+	repost9 := models.NewRepost(user1.ID, chat4ID, post3ID)
 
-	repostRepo.Save(context.Background(), *repost1)
-	repostRepo.Save(context.Background(), *repost2)
-	repostRepo.Save(context.Background(), *repost3)
-	repostRepo.Save(context.Background(), *repost4)
-	repostRepo.Save(context.Background(), *repost5)
-	repostRepo.Save(context.Background(), *repost6)
-	repostRepo.Save(context.Background(), *repost7)
-	repostRepo.Save(context.Background(), *repost8)
-	repostRepo.Save(context.Background(), *repost9)
+	_, err = repostRepo.Save(context.Background(), *repost1)
+	if err != nil {
+		fmt.Println(err)
+		fmt.Println(user2.ID, post1ID)
+		return
+	}
+
+	_, err = repostRepo.Save(context.Background(), *repost2)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = repostRepo.Save(context.Background(), *repost3)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = repostRepo.Save(context.Background(), *repost4)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = repostRepo.Save(context.Background(), *repost5)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = repostRepo.Save(context.Background(), *repost6)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = repostRepo.Save(context.Background(), *repost7)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = repostRepo.Save(context.Background(), *repost8)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = repostRepo.Save(context.Background(), *repost9)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("репосты успешно созданы")
+
 }

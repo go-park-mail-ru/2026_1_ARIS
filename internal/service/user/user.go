@@ -35,6 +35,7 @@ type UserService interface {
 	GetPublicPopularUsers(ctx context.Context) ([]models.Profile, error)
 	GetLatestEvents(ctx context.Context) ([]LatestEvent, error)
 	GetUserAccountByUserAccountUid(ctx context.Context, userAccountUid uuid.UUID) (*models.UserAccount, error)
+	GetProfileByUserProfileID(ctx context.Context, userProfileID int64) (*models.Profile, error)
 }
 
 type LatestEvent struct {
@@ -53,30 +54,35 @@ func NewUserService(userAccountRepo useraccount.UserAccountRepo, profileRepo pro
 func (s *userService) CreateRealUserProfile(ctx context.Context, email, phone *string, passwordHash, username, firstName, lastName string, birthdayDate time.Time, gender models.Gender, avatarID *int64) (*models.Profile, error) {
 	userAccount := models.NewUserAccount(username, email, phone, passwordHash)
 	profile := models.NewProfile(avatarID)
-	userProfile := models.NewUserProfile(userAccount.ID, profile.ID, firstName, lastName, nil, birthdayDate, gender)
 
-	_, err := s.UserAccountRepo.Save(ctx, *userAccount)
+	userAccountID, err := s.UserAccountRepo.Save(ctx, *userAccount)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = s.ProfileRepo.Save(ctx, *profile)
+	profileID, err := s.ProfileRepo.Save(ctx, *profile)
 	if err != nil {
 		return nil, err
 	}
+
+	userProfile := models.NewUserProfile(userAccountID, profileID, firstName, lastName, nil, birthdayDate, gender)
 
 	_, err = s.UserProfileRepo.Save(ctx, *userProfile)
 	if err != nil {
 		return nil, err
 	}
 
-	//fmt.Printf("%s: userAccount: %v, profile: %v, userProfile, %v\n", userAccount.Username, userAccount.ID, profile.ID, userProfile.ID)
+	profileWithID, err := s.ProfileRepo.Get(ctx, profileID)
+	if err != nil {
+		return nil, err
+	}
 
-	return profile, nil
+	return profileWithID, nil
 }
 
 func (s *userService) GetUserList(ctx context.Context, offset, limit int) []models.UserAccount {
-	return s.UserAccountRepo.List(ctx, offset, limit)
+	list, _ := s.UserAccountRepo.List(ctx, offset, limit)
+	return list
 }
 
 func (s *userService) GetUserProfileByProfileID(ctx context.Context, profileID int64) (*models.UserProfile, error) {
@@ -267,4 +273,8 @@ func (s *userService) GetUserProfileByUserAccountID(ctx context.Context, userAcc
 	}
 
 	return userProfile, nil
+}
+
+func (s *userService) GetProfileByUserProfileID(ctx context.Context, userProfileID int64) (*models.Profile, error) {
+	return s.GetProfileByUserProfileID(ctx, userProfileID)
 }

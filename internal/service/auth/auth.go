@@ -4,6 +4,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -55,10 +56,10 @@ func (s *authService) Register(ctx context.Context, firstName, lastName, login, 
 		return nil, errors.New("ошибка при обработке пароля")
 	}
 
-	profile, err := s.CreateRealUserProfile(ctx, string(hashedPassword), login, firstName, lastName, nil, nil, true, birthdayDate, gender, nil)
+	return s.CreateRealUserProfile(ctx, string(hashedPassword), login, firstName, lastName, nil, nil, true, birthdayDate, gender, nil)
 
 	// по хорошему, надо возвращать DTO
-	return profile, nil
+	//return profile, nil
 }
 
 func (s *authService) Login(ctx context.Context, login, password string) (*models.UserAccount, error) {
@@ -66,11 +67,13 @@ func (s *authService) Login(ctx context.Context, login, password string) (*model
 
 	user, err := s.userAccountRepo.GetByUsername(ctx, login)
 	if err != nil {
+		fmt.Println("Error 1", err)
 		return nil, errors.New("недействительные учётные данные")
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
+		fmt.Println("Error 2", err)
 		return nil, errors.New("недействительные учётные данные")
 	}
 
@@ -93,11 +96,28 @@ func (s *authService) ValidateRegisterStepOne(ctx context.Context, login, passwo
 func (s *authService) CreateRealUserProfile(ctx context.Context, password_hash, username, firstName, lastName string, email, phone *string, isActive bool, birthdayDate time.Time, gender models.Gender, avatarID *int64) (*models.Profile, error) {
 	userAccount := models.NewUserAccount(username, email, phone, password_hash)
 	profile := models.NewProfile(avatarID)
-	userProfile := models.NewUserProfile(userAccount.ID, profile.ID, firstName, lastName, nil, birthdayDate, gender)
 
-	s.userAccountRepo.Save(ctx, *userAccount)
-	s.profileRepo.Save(ctx, *profile)
-	s.userProfileRepo.Save(ctx, *userProfile)
+	userAccountID, err := s.userAccountRepo.Save(ctx, *userAccount)
+	if err != nil {
+		return nil, err
+	}
 
-	return profile, nil
+	profileID, err := s.profileRepo.Save(ctx, *profile)
+	if err != nil {
+		return nil, err
+	}
+
+	userProfile := models.NewUserProfile(userAccountID, profileID, firstName, lastName, nil, birthdayDate, gender)
+
+	_, err = s.userProfileRepo.Save(ctx, *userProfile)
+	if err != nil {
+		return nil, err
+	}
+
+	profileWithID, err := s.profileRepo.Get(ctx, profileID)
+	if err != nil {
+		return nil, err
+	}
+
+	return profileWithID, nil
 }
