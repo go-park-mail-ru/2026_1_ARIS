@@ -68,6 +68,21 @@ func (mr *MockUserServiceMockRecorder) GetLatestEvents(arg0 interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestEvents", reflect.TypeOf((*MockUserService)(nil).GetLatestEvents), arg0)
 }
 
+// GetProfileByUserProfileID mocks base method.
+func (m *MockUserService) GetProfileByUserProfileID(arg0 context.Context, arg1 int64) (*models.Profile, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetProfileByUserProfileID", arg0, arg1)
+	ret0, _ := ret[0].(*models.Profile)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetProfileByUserProfileID indicates an expected call of GetProfileByUserProfileID.
+func (mr *MockUserServiceMockRecorder) GetProfileByUserProfileID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProfileByUserProfileID", reflect.TypeOf((*MockUserService)(nil).GetProfileByUserProfileID), arg0, arg1)
+}
+
 // GetPublicPopularUsers mocks base method.
 func (m *MockUserService) GetPublicPopularUsers(arg0 context.Context) ([]models.Profile, error) {
 	m.ctrl.T.Helper()

@@ -16,3 +16,4 @@ DROP TRIGGER IF EXISTS trg_reaction_updated_at ON reaction RESTRICT;
 DROP TRIGGER IF EXISTS trg_friendship_updated_at ON friendship RESTRICT;
 DROP TRIGGER IF EXISTS trg_ad_updated_at ON ad RESTRICT;
 DROP TRIGGER IF EXISTS trg_ad_meta_updated_at ON ad_meta RESTRICT;
+DROP TRIGGER IF EXISTS trg_repost_updated_at ON repost RESTRICT;

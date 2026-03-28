@@ -113,6 +113,14 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
+	var gender models.Gender = models.Female
+
+	if req.Gender == 1 {
+		gender = models.Male
+	} else {
+		gender = models.Female
+	}
+
 	profile, err := h.authService.Register(
 		r.Context(),
 		req.FirstName,
@@ -120,7 +128,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		req.Login,
 		req.Password1,
 		req.Birthday,
-		models.Gender(req.Gender-1),
+		//models.Gender(req.Gender-1),
+		gender,
 	)
 	if err != nil {
 		errMsg := err.Error()
@@ -292,6 +301,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	//userProfile, err := h.userService.GetUserProfileByUser(r.Context(), userID)
 
 	userProfile, err := h.userService.GetUserProfileByUserAccountID(r.Context(), userID)
+	fmt.Println("ME", userProfile)
 
 	if err != nil {
 		utils.WriteError(w, ErrUserNotFound, http.StatusNotFound)
