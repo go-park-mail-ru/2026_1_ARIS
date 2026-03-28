@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS media (
     media_name TEXT NOT NULL CHECK(LENGTH(media_name) <= 255 AND LENGTH(media_name) >= 1),
     extension TEXT NOT NULL,
     mime_type TEXT NOT NULL,
+    link TEXT NOT NULL,
     description TEXT DEFAULT NULL CHECK(LENGTH(description) <= 255),
     size BIGINT NOT NULL CHECK (size >= 0 AND size <= 1024*1024*1024), -- гигабайт
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -66,6 +67,7 @@ CREATE TABLE IF NOT EXISTS post (
     uid UUID NOT NULL,
     post_text TEXT DEFAULT NULL CHECK(LENGTH(post_text) <= 5000),
     author_id BIGINT NOT NULL REFERENCES profile(id),
+    is_public_demo BOOLEAN NOT NULL DEFAULT FALSE,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -283,6 +285,17 @@ CREATE TABLE IF NOT EXISTS ad_meta (
     ad_id BIGINT NOT NULL REFERENCES ad(id) ON DELETE CASCADE,
     meta_key TEXT NOT NULL CHECK(LENGTH(meta_key) >= 1 AND LENGTH(meta_key) <= 255),
     meta_value TEXT NOT NULL CHECK(LENGTH(meta_value) >=1 AND LENGTH(meta_value) <= 255),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS repost (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    uid UUID NOT NULL,
+    author_id BIGINT REFERENCES profile(id) ON DELETE SET NULL,
+    chat_id BIGINT REFERENCES chat(id) ON DELETE SET NULL,
+    post_id BIGINT REFERENCES post(id) ON DELETE SET NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()

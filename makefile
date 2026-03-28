@@ -14,11 +14,20 @@ coverage: clean
 	go test -coverprofile=coverage.out -coverpkg=./internal/... ./...
 	go tool cover -html=coverage.out
 
-migrage-up:
+migrate-up: migrate
 	$(MIGRATE) up
 
-migrage-down:
+migrate-down: migrate
 	$(MIGRATE) down
+
+migrate-version: migrate
+	${MIGRATE} version
+
+migrate-force-down: migrate
+	${MIGRATE} force 1
+
+migrate:
+	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
 # будет подтянут postgres:16
 db-up:

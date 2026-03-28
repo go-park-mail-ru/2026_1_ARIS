@@ -64,7 +64,7 @@ func TestAuthHandler_Register_Success(t *testing.T) {
 	}
 
 	mockAuthSvc.EXPECT().
-		Register(gomock.Any(), "Ivan", "Petrov", "ivan123", "qwerty123", "24/02/2005", models.Gender(0)).
+		Register(gomock.Any(), "Ivan", "Petrov", "ivan123", "qwerty123", "24/02/2005", models.Gender("male")).
 		Return(expectedProfile, nil)
 
 	mockUserSvc.EXPECT().
@@ -190,7 +190,7 @@ func TestAuthHandler_Register_LoginAlreadyExists(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	mockAuthSvc.EXPECT().
-		Register(gomock.Any(), "Ivan", "Petrov", "ivan123", "qwerty123", "24/02/2005", models.Gender(0)).
+		Register(gomock.Any(), "Ivan", "Petrov", "ivan123", "qwerty123", "24/02/2005", models.Gender("male")).
 		Return(nil, errors.New("пользователь с таким login уже существует"))
 
 	w := httptest.NewRecorder()
@@ -224,7 +224,7 @@ func TestAuthHandler_Register_InvalidBirthday(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	mockAuthSvc.EXPECT().
-		Register(gomock.Any(), "Ivan", "Petrov", "ivan123", "qwerty123", "2005-02-24", models.Gender(0)).
+		Register(gomock.Any(), "Ivan", "Petrov", "ivan123", "qwerty123", "2005-02-24", models.Gender("male")).
 		Return(nil, errors.New("invalid birthday date"))
 
 	w := httptest.NewRecorder()
@@ -258,7 +258,7 @@ func TestAuthHandler_Register_TooYoung(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	mockAuthSvc.EXPECT().
-		Register(gomock.Any(), "Ivan", "Petrov", "ivan123", "qwerty123", "24/02/2020", models.Gender(0)).
+		Register(gomock.Any(), "Ivan", "Petrov", "ivan123", "qwerty123", "24/02/2020", models.Gender("male")).
 		Return(nil, errors.New("you are too young, buddy"))
 
 	w := httptest.NewRecorder()
@@ -302,7 +302,7 @@ func TestAuthHandler_Register_SessionCreationError(t *testing.T) {
 	expectedUserAccount := &models.UserAccount{ID: userAccountID, Uid: userAccountUid}
 
 	mockAuthSvc.EXPECT().
-		Register(gomock.Any(), "Ivan", "Petrov", "ivan123", "qwerty123", "24/02/2005", models.Gender(0)).
+		Register(gomock.Any(), "Ivan", "Petrov", "ivan123", "qwerty123", "24/02/2005", models.Gender("male")).
 		Return(expectedProfile, nil)
 
 	mockUserSvc.EXPECT().
