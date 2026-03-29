@@ -3,6 +3,7 @@ package media
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
@@ -36,7 +37,8 @@ func (s *mediaService) GetAvatarByID(ctx context.Context, avatarID *int64) (*mod
 		return nil, err
 	}
 
-	if media.MimeType != "image" {
+	mimeType := strings.ToLower(strings.TrimSpace(media.MimeType))
+	if media.MimeType != "image" && !strings.HasPrefix(mimeType, "image/") {
 		return nil, errors.New("Avatar has not \"image\" MIME-type")
 	}
 

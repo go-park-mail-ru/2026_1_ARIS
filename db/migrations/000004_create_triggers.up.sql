@@ -69,3 +69,7 @@ UPDATE
 CREATE TRIGGER trg_ad_meta_updated_at BEFORE
 UPDATE
     ON ad_meta FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER trg_repost_updated_at BEFORE
+UPDATE
+    ON repost  FOR EACH ROW EXECUTE FUNCTION set_updated_at();

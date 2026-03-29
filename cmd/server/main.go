@@ -13,7 +13,9 @@ import (
 	_ "github.com/go-park-mail-ru/2026_1_ARIS/docs"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/server"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 
+	chatrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
 	commentrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/comment"
 	likerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/like"
 	mediarepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
@@ -34,7 +36,6 @@ import (
 	feedhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
 	userhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/config"
 	connectdb "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/connect_db"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -92,21 +93,42 @@ func main() {
 	fmt.Println("Successfully connected to PostgreSQL")
 
 	// Инициализация репозиториев
-	commentRepo := commentrepo.NewCommentRepo()
-	repostRepo := repostrepo.NewRepostRepo()
-	postRepo := postrepo.NewPostRepo()
-	profileRepo := profilerepo.NewProfileRepo()
-	likeRepo := likerepo.NewLikeRepo()
-	userRepo := useraccountrepo.NewUserRepo()
-	userProfileRepo := userprofilerepo.NewUserProfileRepo()
+
+	//commentRepo := commentrepo.NewCommentRepo()
+	commentRepo := commentrepo.NewCommentStorage(db)
+
+	//repostRepo := repostrepo.NewRepostRepo()
+	repostRepo := repostrepo.NewRepostStorage(db)
+
+	//postRepo := postrepo.NewPostRepo()
+	postRepo := postrepo.NewPostStorage(db)
+
+	//profileRepo := profilerepo.NewProfileRepo()
+	profileRepo := profilerepo.NewProfileStorage(db)
+
+	//likeRepo := likerepo.NewLikeRepo()
+	likeRepo := likerepo.NewLikeStorage(db)
+
+	//userRepo := useraccountrepo.NewUserRepo()
+	userAccountRepo := useraccountrepo.NewUserAccountStorage(db)
+
+	//userProfileRepo := userprofilerepo.NewUserProfileRepo()
+	userProfileRepo := userprofilerepo.NewUserProfileStorage(db)
+
 	sessionRepo := sessionrepo.NewSessionRepo()
-	mediaRepo := mediarepo.NewMediaRepo()
-	postWithMediaRepo := postrepo.NewPostWithMediaRepo()
+
+	//mediaRepo := mediarepo.NewMediaRepo()
+	mediaRepo := mediarepo.NewMediaStorage(db)
+
+	//postWithMediaRepo := postrepo.NewPostWithMediaRepo()
+	postWithMediaRepo := postrepo.NewPostWithMediaStorage(db)
+
+	chatRepo := chatrepo.NewChatStorage(db)
 
 	// инициализация сервисов
 	postService := postservice.NewPostService(postRepo, profileRepo, commentRepo, repostRepo, likeRepo)
-	userService := userservice.NewUserService(userRepo, profileRepo, userProfileRepo)
-	authService := authservice.NewAuthService(userRepo, profileRepo, userProfileRepo)
+	userService := userservice.NewUserService(userAccountRepo, profileRepo, userProfileRepo)
+	authService := authservice.NewAuthService(userAccountRepo, profileRepo, userProfileRepo)
 	sessService := sessionservice.NewSessionService(sessionRepo)
 	mediaService := mediaservice.NewMediaService(mediaRepo, postWithMediaRepo)
 
@@ -117,6 +139,9 @@ func main() {
 		MediaService: mediaService,
 	}
 	feedHandler := feedhandler.NewFeedHandler(postService, mediaService, userService)
+
+	// заполнение тестовыми данными
+	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo)
 
 	// создаём роутер
 	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler)
@@ -134,9 +159,6 @@ func main() {
 			log.Fatalf("listen: %s\n", err)
 		}
 	}()
-
-	// заполнение тестовыми данными
-	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo)
 
 	// gracefull shutdown
 	stop := make(chan os.Signal, 1)
