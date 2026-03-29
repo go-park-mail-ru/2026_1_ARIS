@@ -350,5 +350,10 @@ func (s *userService) GetUserProfileByUserAccountID(ctx context.Context, userAcc
 }
 
 func (s *userService) GetProfileByUserProfileID(ctx context.Context, userProfileID int64) (*models.Profile, error) {
-	return s.GetProfileByUserProfileID(ctx, userProfileID)
+	userProfile, err := s.UserProfileRepo.Get(ctx, userProfileID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.ProfileRepo.Get(ctx, userProfile.ProfileID)
 }

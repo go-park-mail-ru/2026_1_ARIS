@@ -57,6 +57,7 @@ func NewRouter(
 		r.Get("/api/feed", feedHandler.GetFeed)
 		r.Get("/api/posts/popular", feedHandler.GetPopularPosts)
 		r.Get("/api/profile/me", profileHandler.GetProfileMe)
+		r.Get("/api/profile/{id}", profileHandler.GetProfileByID)
 		r.Patch("/api/profile/me/edit", profileHandler.EditProfileMe)
 	})
 
