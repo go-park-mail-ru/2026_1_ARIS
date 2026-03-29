@@ -13,7 +13,9 @@ import (
 	_ "github.com/go-park-mail-ru/2026_1_ARIS/docs"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/server"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 
+	chatrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
 	commentrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/comment"
 	likerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/like"
 	mediarepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
@@ -121,7 +123,7 @@ func main() {
 	//postWithMediaRepo := postrepo.NewPostWithMediaRepo()
 	postWithMediaRepo := postrepo.NewPostWithMediaStorage(db)
 
-	//chatRepo := chat.NewChatStorage(db)
+	chatRepo := chatrepo.NewChatStorage(db)
 
 	// инициализация сервисов
 	postService := postservice.NewPostService(postRepo, profileRepo, commentRepo, repostRepo, likeRepo)
@@ -140,7 +142,7 @@ func main() {
 	profileHandler := profile.NewProfileHandler(userService, mediaService, sessService)
 
 	// заполнение тестовыми данными
-	//utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo)
+	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo)
 
 	// swagger
 	fmt.Println("Swagger is running on http://localhost:8080/swagger/index.html")
