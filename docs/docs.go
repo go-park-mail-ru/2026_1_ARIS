@@ -42,33 +42,39 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.LoginRequest"
+                            "$ref": "#/definitions/auth.LoginRequest"
                         }
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.CommonResponse"
+                            "$ref": "#/definitions/auth.CommonResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.CommonResponse"
+                            "$ref": "#/definitions/auth.CommonResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/auth.CommonResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.CommonResponse"
+                            "$ref": "#/definitions/auth.CommonResponse"
                         }
                     }
                 }
@@ -89,12 +95,12 @@ const docTemplate = `{
                     "auth"
                 ],
                 "summary": "Logout user",
-                "operationId": "lohout",
+                "operationId": "logout",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.CommonResponse"
+                            "$ref": "#/definitions/auth.CommonResponse"
                         }
                     }
                 }
@@ -119,19 +125,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/models.UserAccount"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/handlers.CommonResponse"
+                            "$ref": "#/definitions/auth.CommonResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/handlers.CommonResponse"
+                            "$ref": "#/definitions/auth.CommonResponse"
                         }
                     }
                 }
@@ -158,7 +164,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.RegisterRequest"
+                            "$ref": "#/definitions/auth.RegisterRequest"
                         }
                     }
                 ],
@@ -172,19 +178,72 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.CommonResponse"
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/handlers.CommonResponse"
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.CommonResponse"
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/register/step-one": {
+            "post": {
+                "description": "Validate register first step",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Validate register step one",
+                "operationId": "validate-register-step-one",
+                "parameters": [
+                    {
+                        "description": "step one data",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.RegisterStepOneRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ValidationErrorsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/auth.CommonResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/auth.CommonResponse"
                         }
                     }
                 }
@@ -227,25 +286,348 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.FeedResponse"
+                            "$ref": "#/definitions/feed.FeedResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/handlers.CommonResponse"
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
                         }
                     },
                     "405": {
                         "description": "Method Not Allowed",
                         "schema": {
-                            "$ref": "#/definitions/handlers.CommonResponse"
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/handlers.CommonResponse"
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/image-proxy": {
+            "get": {
+                "description": "Get image via proxy",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "proxy"
+                ],
+                "summary": "Get image",
+                "operationId": "image-proxy",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "image url",
+                        "name": "image_url",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/popular": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Getting popular posts",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "feed"
+                ],
+                "summary": "Get popular posts",
+                "operationId": "get-popular-users",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.popularPostsResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/me": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Get current user profile data",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Get current profile",
+                "operationId": "get-profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/profile.GetProfileMeResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/me/edit": {
+            "patch": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Edit current user profile",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Edit current profile",
+                "operationId": "edit-profile",
+                "parameters": [
+                    {
+                        "description": "patch data",
+                        "name": "updated_fields",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateFullProfileRequestDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/public/feed": {
+            "get": {
+                "description": "Getting public feed",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "feed"
+                ],
+                "summary": "Get public feed",
+                "operationId": "get-public-feed",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "number of posts",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "cursor string responded by feed request",
+                        "name": "cursor",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.FeedResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
+                        }
+                    },
+                    "405": {
+                        "description": "Method Not Allowed",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/public/popular-posts": {
+            "get": {
+                "description": "Getting public popular posts",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "feed"
+                ],
+                "summary": "Get public popular posts",
+                "operationId": "get-public-popular-users",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.popularPostsResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/public/popular-users": {
+            "get": {
+                "description": "Get public suggested users",
+                "tags": [
+                    "feed"
+                ],
+                "summary": "Get public suggested users",
+                "operationId": "get-pub-pop-users",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/user.suggestedUsersResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/latest-events": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Get latest events",
+                "tags": [
+                    "feed"
+                ],
+                "summary": "Get latest events",
+                "operationId": "get-latest-events",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/user.suggestedUsersResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/suggested": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Get suggested users",
+                "tags": [
+                    "feed"
+                ],
+                "summary": "Get suggested users",
+                "operationId": "get-sug-users",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/user.suggestedUsersResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CommonErrorResponse"
                         }
                     }
                 }
@@ -253,7 +635,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "handlers.CommonResponse": {
+        "auth.CommonResponse": {
             "type": "object",
             "properties": {
                 "message": {
@@ -261,24 +643,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.FeedResponse": {
-            "type": "object",
-            "properties": {
-                "hasMore": {
-                    "type": "boolean"
-                },
-                "nextCursor": {
-                    "type": "string"
-                },
-                "posts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/handlers.postFeedDTO"
-                    }
-                }
-            }
-        },
-        "handlers.LoginRequest": {
+        "auth.LoginRequest": {
             "type": "object",
             "required": [
                 "login",
@@ -293,7 +658,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.LoginResponse": {
+        "auth.LoginResponse": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -310,11 +675,12 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.RegisterRequest": {
+        "auth.RegisterRequest": {
             "type": "object",
             "required": [
                 "birthday",
                 "firstName",
+                "gender",
                 "lastName",
                 "login",
                 "password1",
@@ -329,6 +695,13 @@ const docTemplate = `{
                 },
                 "firstName": {
                     "type": "string"
+                },
+                "gender": {
+                    "type": "integer",
+                    "enum": [
+                        1,
+                        2
+                    ]
                 },
                 "lastName": {
                     "type": "string"
@@ -348,7 +721,133 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.authorFeedDTO": {
+        "auth.RegisterStepOneRequest": {
+            "type": "object",
+            "required": [
+                "login",
+                "password1",
+                "password2"
+            ],
+            "properties": {
+                "login": {
+                    "type": "string"
+                },
+                "password1": {
+                    "type": "string",
+                    "maxLength": 72,
+                    "minLength": 6
+                },
+                "password2": {
+                    "type": "string",
+                    "maxLength": 72,
+                    "minLength": 6
+                }
+            }
+        },
+        "auth.ValidationErrorsResponse": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "ok": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "dto.CommonErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UpdateFullProfileRequestDTO": {
+            "type": "object",
+            "properties": {
+                "bio": {
+                    "type": "string"
+                },
+                "birthdayDate": {
+                    "type": "string",
+                    "maxLength": 10,
+                    "minLength": 8,
+                    "example": "2000-11-26"
+                },
+                "company": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "favMusic": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "gender": {
+                    "enum": [
+                        "male",
+                        "female"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Gender"
+                        }
+                    ]
+                },
+                "group": {
+                    "type": "string"
+                },
+                "institution": {
+                    "type": "string"
+                },
+                "interests": {
+                    "type": "string"
+                },
+                "jobTitle": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "login": {
+                    "type": "string"
+                },
+                "nativeTown": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "town": {
+                    "type": "string"
+                }
+            }
+        },
+        "feed.FeedResponse": {
+            "type": "object",
+            "properties": {
+                "hasMore": {
+                    "type": "boolean"
+                },
+                "nextCursor": {
+                    "type": "string"
+                },
+                "posts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/feed.postFeedDTO"
+                    }
+                }
+            }
+        },
+        "feed.authorFeedDTO": {
             "type": "object",
             "properties": {
                 "avatarLink": {
@@ -368,7 +867,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.mediaFeedDTO": {
+        "feed.mediaFeedDTO": {
             "type": "object",
             "properties": {
                 "id": {
@@ -382,11 +881,30 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.postFeedDTO": {
+        "feed.popularPostDTO": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "feed.popularPostsResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/feed.popularPostDTO"
+                    }
+                }
+            }
+        },
+        "feed.postFeedDTO": {
             "type": "object",
             "properties": {
                 "author": {
-                    "$ref": "#/definitions/handlers.authorFeedDTO"
+                    "$ref": "#/definitions/feed.authorFeedDTO"
                 },
                 "comments": {
                     "type": "integer"
@@ -403,7 +921,7 @@ const docTemplate = `{
                 "medias": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/handlers.mediaFeedDTO"
+                        "$ref": "#/definitions/feed.mediaFeedDTO"
                     }
                 },
                 "reposts": {
@@ -414,30 +932,41 @@ const docTemplate = `{
                 }
             }
         },
+        "models.Gender": {
+            "type": "string",
+            "enum": [
+                "male",
+                "female"
+            ],
+            "x-enum-varnames": [
+                "Male",
+                "Female"
+            ]
+        },
         "models.Profile": {
             "type": "object",
             "properties": {
-                "avatar": {
-                    "type": "string"
+                "avatarID": {
+                    "type": "integer"
                 },
                 "createdAt": {
                     "type": "string"
                 },
                 "id": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "isActive": {
                     "type": "boolean"
                 },
-                "updatedAt": {
+                "uid": {
                     "type": "string"
                 },
-                "username": {
+                "updatedAt": {
                     "type": "string"
                 }
             }
         },
-        "models.User": {
+        "models.UserAccount": {
             "type": "object",
             "properties": {
                 "createdAt": {
@@ -447,13 +976,145 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
+                    "type": "integer"
+                },
+                "isActive": {
+                    "type": "boolean"
+                },
+                "passwordHash": {
                     "type": "string"
                 },
                 "phone": {
                     "type": "string"
                 },
+                "uid": {
+                    "type": "string"
+                },
                 "updatedAt": {
                     "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "profile.EducationResponse": {
+            "type": "object",
+            "properties": {
+                "grade": {
+                    "description": "? naming",
+                    "type": "string"
+                },
+                "institution": {
+                    "type": "string"
+                }
+            }
+        },
+        "profile.GetProfileMeResponse": {
+            "type": "object",
+            "required": [
+                "firstName",
+                "lastName"
+            ],
+            "properties": {
+                "bio": {
+                    "type": "string"
+                },
+                "dirthday": {
+                    "description": "? type",
+                    "type": "string"
+                },
+                "education": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/profile.EducationResponse"
+                    }
+                },
+                "email": {
+                    "type": "string"
+                },
+                "favMusic": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "gender": {
+                    "enum": [
+                        "1",
+                        "2"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Gender"
+                        }
+                    ]
+                },
+                "imageLink": {
+                    "type": "string"
+                },
+                "interests": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "nativeTown": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "town": {
+                    "type": "string"
+                },
+                "work": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/profile.WorkResponse"
+                    }
+                }
+            }
+        },
+        "profile.WorkResponse": {
+            "type": "object",
+            "properties": {
+                "company": {
+                    "type": "string"
+                },
+                "jobTitle": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.suggestedUserDTO": {
+            "type": "object",
+            "properties": {
+                "avatarLink": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.suggestedUsersResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/user.suggestedUserDTO"
+                    }
                 }
             }
         }

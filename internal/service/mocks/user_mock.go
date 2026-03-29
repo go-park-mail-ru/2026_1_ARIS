@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 	time "time"
 
+	dto "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	models "github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	user "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	gomock "github.com/golang/mock/gomock"
@@ -245,4 +246,18 @@ func (m *MockUserService) GetUserProfileByUserProfileID(arg0 context.Context, ar
 func (mr *MockUserServiceMockRecorder) GetUserProfileByUserProfileID(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserProfileByUserProfileID", reflect.TypeOf((*MockUserService)(nil).GetUserProfileByUserProfileID), arg0, arg1)
+}
+
+// UpdateMe mocks base method.
+func (m *MockUserService) UpdateMe(arg0 context.Context, arg1 dto.UpdateFullProfileRequestDTO) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateMe", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateMe indicates an expected call of UpdateMe.
+func (mr *MockUserServiceMockRecorder) UpdateMe(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMe", reflect.TypeOf((*MockUserService)(nil).UpdateMe), arg0, arg1)
 }

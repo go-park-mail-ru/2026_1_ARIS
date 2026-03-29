@@ -110,11 +110,21 @@ type UserProfile struct {
 	FirstName     string    `db:"first_name" json:"firstName"`
 	LastName      string    `db:"last_name" json:"lastName"`
 	Bio           *string   `db:"bio,omitempty" json:"bio,omitempty"`
-	BirthdayDate  time.Time `db:"birthday_date,omitempty" json:"birthdayDate,omitempty"`
+	BirthdayDate  time.Time `db:"birthday_date,omitempty" json:"birthdayDate"`
 	Gender        Gender    `db:"gender" json:"gender"`
-	IsActive      bool      `db:"is_active" json:"isActive"`
-	CreatedAt     time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt     time.Time `db:"updated_at" json:"updatedAt"`
+
+	NativeTown  *string `db:"native_town,omitempty" json:"nativeTown,omitempty"`
+	Town        *string `db:"town,omitempty" json:"town,omitempty"`
+	Institution *string `db:"institution,omitempty" jgon:"institution,omitempty"`
+	Group       *string `db:"study_group,omitempty" jgon:"group,omitempty"`
+	Company     *string `db:"company,omitempty" jgon:"company,omitempty"`
+	JobTitle    *string `db:"job_title,omitempty" jgon:"jobTitle,omitempty"`
+	Interests   *string `db:"interests,omitempty" json:"interests,omitempty"`
+	FavMusic    *string `db:"fav_music,omitempty" json:"favMusic,omitempty"`
+
+	IsActive  bool      `db:"is_active" json:"isActive"`
+	CreatedAt time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
 }
 
 func NewUserProfile(userAccountId, profileID int64, firstName, lastName string, bio *string, birthday time.Time, gender Gender) *UserProfile {

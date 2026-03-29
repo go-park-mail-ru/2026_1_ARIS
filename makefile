@@ -29,6 +29,10 @@ migrate-force-down: migrate
 migrate:
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
+# обновить конфигурацию сваггера
+swagger:
+	swag init -g cmd/server/main.go --dir .,./internal/handler --output docs
+
 # будет подтянут postgres:16
 db-up:
 	docker compose -f ./docker/docker-compose.yml --env-file ./.env up -d

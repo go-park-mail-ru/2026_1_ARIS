@@ -11,7 +11,6 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
-	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/cursor"
 	"github.com/google/uuid"
 )
 
@@ -68,20 +67,20 @@ func NewFeedHandler(postService post.PostService, mediaService media.MediaServic
 	}
 }
 
-// @Description Getting feed
-// @ID get-feed
-// @Summary Get feed
-// @Tags feed
-// @Security SessionAuth
-// @Accept json
-// @Produce json
-// @Success 200 {object} FeedResponse
-// @Failure 400 {object} CommonResponse
-// @Failure 405 {object} CommonResponse
-// @Failure 500 {object} CommonResponse
-// @Param limit query int false "number of posts"
-// @Param cursor query string false "cursor string responded by feed request"
-// @Router /feed [get]
+// @Description	Getting feed
+// @ID			get-feed
+// @Summary		Get feed
+// @Tags		feed
+// @Security	SessionAuth
+// @Accept		json
+// @Produce		json
+// @Success		200		{object}	FeedResponse
+// @Failure		400		{object}	dto.CommonErrorResponse
+// @Failure		405		{object}	dto.CommonErrorResponse
+// @Failure		500		{object}	dto.CommonErrorResponse
+// @Param		limit	query		int		false	"number of posts"
+// @Param		cursor	query		string	false	"cursor string responded by feed request"
+// @Router		/feed [get]
 func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		utils.WriteError(w, "Required method GET", http.StatusMethodNotAllowed)
@@ -186,6 +185,14 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+// @Description	Getting popular posts
+// @ID			get-popular-users
+// @Summary		Get popular posts
+// @Tags		feed
+// @Security	SessionAuth
+// @Produce		json
+// @Success		200		{object}	popularPostsResponse
+// @Router		/posts/popular [get]
 func (h *FeedHandler) GetPopularPosts(w http.ResponseWriter, r *http.Request) {
 
 	all := []popularPostDTO{
@@ -203,11 +210,19 @@ func (h *FeedHandler) GetPopularPosts(w http.ResponseWriter, r *http.Request) {
 	items := all[:3]
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(popularPostsResponse{
 		Items: items,
 	})
 }
 
+// @Description	Getting public popular posts
+// @ID			get-public-popular-users
+// @Summary		Get public popular posts
+// @Tags		feed
+// @Produce		json
+// @Success		200		{object}	popularPostsResponse
+// @Router		/public/popular-posts [get]
 func (h *FeedHandler) GetPublicPopularPosts(w http.ResponseWriter, r *http.Request) {
 
 	items := []popularPostDTO{
@@ -217,11 +232,25 @@ func (h *FeedHandler) GetPublicPopularPosts(w http.ResponseWriter, r *http.Reque
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(popularPostsResponse{
 		Items: items,
 	})
 }
 
+// @Description	Getting public feed
+// @ID			get-public-feed
+// @Summary		Get public feed
+// @Tags		feed
+// @Accept		json
+// @Produce		json
+// @Success		200		{object}	FeedResponse
+// @Failure		400		{object}	dto.CommonErrorResponse
+// @Failure		405		{object}	dto.CommonErrorResponse
+// @Failure		500		{object}	dto.CommonErrorResponse
+// @Param		limit	query		int		false	"number of posts"
+// @Param		cursor	query		string	false	"cursor string responded by feed request"
+// @Router		/public/feed [get]
 func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		utils.WriteError(w, "Required method GET", http.StatusMethodNotAllowed)
@@ -241,17 +270,6 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		limit = parsed
-	}
-
-	params := post.FeedParams{Limit: limit}
-
-	if rawCursor != "" {
-		decoded, err := cursor.Decode(rawCursor)
-		if err != nil {
-			utils.WriteError(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		params.Cursor = &decoded
 	}
 
 	feed, err := h.PostService.GetPublicFeed(r.Context(), rawCursor, limit)
