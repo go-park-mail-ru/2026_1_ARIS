@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,6 +19,7 @@ type UserProfileRepo interface {
 	Get(ctx context.Context, userProfileID int64) (*models.UserProfile, error)
 	GetByProfileID(ctx context.Context, profileID int64) (*models.UserProfile, error)
 	GetByUserAccountID(ctx context.Context, userAccountID int64) (*models.UserProfile, error)
+	Update(ctx context.Context, dto dto.UpdateUserProfileDTO) error
 }
 
 type userProfileStorage struct {
@@ -39,6 +42,99 @@ func NewUserProfileRepo() UserProfileRepo {
 	repo := inmemoryUserProfileRepo{}
 	repo.userProfiles = make(map[int64]models.UserProfile)
 	return &repo
+}
+
+func (storage *userProfileStorage) Update(ctx context.Context, dto dto.UpdateUserProfileDTO) error {
+	setClauses := []string{}
+	args := []any{}
+	argIdx := 1
+
+	// собираем запрос на обновление, чтобы обновлять только то, что изменилось
+	if dto.FirstName != nil {
+		setClauses = append(setClauses, fmt.Sprintf("first_name=$%d", argIdx))
+		args = append(args, *dto.FirstName)
+		argIdx++
+	}
+	if dto.LastName != nil {
+		setClauses = append(setClauses, fmt.Sprintf("last_name=$%d", argIdx))
+		args = append(args, *dto.LastName)
+		argIdx++
+	}
+	if dto.Bio != nil {
+		setClauses = append(setClauses, fmt.Sprintf("bio=$%d", argIdx))
+		args = append(args, *dto.Bio)
+		argIdx++
+	}
+	if dto.BirthdayDate != nil {
+		setClauses = append(setClauses, fmt.Sprintf("birthday_date=$%d", argIdx))
+		args = append(args, *dto.BirthdayDate)
+		argIdx++
+	}
+	if dto.Gender != nil {
+		setClauses = append(setClauses, fmt.Sprintf("gender=$%d", argIdx))
+		args = append(args, *dto.Gender)
+		argIdx++
+	}
+	if dto.NativeTown != nil {
+		setClauses = append(setClauses, fmt.Sprintf("native_town=$%d", argIdx))
+		args = append(args, *dto.NativeTown)
+		argIdx++
+	}
+	if dto.Town != nil {
+		setClauses = append(setClauses, fmt.Sprintf("town=$%d", argIdx))
+		args = append(args, *dto.Town)
+		argIdx++
+	}
+	if dto.Institution != nil {
+		setClauses = append(setClauses, fmt.Sprintf("institution=$%d", argIdx))
+		args = append(args, *dto.Institution)
+		argIdx++
+	}
+	if dto.Group != nil {
+		setClauses = append(setClauses, fmt.Sprintf("study_group=$%d", argIdx))
+		args = append(args, *dto.Group)
+		argIdx++
+	}
+	if dto.Company != nil {
+		setClauses = append(setClauses, fmt.Sprintf("company=$%d", argIdx))
+		args = append(args, *dto.Company)
+		argIdx++
+	}
+	if dto.JobTitle != nil {
+		setClauses = append(setClauses, fmt.Sprintf("job_title=$%d", argIdx))
+		args = append(args, *dto.JobTitle)
+		argIdx++
+	}
+	if dto.Interests != nil {
+		setClauses = append(setClauses, fmt.Sprintf("interests=$%d", argIdx))
+		args = append(args, *dto.Interests)
+		argIdx++
+	}
+	if dto.FavMusic != nil {
+		setClauses = append(setClauses, fmt.Sprintf("fav_music=$%d", argIdx))
+		args = append(args, *dto.FavMusic)
+		argIdx++
+	}
+
+	// нечего обновлять
+	if len(setClauses) == 0 {
+		return nil
+	}
+
+	args = append(args, dto.ID)
+
+	query := fmt.Sprintf("UPDATE user_profile SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx)
+
+	res, err := storage.db.Exec(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	if res.RowsAffected() != 1 {
+		return errors.New("UPDATE affected not on 1 row")
+	}
+
+	return nil
 }
 
 func (storage *userProfileStorage) Save(ctx context.Context, userProfile models.UserProfile) (int64, error) {
@@ -140,4 +236,9 @@ func (r *inmemoryUserProfileRepo) GetByUserAccountID(ctx context.Context, userAc
 	}
 
 	return nil, errors.New("UserProfile not found")
+}
+
+// заглушка
+func (r *inmemoryUserProfileRepo) Update(ctx context.Context, dto dto.UpdateUserProfileDTO) error {
+	return nil
 }

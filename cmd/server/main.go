@@ -34,6 +34,7 @@ import (
 
 	authhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
 	feedhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
 	userhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/config"
@@ -42,18 +43,17 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// @title ARIS backend API
-// @version 1.0.0
-// @description Description of ARIS backend API
-// @host localhost:8080
-// @BasePath /api
-// @accept json
-// @produce json
-// @schemes http
-// @securityDefinitions.apikey SessionAuth
-// @in cookie
-// @name session_id
-
+// @title						ARIS backend API
+// @version						1.0.0
+// @description					Description of ARIS backend API
+// @host						localhost:8080
+// @BasePath					/api
+// @accept						json
+// @produce						json
+// @schemes						http
+// @securityDefinitions.apikey	SessionAuth
+// @in							cookie
+// @name						session_id
 func main() {
 	// загружаем переменные окружения из файла или systemd
 	err := godotenv.Load()
@@ -139,12 +139,16 @@ func main() {
 		MediaService: mediaService,
 	}
 	feedHandler := feedhandler.NewFeedHandler(postService, mediaService, userService)
+	profileHandler := profile.NewProfileHandler(userService, mediaService, sessService)
 
 	// заполнение тестовыми данными
 	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo)
 
+	// swagger
+	fmt.Println("Swagger is running on http://localhost:8080/swagger/index.html")
+
 	// создаём роутер
-	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler)
+	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, profileHandler)
 
 	// создаём сервер
 	srv := &http.Server{

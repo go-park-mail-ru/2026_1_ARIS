@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/proxy"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
 	mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
@@ -19,6 +20,7 @@ func NewRouter(
 	sessSvc session.SessionService,
 	feedHandler *feed.FeedHandler,
 	userHandler *user.UserHandler,
+	profileHandler *profile.ProfileHandler,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -54,6 +56,8 @@ func NewRouter(
 		r.Get("/api/users/latest-events", userHandler.GetLatestEvents)
 		r.Get("/api/feed", feedHandler.GetFeed)
 		r.Get("/api/posts/popular", feedHandler.GetPopularPosts)
+		r.Get("/api/profile/me", profileHandler.GetProfileMe)
+		r.Patch("/api/profile/me/edit", profileHandler.EditProfileMe)
 	})
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
