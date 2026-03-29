@@ -29,10 +29,10 @@ type UpdateFullProfileRequestDTO struct {
 
 	NativeTown  *string `db:"native_town,omitempty" json:"nativeTown,omitempty"`
 	Town        *string `db:"town,omitempty" json:"town,omitempty"`
-	Institution *string `db:"institution,omitempty" jgon:"institution,omitempty"`
-	Group       *string `db:"study_group,omitempty" jgon:"group,omitempty"`
-	Company     *string `db:"company,omitempty" jgon:"company,omitempty"`
-	JobTitle    *string `db:"job_title,omitempty" jgon:"jobTitle,omitempty"`
+	Institution *string `db:"institution,omitempty" json:"institution,omitempty"`
+	Group       *string `db:"study_group,omitempty" json:"group,omitempty"`
+	Company     *string `db:"company,omitempty" json:"company,omitempty"`
+	JobTitle    *string `db:"job_title,omitempty" json:"jobTitle,omitempty"`
 	Interests   *string `db:"interests,omitempty" json:"interests,omitempty"`
 	FavMusic    *string `db:"fav_music,omitempty" json:"favMusic,omitempty"`
 }
@@ -54,10 +54,10 @@ type UpdateUserProfileDTO struct {
 
 	NativeTown  *string `db:"native_town,omitempty" json:"nativeTown,omitempty"`
 	Town        *string `db:"town,omitempty" json:"town,omitempty"`
-	Institution *string `db:"institution,omitempty" jgon:"institution,omitempty"`
-	Group       *string `db:"study_group,omitempty" jgon:"group,omitempty"`
-	Company     *string `db:"company,omitempty" jgon:"company,omitempty"`
-	JobTitle    *string `db:"job_title,omitempty" jgon:"jobTitle,omitempty"`
+	Institution *string `db:"institution,omitempty" json:"institution,omitempty"`
+	Group       *string `db:"study_group,omitempty" json:"group,omitempty"`
+	Company     *string `db:"company,omitempty" json:"company,omitempty"`
+	JobTitle    *string `db:"job_title,omitempty" json:"jobTitle,omitempty"`
 	Interests   *string `db:"interests,omitempty" json:"interests,omitempty"`
 	FavMusic    *string `db:"fav_music,omitempty" json:"favMusic,omitempty"`
 }

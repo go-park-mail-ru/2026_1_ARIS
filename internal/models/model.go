@@ -66,7 +66,7 @@ type MessageStatus int
 
 const (
 	NotSend MessageStatus = iota
-	Senging
+	Sending
 	Send
 	Read
 )
@@ -115,10 +115,10 @@ type UserProfile struct {
 
 	NativeTown  *string `db:"native_town,omitempty" json:"nativeTown,omitempty"`
 	Town        *string `db:"town,omitempty" json:"town,omitempty"`
-	Institution *string `db:"institution,omitempty" jgon:"institution,omitempty"`
-	Group       *string `db:"study_group,omitempty" jgon:"group,omitempty"`
-	Company     *string `db:"company,omitempty" jgon:"company,omitempty"`
-	JobTitle    *string `db:"job_title,omitempty" jgon:"jobTitle,omitempty"`
+	Institution *string `db:"institution,omitempty" json:"institution,omitempty"`
+	Group       *string `db:"study_group,omitempty" json:"group,omitempty"`
+	Company     *string `db:"company,omitempty" json:"company,omitempty"`
+	JobTitle    *string `db:"job_title,omitempty" json:"jobTitle,omitempty"`
 	Interests   *string `db:"interests,omitempty" json:"interests,omitempty"`
 	FavMusic    *string `db:"fav_music,omitempty" json:"favMusic,omitempty"`
 
@@ -274,7 +274,7 @@ type ChatMember struct {
 	IsActive  bool       `json:"isActive"`
 	LeaveAt   *time.Time `json:"leaveAt,omitempty"`
 	CreatedAt time.Time  `json:"createdAt"`
-	UpdatedAt time.Time  `json:"updateAt"`
+	UpdatedAt time.Time  `json:"updatedAt"`
 	Role      string     `json:"role"`
 }
 
@@ -408,7 +408,7 @@ func NewLikeToComment(commentID int64, authorID int64) *Like {
 type Friendship struct {
 	Friend1ID   int64            `json:"friend1"`
 	Friend2ID   int64            `json:"friend2"`
-	REquesterID int64            `json:"requester"`
+	RequesterID int64            `json:"requester"`
 	Status      FriendshipStatus `json:"status"`
 	IsActive    bool             `json:"isActive"`
 	CreatedAt   time.Time        `json:"createdAt"`
@@ -433,7 +433,7 @@ type Sticker struct {
 	PackID     *int64    `json:"pack"`
 	IsActive   bool      `json:"isActive"`
 	CreatedAt  time.Time `json:"createdAt"`
-	UpdatedAt  time.Time `json:"updateAt"`
+	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
 type Session struct {

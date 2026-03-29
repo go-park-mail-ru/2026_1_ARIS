@@ -46,7 +46,7 @@ type GetProfileMeResponse struct {
 	ImageLink *string `json:"imageLink,omitempty" validate:"url,omitempty,omitnil"`
 
 	Gender       models.Gender `json:"gender,omitempty" validate:"oneof=1 2,omitempty"`
-	BirthdayDate string        `json:"dirthday,omitempty" validate:"datetime=02/01/2006,omitempty"` // ? type
+	BirthdayDate string        `json:"birthday,omitempty" validate:"datetime=02/01/2006,omitempty"` // ? type
 	NativeTown   *string       `json:"nativeTown,omitempty" validate:"omitempty,omitnil"`
 	Phone        *string       `json:"phone,omitempty" validate:"omitempty,omitnil"`
 	Email        *string       `json:"email,omitempty" validate:"omitempty,omitnil"`

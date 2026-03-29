@@ -1020,7 +1020,7 @@ const docTemplate = `{
                 "bio": {
                     "type": "string"
                 },
-                "dirthday": {
+                "birthday": {
                     "description": "? type",
                     "type": "string"
                 },
