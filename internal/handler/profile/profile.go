@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
@@ -62,6 +64,57 @@ type GetProfileMeResponse struct {
 
 var validate = validator.New()
 
+func (h *ProfileHandler) buildProfileResponse(r *http.Request, profileID int64) (*GetProfileMeResponse, int, string) {
+	userProfile, err := h.userService.GetUserProfileByProfileID(r.Context(), profileID)
+	if err != nil {
+		return nil, http.StatusNotFound, "profile not found"
+	}
+
+	userAccount, err := h.userService.GetUserAccountByProfileID(r.Context(), profileID)
+	if err != nil {
+		return nil, http.StatusInternalServerError, "internal server error"
+	}
+
+	var imageLink *string
+	if h.mediaService != nil {
+		profile, err := h.userService.GetProfileByUserProfileID(r.Context(), userProfile.ID)
+		if err == nil && profile != nil && profile.AvatarID != nil {
+			avatar, avatarErr := h.mediaService.GetAvatarByID(r.Context(), profile.AvatarID)
+			if avatarErr == nil && avatar != nil {
+				imageLink = &avatar.Link
+			}
+		}
+	}
+
+	response := &GetProfileMeResponse{
+		FirstName:  userProfile.FirstName,
+		LastName:   userProfile.LastName,
+		Bio:        userProfile.Bio,
+		ImageLink:  imageLink,
+		Gender:     userProfile.Gender,
+		NativeTown: userProfile.NativeTown,
+		Phone:      userAccount.Phone,
+		Email:      userAccount.Email,
+		Town:       userProfile.Town,
+		Interests:  userProfile.Interests,
+		FavMusic:   userProfile.FavMusic,
+		Education: []EducationResponse{{
+			Institution: userProfile.Institution,
+			Group:       userProfile.Group,
+		}},
+		Work: []WorkResponse{{
+			Company:  userProfile.Company,
+			JobTitle: userProfile.JobTitle,
+		}},
+	}
+
+	if !userProfile.BirthdayDate.IsZero() {
+		response.BirthdayDate = userProfile.BirthdayDate.Format(time.DateOnly)
+	}
+
+	return response, http.StatusOK, ""
+}
+
 // @Description		Get current user profile data
 // @ID				get-profile
 // @Summary			Get current profile
@@ -92,51 +145,42 @@ func (h *ProfileHandler) GetProfileMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userAccount, err := h.userService.GetUserAccountByUserProfileID(r.Context(), userProfile.ID)
-	if err != nil {
-		utils.WriteError(w, "internal server error", http.StatusInternalServerError)
+	response, status, message := h.buildProfileResponse(r, userProfile.ProfileID)
+	if status != http.StatusOK {
+		utils.WriteError(w, message, status)
 		return
 	}
 
-	// profile, err := h.userService.GetProfileByUserProfileID(r.Context(), userProfile.ID)
-	// if err != nil {
-	// 	fmt.Println("ERROR 4:", err)
-	// 	return
-	// }
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
 
-	// заглушка
-	avatarLink := "http://arisnet.ru/assets/img/logo.svg"
-
-	eduREsponse := EducationResponse{
-		Institution: userProfile.Institution,
-		Group:       userProfile.Group,
+// @Description		Get public profile data by profile id
+// @ID				get-profile-by-id
+// @Summary			Get profile by id
+// @Tags			profile
+// @Accept			json
+// @Produce			json
+// @Security		SessionAuth
+// @Param			id	path		int	true	"Profile ID"
+// @Success			200	{object}	GetProfileMeResponse
+// @Failure			400	{object}	dto.CommonErrorResponse
+// @Failure			401	{object}	dto.CommonErrorResponse
+// @Failure			404	{object}	dto.CommonErrorResponse
+// @Failure			500	{object}	dto.CommonErrorResponse
+// @Router			/profile/{id} [get]
+func (h *ProfileHandler) GetProfileByID(w http.ResponseWriter, r *http.Request) {
+	profileID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil || profileID <= 0 {
+		utils.WriteError(w, "invalid profile id", http.StatusBadRequest)
+		return
 	}
 
-	workResponse := WorkResponse{
-		Company:  userProfile.Company,
-		JobTitle: userProfile.JobTitle,
-	}
-
-	gender := "male"
-	if userProfile.Gender == models.Female {
-		gender = "female"
-	}
-
-	response := GetProfileMeResponse{
-		FirstName:    userProfile.FirstName,
-		LastName:     userProfile.LastName,
-		Bio:          userProfile.Bio,
-		ImageLink:    &avatarLink,
-		Gender:       models.Gender(gender),
-		BirthdayDate: userProfile.BirthdayDate.Format(time.DateOnly),
-		NativeTown:   userProfile.NativeTown,
-		Phone:        userAccount.Phone,
-		Email:        userAccount.Email,
-		Town:         userProfile.Town,
-		Interests:    userProfile.Interests,
-		FavMusic:     userProfile.FavMusic,
-		Education:    []EducationResponse{eduREsponse},
-		Work:         []WorkResponse{workResponse},
+	response, status, message := h.buildProfileResponse(r, profileID)
+	if status != http.StatusOK {
+		utils.WriteError(w, message, status)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
