@@ -1,6 +1,7 @@
 package server
 
 import (
+	chathandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
@@ -21,6 +22,7 @@ func NewRouter(
 	feedHandler *feed.FeedHandler,
 	userHandler *user.UserHandler,
 	profileHandler *profile.ProfileHandler,
+	chatHandler *chathandler.ChatHandler,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -28,7 +30,7 @@ func NewRouter(
 	r.Use(middleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3001", "http://arisnet.ru", "https://arisnet.ru"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
 		AllowCredentials: true,
 		MaxAge:           300,
@@ -45,11 +47,12 @@ func NewRouter(
 			r.Post("/logout", authHandler.Logout)
 		})
 	})
-	// Публичная лента (без авторизации)
+
 	r.Get("/api/public/feed", feedHandler.GetPublicFeed)
 	r.Get("/api/public/popular-users", userHandler.GetPublicPopularUsers)
 	r.Get("/api/public/popular-posts", feedHandler.GetPublicPopularPosts)
 	r.Get("/image-proxy", proxy.ImageProxy)
+
 	r.Group(func(r chi.Router) {
 		r.Use(mymiddleware.AuthMiddleware(sessSvc))
 		r.Get("/api/users/suggested", userHandler.GetSuggestedUsers)
@@ -59,10 +62,13 @@ func NewRouter(
 		r.Get("/api/profile/me", profileHandler.GetProfileMe)
 		r.Get("/api/profile/{id}", profileHandler.GetProfileByID)
 		r.Patch("/api/profile/me/edit", profileHandler.EditProfileMe)
+		r.Get("/api/chats", chatHandler.GetChats)
+		r.Post("/api/chats", chatHandler.CreateChat)
+		r.Get("/api/chats/{chatID}/messages", chatHandler.GetMessages)
+		r.Post("/api/chats/{chatID}/messages", chatHandler.SendMessage)
 	})
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
-	// Раздача статических файлов (изображений)
 
 	return r
 }
