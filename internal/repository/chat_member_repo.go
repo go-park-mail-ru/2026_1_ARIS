@@ -6,24 +6,23 @@ import (
 	"sync"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
-	"github.com/google/uuid"
 )
 
 type ChatMemberRepo interface {
 	Save(ctx context.Context, member models.ChatMember) error
-	GetByChatID(ctx context.Context, chatID uuid.UUID) ([]models.ChatMember, error)
-	GetByUserID(ctx context.Context, userID uuid.UUID) ([]models.ChatMember, error)
-	Delete(ctx context.Context, id uuid.UUID) error
+	GetByChatID(ctx context.Context, chatID int64) ([]models.ChatMember, error)
+	GetByUserID(ctx context.Context, userID int64) ([]models.ChatMember, error)
+	Delete(ctx context.Context, id int64) error
 }
 
 type inmemoryChatMemberRepo struct {
 	mu      sync.RWMutex
-	members map[uuid.UUID]models.ChatMember
+	members map[int64]models.ChatMember
 }
 
 func NewChatMemberRepo() ChatMemberRepo {
 	return &inmemoryChatMemberRepo{
-		members: make(map[uuid.UUID]models.ChatMember),
+		members: make(map[int64]models.ChatMember),
 	}
 }
 
@@ -34,7 +33,7 @@ func (r *inmemoryChatMemberRepo) Save(ctx context.Context, member models.ChatMem
 	return nil
 }
 
-func (r *inmemoryChatMemberRepo) GetByChatID(ctx context.Context, chatID uuid.UUID) ([]models.ChatMember, error) {
+func (r *inmemoryChatMemberRepo) GetByChatID(ctx context.Context, chatID int64) ([]models.ChatMember, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	var res []models.ChatMember
@@ -46,7 +45,7 @@ func (r *inmemoryChatMemberRepo) GetByChatID(ctx context.Context, chatID uuid.UU
 	return res, nil
 }
 
-func (r *inmemoryChatMemberRepo) GetByUserID(ctx context.Context, userID uuid.UUID) ([]models.ChatMember, error) {
+func (r *inmemoryChatMemberRepo) GetByUserID(ctx context.Context, userID int64) ([]models.ChatMember, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	var res []models.ChatMember
@@ -58,7 +57,7 @@ func (r *inmemoryChatMemberRepo) GetByUserID(ctx context.Context, userID uuid.UU
 	return res, nil
 }
 
-func (r *inmemoryChatMemberRepo) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *inmemoryChatMemberRepo) Delete(ctx context.Context, id int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, ok := r.members[id]; !ok {

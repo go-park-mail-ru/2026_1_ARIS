@@ -40,11 +40,11 @@ type popularPostsResponse struct {
 }
 
 type authorFeedDTO struct {
-	Id         uuid.UUID `json:"id"`
-	FirstName  string    `json:"firstName"`
-	LastName   string    `json:"lastName"`
-	Username   string    `json:"username"`
-	AvatarLink string    `json:"avatarLink"`
+	Id         string `json:"id"`
+	FirstName  string `json:"firstName"`
+	LastName   string `json:"lastName"`
+	Username   string `json:"username"`
+	AvatarLink string `json:"avatarLink"`
 }
 
 type mediaFeedDTO struct {
@@ -142,7 +142,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		}
 
 		author := authorFeedDTO{
-			Id:         postAuthor.Uid,
+			Id:         strconv.FormatInt(postAuthor.ID, 10),
 			FirstName:  authorUserProfile.FirstName,
 			LastName:   authorUserProfile.LastName,
 			Username:   authorUserAccount.Username,
@@ -311,7 +311,7 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 		}
 
 		author := authorFeedDTO{
-			Id:         postAuthor.Uid,
+			Id:         strconv.FormatInt(postAuthor.ID, 10),
 			FirstName:  authorUserProfile.FirstName,
 			LastName:   authorUserProfile.LastName,
 			Username:   authorUserAccount.Username,

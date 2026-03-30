@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -235,7 +236,19 @@ func (h *ProfileHandler) EditProfileMe(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	if err := validate.Struct(req); err != nil {
+	reqForValidation := req
+
+	if reqForValidation.Username != nil && strings.TrimSpace(*reqForValidation.Username) == "" {
+		reqForValidation.Username = nil
+	}
+	if reqForValidation.Email != nil && strings.TrimSpace(*reqForValidation.Email) == "" {
+		reqForValidation.Email = nil
+	}
+	if reqForValidation.Phone != nil && strings.TrimSpace(*reqForValidation.Phone) == "" {
+		reqForValidation.Phone = nil
+	}
+
+	if err := validate.Struct(reqForValidation); err != nil {
 		utils.WriteError(w, "validation failed: "+err.Error(), http.StatusBadRequest)
 		return
 	}
