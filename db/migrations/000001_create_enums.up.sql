@@ -13,7 +13,7 @@ CREATE TYPE community_member_role AS ENUM (
     'member'
 );
 
-CREATE TYPE friendship_status AS ENUM ('pending', 'accepted', 'declined');
+CREATE TYPE friendship_status AS ENUM ('pending', 'accepted');
 
 CREATE TYPE message_status AS ENUM (
     'pending',

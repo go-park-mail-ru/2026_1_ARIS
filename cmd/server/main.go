@@ -12,15 +12,20 @@ import (
 	"time"
 
 	_ "github.com/go-park-mail-ru/2026_1_ARIS/docs"
+
 	chathandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
 	authhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
 	feedhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
+	friendshiphandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/friend"
+	profilehandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
 	userhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
+
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+
 	memoryrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
 	chatrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
 	commentrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/comment"
+	friendshiprepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/friend"
 	likerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/like"
 	mediarepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
 	postrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/post"
@@ -29,16 +34,21 @@ import (
 	sessionrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/session"
 	useraccountrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_account"
 	userprofilerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_profile"
+
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/server"
+
 	chatservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
 	authservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/auth"
+	friendshipservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/friend"
 	mediaservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
 	postservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
 	sessionservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
 	userservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
+
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/config"
 	connectdb "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/connect_db"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -98,10 +108,10 @@ func main() {
 	mediaRepo := mediarepo.NewMediaStorage(db)
 	postWithMediaRepo := postrepo.NewPostWithMediaStorage(db)
 	dbChatRepo := chatrepo.NewChatStorage(db)
-
 	chatRepo := memoryrepo.NewChatRepo()
 	chatMemberRepo := memoryrepo.NewChatMemberRepo()
 	messageRepo := memoryrepo.NewMessageRepo()
+	friendshipRepo := friendshiprepo.NewFriendshipStorage(db)
 
 	postService := postservice.NewPostService(postRepo, profileRepo, commentRepo, repostRepo, likeRepo)
 	userService := userservice.NewUserService(userAccountRepo, profileRepo, userProfileRepo)
@@ -110,15 +120,16 @@ func main() {
 	mediaService := mediaservice.NewMediaService(mediaRepo, postWithMediaRepo)
 	chatSvc := chatservice.NewChatService(chatRepo, chatMemberRepo, userService)
 	messageSvc := chatservice.NewMessageService(messageRepo)
+	friendshipService := friendshipservice.NewFriendshipService(friendshipRepo)
 
 	authHandler := authhandler.NewAuthHandler(authService, sessService, userService)
-	userHandler := &userhandler.UserHandler{
-		UserService:  userService,
-		MediaService: mediaService,
-	}
+	userHandler := userhandler.NewUserHandler(userService, mediaService)
 	feedHandler := feedhandler.NewFeedHandler(postService, mediaService, userService)
-	profileHandler := profile.NewProfileHandler(userService, mediaService, sessService)
+	profileHandler := profilehandler.NewProfileHandler(userService, mediaService, sessService)
 	chatHandler := chathandler.NewChatHandler(chatSvc, messageSvc, userAccountRepo, userService)
+	friendHandler := friendshiphandler.NewFriendHandler(sessService, userService, friendshipService)
+
+	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, profileHandler, chatHandler, friendHandler)
 
 	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, dbChatRepo)
 	ensureKnownTestUser(ctx, userAccountRepo, userService, "sergeyshulginenko", "chatcheck123", "Сергей", "Шульгиненко")
@@ -127,8 +138,6 @@ func main() {
 	seedGuaranteedChatForUsername(ctx, userAccountRepo, userService, chatRepo, chatMemberRepo, messageRepo, "ffffff", "sergeyshulginenko")
 
 	fmt.Println("Swagger is running on http://localhost:8080/swagger/index.html")
-
-	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, profileHandler, chatHandler)
 
 	srv := &http.Server{
 		Addr:    ":8080",

@@ -15,7 +15,7 @@ coverage: clean
 	go tool cover -html=coverage.out
 
 migrate-up: migrate
-	$(MIGRATE) up
+	$(MIGRATE) up 5
 
 migrate-down: migrate
 	$(MIGRATE) down
@@ -31,7 +31,7 @@ migrate:
 
 # обновить конфигурацию сваггера
 swagger:
-	swag init -g cmd/server/main.go --dir .,./internal/handler --output docs
+	swag init -g main.go --dir ./cmd/server,./internal/handler/auth,./internal/handler/feed,./internal/handler/profile,./internal/handler/friend,./internal/handler/user,./internal/handler/proxy,./internal/handler/dto,./internal/service/dto,./internal/models --output docs
 
 # будет подтянут postgres:16
 db-up:
