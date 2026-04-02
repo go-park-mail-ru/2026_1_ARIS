@@ -40,9 +40,9 @@ type suggestedUsersResponse struct {
 	Items []suggestedUserDTO `json:"items"`
 }
 
-func NewUserHandler(userProfileService user.UserService, mediaService media.MediaService) *UserHandler {
+func NewUserHandler(userService user.UserService, mediaService media.MediaService) *UserHandler {
 	return &UserHandler{
-		UserService:  userProfileService,
+		UserService:  userService,
 		MediaService: mediaService,
 	}
 }

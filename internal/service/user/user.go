@@ -41,6 +41,8 @@ type UserService interface {
 	GetLatestEvents(ctx context.Context) ([]LatestEvent, error)
 	GetUserAccountByUserAccountUid(ctx context.Context, userAccountUid uuid.UUID) (*models.UserAccount, error)
 	GetProfileByUserProfileID(ctx context.Context, userProfileID int64) (*models.Profile, error)
+	GetProfileByProfileID(ctx context.Context, profileID int64) (*models.Profile, error)
+	GetProfileByUserAccountID(ctx context.Context, userAccountID int64) (*models.Profile, error)
 	UpdateMe(ctx context.Context, updateDTO dto.UpdateFullProfileRequestDTO) error
 }
 
@@ -356,4 +358,12 @@ func (s *userService) GetProfileByUserProfileID(ctx context.Context, userProfile
 	}
 
 	return s.ProfileRepo.Get(ctx, userProfile.ProfileID)
+}
+
+func (s *userService) GetProfileByProfileID(ctx context.Context, profileID int64) (*models.Profile, error) {
+	return s.ProfileRepo.Get(ctx, profileID)
+}
+
+func (s *userService) GetProfileByUserAccountID(ctx context.Context, userAccountID int64) (*models.Profile, error) {
+	return s.ProfileRepo.GetByUserAccountID(ctx, userAccountID)
 }

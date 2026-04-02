@@ -69,6 +69,36 @@ func (mr *MockUserServiceMockRecorder) GetLatestEvents(arg0 interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestEvents", reflect.TypeOf((*MockUserService)(nil).GetLatestEvents), arg0)
 }
 
+// GetProfileByProfileID mocks base method.
+func (m *MockUserService) GetProfileByProfileID(arg0 context.Context, arg1 int64) (*models.Profile, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetProfileByProfileID", arg0, arg1)
+	ret0, _ := ret[0].(*models.Profile)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetProfileByProfileID indicates an expected call of GetProfileByProfileID.
+func (mr *MockUserServiceMockRecorder) GetProfileByProfileID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProfileByProfileID", reflect.TypeOf((*MockUserService)(nil).GetProfileByProfileID), arg0, arg1)
+}
+
+// GetProfileByUserAccountID mocks base method.
+func (m *MockUserService) GetProfileByUserAccountID(arg0 context.Context, arg1 int64) (*models.Profile, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetProfileByUserAccountID", arg0, arg1)
+	ret0, _ := ret[0].(*models.Profile)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetProfileByUserAccountID indicates an expected call of GetProfileByUserAccountID.
+func (mr *MockUserServiceMockRecorder) GetProfileByUserAccountID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProfileByUserAccountID", reflect.TypeOf((*MockUserService)(nil).GetProfileByUserAccountID), arg0, arg1)
+}
+
 // GetProfileByUserProfileID mocks base method.
 func (m *MockUserService) GetProfileByUserProfileID(arg0 context.Context, arg1 int64) (*models.Profile, error) {
 	m.ctrl.T.Helper()

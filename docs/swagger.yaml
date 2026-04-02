@@ -94,6 +94,23 @@ definitions:
       error:
         type: string
     type: object
+  dto.FriendDTO:
+    properties:
+      avatarID:
+        type: integer
+      firstName:
+        type: string
+      lastName:
+        type: string
+      link:
+        type: string
+      login:
+        type: string
+      profileID:
+        type: integer
+      status:
+        type: string
+    type: object
   dto.UpdateFullProfileRequestDTO:
     properties:
       bio:
@@ -201,6 +218,18 @@ definitions:
         type: integer
       text:
         type: string
+    type: object
+  friend.friendRequest:
+    properties:
+      friendID:
+        type: integer
+    type: object
+  friend.friendsResponse:
+    properties:
+      friends:
+        items:
+          $ref: '#/definitions/dto.FriendDTO'
+        type: array
     type: object
   models.Gender:
     enum:
@@ -518,6 +547,298 @@ paths:
       summary: Get feed
       tags:
       - feed
+  /friends/{status}:
+    get:
+      description: Getting current users' friends
+      operationId: get-friends
+      parameters:
+      - description: friendship status
+        in: path
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/friend.friendsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Get friends
+      tags:
+      - friend
+  /friends/{userID}:
+    delete:
+      description: Delete current users' friend by friend ID
+      operationId: delete-friend
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Delete current users' friend
+      tags:
+      - friend
+  /friends/accept/{requesterID}:
+    post:
+      description: Accept a friend request from a user by its ID
+      operationId: accept-friend
+      parameters:
+      - description: users' id to de accepted as friend
+        in: path
+        name: requesterID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Accept a friend request
+      tags:
+      - friend
+  /friends/decline/{requesterID}:
+    post:
+      description: Decline a friend request from a user by its ID
+      operationId: decline-friend
+      parameters:
+      - description: users' id to de declined as friend
+        in: path
+        name: requesterID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Decline a friend request
+      tags:
+      - friend
+  /friends/request:
+    post:
+      description: Send friendship request from current user to any user by ID
+      operationId: request-friendship
+      parameters:
+      - description: user ID to send friendship request to
+        in: body
+        name: profile_id
+        required: true
+        schema:
+          $ref: '#/definitions/friend.friendRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Send friendship request
+      tags:
+      - friend
+  /friends/request/{addresseeID}:
+    delete:
+      description: Revoke a friend request to a user by its ID
+      operationId: revoke-friend
+      parameters:
+      - description: users' id to de revoked as friend
+        in: path
+        name: addresseeID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Revoke a friend request
+      tags:
+      - friend
+  /friends/requests/incoming/{status}:
+    get:
+      description: Get incoming friend requests with status
+      operationId: get-incoming
+      parameters:
+      - description: friendship status
+        in: path
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/friend.friendsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Get incoming friend requests
+      tags:
+      - friend
+  /friends/requests/outgoing/{status}:
+    get:
+      description: Get outgoing friend requests with status
+      operationId: get-outgoing
+      parameters:
+      - description: friendship status
+        in: path
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/friend.friendsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Get outgoing friend requests
+      tags:
+      - friend
   /image-proxy:
     get:
       consumes:
@@ -560,6 +881,46 @@ paths:
       summary: Get popular posts
       tags:
       - feed
+  /profile/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get public profile data by profile id
+      operationId: get-profile-by-id
+      parameters:
+      - description: Profile ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/profile.GetProfileMeResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Get profile by id
+      tags:
+      - profile
   /profile/me:
     get:
       consumes:
@@ -686,6 +1047,38 @@ paths:
       summary: Get public suggested users
       tags:
       - feed
+  /users/{id}/friends:
+    get:
+      description: Getting any users' friends by profile ID
+      operationId: get-any-friends
+      parameters:
+      - description: user id to get its friends
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/friend.friendsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      summary: Get any users' friends
+      tags:
+      - friend
   /users/latest-events:
     get:
       description: Get latest events

@@ -4,6 +4,7 @@ import (
 	chathandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/friend"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/proxy"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
@@ -23,6 +24,7 @@ func NewRouter(
 	userHandler *user.UserHandler,
 	profileHandler *profile.ProfileHandler,
 	chatHandler *chathandler.ChatHandler,
+	friendshipHandler *friend.FriendHandler,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -53,6 +55,8 @@ func NewRouter(
 	r.Get("/api/public/popular-posts", feedHandler.GetPublicPopularPosts)
 	r.Get("/image-proxy", proxy.ImageProxy)
 
+	r.Get("/api/users/{id}/friends", friendshipHandler.GetUsersFriends) // ✅
+
 	r.Group(func(r chi.Router) {
 		r.Use(mymiddleware.AuthMiddleware(sessSvc))
 		r.Get("/api/users/suggested", userHandler.GetSuggestedUsers)
@@ -66,6 +70,28 @@ func NewRouter(
 		r.Post("/api/chats", chatHandler.CreateChat)
 		r.Get("/api/chats/{chatID}/messages", chatHandler.GetMessages)
 		r.Post("/api/chats/{chatID}/messages", chatHandler.SendMessage)
+
+	})
+
+	r.Route("/api/friends", func(r chi.Router) {
+		r.Group(func(r chi.Router) {
+			// Заявки в друзья
+			r.Post("/request", friendshipHandler.RequestFriendship)
+			r.Post("/accept/{requesterID}", friendshipHandler.AcceptFriendRequest)
+			r.Post("/decline/{requesterID}", friendshipHandler.DeclineFriendRequest)
+			r.Delete("/request/{addresseeID}", friendshipHandler.RevokeFriendRequest)
+
+			// Друзья
+			r.Get("/{status}", friendshipHandler.GetFriends)
+			r.Get("/", friendshipHandler.GetFriends)
+			r.Delete("/{userID}", friendshipHandler.DeleteFriend)
+
+			// Входящие/исходящие
+			r.Get("/requests/incoming/{status}", friendshipHandler.GetIncomingFriendRequests)
+			r.Get("/requests/incoming", friendshipHandler.GetIncomingFriendRequests)
+			r.Get("/requests/outgoing", friendshipHandler.GetOutgoingFriendRequests)
+			r.Get("/requests/outgoing/{status}", friendshipHandler.GetOutgoingFriendRequests)
+		})
 	})
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)

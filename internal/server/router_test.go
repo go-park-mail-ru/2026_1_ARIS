@@ -9,6 +9,7 @@ import (
 	chathandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/friend"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
 	userhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
@@ -26,8 +27,9 @@ func TestNewRouter(t *testing.T) {
 	userHandler := &userhandler.UserHandler{}
 	profileHandler := profile.NewProfileHandler(nil, nil, nil)
 	chatHandler := chathandler.NewChatHandler(nil, nil, nil, nil)
+	friendshipHandler := &friend.FriendHandler{}
 
-	router := NewRouter(authHandler, nil, feedHandler, userHandler, profileHandler, chatHandler)
+	router := NewRouter(authHandler, nil, feedHandler, userHandler, profileHandler, chatHandler, friendshipHandler)
 	assert.NotNil(t, router)
 	assert.IsType(t, &chi.Mux{}, router)
 }
