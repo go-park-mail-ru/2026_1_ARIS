@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/dto"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -51,7 +53,7 @@ left join media m on p.avatar_id=m.id where m.mime_type='image' or mime_type is 
 
 	rows, err := storage.db.Query(ctx, query, profileID, string(status))
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if pgxscan.NotFound(err) {
 			return []dto.FriendDTO{}, nil
 		}
 		return []dto.FriendDTO{}, err
@@ -79,10 +81,9 @@ select status from friendship
 
 	err := row.Scan(&status)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return "", nil
+		if pgxscan.NotFound(err) {
+			return "", xerrors.FriendshipNotFound
 		}
-
 		return "", err
 	}
 
@@ -97,7 +98,7 @@ func (storage *friendshipStorage) GetFriendshipStatusBy(ctx context.Context, pro
 	row := storage.db.QueryRow(ctx, query, profileID, friendID)
 
 	if err := row.Scan(&status); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if pgxscan.NotFound(err) {
 			return "", nil
 		}
 		return "", err
@@ -111,8 +112,11 @@ func (storage *friendshipStorage) DeleteFriend(ctx context.Context, profileID, f
 
 	res, err := storage.db.Exec(ctx, query, profileID, friendID)
 	if err != nil {
-		fmt.Println("Repo error delete:", err)
 		return err
+	}
+
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("%w: %w", xerrors.NoRowsAffected, xerrors.NothingDeleted)
 	}
 
 	if res.RowsAffected() != 1 {
@@ -132,7 +136,7 @@ select f.addressee_id as id, p.avatar_id, up.first_name, up.last_name, ua.userna
 
 	rows, err := storage.db.Query(ctx, query, profileID, status)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if pgxscan.NotFound(err) {
 			return []dto.FriendDTO{}, nil
 		}
 		return []dto.FriendDTO{}, err
@@ -157,7 +161,7 @@ select f.requester_id as id, p.avatar_id, up.first_name, up.last_name, ua.userna
 
 	rows, err := storage.db.Query(ctx, query, profileID, status)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if pgxscan.NotFound(err) {
 			return []dto.FriendDTO{}, nil
 		}
 		return []dto.FriendDTO{}, err
@@ -180,6 +184,10 @@ func (storage *friendshipStorage) Create(ctx context.Context, profileID, friendI
 		return err
 	}
 
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("%w: %w", xerrors.NoRowsAffected, xerrors.NothingInserted)
+	}
+
 	if res.RowsAffected() != 1 {
 		return errors.New("affected not on 1 row")
 	}
@@ -199,6 +207,10 @@ func (storage *friendshipStorage) AcceptFriendship(ctx context.Context, profileI
 		return err
 	}
 
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("%w: %w", xerrors.NoRowsAffected, xerrors.NothingUpdated)
+	}
+
 	if res.RowsAffected() > 1 {
 		return errors.New("affected more than on 1 row")
 	}
@@ -214,6 +226,10 @@ func (storage *friendshipStorage) DeclineFriendship(ctx context.Context, profile
 		return err
 	}
 
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("%w: %w", xerrors.NoRowsAffected, xerrors.NothingDeleted)
+	}
+
 	if res.RowsAffected() != 1 {
 		return errors.New("affected not on 1 row")
 	}
@@ -227,6 +243,10 @@ func (storage *friendshipStorage) RevokeFriendRequest(ctx context.Context, profi
 	res, err := storage.db.Exec(ctx, query, profileID, friendID)
 	if err != nil {
 		return err
+	}
+
+	if res.RowsAffected() == 0 {
+		return fmt.Errorf("%w: %w", xerrors.NoRowsAffected, xerrors.NothingDeleted)
 	}
 
 	if res.RowsAffected() != 1 {
