@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +12,8 @@ import (
 	"time"
 
 	_ "github.com/go-park-mail-ru/2026_1_ARIS/docs"
+	minioclient "github.com/go-park-mail-ru/2026_1_ARIS/pkg/minio"
+	"github.com/minio/minio-go/v7"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/server"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
@@ -34,10 +37,12 @@ import (
 
 	authhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
 	feedhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
+	mediahandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/media"
 	userhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/config"
 	connectdb "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/connect_db"
+	connectminio "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/connect_minio"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
@@ -92,6 +97,69 @@ func main() {
 
 	fmt.Println("Successfully connected to PostgreSQL")
 
+	// Подключаем MinIO
+
+	// создание MinIO клиента
+	minioClient, err := connectminio.InitMinio(envConf)
+	if err != nil {
+		log.Fatalf("Ошибка инициализации Minio: %v", err)
+	}
+
+	// Проверка на существование бакета
+	exists, err := minioClient.BucketExists(ctx, envConf.MinioBucketName)
+	if err != nil {
+		log.Fatalf("Can't chech bucket existition: %v", err)
+	}
+
+	fmt.Println("Successfully connected to MinIO")
+
+	// Если бакета нет - его нужно создать
+	if !exists {
+		err := minioClient.MakeBucket(ctx, envConf.MinioBucketName, minio.MakeBucketOptions{})
+		if err != nil {
+			log.Fatalf("Can't create buchet: %v", err)
+		}
+		fmt.Println("Bucket created")
+	}
+
+	// Устанавливаем политику доступа к файлам
+	policy := map[string]any{
+		"Version": "2012-10-17",
+		"Statement": []any{
+			map[string]any{
+				"Effect": "Allow",
+				"Principal": map[string]string{
+					"AWS": "*",
+				},
+				"Action": []string{
+					"s3:GetBucketLocation",
+					"s3:ListBucket",
+				},
+				"Resource": "arn:aws:s3:::" + envConf.MinioBucketName,
+			},
+			map[string]any{
+				"Effect": "Allow",
+				"Principal": map[string]string{
+					"AWS": "*",
+				},
+				"Action":   "s3:GetObject",
+				"Resource": "arn:aws:s3:::" + envConf.MinioBucketName + "/*",
+			},
+		},
+	}
+
+	rawPolicy, err := json.Marshal(policy)
+	if err != nil {
+		log.Fatalf("Can't marshal policy: %v", err)
+	}
+
+	err = minioClient.SetBucketPolicy(ctx, envConf.MinioBucketName, string(rawPolicy))
+	if err != nil {
+		log.Fatalf("Can't set bucket policy: %v", err)
+	}
+
+	client := minioclient.NewMinioClient(minioClient)
+
 	// Инициализация репозиториев
 
 	//commentRepo := commentrepo.NewCommentRepo()
@@ -130,7 +198,7 @@ func main() {
 	userService := userservice.NewUserService(userAccountRepo, profileRepo, userProfileRepo)
 	authService := authservice.NewAuthService(userAccountRepo, profileRepo, userProfileRepo)
 	sessService := sessionservice.NewSessionService(sessionRepo)
-	mediaService := mediaservice.NewMediaService(mediaRepo, postWithMediaRepo)
+	mediaService := mediaservice.NewMediaService(mediaRepo, postWithMediaRepo, *client)
 
 	// инициализация хэндлеров
 	authHandler := authhandler.NewAuthHandler(authService, sessService, userService)
@@ -139,12 +207,13 @@ func main() {
 		MediaService: mediaService,
 	}
 	feedHandler := feedhandler.NewFeedHandler(postService, mediaService, userService)
+	mediaHandler := mediahandler.NewMediaHandler(mediaService, sessService, *client)
 
 	// заполнение тестовыми данными
 	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo)
 
 	// создаём роутер
-	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler)
+	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, mediaHandler)
 
 	// создаём сервер
 	srv := &http.Server{

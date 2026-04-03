@@ -210,6 +210,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		fmt.Println(err)
 		utils.WriteError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}

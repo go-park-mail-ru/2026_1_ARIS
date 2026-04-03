@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/media"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/proxy"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
 	mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
@@ -19,6 +20,7 @@ func NewRouter(
 	sessSvc session.SessionService,
 	feedHandler *feed.FeedHandler,
 	userHandler *user.UserHandler,
+	mediaHandler *media.MediaHandler,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -55,6 +57,7 @@ func NewRouter(
 		r.Get("/api/feed", feedHandler.GetFeed)
 		r.Get("/api/posts/popular", feedHandler.GetPopularPosts)
 	})
+	r.Post("/api/media/upload", mediaHandler.SaveFiles)
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 	// Раздача статических файлов (изображений)

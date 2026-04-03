@@ -15,7 +15,7 @@ coverage: clean
 	go tool cover -html=coverage.out
 
 migrate-up: migrate
-	$(MIGRATE) up
+	$(MIGRATE) up 4
 
 migrate-down: migrate
 	$(MIGRATE) down

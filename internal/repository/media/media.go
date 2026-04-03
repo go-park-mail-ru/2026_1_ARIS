@@ -7,13 +7,14 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type MediaRepo interface {
 	Get(ctx context.Context, id int64) (*models.Media, error)
 	Save(ctx context.Context, media models.Media) (int64, error)
+	GetLink(ctx context.Context, id int64) (string, error)
+	UpdateLink(ctx context.Context, id int64, newLink string) error
 }
 
 type mediaStorage struct {
@@ -41,9 +42,9 @@ func (storage *mediaStorage) Get(ctx context.Context, id int64) (*models.Media, 
 }
 
 func (storage *mediaStorage) Save(ctx context.Context, media models.Media) (int64, error) {
-	query := `INSERT INTO media (uid, media_name, extension, mime_type, description, size, link) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
+	query := `INSERT INTO media (uid, media_name, extension, mime_type, size, link) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
 
-	row := storage.db.QueryRow(ctx, query, uuid.New(), media.Name, media.Extension, media.MimeType, media.Description, media.Size, media.Link)
+	row := storage.db.QueryRow(ctx, query, media.Uid, media.Name, media.Extension, media.MimeType, media.Size, media.Link)
 
 	var mediaID int64
 
@@ -52,6 +53,35 @@ func (storage *mediaStorage) Save(ctx context.Context, media models.Media) (int6
 	}
 
 	return mediaID, nil
+}
+
+func (storage *mediaStorage) GetLink(ctx context.Context, id int64) (string, error) {
+	query := `SELECT link FROM media WHERE id=$1`
+
+	row := storage.db.QueryRow(ctx, query, id)
+
+	var link string
+
+	if err := row.Scan(&link); err != nil {
+		return "", err
+	}
+
+	return link, nil
+}
+
+func (storage *mediaStorage) UpdateLink(ctx context.Context, id int64, newLink string) error {
+	query := `UPDATE table media SET link=$1 WHERE id=$2`
+
+	res, err := storage.db.Exec(ctx, query, newLink, id)
+	if err != nil {
+		return err
+	}
+
+	if res.RowsAffected() != 1 {
+		return errors.New("affected not on 1 row")
+	}
+
+	return nil
 }
 
 type inmemoryMediaRepo struct {
@@ -83,4 +113,13 @@ func (r *inmemoryMediaRepo) Save(ctx context.Context, media models.Media) (int64
 
 	r.medias[media.ID] = media
 	return media.ID, nil
+}
+
+// заглушки
+func (r *inmemoryMediaRepo) GetLink(ctx context.Context, id int64) (string, error) {
+	return "", nil
+}
+
+func (r *inmemoryMediaRepo) UpdateLink(ctx context.Context, id int64, newLink string) error {
+	return nil
 }

@@ -16,6 +16,13 @@ type EnvConfig struct {
 	DbPoolMaxConnLifetime string `env:"POOL_MAX_CONN_LIFETIME"`
 	DbPoolMaxConnIdleTime string `env:"POOL_MAX_CONN_IDLE_TIME"`
 	DbSSLMode             string `env:"SSL_MODE"`
+
+	MinioPort         string `env:"MINIO_PORT"`
+	MinioEndpoint     string `env:"MINIO_ENDPOINT"`
+	MinioBucketName   string `env:"MINIO_BUCKET_NAME"`
+	MinioRootUser     string `env:"MINIO_ROOT_USER"`
+	MinioRootPassword string `env:"MINIO_ROOT_PASSWORD"`
+	MinioUseSSL       bool   `env:"MINIO_USE_SSL"`
 }
 
 // нужно будет прокинуть логгер

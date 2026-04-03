@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
+	mediahandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/media"
 	userhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
@@ -23,7 +24,8 @@ func TestNewRouter(t *testing.T) {
 		userservice.UserService(nil),
 	)
 	userHandler := &userhandler.UserHandler{}
-	router := NewRouter(authHandler, nil, feedHandler, userHandler)
+	mediaHandler := &mediahandler.MediaHandler{}
+	router := NewRouter(authHandler, nil, feedHandler, userHandler, mediaHandler)
 	assert.NotNil(t, router)
 	assert.IsType(t, &chi.Mux{}, router)
 }

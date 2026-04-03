@@ -3,26 +3,36 @@ package media
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
+	"mime/multipart"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/post"
+	minioclient "github.com/go-park-mail-ru/2026_1_ARIS/pkg/minio"
+	"github.com/google/uuid"
+	"github.com/minio/minio-go/v7"
 )
 
 type mediaService struct {
 	mediaRepo         media.MediaRepo
 	postWithMediaRepo post.PostWithMediaRepo
+	minioClient       minioclient.MinioClient
 }
 
 type MediaService interface {
 	GetAvatarByID(ctx context.Context, avatarID *int64) (*models.Media, error)
 	GetMediasByPostID(ctx context.Context, postID int64) []models.Media
+	Save(ctx context.Context, name string, size int64, fileReader multipart.File) (string, error)
 }
 
-func NewMediaService(mediaRepo media.MediaRepo, postWithMediaRepo post.PostWithMediaRepo) MediaService {
+func NewMediaService(mediaRepo media.MediaRepo, postWithMediaRepo post.PostWithMediaRepo, minioClient minioclient.MinioClient) MediaService {
 	return &mediaService{
 		mediaRepo:         mediaRepo,
 		postWithMediaRepo: postWithMediaRepo,
+		minioClient:       minioClient,
 	}
 }
 
@@ -56,4 +66,42 @@ func (s *mediaService) GetMediasByPostID(ctx context.Context, postID int64) []mo
 	}
 
 	return medias
+}
+
+func (s *mediaService) Save(ctx context.Context, name string, size int64, fileReader multipart.File) (string, error) {
+	mediaUUID := uuid.New()
+
+	mType, extension, err := GetMimeType(fileReader)
+
+	fileReader.Seek(0, io.SeekStart)
+
+	opts := minio.PutObjectOptions{
+		ContentType: mType,
+	}
+
+	mediaLink, err := s.minioClient.Save(ctx, "storage", fileReader, mediaUUID, size, extension, opts)
+	if err != nil {
+		fmt.Println(err)
+		return "", err
+	}
+
+	createdMedia := models.NewMedia(name, " ", mediaUUID, nil, "  ", mediaLink)
+
+	mediaID, err := s.mediaRepo.Save(ctx, *createdMedia)
+	if err != nil {
+		return "", err
+	}
+
+	_ = mediaID
+
+	return mediaLink, nil
+}
+
+func GetMimeType(file io.Reader) (string, string, error) {
+	mType, err := mimetype.DetectReader(file)
+	if err == nil {
+		return mType.String(), mType.Extension(), nil
+	}
+
+	return "", "", err
 }
