@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
 	userservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/google/uuid"
 )
@@ -21,13 +22,13 @@ type ChatService interface {
 }
 
 type chatService struct {
-	chatRepo       repository.ChatRepo
+	chatRepo       *chat.SQLChatRepo
 	chatMemberRepo repository.ChatMemberRepo
 	userService    userservice.UserService
 }
 
 func NewChatService(
-	chatRepo repository.ChatRepo,
+	chatRepo *chat.SQLChatRepo,
 	chatMemberRepo repository.ChatMemberRepo,
 	userService userservice.UserService,
 ) ChatService {
@@ -91,7 +92,7 @@ func (s *chatService) CreatePrivateChat(ctx context.Context, user1ID, user2ID in
 	}
 
 	chat := models.NewChat(models.PrivateChat, title, nil)
-	if err := s.chatRepo.Save(ctx, *chat); err != nil {
+	if err := s.chatRepo.Save(ctx, chat); err != nil {
 		return nil, err
 	}
 

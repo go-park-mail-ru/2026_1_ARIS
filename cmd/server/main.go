@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math/rand/v2"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,7 +13,7 @@ import (
 	_ "github.com/go-park-mail-ru/2026_1_ARIS/docs"
 
 	chathandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
-	wsHandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler" // для WebSocketHandler
+	wsHandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
 	authhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
 	feedhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
 	friendshiphandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/friend"
@@ -22,8 +21,8 @@ import (
 	userhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 
-	memoryrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
-	chatrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
+	chatstorage "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
 	commentrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/comment"
 	friendshiprepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/friend"
 	likerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/like"
@@ -50,23 +49,11 @@ import (
 	connectdb "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/connect_db"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/websocket"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// @title						ARIS backend API
-// @version					1.0.0
-// @description				Description of ARIS backend API
-// @host						localhost:8080
-// @BasePath					/api
-// @accept					json
-// @produce					json
-// @schemes					http
-// @securityDefinitions.apikey	SessionAuth
-// @in							cookie
-// @name						session_id
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -108,11 +95,11 @@ func main() {
 	sessionRepo := sessionrepo.NewSessionRepo()
 	mediaRepo := mediarepo.NewMediaStorage(db)
 	postWithMediaRepo := postrepo.NewPostWithMediaStorage(db)
-	dbChatRepo := chatrepo.NewChatStorage(db)
-	chatRepo := memoryrepo.NewChatRepo()
-	chatMemberRepo := memoryrepo.NewChatMemberRepo()
-	messageRepo := memoryrepo.NewMessageRepo()
 	friendshipRepo := friendshiprepo.NewFriendshipStorage(db)
+
+	chatRepo := chatstorage.NewSQLChatRepo(db)
+	chatMemberRepo := repository.NewChatMemberStorage(db)
+	messageRepo := repository.NewMessageStorage(db)
 
 	postService := postservice.NewPostService(postRepo, profileRepo, commentRepo, repostRepo, likeRepo)
 	userService := userservice.NewUserService(userAccountRepo, profileRepo, userProfileRepo)
@@ -137,11 +124,10 @@ func main() {
 
 	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, profileHandler, chatHandler, friendHandler, wsHandler)
 
-	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, dbChatRepo)
+	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo)
+
 	ensureKnownTestUser(ctx, userAccountRepo, userService, "sergeyshulginenko", "chatcheck123", "Сергей", "Шульгиненко")
 	ensureKnownPassword(ctx, db, "sergeyshulginenko", "chatcheck123")
-	seedDemoChats(ctx, userService, chatRepo, chatMemberRepo, messageRepo)
-	seedGuaranteedChatForUsername(ctx, userAccountRepo, userService, chatRepo, chatMemberRepo, messageRepo, "ffffff", "sergeyshulginenko")
 
 	fmt.Println("Swagger is running on http://localhost:8080/swagger/index.html")
 
@@ -163,9 +149,9 @@ func main() {
 
 	fmt.Println("Server is stopping")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctxShutdown, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(ctxShutdown); err != nil {
 		log.Fatal("Server forced to shutdown:", err)
 	}
 
@@ -208,162 +194,4 @@ func ensureKnownTestUser(
 		models.Gender("male"),
 		nil,
 	)
-}
-
-func seedGuaranteedChatForUsername(
-	ctx context.Context,
-	userAccountRepo useraccountrepo.UserAccountRepo,
-	userService userservice.UserService,
-	chatRepo memoryrepo.ChatRepo,
-	chatMemberRepo memoryrepo.ChatMemberRepo,
-	messageRepo memoryrepo.MessageRepo,
-	username string,
-	targetUsername string,
-) {
-	userAccount, err := userAccountRepo.GetByUsername(ctx, username)
-	if err != nil {
-		return
-	}
-	targetAccount, err := userAccountRepo.GetByUsername(ctx, targetUsername)
-	if err != nil {
-		return
-	}
-	_, err = userService.GetUserProfileByUserAccountID(ctx, userAccount.ID)
-	if err != nil {
-		return
-	}
-	targetProfile, err := userService.GetUserProfileByUserAccountID(ctx, targetAccount.ID)
-	if err != nil {
-		return
-	}
-	chat := models.NewChat(
-		models.PrivateChat,
-		fmt.Sprintf("%s %s", targetProfile.FirstName, targetProfile.LastName),
-		nil,
-	)
-	if err := chatRepo.Save(ctx, *chat); err != nil {
-		return
-	}
-	now := time.Now()
-	members := []models.ChatMember{
-		{
-			ID:        rand.Int64(),
-			Uid:       uuid.New(),
-			ChatID:    chat.ID,
-			MemberID:  userAccount.ID,
-			JoinedAt:  now,
-			IsActive:  true,
-			CreatedAt: now,
-			UpdatedAt: now,
-			Role:      "member",
-		},
-		{
-			ID:        rand.Int64(),
-			Uid:       uuid.New(),
-			ChatID:    chat.ID,
-			MemberID:  targetAccount.ID,
-			JoinedAt:  now,
-			IsActive:  true,
-			CreatedAt: now,
-			UpdatedAt: now,
-			Role:      "member",
-		},
-	}
-	for _, member := range members {
-		if err := chatMemberRepo.Save(ctx, member); err != nil {
-			return
-		}
-	}
-}
-
-func seedDemoChats(
-	ctx context.Context,
-	userService userservice.UserService,
-	chatRepo memoryrepo.ChatRepo,
-	chatMemberRepo memoryrepo.ChatMemberRepo,
-	messageRepo memoryrepo.MessageRepo,
-) {
-	users := userService.GetUserList(ctx, 0, 5)
-	if len(users) < 2 {
-		return
-	}
-	type pair struct {
-		left  int
-		right int
-		texts []string
-	}
-	pairs := []pair{
-		{left: 0, right: 1, texts: []string{"Привет! Как тебе новый интерфейс?", "Выглядит заметно лучше, особенно профиль.", "Супер, вечером добью ещё чаты."}},
-		{left: 0, right: 2, texts: []string{"Ты сегодня на связи?", "Да, чуть позже отвечу подробнее."}},
-		{left: 1, right: 3, texts: []string{"Скинь, пожалуйста, последние правки по макету.", "Уже отправил в общий чат."}},
-	}
-	for _, current := range pairs {
-		if current.left >= len(users) || current.right >= len(users) {
-			continue
-		}
-		leftUser := users[current.left]
-		rightUser := users[current.right]
-		leftProfile, err := userService.GetUserProfileByUserAccountID(ctx, leftUser.ID)
-		if err != nil {
-			continue
-		}
-		rightProfile, err := userService.GetUserProfileByUserAccountID(ctx, rightUser.ID)
-		if err != nil {
-			continue
-		}
-		chat := models.NewChat(
-			models.PrivateChat,
-			fmt.Sprintf("%s %s / %s %s", leftProfile.FirstName, leftProfile.LastName, rightProfile.FirstName, rightProfile.LastName),
-			nil,
-		)
-		if err := chatRepo.Save(ctx, *chat); err != nil {
-			continue
-		}
-		now := time.Now()
-		members := []models.ChatMember{
-			{
-				ID:        rand.Int64(),
-				Uid:       uuid.New(),
-				ChatID:    chat.ID,
-				MemberID:  leftUser.ID,
-				JoinedAt:  now,
-				IsActive:  true,
-				CreatedAt: now,
-				UpdatedAt: now,
-				Role:      "member",
-			},
-			{
-				ID:        rand.Int64(),
-				Uid:       uuid.New(),
-				ChatID:    chat.ID,
-				MemberID:  rightUser.ID,
-				JoinedAt:  now,
-				IsActive:  true,
-				CreatedAt: now,
-				UpdatedAt: now,
-				Role:      "member",
-			},
-		}
-		for _, member := range members {
-			_ = chatMemberRepo.Save(ctx, member)
-		}
-		for index, text := range current.texts {
-			authorID := leftUser.ID
-			if index%2 == 1 {
-				authorID = rightUser.ID
-			}
-			createdAt := now.Add(time.Duration(index) * time.Minute)
-			message := models.Message{
-				ID:        rand.Int64(),
-				Uid:       uuid.New(),
-				Text:      &text,
-				ChatID:    chat.ID,
-				AuthorID:  authorID,
-				IsActive:  true,
-				CreatedAt: createdAt,
-				UpdatedAt: createdAt,
-			}
-			_ = messageRepo.Save(ctx, message)
-		}
-	}
 }

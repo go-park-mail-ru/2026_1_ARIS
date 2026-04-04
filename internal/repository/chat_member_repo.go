@@ -3,9 +3,11 @@ package repository
 import (
 	"context"
 	"errors"
-	"sync"
 
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type ChatMemberRepo interface {
@@ -15,54 +17,43 @@ type ChatMemberRepo interface {
 	Delete(ctx context.Context, id int64) error
 }
 
-type inmemoryChatMemberRepo struct {
-	mu      sync.RWMutex
-	members map[int64]models.ChatMember
+type chatMemberStorage struct {
+	db *pgxpool.Pool
 }
 
-func NewChatMemberRepo() ChatMemberRepo {
-	return &inmemoryChatMemberRepo{
-		members: make(map[int64]models.ChatMember),
+func NewChatMemberStorage(db *pgxpool.Pool) ChatMemberRepo {
+	return &chatMemberStorage{db: db}
+}
+
+func (s *chatMemberStorage) Save(ctx context.Context, member models.ChatMember) error {
+	query := `INSERT INTO chat_member (uid, chat_id, member_id, joined_at, role) 
+              VALUES ($1, $2, $3, $4, $5)`
+	_, err := s.db.Exec(ctx, query, member.Uid, member.ChatID, member.MemberID, member.JoinedAt, member.Role)
+	return err
+}
+
+func (s *chatMemberStorage) GetByChatID(ctx context.Context, chatID int64) ([]models.ChatMember, error) {
+	query := `SELECT * FROM chat_member WHERE chat_id=$1 AND is_active=true`
+	var members []models.ChatMember
+	err := pgxscan.Select(ctx, s.db, &members, query, chatID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
 	}
+	return members, nil
 }
 
-func (r *inmemoryChatMemberRepo) Save(ctx context.Context, member models.ChatMember) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.members[member.ID] = member
-	return nil
-}
-
-func (r *inmemoryChatMemberRepo) GetByChatID(ctx context.Context, chatID int64) ([]models.ChatMember, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	var res []models.ChatMember
-	for _, m := range r.members {
-		if m.ChatID == chatID {
-			res = append(res, m)
-		}
+func (s *chatMemberStorage) GetByUserID(ctx context.Context, userID int64) ([]models.ChatMember, error) {
+	query := `SELECT * FROM chat_member WHERE member_id=$1 AND is_active=true`
+	var members []models.ChatMember
+	err := pgxscan.Select(ctx, s.db, &members, query, userID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
 	}
-	return res, nil
+	return members, nil
 }
 
-func (r *inmemoryChatMemberRepo) GetByUserID(ctx context.Context, userID int64) ([]models.ChatMember, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	var res []models.ChatMember
-	for _, m := range r.members {
-		if m.MemberID == userID {
-			res = append(res, m)
-		}
-	}
-	return res, nil
-}
-
-func (r *inmemoryChatMemberRepo) Delete(ctx context.Context, id int64) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if _, ok := r.members[id]; !ok {
-		return errors.New("member not found")
-	}
-	delete(r.members, id)
-	return nil
+func (s *chatMemberStorage) Delete(ctx context.Context, id int64) error {
+	query := `UPDATE chat_member SET is_active=false WHERE id=$1`
+	_, err := s.db.Exec(ctx, query, id)
+	return err
 }

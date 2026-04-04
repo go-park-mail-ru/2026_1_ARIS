@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models" // добавлен импорт
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/comment"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/like"
@@ -20,10 +20,10 @@ func MakeMock(mediaRepo media.MediaRepo,
 	userProfileService user.UserService,
 	postService postservice.PostService,
 	postWithMediaRepo postrepo.PostWithMediaRepo,
-	//likeToPostRepo repository.LikeToPostRepo,
 	commentRepo comment.CommentRepo,
 	repostRepo repost.RepostRepo,
-	chatRepo chat.ChatRepo) {
+	chatRepo *chat.SQLChatRepo, // изменён тип
+) {
 
 	// create user avatars
 	userAvatar1 := "user avatar 1 description"
@@ -690,7 +690,6 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	//postWithMediaRepo.Save(post5, media16, 5)
 
-	// create likes & init LikeRepo
 	like1 := models.NewLikeToPost(post1.ID, user4.ID)
 	like2 := models.NewLikeToPost(post2.ID, user5.ID)
 	like3 := models.NewLikeToPost(post3.ID, user1.ID)
@@ -744,7 +743,6 @@ func MakeMock(mediaRepo media.MediaRepo,
 	commentText5 := "comment 5"
 	commentText6 := "comment 6"
 
-	// create comments
 	comment1 := models.NewComment(&commentText1, post1ID, nil, nil, user2.ID)
 	comment2 := models.NewComment(&commentText2, post2ID, nil, nil, user3.ID)
 	comment3 := models.NewComment(&commentText3, post3ID, nil, nil, user4.ID)
@@ -796,32 +794,23 @@ func MakeMock(mediaRepo media.MediaRepo,
 	chat4 := models.NewChat(models.ChatType("personal"), "chat 4 title", nil)
 	chat5 := models.NewChat(models.ChatType("personal"), "chat 5 title", nil)
 
-	chat1ID, err := chatRepo.Save(context.Background(), *chat1)
-	if err != nil {
+	if err := chatRepo.Save(context.Background(), chat1); err != nil {
 		fmt.Println(err)
 		return
 	}
-
-	chat2ID, err := chatRepo.Save(context.Background(), *chat2)
-	if err != nil {
+	if err := chatRepo.Save(context.Background(), chat2); err != nil {
 		fmt.Println(err)
 		return
 	}
-
-	chat3ID, err := chatRepo.Save(context.Background(), *chat3)
-	if err != nil {
+	if err := chatRepo.Save(context.Background(), chat3); err != nil {
 		fmt.Println(err)
 		return
 	}
-
-	chat4ID, err := chatRepo.Save(context.Background(), *chat4)
-	if err != nil {
+	if err := chatRepo.Save(context.Background(), chat4); err != nil {
 		fmt.Println(err)
 		return
 	}
-
-	chat5ID, err := chatRepo.Save(context.Background(), *chat5)
-	if err != nil {
+	if err := chatRepo.Save(context.Background(), chat5); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -829,15 +818,15 @@ func MakeMock(mediaRepo media.MediaRepo,
 	fmt.Println("чаты успешно созданы")
 
 	// create reposts
-	repost1 := models.NewRepost(user2.ID, chat1ID, post1ID)
-	repost2 := models.NewRepost(user3.ID, chat2ID, post1ID)
-	repost3 := models.NewRepost(user4.ID, chat3ID, post1ID)
-	repost4 := models.NewRepost(user5.ID, chat4ID, post2ID)
-	repost5 := models.NewRepost(user3.ID, chat5ID, post2ID)
-	repost6 := models.NewRepost(user1.ID, chat1ID, post3ID)
-	repost7 := models.NewRepost(user1.ID, chat2ID, post4ID)
-	repost8 := models.NewRepost(user1.ID, chat3ID, post5ID)
-	repost9 := models.NewRepost(user1.ID, chat4ID, post3ID)
+	repost1 := models.NewRepost(user2.ID, chat1.ID, post1ID)
+	repost2 := models.NewRepost(user3.ID, chat2.ID, post1ID)
+	repost3 := models.NewRepost(user4.ID, chat3.ID, post1ID)
+	repost4 := models.NewRepost(user5.ID, chat4.ID, post2ID)
+	repost5 := models.NewRepost(user3.ID, chat5.ID, post2ID)
+	repost6 := models.NewRepost(user1.ID, chat1.ID, post3ID)
+	repost7 := models.NewRepost(user1.ID, chat2.ID, post4ID)
+	repost8 := models.NewRepost(user1.ID, chat3.ID, post5ID)
+	repost9 := models.NewRepost(user1.ID, chat4.ID, post3ID)
 
 	_, err = repostRepo.Save(context.Background(), *repost1)
 	if err != nil {
@@ -845,49 +834,41 @@ func MakeMock(mediaRepo media.MediaRepo,
 		fmt.Println(user2.ID, post1ID)
 		return
 	}
-
 	_, err = repostRepo.Save(context.Background(), *repost2)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-
 	_, err = repostRepo.Save(context.Background(), *repost3)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-
 	_, err = repostRepo.Save(context.Background(), *repost4)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-
 	_, err = repostRepo.Save(context.Background(), *repost5)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-
 	_, err = repostRepo.Save(context.Background(), *repost6)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-
 	_, err = repostRepo.Save(context.Background(), *repost7)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-
 	_, err = repostRepo.Save(context.Background(), *repost8)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-
 	_, err = repostRepo.Save(context.Background(), *repost9)
 	if err != nil {
 		fmt.Println(err)
