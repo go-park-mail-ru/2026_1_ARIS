@@ -14,12 +14,12 @@ import (
 	_ "github.com/go-park-mail-ru/2026_1_ARIS/docs"
 
 	chathandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
+	wsHandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler" // для WebSocketHandler
 	authhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
 	feedhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
 	friendshiphandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/friend"
 	profilehandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
 	userhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
-
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 
 	memoryrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
@@ -48,6 +48,7 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/config"
 	connectdb "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/connect_db"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/websocket"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -122,14 +123,19 @@ func main() {
 	messageSvc := chatservice.NewMessageService(messageRepo)
 	friendshipService := friendshipservice.NewFriendshipService(friendshipRepo)
 
+	// WebSocket Hub
+	hub := websocket.NewHub()
+	go hub.Run()
+
 	authHandler := authhandler.NewAuthHandler(authService, sessService, userService)
 	userHandler := userhandler.NewUserHandler(userService, mediaService)
 	feedHandler := feedhandler.NewFeedHandler(postService, mediaService, userService)
 	profileHandler := profilehandler.NewProfileHandler(userService, mediaService, sessService)
-	chatHandler := chathandler.NewChatHandler(chatSvc, messageSvc, userAccountRepo, userService)
+	chatHandler := chathandler.NewChatHandler(chatSvc, messageSvc, userAccountRepo, userService, hub)
 	friendHandler := friendshiphandler.NewFriendHandler(sessService, userService, friendshipService)
+	wsHandler := wsHandler.NewWebSocketHandler(hub, chatSvc)
 
-	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, profileHandler, chatHandler, friendHandler)
+	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, profileHandler, chatHandler, friendHandler, wsHandler)
 
 	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, dbChatRepo)
 	ensureKnownTestUser(ctx, userAccountRepo, userService, "sergeyshulginenko", "chatcheck123", "Сергей", "Шульгиненко")
@@ -171,7 +177,6 @@ func ensureKnownPassword(ctx context.Context, db *pgxpool.Pool, username string,
 	if err != nil {
 		return
 	}
-
 	_, _ = db.Exec(ctx, "UPDATE user_account SET password_hash=$1 WHERE username=$2", string(hash), username)
 }
 
@@ -187,12 +192,10 @@ func ensureKnownTestUser(
 	if _, err := userAccountRepo.GetByUsername(ctx, username); err == nil {
 		return
 	}
-
 	birthdayDate, err := time.Parse("02/01/2006", "24/02/2005")
 	if err != nil {
 		return
 	}
-
 	_, _ = userService.CreateRealUserProfile(
 		ctx,
 		nil,
@@ -221,22 +224,18 @@ func seedGuaranteedChatForUsername(
 	if err != nil {
 		return
 	}
-
 	targetAccount, err := userAccountRepo.GetByUsername(ctx, targetUsername)
 	if err != nil {
 		return
 	}
-
 	_, err = userService.GetUserProfileByUserAccountID(ctx, userAccount.ID)
 	if err != nil {
 		return
 	}
-
 	targetProfile, err := userService.GetUserProfileByUserAccountID(ctx, targetAccount.ID)
 	if err != nil {
 		return
 	}
-
 	chat := models.NewChat(
 		models.PrivateChat,
 		fmt.Sprintf("%s %s", targetProfile.FirstName, targetProfile.LastName),
@@ -245,7 +244,6 @@ func seedGuaranteedChatForUsername(
 	if err := chatRepo.Save(ctx, *chat); err != nil {
 		return
 	}
-
 	now := time.Now()
 	members := []models.ChatMember{
 		{
@@ -271,13 +269,11 @@ func seedGuaranteedChatForUsername(
 			Role:      "member",
 		},
 	}
-
 	for _, member := range members {
 		if err := chatMemberRepo.Save(ctx, member); err != nil {
 			return
 		}
 	}
-
 }
 
 func seedDemoChats(
@@ -291,24 +287,20 @@ func seedDemoChats(
 	if len(users) < 2 {
 		return
 	}
-
 	type pair struct {
 		left  int
 		right int
 		texts []string
 	}
-
 	pairs := []pair{
 		{left: 0, right: 1, texts: []string{"Привет! Как тебе новый интерфейс?", "Выглядит заметно лучше, особенно профиль.", "Супер, вечером добью ещё чаты."}},
 		{left: 0, right: 2, texts: []string{"Ты сегодня на связи?", "Да, чуть позже отвечу подробнее."}},
 		{left: 1, right: 3, texts: []string{"Скинь, пожалуйста, последние правки по макету.", "Уже отправил в общий чат."}},
 	}
-
 	for _, current := range pairs {
 		if current.left >= len(users) || current.right >= len(users) {
 			continue
 		}
-
 		leftUser := users[current.left]
 		rightUser := users[current.right]
 		leftProfile, err := userService.GetUserProfileByUserAccountID(ctx, leftUser.ID)
@@ -319,7 +311,6 @@ func seedDemoChats(
 		if err != nil {
 			continue
 		}
-
 		chat := models.NewChat(
 			models.PrivateChat,
 			fmt.Sprintf("%s %s / %s %s", leftProfile.FirstName, leftProfile.LastName, rightProfile.FirstName, rightProfile.LastName),
@@ -328,7 +319,6 @@ func seedDemoChats(
 		if err := chatRepo.Save(ctx, *chat); err != nil {
 			continue
 		}
-
 		now := time.Now()
 		members := []models.ChatMember{
 			{
@@ -354,11 +344,9 @@ func seedDemoChats(
 				Role:      "member",
 			},
 		}
-
 		for _, member := range members {
 			_ = chatMemberRepo.Save(ctx, member)
 		}
-
 		for index, text := range current.texts {
 			authorID := leftUser.ID
 			if index%2 == 1 {

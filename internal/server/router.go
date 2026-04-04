@@ -25,6 +25,7 @@ func NewRouter(
 	profileHandler *profile.ProfileHandler,
 	chatHandler *chathandler.ChatHandler,
 	friendshipHandler *friend.FriendHandler,
+	wsHandler *chathandler.WebSocketHandler,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -55,7 +56,7 @@ func NewRouter(
 	r.Get("/api/public/popular-posts", feedHandler.GetPublicPopularPosts)
 	r.Get("/image-proxy", proxy.ImageProxy)
 
-	r.Get("/api/users/{id}/friends", friendshipHandler.GetUsersFriends) // ✅
+	r.Get("/api/users/{id}/friends", friendshipHandler.GetUsersFriends)
 
 	r.Group(func(r chi.Router) {
 		r.Use(mymiddleware.AuthMiddleware(sessSvc))
@@ -70,23 +71,18 @@ func NewRouter(
 		r.Post("/api/chats", chatHandler.CreateChat)
 		r.Get("/api/chats/{chatID}/messages", chatHandler.GetMessages)
 		r.Post("/api/chats/{chatID}/messages", chatHandler.SendMessage)
-
+		r.Get("/ws/{chatID}", wsHandler.HandleWebSocket)
 	})
 
 	r.Route("/api/friends", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
-			// Заявки в друзья
 			r.Post("/request", friendshipHandler.RequestFriendship)
 			r.Post("/accept/{requesterID}", friendshipHandler.AcceptFriendRequest)
 			r.Post("/decline/{requesterID}", friendshipHandler.DeclineFriendRequest)
 			r.Delete("/request/{addresseeID}", friendshipHandler.RevokeFriendRequest)
-
-			// Друзья
 			r.Get("/{status}", friendshipHandler.GetFriends)
 			r.Get("/", friendshipHandler.GetFriends)
 			r.Delete("/{userID}", friendshipHandler.DeleteFriend)
-
-			// Входящие/исходящие
 			r.Get("/requests/incoming/{status}", friendshipHandler.GetIncomingFriendRequests)
 			r.Get("/requests/incoming", friendshipHandler.GetIncomingFriendRequests)
 			r.Get("/requests/outgoing", friendshipHandler.GetOutgoingFriendRequests)

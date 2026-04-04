@@ -13,6 +13,7 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
 	userservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/websocket"
 )
 
 type ChatHandler struct {
@@ -20,6 +21,23 @@ type ChatHandler struct {
 	messageService  service.MessageService
 	userAccountRepo useraccount.UserAccountRepo
 	userService     userservice.UserService
+	hub             *websocket.Hub
+}
+
+func NewChatHandler(
+	chatService service.ChatService,
+	messageService service.MessageService,
+	userAccountRepo useraccount.UserAccountRepo,
+	userService userservice.UserService,
+	hub *websocket.Hub,
+) *ChatHandler {
+	return &ChatHandler{
+		chatService:     chatService,
+		messageService:  messageService,
+		userAccountRepo: userAccountRepo,
+		userService:     userService,
+		hub:             hub,
+	}
 }
 
 type ChatResponse struct {
@@ -45,20 +63,6 @@ type MessageResponse struct {
 	IsActive        bool    `json:"isActive"`
 	CreatedAt       string  `json:"createdAt"`
 	UpdatedAt       string  `json:"updatedAt"`
-}
-
-func NewChatHandler(
-	chatService service.ChatService,
-	messageService service.MessageService,
-	userAccountRepo useraccount.UserAccountRepo,
-	userService userservice.UserService,
-) *ChatHandler {
-	return &ChatHandler{
-		chatService:     chatService,
-		messageService:  messageService,
-		userAccountRepo: userAccountRepo,
-		userService:     userService,
-	}
 }
 
 func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +110,6 @@ func (h *ChatHandler) ensureGuaranteedDialog(ctx context.Context, userID int64) 
 		if err != nil || targetUser == nil || targetUser.ID == currentUser.ID {
 			continue
 		}
-
 		_, _ = h.chatService.CreatePrivateChat(ctx, currentUser.ID, targetUser.ID)
 		return
 	}
@@ -115,12 +118,10 @@ func (h *ChatHandler) ensureGuaranteedDialog(ctx context.Context, userID int64) 
 	if err != nil {
 		return
 	}
-
 	for _, user := range users {
 		if user.ID == currentUser.ID {
 			continue
 		}
-
 		_, _ = h.chatService.CreatePrivateChat(ctx, currentUser.ID, user.ID)
 		return
 	}
@@ -187,7 +188,6 @@ func (h *ChatHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
 			limit = l
 		}
 	}
-
 	offset := 0
 	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
 		o, err := strconv.Atoi(offsetStr)
@@ -248,23 +248,25 @@ func (h *ChatHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Отправка через сокеты всем участникам чата
+	msgResponse := h.mapMessageResponse(r.Context(), *msg)
+	msgBytes, _ := json.Marshal(msgResponse)
+	h.hub.BroadcastToChat(strconv.FormatInt(chatID, 10), msgBytes)
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(h.mapMessageResponse(r.Context(), *msg))
+	json.NewEncoder(w).Encode(msgResponse)
 }
 
 func (h *ChatHandler) mapChatsResponse(ctx context.Context, chats []models.Chat, viewerUserID int64) []ChatResponse {
 	result := make([]ChatResponse, 0, len(chats))
-
 	for _, chat := range chats {
 		result = append(result, h.mapChatResponse(ctx, chat, viewerUserID))
 	}
-
 	return result
 }
 
 func (h *ChatHandler) mapChatResponse(ctx context.Context, chat models.Chat, viewerUserID int64) ChatResponse {
 	title := h.resolveChatTitle(ctx, chat, viewerUserID)
-
 	return ChatResponse{
 		ID:        strconv.FormatInt(chat.ID, 10),
 		Uid:       chat.Uid.String(),
@@ -279,11 +281,9 @@ func (h *ChatHandler) mapChatResponse(ctx context.Context, chat models.Chat, vie
 
 func (h *ChatHandler) mapMessagesResponse(ctx context.Context, messages []models.Message, viewerUserID int64) []MessageResponse {
 	result := make([]MessageResponse, 0, len(messages))
-
 	for _, message := range messages {
 		result = append(result, h.mapMessageResponse(ctx, message))
 	}
-
 	return result
 }
 
@@ -293,13 +293,11 @@ func (h *ChatHandler) mapMessageResponse(ctx context.Context, message models.Mes
 		value := strconv.FormatInt(*message.ParentMessageID, 10)
 		parentMessageID = &value
 	}
-
 	var stickerID *string
 	if message.StickerID != nil {
 		value := strconv.FormatInt(*message.StickerID, 10)
 		stickerID = &value
 	}
-
 	return MessageResponse{
 		ID:              strconv.FormatInt(message.ID, 10),
 		Uid:             message.Uid.String(),
@@ -317,13 +315,11 @@ func (h *ChatHandler) mapMessageResponse(ctx context.Context, message models.Mes
 
 func (h *ChatHandler) filterChatsForList(ctx context.Context, chats []models.Chat, viewerUserID int64) []models.Chat {
 	result := make([]models.Chat, 0, len(chats))
-
 	for _, chat := range chats {
 		if h.chatHasMessages(ctx, chat.ID) || h.isSergeySupportChat(ctx, chat, viewerUserID) {
 			result = append(result, chat)
 		}
 	}
-
 	return result
 }
 
@@ -331,7 +327,6 @@ func (h *ChatHandler) chatHasMessages(ctx context.Context, chatID int64) bool {
 	if h.messageService == nil {
 		return false
 	}
-
 	messages, err := h.messageService.GetMessages(ctx, chatID, 1, 0)
 	return err == nil && len(messages) > 0
 }
@@ -340,25 +335,20 @@ func (h *ChatHandler) isSergeySupportChat(ctx context.Context, chat models.Chat,
 	if h.chatService == nil || h.userAccountRepo == nil {
 		return false
 	}
-
 	members, err := h.chatService.GetChatMembers(ctx, chat.ID)
 	if err != nil {
 		return false
 	}
-
 	for _, member := range members {
 		if member.MemberID == viewerUserID {
 			continue
 		}
-
 		account, err := h.userAccountRepo.Get(ctx, member.MemberID)
 		if err != nil || account == nil {
 			continue
 		}
-
 		return account.Username == "sergeyshulginenko"
 	}
-
 	return false
 }
 
@@ -366,20 +356,16 @@ func (h *ChatHandler) resolveChatTitle(ctx context.Context, chat models.Chat, vi
 	if chat.Type != models.PrivateChat || h.chatService == nil {
 		return chat.Title
 	}
-
 	members, err := h.chatService.GetChatMembers(ctx, chat.ID)
 	if err != nil {
 		return chat.Title
 	}
-
 	for _, member := range members {
 		if member.MemberID == viewerUserID {
 			continue
 		}
-
 		return h.resolveUserDisplayName(ctx, member.MemberID)
 	}
-
 	return chat.Title
 }
 
@@ -387,12 +373,10 @@ func (h *ChatHandler) resolveUserDisplayName(ctx context.Context, userID int64) 
 	if h.userService == nil {
 		return "Пользователь"
 	}
-
 	profile, err := h.userService.GetUserProfileByUserAccountID(ctx, userID)
 	if err != nil || profile == nil {
 		return "Пользователь"
 	}
-
 	fullName := profile.FirstName
 	if profile.LastName != "" {
 		if fullName != "" {
@@ -400,10 +384,8 @@ func (h *ChatHandler) resolveUserDisplayName(ctx context.Context, userID int64) 
 		}
 		fullName += profile.LastName
 	}
-
 	if fullName == "" {
 		return "Пользователь"
 	}
-
 	return fullName
 }
