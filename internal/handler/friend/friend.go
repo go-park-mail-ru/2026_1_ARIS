@@ -39,13 +39,13 @@ type friendRequest struct {
 	FriendID int64 `json:"friendID"`
 }
 
-// @Description	Getting current users' friends
+// @Description	Getting current users' friends with optionaly status
 // @ID			get-friends
 // @Summary		Get friends
 // @Tags		friend
 // @Security	SessionAuth
 // @Produce		json
-// @Param status path string false "friendship status"
+// @Param status path string false "friendship status, default accepted"
 // @Success		200		{object}	friendsResponse
 // @Failure		400		{object}	dto.CommonErrorResponse
 // @Failure		401		{object}	dto.CommonErrorResponse
@@ -55,7 +55,7 @@ type friendRequest struct {
 func (h *FriendHandler) GetFriends(w http.ResponseWriter, r *http.Request) {
 	friendshipStatus := chi.URLParam(r, "status")
 	if friendshipStatus == "" {
-		friendshipStatus = string(models.FriendshipPending)
+		friendshipStatus = string(models.FriendshipAccepted)
 	}
 
 	if friendshipStatus != string(models.FriendshipPending) &&
@@ -65,19 +65,13 @@ func (h *FriendHandler) GetFriends(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
-		utils.WriteError(w, xerrors.UnauthorizedStr, http.StatusUnauthorized)
+	userAccountID, ok := r.Context().Value("user_id").(int64)
+	if !ok {
+		utils.WriteError(w, xerrors.InvalidCtxUserAccountValue, http.StatusUnauthorized)
 		return
 	}
 
-	session, err := h.sessionService.Get(r.Context(), models.SessionID(cookie.Value))
-	if err != nil {
-		utils.WriteError(w, xerrors.UnauthorizedStr, http.StatusUnauthorized)
-		return
-	}
-
-	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), session.UserID)
+	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), userAccountID)
 	if err != nil {
 		if errors.Is(err, xerrors.ProfileNotFound) {
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
@@ -89,6 +83,7 @@ func (h *FriendHandler) GetFriends(w http.ResponseWriter, r *http.Request) {
 
 	friends, err := h.friendshipService.GetFriends(r.Context(), profile.ID, models.FriendshipStatus(friendshipStatus))
 	if err != nil {
+		fmt.Println(err)
 		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 		return
 	}
@@ -118,12 +113,12 @@ func (h *FriendHandler) GetUsersFriends(w http.ResponseWriter, r *http.Request) 
 	profileID, err := strconv.Atoi(profileIDstr)
 	if err != nil {
 		fmt.Println(profileIDstr, err)
-		utils.WriteError(w, "Invalid ID parameter", http.StatusBadRequest)
+		utils.WriteError(w, xerrors.InvalidID, http.StatusBadRequest)
 		return
 	}
 
 	if profileID <= 0 {
-		utils.WriteError(w, "Invalid ID parameter", http.StatusBadRequest)
+		utils.WriteError(w, xerrors.InvalidID, http.StatusBadRequest)
 		return
 	}
 
@@ -177,19 +172,13 @@ func (h *FriendHandler) DeleteFriend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
-		utils.WriteError(w, xerrors.UnauthorizedStr, http.StatusUnauthorized)
+	userAccountID, ok := r.Context().Value("user_id").(int64)
+	if !ok {
+		utils.WriteError(w, xerrors.InvalidCtxUserAccountValue, http.StatusUnauthorized)
 		return
 	}
 
-	session, err := h.sessionService.Get(r.Context(), models.SessionID(cookie.Value))
-	if err != nil {
-		utils.WriteError(w, xerrors.UnauthorizedStr, http.StatusUnauthorized)
-		return
-	}
-
-	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), session.UserID)
+	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), userAccountID)
 	if err != nil {
 		if errors.Is(err, xerrors.ProfileNotFound) {
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
@@ -200,12 +189,17 @@ func (h *FriendHandler) DeleteFriend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.friendshipService.DeleteFriend(r.Context(), profile.ID, int64(friendID)); err != nil {
-		if errors.Is(err, xerrors.NoRowsAffected) {
+		switch {
+		case errors.Is(err, xerrors.NoRowsAffected):
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
 			return
+		case errors.Is(err, xerrors.MultipleRowsAffect):
+			utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
+			return
+		default:
+			utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
+			return
 		}
-		utils.WriteError(w, "Internal server error", http.StatusInternalServerError)
-		return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -226,23 +220,13 @@ func (h *FriendHandler) DeleteFriend(w http.ResponseWriter, r *http.Request) {
 // @Failure		500		{object}	dto.CommonErrorResponse
 // @Router		/friends/request [post]
 func (h *FriendHandler) RequestFriendship(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
-		utils.WriteError(w, "Unauthorized", http.StatusUnauthorized)
+	userAccountID, ok := r.Context().Value("user_id").(int64)
+	if !ok {
+		utils.WriteError(w, xerrors.InvalidCtxUserAccountValue, http.StatusUnauthorized)
 		return
 	}
 
-	session, err := h.sessionService.Get(r.Context(), models.SessionID(cookie.Value))
-	if err != nil {
-		if errors.Is(err, xerrors.SessionNotFound) {
-			utils.WriteError(w, xerrors.UnauthorizedStr, http.StatusUnauthorized)
-			return
-		}
-		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
-		return
-	}
-
-	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), session.UserID)
+	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), userAccountID)
 	if err != nil {
 		if errors.Is(err, xerrors.ProfileNotFound) {
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
@@ -259,38 +243,23 @@ func (h *FriendHandler) RequestFriendship(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Ранее никто из них не был друзьями
-	if areFriends, _ := h.friendshipService.CheckFriendship(r.Context(), profile.ID, request.FriendID); !areFriends {
-		err := h.friendshipService.MakeFriends(r.Context(), profile.ID, request.FriendID, models.FriendshipPending)
-		if err != nil {
-			if errors.Is(err, xerrors.NoRowsAffected) {
-				utils.WriteError(w, err.Error(), http.StatusNotFound)
-				return
-			}
+	err = h.friendshipService.MakeFriends(r.Context(), profile.ID, request.FriendID)
+	if err != nil {
+		switch {
+		case errors.Is(err, xerrors.NoRowsAffected):
+			utils.WriteError(w, err.Error(), http.StatusNotFound)
+			return
+		case errors.Is(err, xerrors.MultipleRowsAffect):
+			utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
+			return
+		case errors.Is(err, xerrors.AllreadyExists):
+			utils.WriteError(w, err.Error(), http.StatusConflict)
+			return
+		default:
 			utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusCreated)
-		return
-	}
 
-	// Если пользователь уже отправлял заявку
-	if areFriends, _ := h.friendshipService.CheckFriendshipBy(r.Context(), profile.ID, request.FriendID); areFriends {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
-	// Если есть встречный запрос в друзья - автоматически принимается
-	if areFriends, status := h.friendshipService.CheckFriendshipBy(r.Context(), request.FriendID, profile.ID); areFriends && status == models.FriendshipPending {
-		err := h.friendshipService.AcceptFriendship(r.Context(), profile.ID, request.FriendID)
-		if err != nil {
-			if errors.Is(err, xerrors.NoRowsAffected) {
-				utils.WriteError(w, err.Error(), http.StatusNotFound)
-				return
-			}
-			utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
-			return
-		}
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -322,19 +291,13 @@ func (h *FriendHandler) GetIncomingFriendRequests(w http.ResponseWriter, r *http
 		return
 	}
 
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
-		utils.WriteError(w, xerrors.UnauthorizedStr, http.StatusUnauthorized)
+	userAccountID, ok := r.Context().Value("user_id").(int64)
+	if !ok {
+		utils.WriteError(w, xerrors.InvalidCtxUserAccountValue, http.StatusUnauthorized)
 		return
 	}
 
-	session, err := h.sessionService.Get(r.Context(), models.SessionID(cookie.Value))
-	if err != nil {
-		utils.WriteError(w, xerrors.UnauthorizedStr, http.StatusUnauthorized)
-		return
-	}
-
-	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), session.UserID)
+	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), userAccountID)
 	if err != nil {
 		if errors.Is(err, xerrors.ProfileNotFound) {
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
@@ -385,19 +348,13 @@ func (h *FriendHandler) GetOutgoingFriendRequests(w http.ResponseWriter, r *http
 		return
 	}
 
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
-		utils.WriteError(w, xerrors.UnauthorizedStr, http.StatusUnauthorized)
+	userAccountID, ok := r.Context().Value("user_id").(int64)
+	if !ok {
+		utils.WriteError(w, xerrors.InvalidCtxUserAccountValue, http.StatusUnauthorized)
 		return
 	}
 
-	session, err := h.sessionService.Get(r.Context(), models.SessionID(cookie.Value))
-	if err != nil {
-		utils.WriteError(w, xerrors.UnauthorizedStr, http.StatusUnauthorized)
-		return
-	}
-
-	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), session.UserID)
+	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), userAccountID)
 	if err != nil {
 		if errors.Is(err, xerrors.ProfileNotFound) {
 			utils.WriteError(w, "Profile not found", http.StatusNotFound)
@@ -448,19 +405,13 @@ func (h *FriendHandler) DeclineFriendRequest(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
-		utils.WriteError(w, xerrors.UnauthorizedStr, http.StatusUnauthorized)
+	userAccountID, ok := r.Context().Value("user_id").(int64)
+	if !ok {
+		utils.WriteError(w, xerrors.InvalidCtxUserAccountValue, http.StatusUnauthorized)
 		return
 	}
 
-	session, err := h.sessionService.Get(r.Context(), models.SessionID(cookie.Value))
-	if err != nil {
-		utils.WriteError(w, xerrors.UnauthorizedStr, http.StatusUnauthorized)
-		return
-	}
-
-	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), session.UserID)
+	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), userAccountID)
 	if err != nil {
 		if errors.Is(err, xerrors.ProfileNotFound) {
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
@@ -470,23 +421,22 @@ func (h *FriendHandler) DeclineFriendRequest(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	areFriends, status := h.friendshipService.CheckFriendshipBy(r.Context(), int64(requesterID), profile.ID)
-
-	if areFriends && status == models.FriendshipPending {
-		err := h.friendshipService.DeclineFriendship(r.Context(), int64(requesterID), profile.ID)
-		if err != nil {
-			if errors.Is(err, xerrors.NoRowsAffected) {
-				utils.WriteError(w, err.Error(), http.StatusNotFound)
-				return
-			}
+	err = h.friendshipService.DeclineFriendship(r.Context(), int64(requesterID), profile.ID)
+	if err != nil {
+		switch {
+		case errors.Is(err, xerrors.NoRowsAffected):
+			utils.WriteError(w, err.Error(), http.StatusNotFound)
+			return
+		case errors.Is(err, xerrors.MultipleRowsAffect):
+			utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
+			return
+		default:
 			utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
-		return
 	}
 
-	w.WriteHeader(http.StatusNotFound)
+	w.WriteHeader(http.StatusOK)
 }
 
 // @Description	Accept a friend request from a user by its ID
@@ -515,19 +465,13 @@ func (h *FriendHandler) AcceptFriendRequest(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
-		utils.WriteError(w, xerrors.UnauthorizedStr, http.StatusUnauthorized)
+	userAccountID, ok := r.Context().Value("user_id").(int64)
+	if !ok {
+		utils.WriteError(w, xerrors.InvalidCtxUserAccountValue, http.StatusUnauthorized)
 		return
 	}
 
-	session, err := h.sessionService.Get(r.Context(), models.SessionID(cookie.Value))
-	if err != nil {
-		utils.WriteError(w, xerrors.UnauthorizedStr, http.StatusUnauthorized)
-		return
-	}
-
-	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), session.UserID)
+	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), userAccountID)
 	if err != nil {
 		if errors.Is(err, xerrors.ProfileNotFound) {
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
@@ -537,25 +481,25 @@ func (h *FriendHandler) AcceptFriendRequest(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	areFriends, status := h.friendshipService.CheckFriendshipBy(r.Context(), int64(requesterID), profile.ID)
-	if areFriends && status == models.FriendshipPending {
-		err := h.friendshipService.AcceptFriendship(r.Context(), int64(requesterID), profile.ID)
-		if err != nil {
-			if errors.Is(err, xerrors.NoRowsAffected) {
-				utils.WriteError(w, err.Error(), http.StatusNotFound)
-				return
-			}
+	err = h.friendshipService.AcceptFriendship(r.Context(), int64(requesterID), profile.ID)
+	if err != nil {
+		switch {
+		case errors.Is(err, xerrors.NoRowsAffected):
+			utils.WriteError(w, err.Error(), http.StatusNotFound)
+			return
+		case errors.Is(err, xerrors.MultipleRowsAffect):
+			utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
+			return
+		default:
 			utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
-		return
 	}
 
-	w.WriteHeader(http.StatusNotFound)
+	w.WriteHeader(http.StatusOK)
 }
 
-// @Description	Revoke a friend request to a user by its ID
+// @Description	Revoke a friend request to user by ID
 // @ID			revoke-friend
 // @Summary		Revoke a friend request
 // @Tags		friend
@@ -581,19 +525,13 @@ func (h *FriendHandler) RevokeFriendRequest(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
-		utils.WriteError(w, xerrors.UnauthorizedStr, http.StatusUnauthorized)
+	userAccountID, ok := r.Context().Value("user_id").(int64)
+	if !ok {
+		utils.WriteError(w, xerrors.InvalidCtxUserAccountValue, http.StatusUnauthorized)
 		return
 	}
 
-	session, err := h.sessionService.Get(r.Context(), models.SessionID(cookie.Value))
-	if err != nil {
-		utils.WriteError(w, xerrors.UnauthorizedStr, http.StatusUnauthorized)
-		return
-	}
-
-	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), session.UserID)
+	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), userAccountID)
 	if err != nil {
 		if errors.Is(err, xerrors.ProfileNotFound) {
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
@@ -605,12 +543,17 @@ func (h *FriendHandler) RevokeFriendRequest(w http.ResponseWriter, r *http.Reque
 
 	err = h.friendshipService.RevokeFriendRequest(r.Context(), profile.ID, int64(addresseeID))
 	if err != nil {
-		if errors.Is(err, xerrors.NoRowsAffected) {
+		switch {
+		case errors.Is(err, xerrors.NoRowsAffected):
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
 			return
+		case errors.Is(err, xerrors.MultipleRowsAffect):
+			utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
+			return
+		default:
+			utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
+			return
 		}
-		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
-		return
 	}
 
 	w.WriteHeader(http.StatusOK)

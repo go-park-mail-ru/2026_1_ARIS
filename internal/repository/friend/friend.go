@@ -2,8 +2,6 @@ package friend
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
@@ -39,13 +37,13 @@ func NewFriendshipStorage(db *pgxpool.Pool) FriendshipRepo {
 
 func (storage *friendshipStorage) GetFriends(ctx context.Context, profileID int64, status models.FriendshipStatus) ([]dto.FriendDTO, error) {
 	query := `
-select p.avatar_id, p.id, up.first_name, up.last_name, ua.username, m.link, status from 
-	(select status, case 
+select p.avatar_id, p.id, up.first_name, up.last_name, ua.username, m.link, status, f.created_at, f.updated_at from 
+	(select f.created_at, f.updated_at, status, case 
 		when requester_id = $1 then addressee_id
 		when addressee_id = $1 then requester_id
 		end as friend
-	from friendship
-	where $1 in (requester_id, addressee_id) AND status=$2)
+	from friendship f
+	where $1 in (requester_id, addressee_id) AND status=$2) as f
 join profile p on p.id=friend
 join user_profile up on up.profile_id=friend
 join user_account ua on up.user_account_id=ua.id
@@ -108,7 +106,11 @@ func (storage *friendshipStorage) GetFriendshipStatusBy(ctx context.Context, pro
 }
 
 func (storage *friendshipStorage) DeleteFriend(ctx context.Context, profileID, friendID int64) error {
-	query := `DELETE FROM friendship WHERE LEAST(requester_id, addressee_id)=LEAST($1::bigint, $2::bigint) AND GREATEST(requester_id, addressee_id)=GREATEST($1::bigint, $2::bigint) AND status='accepted'::friendship_status`
+	query := `
+	DELETE FROM friendship 
+		WHERE LEAST(requester_id, addressee_id)=LEAST($1::bigint, $2::bigint) AND 
+		GREATEST(requester_id, addressee_id)=GREATEST($1::bigint, $2::bigint) AND 
+		status='accepted'::friendship_status`
 
 	res, err := storage.db.Exec(ctx, query, profileID, friendID)
 	if err != nil {
@@ -116,11 +118,11 @@ func (storage *friendshipStorage) DeleteFriend(ctx context.Context, profileID, f
 	}
 
 	if res.RowsAffected() == 0 {
-		return fmt.Errorf("%w: %w", xerrors.NoRowsAffected, xerrors.NothingDeleted)
+		return xerrors.NoRowsAffected
 	}
 
 	if res.RowsAffected() != 1 {
-		return errors.New("affected not on 1 row")
+		return xerrors.MultipleRowsAffect
 	}
 
 	return nil
@@ -128,7 +130,7 @@ func (storage *friendshipStorage) DeleteFriend(ctx context.Context, profileID, f
 
 func (storage *friendshipStorage) GetOutgoingFriends(ctx context.Context, profileID int64, status string) ([]dto.FriendDTO, error) {
 	query := `
-select f.addressee_id as id, p.avatar_id, up.first_name, up.last_name, ua.username, m.link, f.status from friendship f
+select f.addressee_id as id, p.avatar_id, up.first_name, up.last_name, ua.username, m.link, f.status, f.created_at, f.updated_at from friendship f
 	join profile p on p.id=f.addressee_id
 	join user_profile up on up.profile_id=p.id
 	join user_account ua on ua.id=up.user_account_id 
@@ -153,7 +155,7 @@ select f.addressee_id as id, p.avatar_id, up.first_name, up.last_name, ua.userna
 
 func (storage *friendshipStorage) GetIncomingFriends(ctx context.Context, profileID int64, status string) ([]dto.FriendDTO, error) {
 	query := `
-select f.requester_id as id, p.avatar_id, up.first_name, up.last_name, ua.username, m.link, f.status from friendship f
+select f.requester_id as id, p.avatar_id, up.first_name, up.last_name, ua.username, m.link, f.status, f.created_at, f.updated_at from friendship f
 	join profile p on p.id=f.requester_id
 	join user_profile up on up.profile_id=p.id
 	join user_account ua on ua.id=up.user_account_id 
@@ -185,11 +187,11 @@ func (storage *friendshipStorage) Create(ctx context.Context, profileID, friendI
 	}
 
 	if res.RowsAffected() == 0 {
-		return fmt.Errorf("%w: %w", xerrors.NoRowsAffected, xerrors.NothingInserted)
+		return xerrors.NoRowsAffected
 	}
 
 	if res.RowsAffected() != 1 {
-		return errors.New("affected not on 1 row")
+		return xerrors.MultipleRowsAffect
 	}
 
 	return nil
@@ -208,11 +210,11 @@ func (storage *friendshipStorage) AcceptFriendship(ctx context.Context, profileI
 	}
 
 	if res.RowsAffected() == 0 {
-		return fmt.Errorf("%w: %w", xerrors.NoRowsAffected, xerrors.NothingUpdated)
+		return xerrors.NoRowsAffected
 	}
 
 	if res.RowsAffected() > 1 {
-		return errors.New("affected more than on 1 row")
+		return xerrors.MultipleRowsAffect
 	}
 
 	return nil
@@ -227,11 +229,11 @@ func (storage *friendshipStorage) DeclineFriendship(ctx context.Context, profile
 	}
 
 	if res.RowsAffected() == 0 {
-		return fmt.Errorf("%w: %w", xerrors.NoRowsAffected, xerrors.NothingDeleted)
+		return xerrors.NoRowsAffected
 	}
 
 	if res.RowsAffected() != 1 {
-		return errors.New("affected not on 1 row")
+		return xerrors.MultipleRowsAffect
 	}
 
 	return nil
@@ -246,11 +248,11 @@ func (storage *friendshipStorage) RevokeFriendRequest(ctx context.Context, profi
 	}
 
 	if res.RowsAffected() == 0 {
-		return fmt.Errorf("%w: %w", xerrors.NoRowsAffected, xerrors.NothingDeleted)
+		return xerrors.NoRowsAffected
 	}
 
 	if res.RowsAffected() != 1 {
-		return errors.New("affected not on 1 row")
+		return xerrors.MultipleRowsAffect
 	}
 
 	return nil

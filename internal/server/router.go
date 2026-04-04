@@ -55,7 +55,7 @@ func NewRouter(
 	r.Get("/api/public/popular-posts", feedHandler.GetPublicPopularPosts)
 	r.Get("/image-proxy", proxy.ImageProxy)
 
-	r.Get("/api/users/{id}/friends", friendshipHandler.GetUsersFriends) // ✅
+	r.Get("/api/users/{id}/friends", friendshipHandler.GetUsersFriends)
 
 	r.Group(func(r chi.Router) {
 		r.Use(mymiddleware.AuthMiddleware(sessSvc))
@@ -75,6 +75,8 @@ func NewRouter(
 
 	r.Route("/api/friends", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
+			r.Use(mymiddleware.AuthMiddleware(sessSvc))
+
 			// Заявки в друзья
 			r.Post("/request", friendshipHandler.RequestFriendship)
 			r.Post("/accept/{requesterID}", friendshipHandler.AcceptFriendRequest)
