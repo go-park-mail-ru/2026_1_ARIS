@@ -87,8 +87,6 @@ func (h *ChatHandler) GetChats(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	chats = h.filterChatsForList(r.Context(), chats, userID)
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(h.mapChatsResponse(r.Context(), chats, userID))
 }
