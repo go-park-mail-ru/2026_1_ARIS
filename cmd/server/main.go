@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,15 +12,20 @@ import (
 	"time"
 
 	_ "github.com/go-park-mail-ru/2026_1_ARIS/docs"
+	"github.com/minio/minio-go/v7"
+
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/server"
 
 	chathandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
 	wsHandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
 	authhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
 	feedhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
 	friendshiphandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/friend"
+	mediahandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/media"
 	profilehandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
 	userhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
 	chatstorage "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
@@ -34,8 +40,6 @@ import (
 	useraccountrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_account"
 	userprofilerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_profile"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/server"
-
 	chatservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
 	authservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/auth"
 	friendshipservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/friend"
@@ -47,6 +51,7 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/config"
 	connectdb "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/connect_db"
+	connectminio "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/connect_minio"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/websocket"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -57,33 +62,98 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Println("No .env file found, reading from environment")
+		log.Println("No .env file found, reading from environment: ", err)
 	}
 
 	envConf, err := config.NewConfig()
 	if err != nil {
-		log.Fatal("can't get env config", err)
+		log.Fatal("Can't get env config:", err)
 	}
 
 	confStr, err := connectdb.GetConnectURL(envConf)
 	if err != nil {
-		log.Fatal("can't get db connection string", err)
+		log.Fatal("Can't get db connection string: ", err)
 	}
 
 	ctx := context.Background()
 
 	db, err := pgxpool.New(ctx, confStr)
 	if err != nil {
-		log.Fatal("can't connect to db", err)
+		log.Fatal("Can't connect to db: ", err)
 	}
 	defer db.Close()
 
 	err = db.Ping(ctx)
 	if err != nil {
-		log.Fatal("Bad db connection", err)
+		log.Fatal("Bad db connection: ", err)
 	}
 
 	fmt.Println("Successfully connected to PostgreSQL")
+
+	// Подключаем MinIO
+
+	// создание MinIO клиента
+	minioClient, err := connectminio.InitMinio(envConf)
+	if err != nil {
+		log.Fatalf("Ошибка инициализации Minio: %v", err)
+	}
+
+	// Проверка на существование бакета
+	exists, err := minioClient.BucketExists(ctx, envConf.MinioBucketName)
+	if err != nil {
+		log.Fatalf("Can't chech bucket existition: %v", err)
+	}
+
+	fmt.Println("Successfully connected to MinIO")
+
+	// Если бакета нет - его нужно создать
+	if !exists {
+		err := minioClient.MakeBucket(ctx, envConf.MinioBucketName, minio.MakeBucketOptions{})
+		if err != nil {
+			log.Fatalf("Can't create buchet: %v", err)
+		}
+		fmt.Println("Bucket created")
+	}
+
+	// Устанавливаем политику доступа к файлам
+	policy := map[string]any{
+		"Version": "2012-10-17",
+		"Statement": []any{
+			map[string]any{
+				"Effect": "Allow",
+				"Principal": map[string]string{
+					"AWS": "*",
+				},
+				"Action": []string{
+					"s3:GetBucketLocation",
+					"s3:ListBucket",
+				},
+				"Resource": "arn:aws:s3:::" + envConf.MinioBucketName,
+			},
+			map[string]any{
+				"Effect": "Allow",
+				"Principal": map[string]string{
+					"AWS": "*",
+				},
+				"Action":   "s3:GetObject",
+				"Resource": "arn:aws:s3:::" + envConf.MinioBucketName + "/*",
+			},
+		},
+	}
+
+	rawPolicy, err := json.Marshal(policy)
+	if err != nil {
+		log.Fatalf("Can't marshal policy: %v", err)
+	}
+
+	err = minioClient.SetBucketPolicy(ctx, envConf.MinioBucketName, string(rawPolicy))
+	if err != nil {
+		log.Fatalf("Can't set bucket policy: %v", err)
+	}
+
+	client := mediarepo.NewMinioClient(minioClient)
+
+	// Инициализация репозиториев
 
 	commentRepo := commentrepo.NewCommentStorage(db)
 	repostRepo := repostrepo.NewRepostStorage(db)
@@ -105,7 +175,7 @@ func main() {
 	userService := userservice.NewUserService(userAccountRepo, profileRepo, userProfileRepo)
 	authService := authservice.NewAuthService(userAccountRepo, profileRepo, userProfileRepo)
 	sessService := sessionservice.NewSessionService(sessionRepo)
-	mediaService := mediaservice.NewMediaService(mediaRepo, postWithMediaRepo)
+	mediaService := mediaservice.NewMediaService(mediaRepo, postWithMediaRepo, client)
 	chatSvc := chatservice.NewChatService(chatRepo, chatMemberRepo, userService)
 	messageSvc := chatservice.NewMessageService(messageRepo)
 	friendshipService := friendshipservice.NewFriendshipService(friendshipRepo)
@@ -117,14 +187,16 @@ func main() {
 	authHandler := authhandler.NewAuthHandler(authService, sessService, userService)
 	userHandler := userhandler.NewUserHandler(userService, mediaService)
 	feedHandler := feedhandler.NewFeedHandler(postService, mediaService, userService)
+	mediaHandler := mediahandler.NewMediaHandler(mediaService, sessService)
 	profileHandler := profilehandler.NewProfileHandler(userService, mediaService, sessService)
 	chatHandler := chathandler.NewChatHandler(chatSvc, messageSvc, userAccountRepo, userService, hub)
 	friendHandler := friendshiphandler.NewFriendHandler(sessService, userService, friendshipService)
 	wsHandler := wsHandler.NewWebSocketHandler(hub, chatSvc)
 
-	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, profileHandler, chatHandler, friendHandler, wsHandler)
-
 	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo)
+
+	// создаём роутер
+	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, mediaHandler, profileHandler, chatHandler, friendHandler, wsHandler)
 
 	ensureKnownTestUser(ctx, userAccountRepo, userService, "sergeyshulginenko", "chatcheck123", "Сергей", "Шульгиненко")
 	ensureKnownPassword(ctx, db, "sergeyshulginenko", "chatcheck123")

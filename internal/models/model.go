@@ -147,6 +147,7 @@ type Media struct {
 	ID          int64     `db:"id"`
 	Uid         uuid.UUID `db:"uid"`
 	Name        string    `db:"media_name"`
+	AuthorID    int64     `db:"author_id"`
 	Extension   string    `db:"extension"`
 	Description *string   `db:"description,omitempty"`
 	MimeType    string    `db:"mime_type"`
@@ -157,11 +158,11 @@ type Media struct {
 	UpdatedAt   time.Time `db:"updated_at"`
 }
 
-func NewMedia(name, extension string, description *string, mimeType, link string) *Media {
+func NewMedia(name, extension string, uid uuid.UUID, description *string, mimeType, link string) *Media {
 	now := time.Now()
 	return &Media{
 		ID:          rand.Int64(),
-		Uid:         uuid.New(),
+		Uid:         uid,
 		Name:        name,
 		Extension:   extension,
 		Description: description,

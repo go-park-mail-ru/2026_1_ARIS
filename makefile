@@ -35,7 +35,19 @@ swagger:
 
 # будет подтянут postgres:16
 db-up:
-	docker compose -f ./docker/docker-compose.yml --env-file ./.env up -d
+	docker compose -f ./docker/docker-compose.yml --env-file ./.env up -d ARISNET-DB
 
 db-stop:
+	docker compose -f ./docker/docker-compose.yml --env-file ./.env stop ARISNET-DB
+
+s3-up:
+	docker compose -f ./docker/docker-compose.yml --env-file ./.env up -d ARISNET-MINIO
+
+s3-stop:
+	docker compose -f ./docker/docker-compose.yml --env-file ./.env stop ARISNET-MINIO
+
+services-up:
+	docker compose -f ./docker/docker-compose.yml --env-file ./.env up -d
+
+services-stop:
 	docker compose -f ./docker/docker-compose.yml --env-file ./.env stop

@@ -14,6 +14,7 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/repost"
 	postservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
+	"github.com/google/uuid"
 )
 
 func MakeMock(mediaRepo media.MediaRepo,
@@ -34,14 +35,16 @@ func MakeMock(mediaRepo media.MediaRepo,
 	userAvatar6 := "user avatar 6 description"
 	userAvatar7 := "user avatar 7 description"
 	userAvatar8 := "user avatar 8 description"
-	avatar1 := models.NewMedia("avatar_1_name", "jpg", &userAvatar1, "image", "/image-proxy?url=https://forum.stitch.su/uploads/monthly_2017_10/A.png.b16d1fa2bd3bb388f2122a0c87fbcf5f.png")
-	avatar2 := models.NewMedia("avatar_2_name", "jpg", &userAvatar2, "image", "/image-proxy?url=https://i.ibb.co/C3c6HCjb/pop-User1.png")
-	avatar3 := models.NewMedia("avatar_3_name", "jpg", &userAvatar3, "image", "/image-proxy?url=https://i.ibb.co/mQvfkNY/pop-User2.png")
-	avatar4 := models.NewMedia("avatar_4_name", "jpg", &userAvatar4, "image", "/image-proxy?url=https://i.ibb.co/6RS96KC7/pop-User3.png")
-	avatar5 := models.NewMedia("avatar_5_name", "jpg", &userAvatar5, "image", "/image-proxy?url=https://i.ibb.co/mCpKjmxK/pop-User4.png")
-	avatar6 := models.NewMedia("avatar_6_name", "jpg", &userAvatar6, "image", "/image-proxy?url=https://i.ibb.co/60HMXYh6/6.jpg")
-	avatar7 := models.NewMedia("avatar_7_name", "jpg", &userAvatar7, "image", "/image-proxy?url=https://i.ibb.co/s9rN3qD9/7.jpg")
-	avatar8 := models.NewMedia("avatar_8_name", "jpg", &userAvatar8, "image", "/image-proxy?url=https://sun9-5.userapi.com/s/v1/ig2/uGYEtsdSK4QHpAyiRnb5vCasxGZy7dR-MYECGzReWIivHlfmnfQP2DaVY6_UOJHzPG4yzjnVbty6aWqM8kjydEAS.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640&from=bu&cs=640x0")
+
+	avatar1 := models.NewMedia("avatar_1_name", "jpg", uuid.New(), &userAvatar1, "image", "/image-proxy?url=https://forum.stitch.su/uploads/monthly_2017_10/A.png.b16d1fa2bd3bb388f2122a0c87fbcf5f.png")
+	avatar2 := models.NewMedia("avatar_2_name", "jpg", uuid.New(), &userAvatar2, "image", "/image-proxy?url=https://i.ibb.co/C3c6HCjb/pop-User1.png")
+	avatar3 := models.NewMedia("avatar_3_name", "jpg", uuid.New(), &userAvatar3, "image", "/image-proxy?url=https://i.ibb.co/mQvfkNY/pop-User2.png")
+	avatar4 := models.NewMedia("avatar_4_name", "jpg", uuid.New(), &userAvatar4, "image", "/image-proxy?url=https://i.ibb.co/6RS96KC7/pop-User3.png")
+	avatar5 := models.NewMedia("avatar_5_name", "jpg", uuid.New(), &userAvatar5, "image", "/image-proxy?url=https://i.ibb.co/mCpKjmxK/pop-User4.png")
+	avatar6 := models.NewMedia("avatar_6_name", "jpg", uuid.New(), &userAvatar6, "image", "/image-proxy?url=https://i.ibb.co/60HMXYh6/6.jpg")
+	avatar7 := models.NewMedia("avatar_7_name", "jpg", uuid.New(), &userAvatar7, "image", "/image-proxy?url=https://i.ibb.co/s9rN3qD9/7.jpg")
+	avatar8 := models.NewMedia("avatar_8_name", "jpg", uuid.New(), &userAvatar8, "image", "/image-proxy?url=https://sun9-5.userapi.com/s/v1/ig2/uGYEtsdSK4QHpAyiRnb5vCasxGZy7dR-MYECGzReWIivHlfmnfQP2DaVY6_UOJHzPG4yzjnVbty6aWqM8kjydEAS.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640&from=bu&cs=640x0")
+
 	//avatar9 := models.NewMedia("avatar_9_name", "jpg", &userAvatar9, "image", "https://i.ibb.co/s9rN3qD9/7.jpg", 4000, false)
 
 	avatar1ID, err := mediaRepo.Save(context.Background(), *avatar1)
@@ -199,36 +202,36 @@ func MakeMock(mediaRepo media.MediaRepo,
 	mediaDesctiption22 := "Media description 22"
 	mediaDesctiption23 := "Media description 23"
 
-	media1 := models.NewMedia("Media name 1", "jpg", &mediaDesctiption1, "image", "https://img.freepik.com/free-photo/mountains-lake_1398-1150.jpg")
-	media2 := models.NewMedia("Media name 2", "jpg", &mediaDesctiption2, "image", "https://img51994.kanal-o.ru/img/2024-09-09/fmt_81_24_shutterstock_2141488197.jpg")
+	media1 := models.NewMedia("Media name 1", "jpg", uuid.New(), &mediaDesctiption1, "image", "https://img.freepik.com/free-photo/mountains-lake_1398-1150.jpg")
+	media2 := models.NewMedia("Media name 2", "jpg", uuid.New(), &mediaDesctiption2, "image", "https://img51994.kanal-o.ru/img/2024-09-09/fmt_81_24_shutterstock_2141488197.jpg")
 
-	media3 := models.NewMedia("Media name 3", "jpg", &mediaDesctiption3, "image", "https://moya-planeta.ru/upload/images/l/eb/e2/ebe21cb5a55a808b104f3d51c3ff96284bae5182.jpg")
-	//media4 := models.NewMedia("Media name 4", "jpg", &mediaDesctiption4, "image", "https://www.svitstyle.com.ua/wp-content/uploads/2025/09/pryroda-svitu.jpg", 10242, false)
-	media5 := models.NewMedia("Media name 5", "jpg", &mediaDesctiption5, "image", "https://oboitd.ru/images/goods/big/20200125110231_Priroda_10-344.jpg")
-	media6 := models.NewMedia("Media name 6", "jpg", &mediaDesctiption6, "image", "https://www.advantour.com/img/kazakhstan/images/nature.jpg")
-	media7 := models.NewMedia("Media name 7", "jpg", &mediaDesctiption7, "image", "https://img.goodfon.com/wallpaper/big/5/18/italiia-gory-ozero-peizazh-otrazhenie-priroda.webp")
+	media3 := models.NewMedia("Media name 3", "jpg", uuid.New(), &mediaDesctiption3, "image", "https://moya-planeta.ru/upload/images/l/eb/e2/ebe21cb5a55a808b104f3d51c3ff96284bae5182.jpg")
+	//media4 := models.NewMedia("Media name 4", "jpg", uuid.New(), &mediaDesctiption4, "image", "https://www.svitstyle.com.ua/wp-content/uploads/2025/09/pryroda-svitu.jpg", 10242, false)
+	media5 := models.NewMedia("Media name 5", "jpg", uuid.New(), &mediaDesctiption5, "image", "https://oboitd.ru/images/goods/big/20200125110231_Priroda_10-344.jpg")
+	media6 := models.NewMedia("Media name 6", "jpg", uuid.New(), &mediaDesctiption6, "image", "https://www.advantour.com/img/kazakhstan/images/nature.jpg")
+	media7 := models.NewMedia("Media name 7", "jpg", uuid.New(), &mediaDesctiption7, "image", "https://img.goodfon.com/wallpaper/big/5/18/italiia-gory-ozero-peizazh-otrazhenie-priroda.webp")
 
-	media8 := models.NewMedia("Media name 8", "jpg", &mediaDesctiption8, "image", "https://marathonec.ru/wp-content/uploads/2019/07/utrennyaya-probezhka-1.jpg")
-	media9 := models.NewMedia("Media name 9", "png", &mediaDesctiption9, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlVOAM_1swHsumck2XbdMEeEKauDRDiXn86g&s")
+	media8 := models.NewMedia("Media name 8", "jpg", uuid.New(), &mediaDesctiption8, "image", "https://marathonec.ru/wp-content/uploads/2019/07/utrennyaya-probezhka-1.jpg")
+	media9 := models.NewMedia("Media name 9", "png", uuid.New(), &mediaDesctiption9, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlVOAM_1swHsumck2XbdMEeEKauDRDiXn86g&s")
 
-	media10 := models.NewMedia("Media name 10", "jpg", &mediaDesctiption10, "image", "https://media.licdn.com/dms/image/v2/D5612AQGuHFW9idrbfw/article-cover_image-shrink_720_1280/article-cover_image-shrink_720_1280/0/1714747679466?e=2147483647&v=beta&t=c9gny1mV4A13_niAAW-2wjP9iglUYtsdoXiMzxfoAxo")
+	media10 := models.NewMedia("Media name 10", "jpg", uuid.New(), &mediaDesctiption10, "image", "https://media.licdn.com/dms/image/v2/D5612AQGuHFW9idrbfw/article-cover_image-shrink_720_1280/article-cover_image-shrink_720_1280/0/1714747679466?e=2147483647&v=beta&t=c9gny1mV4A13_niAAW-2wjP9iglUYtsdoXiMzxfoAxo")
 
-	media11 := models.NewMedia("Media name 11", "png", &mediaDesctiption11, "image", "https://ubifi.net/wp-content/uploads/2025/06/Kinds-of-Internet-Connection.webp")
-	media12 := models.NewMedia("Media name 12", "jpg", &mediaDesctiption12, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTs3HaWprjBE3nMGKyH-Myd8D3jK0U0EUqTLw&s")
-	media13 := models.NewMedia("Media name 13", "png", &mediaDesctiption13, "image", "https://image.geo.de/30140508/t/r4/v4/w1440/r0/-/internetz-f-209777524-jpg--79960-.jpg")
-	media14 := models.NewMedia("Media name 14", "jpg", &mediaDesctiption14, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS7N25ADdSYwSC-m7qUSqlwPsKd4ALT9F425Q&s")
-	media15 := models.NewMedia("Media name 15", "png", &mediaDesctiption15, "image", "https://www.wiwi.uni-wuerzburg.de/fileadmin/_processed_/3/9/csm_computer-1209641_1920_3a999762b2.jpg")
-	//media16 := models.NewMedia("Media name 16", "jpg", &mediaDesctiption16, "image", "https://res.cloudinary.com/jerrick/image/upload/v1682443907/64480e82daabca001da8fbbc.jpg", 10246, false)
+	media11 := models.NewMedia("Media name 11", "png", uuid.New(), &mediaDesctiption11, "image", "https://ubifi.net/wp-content/uploads/2025/06/Kinds-of-Internet-Connection.webp")
+	media12 := models.NewMedia("Media name 12", "jpg", uuid.New(), &mediaDesctiption12, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTs3HaWprjBE3nMGKyH-Myd8D3jK0U0EUqTLw&s")
+	media13 := models.NewMedia("Media name 13", "png", uuid.New(), &mediaDesctiption13, "image", "https://image.geo.de/30140508/t/r4/v4/w1440/r0/-/internetz-f-209777524-jpg--79960-.jpg")
+	media14 := models.NewMedia("Media name 14", "jpg", uuid.New(), &mediaDesctiption14, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS7N25ADdSYwSC-m7qUSqlwPsKd4ALT9F425Q&s")
+	media15 := models.NewMedia("Media name 15", "png", uuid.New(), &mediaDesctiption15, "image", "https://www.wiwi.uni-wuerzburg.de/fileadmin/_processed_/3/9/csm_computer-1209641_1920_3a999762b2.jpg")
+	//media16 := models.NewMedia("Media name 16", "jpg", uuid.New(), &mediaDesctiption16, "image", "https://res.cloudinary.com/jerrick/image/upload/v1682443907/64480e82daabca001da8fbbc.jpg", 10246, false)
 
-	media17 := models.NewMedia("Media name 17", "png", &mediaDesctiption17, "image", "https://fitaliancook.com/wp-content/uploads/2025/07/pasta-e-fagioli-rezept-beitragsbild.jpg")
-	media18 := models.NewMedia("Media name 18", "jpg", &mediaDesctiption18, "image", "https://eat.de/wp-content/uploads/2025/03/tuerkische-pasta-7014.jpg")
-	media19 := models.NewMedia("Media name 19", "png", &mediaDesctiption19, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT0kWh_aX8DW5H8BkMJ3xqzXsRXPY2kyZu5ww&s")
-	media20 := models.NewMedia("Media name 20", "jpg", &mediaDesctiption20, "image", "https://images.gastronom.ru/TYj7-7529vyMsVom2kYJQl8MFrkWsrOY5hgaQPa1zsk/pr:article-cover-image/g:ce/rs:auto:0:0:0/L2Ntcy9hbGwtaW1hZ2VzL2IzY2RlN2ZjLTgzZjEtNGJlYi1iOGZmLWZhMzM3YzY1ODFlYy5qcGc.webp")
+	media17 := models.NewMedia("Media name 17", "png", uuid.New(), &mediaDesctiption17, "image", "https://fitaliancook.com/wp-content/uploads/2025/07/pasta-e-fagioli-rezept-beitragsbild.jpg")
+	media18 := models.NewMedia("Media name 18", "jpg", uuid.New(), &mediaDesctiption18, "image", "https://eat.de/wp-content/uploads/2025/03/tuerkische-pasta-7014.jpg")
+	media19 := models.NewMedia("Media name 19", "png", uuid.New(), &mediaDesctiption19, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT0kWh_aX8DW5H8BkMJ3xqzXsRXPY2kyZu5ww&s")
+	media20 := models.NewMedia("Media name 20", "jpg", uuid.New(), &mediaDesctiption20, "image", "https://images.gastronom.ru/TYj7-7529vyMsVom2kYJQl8MFrkWsrOY5hgaQPa1zsk/pr:article-cover-image/g:ce/rs:auto:0:0:0/L2Ntcy9hbGwtaW1hZ2VzL2IzY2RlN2ZjLTgzZjEtNGJlYi1iOGZmLWZhMzM3YzY1ODFlYy5qcGc.webp")
 
-	media21 := models.NewMedia("Media name 21", "png", &mediaDesctiption21, "image", "https://boxru.ru/upload/resize_cache/iblock/1af/400_400_140cd750bba9870f18aada2478b24840a/q3bxff3vhe8iljlcbpn4jlbx3szt2p1w.jpg")
-	media22 := models.NewMedia("Media name 22", "jpg", &mediaDesctiption22, "image", "https://s1.stc.all.kpcdn.net/putevoditel/projectid_346574/images/tild3037-3837-4461-a261-663863336336__photo.jpg")
+	media21 := models.NewMedia("Media name 21", "png", uuid.New(), &mediaDesctiption21, "image", "https://boxru.ru/upload/resize_cache/iblock/1af/400_400_140cd750bba9870f18aada2478b24840a/q3bxff3vhe8iljlcbpn4jlbx3szt2p1w.jpg")
+	media22 := models.NewMedia("Media name 22", "jpg", uuid.New(), &mediaDesctiption22, "image", "https://s1.stc.all.kpcdn.net/putevoditel/projectid_346574/images/tild3037-3837-4461-a261-663863336336__photo.jpg")
 
-	media23 := models.NewMedia("Media name 23", "png", &mediaDesctiption23, "image", "https://space-pm.ru/uploads/market/stati/small/1719495934.jpg")
+	media23 := models.NewMedia("Media name 23", "png", uuid.New(), &mediaDesctiption23, "image", "https://space-pm.ru/uploads/market/stati/small/1719495934.jpg")
 
 	media1ID, err := mediaRepo.Save(context.Background(), *media1)
 	if err != nil {

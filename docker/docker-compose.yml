@@ -10,5 +10,21 @@ services:
       - POSTGRES_DB=${DB_NAME}
     ports:
       - ${DB_PORT}:5432
+
+  ARISNET-MINIO:
+    image: minio/minio:latest
+    container_name: ARISNET-MINIO
+    command: server /data --console-address ":9001"
+    hostname: 127.0.0.1
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web-консоль
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+      
 volumes:
   postgres_data:
+  minio_data:
