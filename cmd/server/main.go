@@ -12,7 +12,6 @@ import (
 	"time"
 
 	_ "github.com/go-park-mail-ru/2026_1_ARIS/docs"
-	minioclient "github.com/go-park-mail-ru/2026_1_ARIS/pkg/minio"
 	"github.com/minio/minio-go/v7"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/server"
@@ -21,6 +20,7 @@ import (
 	chatrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
 	commentrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/comment"
 	likerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/like"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
 	mediarepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
 	postrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/post"
 	profilerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/profile"
@@ -158,7 +158,7 @@ func main() {
 		log.Fatalf("Can't set bucket policy: %v", err)
 	}
 
-	client := minioclient.NewMinioClient(minioClient)
+	client := media.NewMinioClient(minioClient)
 
 	// Инициализация репозиториев
 
@@ -198,7 +198,7 @@ func main() {
 	userService := userservice.NewUserService(userAccountRepo, profileRepo, userProfileRepo)
 	authService := authservice.NewAuthService(userAccountRepo, profileRepo, userProfileRepo)
 	sessService := sessionservice.NewSessionService(sessionRepo)
-	mediaService := mediaservice.NewMediaService(mediaRepo, postWithMediaRepo, *client)
+	mediaService := mediaservice.NewMediaService(mediaRepo, postWithMediaRepo, client)
 
 	// инициализация хэндлеров
 	authHandler := authhandler.NewAuthHandler(authService, sessService, userService)
@@ -207,7 +207,7 @@ func main() {
 		MediaService: mediaService,
 	}
 	feedHandler := feedhandler.NewFeedHandler(postService, mediaService, userService)
-	mediaHandler := mediahandler.NewMediaHandler(mediaService, sessService, *client)
+	mediaHandler := mediahandler.NewMediaHandler(mediaService, sessService)
 
 	// заполнение тестовыми данными
 	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo)

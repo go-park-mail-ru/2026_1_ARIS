@@ -2,13 +2,11 @@ package media
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
-	minioclient "github.com/go-park-mail-ru/2026_1_ARIS/pkg/minio"
 )
 
 type MediaHandler struct {
@@ -16,7 +14,7 @@ type MediaHandler struct {
 	sessionService session.SessionService
 }
 
-func NewMediaHandler(mediaService media.MediaService, sessionService session.SessionService, minioClient minioclient.MinioClient) *MediaHandler {
+func NewMediaHandler(mediaService media.MediaService, sessionService session.SessionService) *MediaHandler {
 	return &MediaHandler{
 		mediaService:   mediaService,
 		sessionService: sessionService,
@@ -28,21 +26,6 @@ type fileResponse struct {
 }
 
 func (h *MediaHandler) SaveFiles(w http.ResponseWriter, r *http.Request) {
-	// cookie, err := r.Cookie("session_id")
-	// if err != nil {
-	// 	utils.WriteError(w, "Unauthorized", http.StatusUnauthorized)
-	// 	return
-	// }
-
-	// session, err := h.sessionService.Get(r.Context(), models.SessionID(cookie.Value))
-	// if err != nil {
-	// 	utils.WriteError(w, "Unauthorized", http.StatusUnauthorized)
-	// 	return
-	// }
-
-	// _ = session
-
-	// Вынести это в env           ||
 	if err := r.ParseMultipartForm(50 << 20); err != nil {
 		utils.WriteError(w, "Parsing form error", http.StatusBadRequest)
 		return
@@ -60,7 +43,6 @@ func (h *MediaHandler) SaveFiles(w http.ResponseWriter, r *http.Request) {
 
 		mediaLink, err := h.mediaService.Save(r.Context(), fileHeader.Filename, fileHeader.Size, file)
 		if err != nil {
-			fmt.Println(err)
 			utils.WriteError(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}

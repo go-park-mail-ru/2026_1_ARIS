@@ -1,10 +1,12 @@
-package minioclient
+package media
 
 import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 
+	xminio "github.com/go-park-mail-ru/2026_1_ARIS/pkg/minio"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 )
@@ -14,14 +16,18 @@ type MinioClient struct {
 	// logger
 }
 
-func NewMinioClient(client *minio.Client) *MinioClient {
+func NewMinioClient(client *minio.Client) S3Repo {
 	return &MinioClient{
 		client: client,
 	}
 }
 
+type S3Repo interface {
+	Save(ctx context.Context, bucketName string, reader io.Reader, mediaUUID uuid.UUID, size int64, extension string, opts minio.PutObjectOptions) (string, error)
+}
+
 func (client *MinioClient) Save(ctx context.Context, bucketName string, reader io.Reader, mediaUUID uuid.UUID, size int64, extension string, opts minio.PutObjectOptions) (string, error) {
-	objectName := GenerageMedaName(mediaUUID, size, extension)
+	objectName := xminio.GenerateMediaName(mediaUUID, size, extension)
 
 	uploadInto, err := client.client.PutObject(ctx, bucketName, objectName, reader, size, opts)
 	if err != nil {
@@ -29,5 +35,5 @@ func (client *MinioClient) Save(ctx context.Context, bucketName string, reader i
 		return "", err
 	}
 
-	return fmt.Sprintf("http://localhost:9000/%s/%s", uploadInto.Bucket, uploadInto.Key), nil
+	return fmt.Sprintf("http://%s/%s/%s", os.Getenv("MINIO_ENDPOINT"), uploadInto.Bucket, uploadInto.Key), nil
 }

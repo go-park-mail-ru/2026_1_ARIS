@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"os"
+	"strings"
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/post"
-	minioclient "github.com/go-park-mail-ru/2026_1_ARIS/pkg/minio"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 )
@@ -19,7 +20,7 @@ import (
 type mediaService struct {
 	mediaRepo         media.MediaRepo
 	postWithMediaRepo post.PostWithMediaRepo
-	minioClient       minioclient.MinioClient
+	minioClient       media.S3Repo
 }
 
 type MediaService interface {
@@ -28,7 +29,7 @@ type MediaService interface {
 	Save(ctx context.Context, name string, size int64, fileReader multipart.File) (string, error)
 }
 
-func NewMediaService(mediaRepo media.MediaRepo, postWithMediaRepo post.PostWithMediaRepo, minioClient minioclient.MinioClient) MediaService {
+func NewMediaService(mediaRepo media.MediaRepo, postWithMediaRepo post.PostWithMediaRepo, minioClient media.S3Repo) MediaService {
 	return &mediaService{
 		mediaRepo:         mediaRepo,
 		postWithMediaRepo: postWithMediaRepo,
@@ -46,7 +47,7 @@ func (s *mediaService) GetAvatarByID(ctx context.Context, avatarID *int64) (*mod
 		return nil, err
 	}
 
-	if media.MimeType != "image" {
+	if !strings.HasPrefix(media.MimeType, "image") {
 		return nil, errors.New("Avatar has not \"image\" MIME-type")
 	}
 
@@ -79,13 +80,13 @@ func (s *mediaService) Save(ctx context.Context, name string, size int64, fileRe
 		ContentType: mType,
 	}
 
-	mediaLink, err := s.minioClient.Save(ctx, "storage", fileReader, mediaUUID, size, extension, opts)
+	mediaLink, err := s.minioClient.Save(ctx, os.Getenv("MINIO_BUCKET_NAME"), fileReader, mediaUUID, size, extension, opts)
 	if err != nil {
 		fmt.Println(err)
 		return "", err
 	}
 
-	createdMedia := models.NewMedia(name, " ", mediaUUID, nil, "  ", mediaLink)
+	createdMedia := models.NewMedia(name, extension, mediaUUID, nil, mType, mediaLink)
 
 	mediaID, err := s.mediaRepo.Save(ctx, *createdMedia)
 	if err != nil {
@@ -103,5 +104,5 @@ func GetMimeType(file io.Reader) (string, string, error) {
 		return mType.String(), mType.Extension(), nil
 	}
 
-	return "", "", err
+	return mType.String(), "", err
 }

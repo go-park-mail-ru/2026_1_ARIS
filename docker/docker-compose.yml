@@ -11,7 +11,7 @@ services:
     ports:
       - ${DB_PORT}:5432
 
-  minio:
+  ARISNET-MINIO:
     image: minio/minio:latest
     container_name: ARISNET-MINIO
     command: server /data --console-address ":9001"
@@ -24,11 +24,6 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
       - minio_data:/data
-    # healthcheck:
-    #   test: ["CMD", "mc", "ready", "local"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 3
       
 volumes:
   postgres_data:

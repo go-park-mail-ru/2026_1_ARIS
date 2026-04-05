@@ -56,8 +56,8 @@ func NewRouter(
 		r.Get("/api/users/latest-events", userHandler.GetLatestEvents)
 		r.Get("/api/feed", feedHandler.GetFeed)
 		r.Get("/api/posts/popular", feedHandler.GetPopularPosts)
+		r.Post("/api/media/upload", mediaHandler.SaveFiles)
 	})
-	r.Post("/api/media/upload", mediaHandler.SaveFiles)
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 	// Раздача статических файлов (изображений)
