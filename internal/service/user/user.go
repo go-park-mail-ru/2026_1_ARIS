@@ -3,14 +3,19 @@ package user
 //go:generate mockgen -destination=./../mocks/user_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user UserService
 import (
 	"context"
+	"errors"
+	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/profile"
 	useraccount "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_account"
 	userprofile "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_profile"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 const maxSuggestedUsers = 4
@@ -22,7 +27,7 @@ type userService struct {
 }
 
 type UserService interface {
-	CreateRealUserProfile(ctx context.Context, email, phone *string, passwordHash, username, firstName, lastName string, birthdayDate time.Time, gender models.Gender, avatarID *int64) (*models.Profile, error)
+	CreateRealUserProfile(ctx context.Context, email, phone *string, password, username, firstName, lastName string, birthdayDate time.Time, gender models.Gender, avatarID *int64) (*models.Profile, error)
 	GetUserList(ctx context.Context, offset, limit int) []models.UserAccount
 	GetUserProfileByProfileID(ctx context.Context, profileID int64) (*models.UserProfile, error)
 	GetUserProfileByUserProfileID(ctx context.Context, userProfileID int64) (*models.UserProfile, error)
@@ -36,6 +41,9 @@ type UserService interface {
 	GetLatestEvents(ctx context.Context) ([]LatestEvent, error)
 	GetUserAccountByUserAccountUid(ctx context.Context, userAccountUid uuid.UUID) (*models.UserAccount, error)
 	GetProfileByUserProfileID(ctx context.Context, userProfileID int64) (*models.Profile, error)
+	GetProfileByProfileID(ctx context.Context, profileID int64) (*models.Profile, error)
+	GetProfileByUserAccountID(ctx context.Context, userAccountID int64) (*models.Profile, error)
+	UpdateMe(ctx context.Context, updateDTO dto.UpdateFullProfileRequestDTO) error
 }
 
 type LatestEvent struct {
@@ -51,8 +59,76 @@ func NewUserService(userAccountRepo useraccount.UserAccountRepo, profileRepo pro
 	}
 }
 
-func (s *userService) CreateRealUserProfile(ctx context.Context, email, phone *string, passwordHash, username, firstName, lastName string, birthdayDate time.Time, gender models.Gender, avatarID *int64) (*models.Profile, error) {
-	userAccount := models.NewUserAccount(username, email, phone, passwordHash)
+func (s *userService) UpdateMe(ctx context.Context, updateDTO dto.UpdateFullProfileRequestDTO) error {
+
+	if updateDTO.Username != nil {
+		login := strings.ToLower(*updateDTO.Username)
+		updateDTO.Username = &login
+	}
+
+	userAccountDTO := dto.UpdateUserAccountDTO{
+		ID:       updateDTO.UserAccountID,
+		Username: updateDTO.Username,
+		Email:    updateDTO.Email,
+		Phone:    updateDTO.Phone,
+	}
+
+	var date *time.Time
+	if updateDTO.BirthdayDate != nil {
+		d, err := time.Parse("2006-01-02", *updateDTO.BirthdayDate)
+		if err == nil {
+			date = &d
+		}
+	}
+
+	userProfileDTO := dto.UpdateUserProfileDTO{
+		ID:           updateDTO.UserProfileID,
+		FirstName:    updateDTO.FirstName,
+		LastName:     updateDTO.LastName,
+		Bio:          updateDTO.Bio,
+		BirthdayDate: date,
+		Gender:       updateDTO.Gender,
+		NativeTown:   updateDTO.NativeTown,
+		Town:         updateDTO.Town,
+		Institution:  updateDTO.Institution,
+		Group:        updateDTO.Group,
+		Company:      updateDTO.Company,
+		JobTitle:     updateDTO.JobTitle,
+		Interests:    updateDTO.Interests,
+		FavMusic:     updateDTO.FavMusic,
+	}
+
+	// Если данные изменились - есть смысл сохранять
+	// email phone username - unique
+	if userAccountDTO.HasUpdates() {
+		fmt.Println("Изменили userAccount")
+		err := s.UserAccountRepo.Update(ctx, userAccountDTO)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Если данные изменились - есть смысл сохранять
+	if userProfileDTO.HasUpdates() {
+		fmt.Println("Изменили userProfile")
+		err := s.UserProfileRepo.Update(ctx, userProfileDTO)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *userService) CreateRealUserProfile(ctx context.Context, email, phone *string, password, username, firstName, lastName string, birthdayDate time.Time, gender models.Gender, avatarID *int64) (*models.Profile, error) {
+	username = strings.ToLower(strings.TrimSpace(username))
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, errors.New("ошибка при обработке пароля")
+	}
+
+	userAccount := models.NewUserAccount(username, email, phone, string(hashedPassword))
 	profile := models.NewProfile(avatarID)
 
 	userAccountID, err := s.UserAccountRepo.Save(ctx, *userAccount)
@@ -262,12 +338,12 @@ func (s *userService) GetUserAccountByUserAccountUid(ctx context.Context, userAc
 }
 
 func (s *userService) GetUserProfileByUserAccountID(ctx context.Context, userAccountID int64) (*models.UserProfile, error) {
-	userAccount, err := s.UserAccountRepo.Get(ctx, userAccountID)
-	if err != nil {
-		return nil, err
-	}
+	// userAccount, err := s.UserAccountRepo.Get(ctx, userAccountID)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	userProfile, err := s.UserProfileRepo.GetByUserAccountID(ctx, userAccount.ID)
+	userProfile, err := s.UserProfileRepo.GetByUserAccountID(ctx, userAccountID)
 	if err != nil {
 		return nil, err
 	}
@@ -276,5 +352,18 @@ func (s *userService) GetUserProfileByUserAccountID(ctx context.Context, userAcc
 }
 
 func (s *userService) GetProfileByUserProfileID(ctx context.Context, userProfileID int64) (*models.Profile, error) {
-	return s.GetProfileByUserProfileID(ctx, userProfileID)
+	userProfile, err := s.UserProfileRepo.Get(ctx, userProfileID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.ProfileRepo.Get(ctx, userProfile.ProfileID)
+}
+
+func (s *userService) GetProfileByProfileID(ctx context.Context, profileID int64) (*models.Profile, error) {
+	return s.ProfileRepo.Get(ctx, profileID)
+}
+
+func (s *userService) GetProfileByUserAccountID(ctx context.Context, userAccountID int64) (*models.Profile, error) {
+	return s.ProfileRepo.GetByUserAccountID(ctx, userAccountID)
 }

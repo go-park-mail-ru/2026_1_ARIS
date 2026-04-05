@@ -2,53 +2,48 @@ package chat
 
 import (
 	"context"
+	"errors"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type ChatRepo interface {
-	Save(ctx context.Context, chat models.Chat) (int64, error)
-	Get(ctx context.Context, chatID int64) (*models.Chat, error)
-}
-
-type chatSorage struct {
+type SQLChatRepo struct {
 	db *pgxpool.Pool
-	// logger
 }
 
-func NewChatStorage(db *pgxpool.Pool) ChatRepo {
-	return &chatSorage{
-		db: db,
-	}
+func NewSQLChatRepo(db *pgxpool.Pool) *SQLChatRepo {
+	return &SQLChatRepo{db: db}
 }
 
-func (storage *chatSorage) Save(ctx context.Context, chat models.Chat) (int64, error) {
+func (r *SQLChatRepo) Save(ctx context.Context, chat *models.Chat) error {
 	query := `INSERT INTO chat (uid, chat_type, title, avatar_id) VALUES ($1, $2, $3, $4) RETURNING id`
-
-	row := storage.db.QueryRow(ctx, query, uuid.New(), chat.Type, chat.Title, chat.AvatarID)
-
-	var chatID int64
-
-	err := row.Scan(&chatID)
+	var id int64
+	err := r.db.QueryRow(ctx, query, chat.Uid, chat.Type, chat.Title, chat.AvatarID).Scan(&id)
 	if err != nil {
-		return 0, err
+		return err
 	}
-
-	return chatID, nil
+	chat.ID = id
+	return nil
 }
 
-func (storage *chatSorage) Get(ctx context.Context, chatID int64) (*models.Chat, error) {
+func (r *SQLChatRepo) GetByID(ctx context.Context, id int64) (*models.Chat, error) {
 	query := `SELECT * FROM chat WHERE id=$1`
-
 	var chat models.Chat
-
-	err := pgxscan.Get(ctx, storage.db, &chat, query, chatID)
+	err := pgxscan.Get(ctx, r.db, &chat, query, id)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.New("chat not found")
+		}
 		return nil, err
 	}
-
 	return &chat, nil
+}
+
+func (r *SQLChatRepo) Delete(ctx context.Context, id int64) error {
+	query := `UPDATE chat SET is_active=false WHERE id=$1`
+	_, err := r.db.Exec(ctx, query, id)
+	return err
 }

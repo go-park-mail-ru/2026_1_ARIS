@@ -8,6 +8,7 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,6 +18,7 @@ type ProfileRepo interface {
 	Get(ctx context.Context, profileID int64) (*models.Profile, error)
 	Save(ctx context.Context, profile models.Profile) (int64, error)
 	GetAll(ctx context.Context) ([]models.Profile, error)
+	GetByUserAccountID(ctx context.Context, userAccountID int64) (*models.Profile, error)
 }
 
 type profileStorage struct {
@@ -35,6 +37,22 @@ func NewProfileStorage(db *pgxpool.Pool) ProfileRepo {
 	}
 }
 
+func (storage *profileStorage) GetByUserAccountID(ctx context.Context, userAccountID int64) (*models.Profile, error) {
+	query := `select p.id, p.uid, p.avatar_id, p.is_active, p.created_at, p.updated_at from user_account ua join user_profile up on up.user_account_id=ua.id join profile p on up.profile_id=p.id where ua.id=$1;`
+
+	var profile models.Profile
+
+	err := pgxscan.Get(ctx, storage.db, &profile, query, userAccountID)
+	if err != nil {
+		if pgxscan.NotFound(err) {
+			return nil, xerrors.ProfileNotFound
+		}
+		return nil, err
+	}
+
+	return &profile, nil
+}
+
 func (storage *profileStorage) Get(ctx context.Context, profileID int64) (*models.Profile, error) {
 	query := `SELECT * FROM profile WHERE id=$1;`
 
@@ -42,6 +60,9 @@ func (storage *profileStorage) Get(ctx context.Context, profileID int64) (*model
 
 	err := pgxscan.Get(ctx, storage.db, &profile, query, profileID)
 	if err != nil {
+		if pgxscan.NotFound(err) {
+			return nil, xerrors.ProfileNotFound
+		}
 		return nil, err
 	}
 
@@ -113,4 +134,8 @@ func (r *inmemoryProfileRepo) GetAll(ctx context.Context) ([]models.Profile, err
 	}
 
 	return profiles, nil
+}
+
+func (r *inmemoryProfileRepo) GetByUserAccountID(ctx context.Context, userAccountID int64) (*models.Profile, error) {
+	return nil, nil
 }

@@ -3,20 +3,26 @@ package useraccount
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"sync"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type UserAccountRepo interface {
 	Save(ctx context.Context, userAccount models.UserAccount) (int64, error)
 	Delete(ctx context.Context, id int64) error
+	Update(ctx context.Context, dto dto.UpdateUserAccountDTO) error
 
 	Get(ctx context.Context, id int64) (*models.UserAccount, error)
 	GetByEmail(ctx context.Context, email string) (*models.UserAccount, error)
@@ -41,6 +47,80 @@ func NewUserAccountStorage(db *pgxpool.Pool) UserAccountRepo {
 	return &UserAccountStorage{
 		db: db,
 	}
+}
+
+func mapPgError(err error) error {
+	if err != nil {
+
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) {
+			return err
+		}
+
+		switch pgErr.Code {
+		case pgerrcode.UniqueViolation:
+			return mapUniqueViolation(pgErr.ConstraintName)
+		default:
+			return err
+		}
+	}
+	return nil
+}
+
+func mapUniqueViolation(constraint string) error {
+	switch constraint {
+	case models.ConstraintUserEmail:
+		return models.ErrEmailAlreadyTaken
+	case models.ConstraintUserUsername:
+		return models.ErrUsernameAlreadyTaken
+	case models.ConstraintUserPhone:
+		return models.ErrPhoneAlreadyTaken
+	default:
+		return models.ErrDuplicateEntry
+	}
+}
+
+func (storage *UserAccountStorage) Update(ctx context.Context, dto dto.UpdateUserAccountDTO) error {
+	setClauses := []string{}
+	args := []any{}
+	argIdx := 1
+
+	// собираем запрос на обновление, чтобы обновлять только то, что изменилось
+	if dto.Email != nil {
+		setClauses = append(setClauses, fmt.Sprintf("email=$%d", argIdx))
+		args = append(args, *dto.Email)
+		argIdx++
+	}
+	if dto.Phone != nil {
+		setClauses = append(setClauses, fmt.Sprintf("phone=$%d", argIdx))
+		args = append(args, *dto.Phone)
+		argIdx++
+	}
+	if dto.Username != nil {
+		setClauses = append(setClauses, fmt.Sprintf("username=$%d", argIdx))
+		args = append(args, *dto.Username)
+		argIdx++
+	}
+
+	// нечего обновлять
+	if len(setClauses) == 0 {
+		return nil
+	}
+
+	args = append(args, dto.ID)
+
+	query := fmt.Sprintf("UPDATE user_account SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx)
+
+	res, err := storage.db.Exec(ctx, query, args...)
+	if err != nil {
+		return mapPgError(err)
+	}
+
+	if res.RowsAffected() != 1 {
+		return errors.New("UPDATE affected not on 1 row")
+	}
+
+	return nil
 }
 
 func (storage *UserAccountStorage) Save(ctx context.Context, userAccount models.UserAccount) (int64, error) {
@@ -257,4 +337,9 @@ func (r *inmemoryUserRepo) GetByUid(ctx context.Context, uid uuid.UUID) (*models
 		}
 	}
 	return nil, errors.New("User not found")
+}
+
+// заглушка
+func (r *inmemoryUserRepo) Update(ctx context.Context, dto dto.UpdateUserAccountDTO) error {
+	return nil
 }

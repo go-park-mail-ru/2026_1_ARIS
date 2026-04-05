@@ -5,7 +5,6 @@
 ### Команда
 
 - [Сергей Шульгиненко](https://github.com/londonwaterloo)
-- [Анна Опарина](https://github.com/one-compressive)
 - [Иван Хвостов](https://github.com/KokInside)
 - [Ринат Байков](https://github.com/ronprog)
 

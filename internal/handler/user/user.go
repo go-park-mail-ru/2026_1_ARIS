@@ -40,13 +40,22 @@ type suggestedUsersResponse struct {
 	Items []suggestedUserDTO `json:"items"`
 }
 
-func NewUserHandler(userProfileService user.UserService, mediaService media.MediaService) *UserHandler {
+func NewUserHandler(userService user.UserService, mediaService media.MediaService) *UserHandler {
 	return &UserHandler{
-		UserService:  userProfileService,
+		UserService:  userService,
 		MediaService: mediaService,
 	}
 }
 
+// @Description		Get suggested users
+// @ID				get-sug-users
+// @Summary			Get suggested users
+// @Tags			feed
+// @Security		SessionAuth
+// @Success			200 {object} 	suggestedUsersResponse
+// @Failure			401	{object}	dto.CommonErrorResponse
+// @Failure			500	{object}	dto.CommonErrorResponse
+// @Router			/users/suggested [get]
 func (h *UserHandler) GetSuggestedUsers(w http.ResponseWriter, r *http.Request) {
 
 	userIDFromCtx := r.Context().Value("user_id")
@@ -97,11 +106,20 @@ func (h *UserHandler) GetSuggestedUsers(w http.ResponseWriter, r *http.Request) 
 		})
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(suggestedUsersResponse{
 		Items: items,
 	})
 }
 
+// @Description		Get public suggested users
+// @ID				get-pub-pop-users
+// @Summary			Get public suggested users
+// @Tags			feed
+// @Success			200 {object} 	suggestedUsersResponse
+// @Failure			500	{object}	dto.CommonErrorResponse
+// @Router			/public/popular-users [get]
 func (h *UserHandler) GetPublicPopularUsers(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("GetPublicPopularUsers")
 	users, err := h.UserService.GetPublicPopularUsers(r.Context())
@@ -145,15 +163,21 @@ func (h *UserHandler) GetPublicPopularUsers(w http.ResponseWriter, r *http.Reque
 		})
 	}
 
-	fmt.Println("Items:")
-	fmt.Println(items)
-
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(suggestedUsersResponse{
 		Items: items,
 	})
 }
 
+// @Description		Get latest events
+// @ID				get-latest-events
+// @Summary			Get latest events
+// @Tags			feed
+// @Security		SessionAuth
+// @Success			200 {object} 	suggestedUsersResponse
+// @Failure			500	{object}	dto.CommonErrorResponse
+// @Router			/users/latest-events [get]
 func (h *UserHandler) GetLatestEvents(w http.ResponseWriter, r *http.Request) {
 	events, err := h.UserService.GetLatestEvents(r.Context())
 	if err != nil {
@@ -194,6 +218,7 @@ func (h *UserHandler) GetLatestEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(latestEventsResponse{
 		Items: items,
 	})

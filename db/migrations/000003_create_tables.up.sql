@@ -53,6 +53,14 @@ CREATE TABLE IF NOT EXISTS user_profile (
     bio TEXT DEFAULT NULL CHECK(LENGTH(bio) <= 1023),
     birthday_date DATE,
     gender gender_type NOT NULL,
+    native_town TEXT,
+    town TEXT,
+    institution TEXT,
+    study_group TEXT,
+    company TEXT,
+    job_title TEXT,
+    interests TEXT,
+    fav_music TEXT,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -253,17 +261,13 @@ CREATE TABLE IF NOT EXISTS reaction (
 );
 
 CREATE TABLE IF NOT EXISTS friendship (
-    friend1_id BIGINT NOT NULL REFERENCES profile(id),
-    friend2_id BIGINT NOT NULL REFERENCES profile(id),
     requester_id BIGINT NOT NULL REFERENCES profile(id),
+    addressee_id BIGINT NOT NULL REFERENCES profile(id),
     status friendship_status NOT NULL DEFAULT 'pending',
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    CONSTRAINT friendship_no_self_reference CHECK (friend1_id <> friend2_id),
-    CONSTRAINT friendship_order CHECK (friend1_id < friend2_id),
-    CONSTRAINT requester CHECK(requester_id = friend1_id OR requester_id = friend2_id),
-    PRIMARY KEY (friend1_id, friend2_id)
+    CONSTRAINT friendship_no_self_reference CHECK (requester_id <> addressee_id),
+    PRIMARY KEY (requester_id, addressee_id)
 );
 
 CREATE TABLE IF NOT EXISTS ad (

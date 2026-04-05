@@ -27,10 +27,10 @@ var validate = validator.New()
 type RegisterRequest struct {
 	FirstName string `json:"firstName" validate:"required,alphaunicode"`
 	LastName  string `json:"lastName" validate:"required,alphaunicode"`
-	Birthday  string `json:"birthday" validate:"required,min=8,max=10" example:"24/02/2005"`
+	Birthday  string `json:"birthday" validate:"required,min=8,max=10,datetime=02/01/2006" example:"24/02/2005"`
 	Gender    int    `json:"gender" validate:"required,oneof=1 2"`
 	Login     string `json:"login" validate:"required,alphanumunicode"`
-	Password1 string `json:"password1" validate:"required,min=6,max=72,printascii"`
+	Password1 string `json:"password1" validate:"required,min=6,max=72,printascii,eqfield=Password2"`
 	Password2 string `json:"password2" validate:"required,min=6,max=72,printascii"`
 }
 
@@ -81,19 +81,19 @@ func NewAuthHandler(authService auth.AuthService, sessSvc session.SessionService
 	}
 }
 
-// @Description User registration
-// @ID registration
-// @Summary Register user
-// @Tags auth
-// @Accept json
-// @Produce json
-// @Param input body RegisterRequest true "post data"
-// @Success 201 {object} models.Profile
-// @Failure 400 {object} CommonResponse
-// @Failure 404 {object} CommonResponse
-// @Failure 409 {object} CommonResponse
-// @Failure 500 {object} CommonResponse
-// @Router /auth/register [post]
+// @Description	User registration
+// @ID			registration
+// @Summary		Register user
+// @Tags		auth
+// @Accept		json
+// @Produce		json
+// @Param		input	body		RegisterRequest	true	"post data"
+// @Success		201		{object}	models.Profile
+// @Failure		400		{object}	dto.CommonErrorResponse
+// @Failure		404		{object}	dto.CommonErrorResponse
+// @Failure		409		{object}	dto.CommonErrorResponse
+// @Failure		500		{object}	dto.CommonErrorResponse
+// @Router		/auth/register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -176,19 +176,19 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(profile)
 }
 
-// @Description User login
-// @ID login
-// @Summary Login user
-// @Tags auth
-// @Accept json
-// @Produce json
-// @Param input body LoginRequest true "post data"
-// @Success 200 {object} LoginResponse
-// @Failure 400 {object} CommonResponse
-// @Failure 401 {object} CommonResponse
-// @Failure 404 {object} CommonResponse
-// @Failure 500 {object} CommonResponse
-// @Router /auth/login [post]
+// @Description	User login
+// @ID			login
+// @Summary		Login user
+// @Tags		auth
+// @Accept		json
+// @Produce		json
+// @Param		input	body		LoginRequest	true	"post data"
+// @Success		200		{object}	LoginResponse
+// @Failure		400		{object}	CommonResponse
+// @Failure		401		{object}	CommonResponse
+// @Failure		404		{object}	CommonResponse
+// @Failure		500		{object}	CommonResponse
+// @Router		/auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -241,14 +241,14 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(loginResponse)
 }
 
-// @Description User logout
-// @ID logout
-// @Summary Logout user
-// @Tags auth
-// @Produce json
-// @Security SessionAuth
-// @Success 200 {object} CommonResponse
-// @Router /auth/logout [post]
+// @Description	User logout
+// @ID			logout
+// @Summary		Logout user
+// @Tags		auth
+// @Produce		json
+// @Security	SessionAuth
+// @Success		200	{object}	CommonResponse
+// @Router		/auth/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
@@ -275,15 +275,15 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(CommonResponse{Message: "successfully logged out"})
 }
 
-// @Description Get current user from context
-// @Summary Get current user
-// @Tags auth
-// @Produce json
-// @Success 200 {object} models.User
-// @Failure 401 {object} CommonResponse
-// @Failure 404 {object} CommonResponse
-// @Security SessionAuth
-// @Router /auth/me [get]
+// @Description	Get current user from context
+// @Summary		Get current user
+// @Tags		auth
+// @Produce		json
+// @Success		200	{object}	models.UserAccount
+// @Failure		401	{object}	CommonResponse
+// @Failure		404	{object}	CommonResponse
+// @Security	SessionAuth
+// @Router		/auth/me [get]
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	userIDFromCtx := r.Context().Value("user_id")
 	if userIDFromCtx == nil {
@@ -314,17 +314,17 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(userProfile)
 }
 
-// @Description Validate register first step
-// @ID validate-register-step-one
-// @Summary Validate register step one
-// @Tags auth
-// @Accept json
-// @Produce json
-// @Param input body RegisterStepOneRequest true "step one data"
-// @Success 200 {object} ValidationErrorsResponse
-// @Failure 400 {object} CommonResponse
-// @Failure 500 {object} CommonResponse
-// @Router /auth/register/step-one [post]
+// @Description	Validate register first step
+// @ID			validate-register-step-one
+// @Summary		Validate register step one
+// @Tags		auth
+// @Accept		json
+// @Produce		json
+// @Param		input	body		RegisterStepOneRequest	true	"step one data"
+// @Success		200		{object}	ValidationErrorsResponse
+// @Failure		400		{object}	CommonResponse
+// @Failure		500		{object}	CommonResponse
+// @Router		/auth/register/step-one [post]
 func (h *AuthHandler) ValidateRegisterStepOne(w http.ResponseWriter, r *http.Request) {
 	var req RegisterStepOneRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

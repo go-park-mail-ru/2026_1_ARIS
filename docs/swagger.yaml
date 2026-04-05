@@ -2,23 +2,12 @@ basePath: /api
 consumes:
 - application/json
 definitions:
-  handlers.CommonResponse:
+  auth.CommonResponse:
     properties:
       message:
         type: string
     type: object
-  handlers.FeedResponse:
-    properties:
-      hasMore:
-        type: boolean
-      nextCursor:
-        type: string
-      posts:
-        items:
-          $ref: '#/definitions/handlers.postFeedDTO'
-        type: array
-    type: object
-  handlers.LoginRequest:
+  auth.LoginRequest:
     properties:
       login:
         type: string
@@ -28,7 +17,7 @@ definitions:
     - login
     - password
     type: object
-  handlers.LoginResponse:
+  auth.LoginResponse:
     properties:
       createdAt:
         type: string
@@ -39,7 +28,7 @@ definitions:
       lastName:
         type: string
     type: object
-  handlers.RegisterRequest:
+  auth.RegisterRequest:
     properties:
       birthday:
         example: 24/02/2005
@@ -48,6 +37,11 @@ definitions:
         type: string
       firstName:
         type: string
+      gender:
+        enum:
+        - 1
+        - 2
+        type: integer
       lastName:
         type: string
       login:
@@ -63,12 +57,114 @@ definitions:
     required:
     - birthday
     - firstName
+    - gender
     - lastName
     - login
     - password1
     - password2
     type: object
-  handlers.authorFeedDTO:
+  auth.RegisterStepOneRequest:
+    properties:
+      login:
+        type: string
+      password1:
+        maxLength: 72
+        minLength: 6
+        type: string
+      password2:
+        maxLength: 72
+        minLength: 6
+        type: string
+    required:
+    - login
+    - password1
+    - password2
+    type: object
+  auth.ValidationErrorsResponse:
+    properties:
+      errors:
+        additionalProperties:
+          type: string
+        type: object
+      ok:
+        type: boolean
+    type: object
+  dto.CommonErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  dto.FriendDTO:
+    properties:
+      avatarID:
+        type: integer
+      firstName:
+        type: string
+      lastName:
+        type: string
+      link:
+        type: string
+      login:
+        type: string
+      profileID:
+        type: integer
+      status:
+        type: string
+    type: object
+  dto.UpdateFullProfileRequestDTO:
+    properties:
+      bio:
+        type: string
+      birthdayDate:
+        example: "2000-11-26"
+        maxLength: 10
+        minLength: 8
+        type: string
+      company:
+        type: string
+      email:
+        type: string
+      favMusic:
+        type: string
+      firstName:
+        type: string
+      gender:
+        allOf:
+        - $ref: '#/definitions/models.Gender'
+        enum:
+        - male
+        - female
+      group:
+        type: string
+      institution:
+        type: string
+      interests:
+        type: string
+      jobTitle:
+        type: string
+      lastName:
+        type: string
+      login:
+        type: string
+      nativeTown:
+        type: string
+      phone:
+        type: string
+      town:
+        type: string
+    type: object
+  feed.FeedResponse:
+    properties:
+      hasMore:
+        type: boolean
+      nextCursor:
+        type: string
+      posts:
+        items:
+          $ref: '#/definitions/feed.postFeedDTO'
+        type: array
+    type: object
+  feed.authorFeedDTO:
     properties:
       avatarLink:
         type: string
@@ -81,7 +177,7 @@ definitions:
       username:
         type: string
     type: object
-  handlers.mediaFeedDTO:
+  feed.mediaFeedDTO:
     properties:
       id:
         type: string
@@ -90,10 +186,22 @@ definitions:
       mimeType:
         type: string
     type: object
-  handlers.postFeedDTO:
+  feed.popularPostDTO:
+    properties:
+      title:
+        type: string
+    type: object
+  feed.popularPostsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/feed.popularPostDTO'
+        type: array
+    type: object
+  feed.postFeedDTO:
     properties:
       author:
-        $ref: '#/definitions/handlers.authorFeedDTO'
+        $ref: '#/definitions/feed.authorFeedDTO'
       comments:
         type: integer
       createdAt:
@@ -104,40 +212,146 @@ definitions:
         type: integer
       medias:
         items:
-          $ref: '#/definitions/handlers.mediaFeedDTO'
+          $ref: '#/definitions/feed.mediaFeedDTO'
         type: array
       reposts:
         type: integer
       text:
         type: string
     type: object
+  friend.friendRequest:
+    properties:
+      friendID:
+        type: integer
+    type: object
+  friend.friendsResponse:
+    properties:
+      friends:
+        items:
+          $ref: '#/definitions/dto.FriendDTO'
+        type: array
+    type: object
+  models.Gender:
+    enum:
+    - male
+    - female
+    type: string
+    x-enum-varnames:
+    - Male
+    - Female
   models.Profile:
     properties:
-      avatar:
-        type: string
+      avatarID:
+        type: integer
       createdAt:
         type: string
       id:
-        type: string
+        type: integer
       isActive:
         type: boolean
+      uid:
+        type: string
       updatedAt:
         type: string
-      username:
-        type: string
     type: object
-  models.User:
+  models.UserAccount:
     properties:
       createdAt:
         type: string
       email:
         type: string
       id:
+        type: integer
+      isActive:
+        type: boolean
+      passwordHash:
         type: string
       phone:
         type: string
+      uid:
+        type: string
       updatedAt:
         type: string
+      username:
+        type: string
+    type: object
+  profile.EducationResponse:
+    properties:
+      grade:
+        description: '? naming'
+        type: string
+      institution:
+        type: string
+    type: object
+  profile.GetProfileMeResponse:
+    properties:
+      bio:
+        type: string
+      birthday:
+        description: '? type'
+        type: string
+      education:
+        items:
+          $ref: '#/definitions/profile.EducationResponse'
+        type: array
+      email:
+        type: string
+      favMusic:
+        type: string
+      firstName:
+        type: string
+      gender:
+        allOf:
+        - $ref: '#/definitions/models.Gender'
+        enum:
+        - "1"
+        - "2"
+      imageLink:
+        type: string
+      interests:
+        type: string
+      lastName:
+        type: string
+      nativeTown:
+        type: string
+      phone:
+        type: string
+      town:
+        type: string
+      work:
+        items:
+          $ref: '#/definitions/profile.WorkResponse'
+        type: array
+    required:
+    - firstName
+    - lastName
+    type: object
+  profile.WorkResponse:
+    properties:
+      company:
+        type: string
+      jobTitle:
+        type: string
+    type: object
+  user.suggestedUserDTO:
+    properties:
+      avatarLink:
+        type: string
+      firstName:
+        type: string
+      id:
+        type: string
+      lastName:
+        type: string
+      username:
+        type: string
+    type: object
+  user.suggestedUsersResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/user.suggestedUserDTO'
+        type: array
     type: object
 host: localhost:8080
 info:
@@ -158,40 +372,44 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/handlers.LoginRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/handlers.LoginResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/handlers.CommonResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/handlers.CommonResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.CommonResponse'
-      summary: Login user
-      tags:
-      - auth
-  /auth/logout:
-    post:
-      description: User logout
-      operationId: lohout
+          $ref: '#/definitions/auth.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.CommonResponse'
+            $ref: '#/definitions/auth.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/auth.CommonResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.CommonResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/auth.CommonResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.CommonResponse'
+      summary: Login user
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: User logout
+      operationId: logout
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.CommonResponse'
       security:
       - SessionAuth: []
       summary: Logout user
@@ -206,15 +424,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.User'
+            $ref: '#/definitions/models.UserAccount'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.CommonResponse'
+            $ref: '#/definitions/auth.CommonResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/handlers.CommonResponse'
+            $ref: '#/definitions/auth.CommonResponse'
       security:
       - SessionAuth: []
       summary: Get current user
@@ -232,7 +450,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/handlers.RegisterRequest'
+          $ref: '#/definitions/auth.RegisterRequest'
       produces:
       - application/json
       responses:
@@ -243,16 +461,51 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.CommonResponse'
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/handlers.CommonResponse'
+            $ref: '#/definitions/dto.CommonErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.CommonResponse'
+            $ref: '#/definitions/dto.CommonErrorResponse'
       summary: Register user
+      tags:
+      - auth
+  /auth/register/step-one:
+    post:
+      consumes:
+      - application/json
+      description: Validate register first step
+      operationId: validate-register-step-one
+      parameters:
+      - description: step one data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RegisterStepOneRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.ValidationErrorsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/auth.CommonResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.CommonResponse'
+      summary: Validate register step one
       tags:
       - auth
   /feed:
@@ -276,22 +529,594 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.FeedResponse'
+            $ref: '#/definitions/feed.FeedResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/handlers.CommonResponse'
+            $ref: '#/definitions/dto.CommonErrorResponse'
         "405":
           description: Method Not Allowed
           schema:
-            $ref: '#/definitions/handlers.CommonResponse'
+            $ref: '#/definitions/dto.CommonErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.CommonResponse'
+            $ref: '#/definitions/dto.CommonErrorResponse'
       security:
       - SessionAuth: []
       summary: Get feed
+      tags:
+      - feed
+  /friends/{status}:
+    get:
+      description: Getting current users' friends
+      operationId: get-friends
+      parameters:
+      - description: friendship status
+        in: path
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/friend.friendsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Get friends
+      tags:
+      - friend
+  /friends/{userID}:
+    delete:
+      description: Delete current users' friend by friend ID
+      operationId: delete-friend
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Delete current users' friend
+      tags:
+      - friend
+  /friends/accept/{requesterID}:
+    post:
+      description: Accept a friend request from a user by its ID
+      operationId: accept-friend
+      parameters:
+      - description: users' id to de accepted as friend
+        in: path
+        name: requesterID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Accept a friend request
+      tags:
+      - friend
+  /friends/decline/{requesterID}:
+    post:
+      description: Decline a friend request from a user by its ID
+      operationId: decline-friend
+      parameters:
+      - description: users' id to de declined as friend
+        in: path
+        name: requesterID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Decline a friend request
+      tags:
+      - friend
+  /friends/request:
+    post:
+      description: Send friendship request from current user to any user by ID
+      operationId: request-friendship
+      parameters:
+      - description: user ID to send friendship request to
+        in: body
+        name: profile_id
+        required: true
+        schema:
+          $ref: '#/definitions/friend.friendRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Send friendship request
+      tags:
+      - friend
+  /friends/request/{addresseeID}:
+    delete:
+      description: Revoke a friend request to a user by its ID
+      operationId: revoke-friend
+      parameters:
+      - description: users' id to de revoked as friend
+        in: path
+        name: addresseeID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Revoke a friend request
+      tags:
+      - friend
+  /friends/requests/incoming/{status}:
+    get:
+      description: Get incoming friend requests with status
+      operationId: get-incoming
+      parameters:
+      - description: friendship status
+        in: path
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/friend.friendsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Get incoming friend requests
+      tags:
+      - friend
+  /friends/requests/outgoing/{status}:
+    get:
+      description: Get outgoing friend requests with status
+      operationId: get-outgoing
+      parameters:
+      - description: friendship status
+        in: path
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/friend.friendsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Get outgoing friend requests
+      tags:
+      - friend
+  /image-proxy:
+    get:
+      consumes:
+      - application/json
+      description: Get image via proxy
+      operationId: image-proxy
+      parameters:
+      - description: image url
+        in: query
+        name: image_url
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      summary: Get image
+      tags:
+      - proxy
+  /posts/popular:
+    get:
+      description: Getting popular posts
+      operationId: get-popular-users
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/feed.popularPostsResponse'
+      security:
+      - SessionAuth: []
+      summary: Get popular posts
+      tags:
+      - feed
+  /profile/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get public profile data by profile id
+      operationId: get-profile-by-id
+      parameters:
+      - description: Profile ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/profile.GetProfileMeResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Get profile by id
+      tags:
+      - profile
+  /profile/me:
+    get:
+      consumes:
+      - application/json
+      description: Get current user profile data
+      operationId: get-profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/profile.GetProfileMeResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Get current profile
+      tags:
+      - profile
+  /profile/me/edit:
+    patch:
+      consumes:
+      - application/json
+      description: Edit current user profile
+      operationId: edit-profile
+      parameters:
+      - description: patch data
+        in: body
+        name: updated_fields
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateFullProfileRequestDTO'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Edit current profile
+      tags:
+      - profile
+  /public/feed:
+    get:
+      consumes:
+      - application/json
+      description: Getting public feed
+      operationId: get-public-feed
+      parameters:
+      - description: number of posts
+        in: query
+        name: limit
+        type: integer
+      - description: cursor string responded by feed request
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/feed.FeedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "405":
+          description: Method Not Allowed
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      summary: Get public feed
+      tags:
+      - feed
+  /public/popular-posts:
+    get:
+      description: Getting public popular posts
+      operationId: get-public-popular-users
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/feed.popularPostsResponse'
+      summary: Get public popular posts
+      tags:
+      - feed
+  /public/popular-users:
+    get:
+      description: Get public suggested users
+      operationId: get-pub-pop-users
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user.suggestedUsersResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      summary: Get public suggested users
+      tags:
+      - feed
+  /users/{id}/friends:
+    get:
+      description: Getting any users' friends by profile ID
+      operationId: get-any-friends
+      parameters:
+      - description: user id to get its friends
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/friend.friendsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      summary: Get any users' friends
+      tags:
+      - friend
+  /users/latest-events:
+    get:
+      description: Get latest events
+      operationId: get-latest-events
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user.suggestedUsersResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Get latest events
+      tags:
+      - feed
+  /users/suggested:
+    get:
+      description: Get suggested users
+      operationId: get-sug-users
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/user.suggestedUsersResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.CommonErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Get suggested users
       tags:
       - feed
 produces:

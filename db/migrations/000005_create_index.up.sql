@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_friend_pair ON friendship (LEAST(requester_id, addressee_id), GREATEST(requester_id, addressee_id));

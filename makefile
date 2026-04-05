@@ -15,7 +15,7 @@ coverage: clean
 	go tool cover -html=coverage.out
 
 migrate-up: migrate
-	$(MIGRATE) up 4
+	$(MIGRATE) up 5
 
 migrate-down: migrate
 	$(MIGRATE) down
@@ -28,6 +28,10 @@ migrate-force-down: migrate
 
 migrate:
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+# обновить конфигурацию сваггера
+swagger:
+	swag init -g main.go --dir ./cmd/server,./internal/handler/auth,./internal/handler/feed,./internal/handler/profile,./internal/handler/friend,./internal/handler/user,./internal/handler/proxy,./internal/handler/dto,./internal/service/dto,./internal/models --output docs
 
 # будет подтянут postgres:16
 db-up:
