@@ -2,10 +2,10 @@ package session
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 )
 
 type SessionRepo interface {
@@ -38,7 +38,7 @@ func (r *inmemorySessionRepo) Delete(ctx context.Context, id models.SessionID) e
 
 	_, ok := r.sessions[id]
 	if !ok {
-		return errors.New("session not found")
+		return xerrors.SessionNotFound
 	}
 	delete(r.sessions, id)
 	return nil
@@ -49,7 +49,7 @@ func (r *inmemorySessionRepo) GetByID(ctx context.Context, id models.SessionID) 
 	defer r.mu.RUnlock()
 	val, ok := r.sessions[id]
 	if !ok {
-		return nil, errors.New("session not found")
+		return nil, xerrors.SessionNotFound
 	}
 	return &val, nil
 }

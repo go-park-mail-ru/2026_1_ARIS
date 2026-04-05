@@ -76,6 +76,7 @@ func NewRouter(
 
 	r.Route("/api/friends", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
+			r.Use(mymiddleware.AuthMiddleware(sessSvc))
 			r.Post("/request", friendshipHandler.RequestFriendship)
 			r.Post("/accept/{requesterID}", friendshipHandler.AcceptFriendRequest)
 			r.Post("/decline/{requesterID}", friendshipHandler.DeclineFriendRequest)
