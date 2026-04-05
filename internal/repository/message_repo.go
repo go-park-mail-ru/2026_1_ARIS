@@ -3,10 +3,11 @@ package repository
 import (
 	"context"
 	"errors"
-	"sort"
-	"sync"
 
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type MessageRepo interface {
@@ -16,64 +17,50 @@ type MessageRepo interface {
 	Delete(ctx context.Context, id int64) error
 }
 
-type inmemoryMessageRepo struct {
-	mu       sync.RWMutex
-	messages map[int64]models.Message
+type messageStorage struct {
+	db *pgxpool.Pool
 }
 
-func NewMessageRepo() MessageRepo {
-	return &inmemoryMessageRepo{
-		messages: make(map[int64]models.Message),
+func NewMessageStorage(db *pgxpool.Pool) MessageRepo {
+	return &messageStorage{db: db}
+}
+
+func (s *messageStorage) Save(ctx context.Context, msg models.Message) error {
+	query := `INSERT INTO message (uid, text, chat_id, author_id) VALUES ($1, $2, $3, $4) RETURNING id`
+	var id int64
+	err := s.db.QueryRow(ctx, query, msg.Uid, msg.Text, msg.ChatID, msg.AuthorID).Scan(&id)
+	if err != nil {
+		return err
 	}
-}
-
-func (r *inmemoryMessageRepo) Save(ctx context.Context, msg models.Message) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.messages[msg.ID] = msg
+	msg.ID = id
 	return nil
 }
 
-func (r *inmemoryMessageRepo) GetByID(ctx context.Context, id int64) (*models.Message, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	msg, ok := r.messages[id]
-	if !ok {
-		return nil, errors.New("message not found")
+func (s *messageStorage) GetByID(ctx context.Context, id int64) (*models.Message, error) {
+	query := `SELECT * FROM message WHERE id=$1 AND is_active=true`
+	var msg models.Message
+	err := pgxscan.Get(ctx, s.db, &msg, query, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.New("message not found")
+		}
+		return nil, err
 	}
 	return &msg, nil
 }
 
-func (r *inmemoryMessageRepo) GetByChatID(ctx context.Context, chatID int64, limit, offset int) ([]models.Message, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	var msgs []models.Message
-	for _, msg := range r.messages {
-		if msg.ChatID == chatID {
-			msgs = append(msgs, msg)
-		}
+func (s *messageStorage) GetByChatID(ctx context.Context, chatID int64, limit, offset int) ([]models.Message, error) {
+	query := `SELECT * FROM message WHERE chat_id=$1 AND is_active=true ORDER BY created_at ASC LIMIT $2 OFFSET $3`
+	var messages []models.Message
+	err := pgxscan.Select(ctx, s.db, &messages, query, chatID, limit, offset)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
 	}
-
-	sort.Slice(msgs, func(i, j int) bool {
-		return msgs[i].CreatedAt.Before(msgs[j].CreatedAt)
-	})
-	if offset > len(msgs) {
-		return []models.Message{}, nil
-	}
-	end := offset + limit
-	if end > len(msgs) {
-		end = len(msgs)
-	}
-	return msgs[offset:end], nil
+	return messages, nil
 }
 
-func (r *inmemoryMessageRepo) Delete(ctx context.Context, id int64) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if _, ok := r.messages[id]; !ok {
-		return errors.New("message not found")
-	}
-	delete(r.messages, id)
-	return nil
+func (s *messageStorage) Delete(ctx context.Context, id int64) error {
+	query := `UPDATE message SET is_active=false WHERE id=$1`
+	_, err := s.db.Exec(ctx, query, id)
+	return err
 }

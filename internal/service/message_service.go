@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"math/rand/v2"
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
@@ -25,7 +24,6 @@ func NewMessageService(msgRepo repository.MessageRepo) MessageService {
 
 func (s *messageService) SendMessage(ctx context.Context, chatID, authorID int64, text string) (*models.Message, error) {
 	msg := models.Message{
-		ID:        rand.Int64(),
 		Uid:       uuid.New(),
 		Text:      &text,
 		ChatID:    chatID,

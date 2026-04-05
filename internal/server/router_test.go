@@ -26,10 +26,11 @@ func TestNewRouter(t *testing.T) {
 	)
 	userHandler := &userhandler.UserHandler{}
 	profileHandler := profile.NewProfileHandler(nil, nil, nil)
-	chatHandler := chathandler.NewChatHandler(nil, nil, nil, nil)
+	chatHandler := chathandler.NewChatHandler(nil, nil, nil, nil, nil) // добавили hub = nil
 	friendshipHandler := &friend.FriendHandler{}
+	wsHandler := chathandler.NewWebSocketHandler(nil, nil) // создаём wsHandler
 
-	router := NewRouter(authHandler, nil, feedHandler, userHandler, profileHandler, chatHandler, friendshipHandler)
+	router := NewRouter(authHandler, nil, feedHandler, userHandler, profileHandler, chatHandler, friendshipHandler, wsHandler)
 	assert.NotNil(t, router)
 	assert.IsType(t, &chi.Mux{}, router)
 }
