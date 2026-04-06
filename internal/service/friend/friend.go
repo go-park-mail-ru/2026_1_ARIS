@@ -56,6 +56,9 @@ func (s *friendshipService) CheckFriendship(ctx context.Context, profileID1, pro
 func (s *friendshipService) CheckFriendshipBy(ctx context.Context, profileID, friendID int64) (bool, models.FriendshipStatus, error) {
 	status, err := s.friendshipRepo.GetFriendshipStatusBy(ctx, profileID, friendID)
 	if err != nil {
+		if errors.Is(err, xerrors.FriendshipNotFound) {
+			return false, "", nil
+		}
 		return false, "", err
 	}
 
