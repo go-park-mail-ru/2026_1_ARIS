@@ -144,7 +144,13 @@ func (h *ChatHandler) CreateChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chat, err := h.chatService.CreatePrivateChat(r.Context(), userID, otherUserID)
+	resolvedUserID, err := h.resolveChatTargetUserAccountID(r.Context(), otherUserID)
+	if err != nil {
+		utils.WriteError(w, "не удалось определить собеседника", http.StatusBadRequest)
+		return
+	}
+
+	chat, err := h.chatService.CreatePrivateChat(r.Context(), userID, resolvedUserID)
 	if err != nil {
 		utils.WriteError(w, "ошибка создания чата", http.StatusInternalServerError)
 		return
@@ -240,7 +246,13 @@ func (h *ChatHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msg, err := h.messageService.SendMessage(r.Context(), chatID, userID, req.Text)
+	authorProfileID, err := h.getViewerProfileID(r.Context(), userID)
+	if err != nil {
+		utils.WriteError(w, "ошибка профиля пользователя", http.StatusInternalServerError)
+		return
+	}
+
+	msg, err := h.messageService.SendMessage(r.Context(), chatID, authorProfileID, req.Text)
 	if err != nil {
 		utils.WriteError(w, "ошибка отправки сообщения", http.StatusInternalServerError)
 		return
@@ -300,7 +312,7 @@ func (h *ChatHandler) mapMessageResponse(ctx context.Context, message models.Mes
 		ID:              strconv.FormatInt(message.ID, 10),
 		Uid:             message.Uid.String(),
 		Text:            message.Text,
-		AuthorName:      h.resolveUserDisplayName(ctx, message.AuthorID),
+		AuthorName:      h.resolveProfileDisplayName(ctx, message.AuthorID),
 		ParentMessageID: parentMessageID,
 		ChatID:          strconv.FormatInt(message.ChatID, 10),
 		AuthorID:        strconv.FormatInt(message.AuthorID, 10),
@@ -330,18 +342,24 @@ func (h *ChatHandler) chatHasMessages(ctx context.Context, chatID int64) bool {
 }
 
 func (h *ChatHandler) isSergeySupportChat(ctx context.Context, chat models.Chat, viewerUserID int64) bool {
-	if h.chatService == nil || h.userAccountRepo == nil {
+	if h.chatService == nil || h.userService == nil {
 		return false
 	}
+
+	viewerProfileID, err := h.getViewerProfileID(ctx, viewerUserID)
+	if err != nil {
+		return false
+	}
+
 	members, err := h.chatService.GetChatMembers(ctx, chat.ID)
 	if err != nil {
 		return false
 	}
 	for _, member := range members {
-		if member.MemberID == viewerUserID {
+		if member.MemberID == viewerProfileID {
 			continue
 		}
-		account, err := h.userAccountRepo.Get(ctx, member.MemberID)
+		account, err := h.userService.GetUserAccountByProfileID(ctx, member.MemberID)
 		if err != nil || account == nil {
 			continue
 		}
@@ -354,24 +372,67 @@ func (h *ChatHandler) resolveChatTitle(ctx context.Context, chat models.Chat, vi
 	if chat.Type != models.PrivateChat || h.chatService == nil {
 		return chat.Title
 	}
+
+	viewerProfileID, err := h.getViewerProfileID(ctx, viewerUserID)
+	if err != nil {
+		return chat.Title
+	}
+
 	members, err := h.chatService.GetChatMembers(ctx, chat.ID)
 	if err != nil {
 		return chat.Title
 	}
 	for _, member := range members {
-		if member.MemberID == viewerUserID {
+		if member.MemberID == viewerProfileID {
 			continue
 		}
-		return h.resolveUserDisplayName(ctx, member.MemberID)
+		return h.resolveProfileDisplayName(ctx, member.MemberID)
 	}
 	return chat.Title
 }
 
-func (h *ChatHandler) resolveUserDisplayName(ctx context.Context, userID int64) string {
+func (h *ChatHandler) getViewerProfileID(ctx context.Context, userID int64) (int64, error) {
+	if h.userService == nil {
+		return userID, nil
+	}
+
+	profile, err := h.userService.GetUserProfileByUserAccountID(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+	if profile == nil {
+		return 0, nil
+	}
+
+	return profile.ProfileID, nil
+}
+
+func (h *ChatHandler) resolveChatTargetUserAccountID(ctx context.Context, inputID int64) (int64, error) {
+	if h.userService == nil {
+		return inputID, nil
+	}
+
+	if account, err := h.userService.GetUserAccountByProfileID(ctx, inputID); err == nil && account != nil {
+		return account.ID, nil
+	}
+
+	if _, err := h.userService.GetUserProfileByUserAccountID(ctx, inputID); err == nil {
+		return inputID, nil
+	}
+
+	account, err := h.userService.GetUserAccountByProfileID(ctx, inputID)
+	if err != nil || account == nil {
+		return 0, err
+	}
+
+	return account.ID, nil
+}
+
+func (h *ChatHandler) resolveProfileDisplayName(ctx context.Context, profileID int64) string {
 	if h.userService == nil {
 		return "Пользователь"
 	}
-	profile, err := h.userService.GetUserProfileByUserAccountID(ctx, userID)
+	profile, err := h.userService.GetUserProfileByProfileID(ctx, profileID)
 	if err != nil || profile == nil {
 		return "Пользователь"
 	}

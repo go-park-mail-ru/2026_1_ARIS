@@ -32,7 +32,7 @@ func (s *messageService) SendMessage(ctx context.Context, chatID, authorID int64
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	if err := s.msgRepo.Save(ctx, msg); err != nil {
+	if err := s.msgRepo.Save(ctx, &msg); err != nil {
 		return nil, err
 	}
 	return &msg, nil

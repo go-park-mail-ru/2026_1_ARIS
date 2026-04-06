@@ -16,7 +16,7 @@ type SessionID string
 type ChatType string
 
 const (
-	PrivateChat ChatType = "private"
+	PrivateChat ChatType = "personal"
 	GroupChat   ChatType = "community"
 )
 
@@ -265,29 +265,29 @@ func NewChat(chat_type ChatType, title string, avatarID *int64) *Chat {
 
 // ChatMember - represents a member in a chat
 type ChatMember struct {
-	ID        int64      `json:"id"`
-	Uid       uuid.UUID  `json:"uid"`
-	ChatID    int64      `json:"chat"`
-	MemberID  int64      `json:"member"`
-	JoinedAt  time.Time  `json:"joinedAt"`
+	ID        int64      `db:"id" json:"id"`
+	Uid       uuid.UUID  `db:"uid" json:"uid"`
+	ChatID    int64      `db:"chat_id" json:"chat"`
+	MemberID  int64      `db:"profile_id" json:"member"`
+	JoinedAt  time.Time  `db:"joined_at" json:"joinedAt"`
 	IsActive  bool       `json:"isActive"`
-	LeaveAt   *time.Time `json:"leaveAt,omitempty"`
-	CreatedAt time.Time  `json:"createdAt"`
-	UpdatedAt time.Time  `json:"updatedAt"`
-	Role      string     `json:"role"`
+	LeaveAt   *time.Time `db:"leave_at" json:"leaveAt,omitempty"`
+	CreatedAt time.Time  `db:"created_at" json:"createdAt"`
+	UpdatedAt time.Time  `db:"updated_at" json:"updatedAt"`
+	Role      string     `db:"chat_role" json:"role"`
 }
 
 type Message struct {
-	ID              int64     `json:"id"`
-	Uid             uuid.UUID `json:"uid"`
-	Text            *string   `json:"text,omitempty"`
-	ParentMessageID *int64    `json:"parentMessage,omitempty"`
-	ChatID          int64     `json:"chat"`
-	AuthorID        int64     `json:"authorId,omitempty"`
-	StickerID       *int64    `json:"sticker,omitempty"`
-	IsActive        bool      `json:"isActive"`
-	CreatedAt       time.Time `json:"createdAt"`
-	UpdatedAt       time.Time `json:"updatedAt"`
+	ID              int64     `db:"id" json:"id"`
+	Uid             uuid.UUID `db:"uid" json:"uid"`
+	Text            *string   `db:"message_text" json:"text,omitempty"`
+	ParentMessageID *int64    `db:"parent_message_id" json:"parentMessage,omitempty"`
+	ChatID          int64     `db:"chat_id" json:"chat"`
+	AuthorID        int64     `db:"author_id" json:"authorId,omitempty"`
+	StickerID       *int64    `db:"sticker_id" json:"sticker,omitempty"`
+	IsActive        bool      `db:"is_active" json:"isActive"`
+	CreatedAt       time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt       time.Time `db:"updated_at" json:"updatedAt"`
 }
 
 type UserMessageStatus struct {

@@ -40,7 +40,12 @@ func NewChatService(
 }
 
 func (s *chatService) GetUserChats(ctx context.Context, userID int64) ([]models.Chat, error) {
-	members, err := s.chatMemberRepo.GetByUserID(ctx, userID)
+	profileID, err := s.getProfileIDByUserAccountID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	members, err := s.chatMemberRepo.GetByUserID(ctx, profileID)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +63,16 @@ func (s *chatService) GetUserChats(ctx context.Context, userID int64) ([]models.
 }
 
 func (s *chatService) CreatePrivateChat(ctx context.Context, user1ID, user2ID int64) (*models.Chat, error) {
-	members1, err := s.chatMemberRepo.GetByUserID(ctx, user1ID)
+	user1ProfileID, err := s.getProfileIDByUserAccountID(ctx, user1ID)
+	if err != nil {
+		return nil, err
+	}
+	user2ProfileID, err := s.getProfileIDByUserAccountID(ctx, user2ID)
+	if err != nil {
+		return nil, err
+	}
+
+	members1, err := s.chatMemberRepo.GetByUserID(ctx, user1ProfileID)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +91,7 @@ func (s *chatService) CreatePrivateChat(ctx context.Context, user1ID, user2ID in
 			continue
 		}
 		for _, m2 := range members2 {
-			if m2.MemberID == user2ID {
+			if m2.MemberID == user2ProfileID {
 				return chat, nil
 			}
 		}
@@ -101,7 +115,7 @@ func (s *chatService) CreatePrivateChat(ctx context.Context, user1ID, user2ID in
 		ID:        rand.Int64(),
 		Uid:       uuid.New(),
 		ChatID:    chat.ID,
-		MemberID:  user1ID,
+		MemberID:  user1ProfileID,
 		JoinedAt:  now,
 		IsActive:  true,
 		CreatedAt: now,
@@ -112,7 +126,7 @@ func (s *chatService) CreatePrivateChat(ctx context.Context, user1ID, user2ID in
 		ID:        rand.Int64(),
 		Uid:       uuid.New(),
 		ChatID:    chat.ID,
-		MemberID:  user2ID,
+		MemberID:  user2ProfileID,
 		JoinedAt:  now,
 		IsActive:  true,
 		CreatedAt: now,
@@ -139,14 +153,32 @@ func (s *chatService) GetChatMembers(ctx context.Context, chatID int64) ([]model
 }
 
 func (s *chatService) CheckUserInChat(ctx context.Context, chatID, userID int64) (bool, error) {
+	profileID, err := s.getProfileIDByUserAccountID(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+
 	members, err := s.chatMemberRepo.GetByChatID(ctx, chatID)
 	if err != nil {
 		return false, err
 	}
 	for _, m := range members {
-		if m.MemberID == userID {
+		if m.MemberID == profileID {
 			return true, nil
 		}
 	}
 	return false, nil
+}
+
+func (s *chatService) getProfileIDByUserAccountID(ctx context.Context, userAccountID int64) (int64, error) {
+	if s.userService == nil {
+		return userAccountID, nil
+	}
+
+	userProfile, err := s.userService.GetUserProfileByUserAccountID(ctx, userAccountID)
+	if err != nil {
+		return 0, err
+	}
+
+	return userProfile.ProfileID, nil
 }

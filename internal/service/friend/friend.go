@@ -2,6 +2,7 @@ package friend
 
 import (
 	"context"
+	"errors"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
@@ -39,6 +40,9 @@ func (s *friendshipService) GetFriends(ctx context.Context, profileID int64, sta
 func (s *friendshipService) CheckFriendship(ctx context.Context, profileID1, profileID2 int64) (bool, models.FriendshipStatus, error) {
 	status, err := s.friendshipRepo.GetFriendshipStatus(ctx, profileID1, profileID2)
 	if err != nil {
+		if errors.Is(err, xerrors.FriendshipNotFound) {
+			return false, "", nil
+		}
 		return false, "", err
 	}
 

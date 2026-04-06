@@ -26,14 +26,14 @@ func NewChatMemberStorage(db *pgxpool.Pool) ChatMemberRepo {
 }
 
 func (s *chatMemberStorage) Save(ctx context.Context, member models.ChatMember) error {
-	query := `INSERT INTO chat_member (uid, chat_id, member_id, joined_at, role) 
+	query := `INSERT INTO chat_member (uid, chat_id, profile_id, joined_at, chat_role) 
               VALUES ($1, $2, $3, $4, $5)`
 	_, err := s.db.Exec(ctx, query, member.Uid, member.ChatID, member.MemberID, member.JoinedAt, member.Role)
 	return err
 }
 
 func (s *chatMemberStorage) GetByChatID(ctx context.Context, chatID int64) ([]models.ChatMember, error) {
-	query := `SELECT * FROM chat_member WHERE chat_id=$1 AND is_active=true`
+	query := `SELECT * FROM chat_member WHERE chat_id=$1 AND leave_at IS NULL`
 	var members []models.ChatMember
 	err := pgxscan.Select(ctx, s.db, &members, query, chatID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -43,7 +43,7 @@ func (s *chatMemberStorage) GetByChatID(ctx context.Context, chatID int64) ([]mo
 }
 
 func (s *chatMemberStorage) GetByUserID(ctx context.Context, userID int64) ([]models.ChatMember, error) {
-	query := `SELECT * FROM chat_member WHERE member_id=$1 AND is_active=true`
+	query := `SELECT * FROM chat_member WHERE profile_id=$1 AND leave_at IS NULL`
 	var members []models.ChatMember
 	err := pgxscan.Select(ctx, s.db, &members, query, userID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -53,7 +53,7 @@ func (s *chatMemberStorage) GetByUserID(ctx context.Context, userID int64) ([]mo
 }
 
 func (s *chatMemberStorage) Delete(ctx context.Context, id int64) error {
-	query := `UPDATE chat_member SET is_active=false WHERE id=$1`
+	query := `UPDATE chat_member SET leave_at=NOW(), updated_at=NOW() WHERE id=$1`
 	_, err := s.db.Exec(ctx, query, id)
 	return err
 }
