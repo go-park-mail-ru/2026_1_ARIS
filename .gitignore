@@ -1,4 +1,5 @@
 .env
+.env.compose
 docker/.env
 aris-server
 .DS_Store

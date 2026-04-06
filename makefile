@@ -1,4 +1,7 @@
-.PHONY: test coverage clean
+.PHONY: test coverage clean dev down reset-db logs migrate backend-shell frontend-shell
+
+COMPOSE_FILE=docker-compose.dev.yml
+COMPOSE_ENV_FILE=.env.compose
 
 include .env
 
@@ -51,3 +54,24 @@ services-up:
 
 services-stop:
 	docker compose -f ./docker/docker-compose.yml --env-file ./.env stop
+
+dev:
+	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) up --build -d
+	sh ./scripts/dev-ready.sh $(COMPOSE_ENV_FILE)
+
+down:
+	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) down
+
+reset-db:
+	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) down -v
+	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) up --build -d
+	sh ./scripts/dev-ready.sh $(COMPOSE_ENV_FILE)
+
+logs:
+	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) logs -f
+
+backend-shell:
+	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) exec backend sh
+
+frontend-shell:
+	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) exec frontend sh
