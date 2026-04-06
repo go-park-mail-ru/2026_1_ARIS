@@ -20,6 +20,10 @@ import (
 
 const maxSuggestedUsers = 4
 
+func normalizeUsername(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
+}
+
 type userService struct {
 	UserAccountRepo useraccount.UserAccountRepo
 	ProfileRepo     profile.ProfileRepo
@@ -225,7 +229,7 @@ func (s *userService) GetSuggestedUsers(ctx context.Context, currentUserAccountI
 			continue
 		}
 
-		if userAccount.Username == "KomandaARIS" {
+		if normalizeUsername(userAccount.Username) == "komandaaris" {
 			continue
 		}
 
@@ -254,10 +258,10 @@ func (s *userService) GetPublicPopularUsers(ctx context.Context) ([]models.Profi
 	}
 
 	targetUsernames := []string{
-		"SergeyShulginenko",
-		"AnnaOparina",
-		"IvanKhvostov",
-		"RinatBaikov",
+		"sergeyshulginenko",
+		"annaoparina",
+		"ivankhvostov",
+		"rinatbaikov",
 	}
 
 	profilesByUsername := make(map[string]models.Profile)
@@ -266,7 +270,7 @@ func (s *userService) GetPublicPopularUsers(ctx context.Context) ([]models.Profi
 		if err != nil {
 			continue
 		}
-		profilesByUsername[userAccount.Username] = profile
+		profilesByUsername[normalizeUsername(userAccount.Username)] = profile
 	}
 
 	result := make([]models.Profile, 0, len(targetUsernames))
@@ -291,9 +295,9 @@ func (s *userService) GetLatestEvents(ctx context.Context) ([]LatestEvent, error
 		Username string
 		Type     int
 	}{
-		{Username: "SofiaSitnichenko", Type: 1},
-		{Username: "DaniilKhasyanov", Type: 2},
-		{Username: "KonstantinGalanin", Type: 3},
+		{Username: "sofiasitnichenko", Type: 1},
+		{Username: "daniilkhasyanov", Type: 2},
+		{Username: "konstantingalanin", Type: 3},
 	}
 
 	profilesByUsername := make(map[string]models.Profile)
@@ -302,7 +306,7 @@ func (s *userService) GetLatestEvents(ctx context.Context) ([]LatestEvent, error
 		if err != nil {
 			continue
 		}
-		profilesByUsername[userAccount.Username] = profile
+		profilesByUsername[normalizeUsername(userAccount.Username)] = profile
 	}
 
 	result := make([]LatestEvent, 0, len(targets))
