@@ -26,7 +26,7 @@ type mediaService struct {
 type MediaService interface {
 	GetAvatarByID(ctx context.Context, avatarID *int64) (*models.Media, error)
 	GetMediasByPostID(ctx context.Context, postID int64) []models.Media
-	Save(ctx context.Context, name string, size int64, fileReader multipart.File) (string, error)
+	Save(ctx context.Context, name string, size int64, fileReader multipart.File) (int64, string, error)
 }
 
 func NewMediaService(mediaRepo media.MediaRepo, postWithMediaRepo post.PostWithMediaRepo, minioClient media.S3Repo) MediaService {
@@ -69,7 +69,7 @@ func (s *mediaService) GetMediasByPostID(ctx context.Context, postID int64) []mo
 	return medias
 }
 
-func (s *mediaService) Save(ctx context.Context, name string, size int64, fileReader multipart.File) (string, error) {
+func (s *mediaService) Save(ctx context.Context, name string, size int64, fileReader multipart.File) (int64, string, error) {
 	mediaUUID := uuid.New()
 
 	mType, extension, err := GetMimeType(fileReader)
@@ -83,19 +83,17 @@ func (s *mediaService) Save(ctx context.Context, name string, size int64, fileRe
 	mediaLink, err := s.minioClient.Save(ctx, os.Getenv("MINIO_BUCKET_NAME"), fileReader, mediaUUID, size, extension, opts)
 	if err != nil {
 		fmt.Println(err)
-		return "", err
+		return 0, "", err
 	}
 
 	createdMedia := models.NewMedia(name, extension, mediaUUID, nil, mType, mediaLink)
 
 	mediaID, err := s.mediaRepo.Save(ctx, *createdMedia)
 	if err != nil {
-		return "", err
+		return 0, "", err
 	}
 
-	_ = mediaID
-
-	return mediaLink, nil
+	return mediaID, mediaLink, nil
 }
 
 func GetMimeType(file io.Reader) (string, string, error) {
