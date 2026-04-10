@@ -9,6 +9,7 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	pgerrors "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/pg_errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -35,14 +36,14 @@ func NewPostStorage(db *pgxpool.Pool) PostRepo {
 }
 
 func (storage *postStorage) Save(ctx context.Context, post models.Post) (int64, error) {
-	query := `INSERT INTO post (uid, post_text, author_id, is_public_demo) VALUES ($1, $2, $3, $4) RETURNING id`
+	query := `INSERT INTO post (uid, post_text, author_id, is_public_demo, allow_comments) VALUES ($1, $2, $3, $4, $5) RETURNING id`
 
-	row := storage.db.QueryRow(ctx, query, uuid.New(), post.Text, post.AuthorID, post.IsPublicDemo)
+	row := storage.db.QueryRow(ctx, query, uuid.New(), post.Text, post.AuthorID, post.IsPublicDemo, post.AllowComments)
 
 	var postID int64
 
 	if err := row.Scan(&postID); err != nil {
-		return 0, err
+		return 0, pgerrors.MapPgError(err)
 	}
 
 	return postID, nil

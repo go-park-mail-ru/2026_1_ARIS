@@ -158,7 +158,7 @@ type Media struct {
 	UpdatedAt   time.Time `db:"updated_at"`
 }
 
-func NewMedia(name, extension string, uid uuid.UUID, description *string, mimeType, link string) *Media {
+func NewMedia(name, extension string, uid uuid.UUID, description *string, mimeType, link string, authorID int64) *Media {
 	now := time.Now()
 	return &Media{
 		ID:          rand.Int64(),
@@ -168,6 +168,7 @@ func NewMedia(name, extension string, uid uuid.UUID, description *string, mimeTy
 		Description: description,
 		MimeType:    mimeType,
 		Link:        link,
+		AuthorID:    authorID,
 		IsActive:    true,
 		CreatedAt:   now,
 		UpdatedAt:   now,
@@ -199,27 +200,30 @@ func NewProfile(avatarID *int64) *Profile {
 }
 
 type Post struct {
-	ID           int64     `db:"id"`
-	Uid          uuid.UUID `db:"uid"`
-	Text         *string   `db:"post_text,omitempty"`
-	AuthorID     int64     `db:"author_id"` // to Profile
-	IsPublicDemo bool      `db:"is_public_demo"`
-	IsActive     bool      `db:"is_active"`
-	CreatedAt    time.Time `db:"created_at"`
-	UpdatedAt    time.Time `db:"updated_at"`
+	ID            int64     `db:"id"`
+	Uid           uuid.UUID `db:"uid"`
+	Text          *string   `db:"post_text,omitempty"`
+	AuthorID      int64     `db:"author_id"` // to Profile
+	IsPublicDemo  bool      `db:"is_public_demo"`
+	AllowComments bool      `db:"allow_comments"`
+	IsActive      bool      `db:"is_active"`
+	CreatedAt     time.Time `db:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"`
 }
 
-func NewPost(text *string, authorID int64) *Post {
+func NewPost(text *string, authorID int64, isPublicDemo, allowComments bool) *Post {
 	now := time.Now()
 
 	return &Post{
-		ID:        rand.Int64(),
-		Uid:       uuid.New(),
-		Text:      text,
-		AuthorID:  authorID,
-		IsActive:  true,
-		CreatedAt: now,
-		UpdatedAt: now,
+		ID:            rand.Int64(),
+		Uid:           uuid.New(),
+		Text:          text,
+		AuthorID:      authorID,
+		IsActive:      true,
+		IsPublicDemo:  isPublicDemo,
+		AllowComments: allowComments,
+		CreatedAt:     now,
+		UpdatedAt:     now,
 	}
 }
 

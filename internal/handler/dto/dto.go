@@ -75,6 +75,7 @@ func (d UpdateUserProfileDTO) HasUpdates() bool {
 		d.Interests != nil || d.FavMusic != nil
 }
 
-// type UpdateProfileDTO struct {
-// 	AvatarID *int64 `db:"avatar_id,omitempty"`
-// }
+type MediaRequestData struct {
+	MediaID  int64  `json:"mediaID"`
+	MediaURL string `json:"mediaURL"`
+}

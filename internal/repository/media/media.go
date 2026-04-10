@@ -7,6 +7,7 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -35,6 +36,9 @@ func (storage *mediaStorage) Get(ctx context.Context, id int64) (*models.Media, 
 
 	err := pgxscan.Get(ctx, storage.db, &media, query, id)
 	if err != nil {
+		if pgxscan.NotFound(err) {
+			return nil, xerrors.MediaNotFound
+		}
 		return nil, err
 	}
 
@@ -42,9 +46,9 @@ func (storage *mediaStorage) Get(ctx context.Context, id int64) (*models.Media, 
 }
 
 func (storage *mediaStorage) Save(ctx context.Context, media models.Media) (int64, error) {
-	query := `INSERT INTO media (uid, media_name, extension, mime_type, size, link) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
+	query := `INSERT INTO media (uid, media_name, extension, mime_type, size, link, author_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
 
-	row := storage.db.QueryRow(ctx, query, media.Uid, media.Name, media.Extension, media.MimeType, media.Size, media.Link)
+	row := storage.db.QueryRow(ctx, query, media.Uid, media.Name, media.Extension, media.MimeType, media.Size, media.Link, media.AuthorID)
 
 	var mediaID int64
 
@@ -83,6 +87,11 @@ func (storage *mediaStorage) UpdateLink(ctx context.Context, id int64, newLink s
 
 	return nil
 }
+
+// func (storage *mediaStorage) GetBatch(ctx context.Context, ids []int64) error {
+// 	query := `SELECT id, uid, mime_type, link
+// 	FROM media WHERE id=ANY($1)`
+// }
 
 type inmemoryMediaRepo struct {
 	mu     sync.RWMutex
