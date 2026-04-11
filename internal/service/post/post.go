@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/comment"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/like"
@@ -21,11 +22,12 @@ type FeedResult struct {
 }
 
 type postService struct {
-	PostRepo    post.PostRepo
-	ProfileRepo profile.ProfileRepo
-	CommentRepo comment.CommentRepo
-	RepostRepo  repost.RepostRepo
-	LikeRepo    like.LikeRepo
+	PostRepo          post.PostRepo
+	PostWithMediaRepo post.PostWithMediaRepo
+	ProfileRepo       profile.ProfileRepo
+	CommentRepo       comment.CommentRepo
+	RepostRepo        repost.RepostRepo
+	LikeRepo          like.LikeRepo
 }
 
 type FeedParams struct {
@@ -34,6 +36,7 @@ type FeedParams struct {
 }
 
 type PostService interface {
+	Get(ctx context.Context, postID int64) (*models.Post, error)
 	getFeed(ctx context.Context, getCursoredPosts func(ctx context.Context, params FeedParams) ([]models.Post, error), rawCursor string, limit int) (FeedResult, error)
 	GetFeed(ctx context.Context, rawCursor string, limit int) (FeedResult, error)
 	GetPublicFeed(ctx context.Context, rawCursor string, limit int) (FeedResult, error)
@@ -44,21 +47,66 @@ type PostService interface {
 	GetRepostCount(ctx context.Context, postID int64) int
 	GetPublicPopularPosts(ctx context.Context) ([]models.Post, error)
 	GetPopularPosts(ctx context.Context) ([]models.Post, error)
+	AttachMedia(ctx context.Context, postID int64, mediaID []dto.MediaRequestData) mediaErrors
+	Delete(ctx context.Context, postID int64) error
+	//Update(ctx context.Context, dto dto.PostUpdateDTO) error
 }
 
 func NewPostService(postRepo post.PostRepo,
+	postWithMediaRepo post.PostWithMediaRepo,
 	profileRepo profile.ProfileRepo,
 	commentRepo comment.CommentRepo,
 	repostRepo repost.RepostRepo,
 	likeRepo like.LikeRepo) PostService {
 
 	return &postService{
-		PostRepo:    postRepo,
-		ProfileRepo: profileRepo,
-		CommentRepo: commentRepo,
-		RepostRepo:  repostRepo,
-		LikeRepo:    likeRepo,
+		PostRepo:          postRepo,
+		ProfileRepo:       profileRepo,
+		CommentRepo:       commentRepo,
+		RepostRepo:        repostRepo,
+		LikeRepo:          likeRepo,
+		PostWithMediaRepo: postWithMediaRepo,
 	}
+}
+
+type attachmentError struct {
+	err error
+	pos int
+}
+
+type mediaErrors struct {
+	Errs []attachmentError
+}
+
+// func (s *postService) Update(ctx context.Context, dto dto.PostUpdateDTO) error {
+
+// }
+
+func (s *postService) Get(ctx context.Context, postID int64) (*models.Post, error) {
+	return s.PostRepo.Get(ctx, postID)
+}
+
+func (s *postService) Delete(ctx context.Context, postID int64) error {
+	return s.PostRepo.Delete(ctx, postID)
+}
+
+func (s *postService) AttachMedia(ctx context.Context, postID int64, mediaID []dto.MediaRequestData) mediaErrors {
+	var mediaErrors mediaErrors
+
+	mediaIDs := make([]int64, len(mediaID))
+	for i, media := range mediaID {
+		mediaIDs[i] = media.MediaID
+	}
+
+	for i, media := range mediaID {
+		postWithMedia := models.NewPostWithMedia(postID, media.MediaID, i)
+		err := s.PostWithMediaRepo.Save(ctx, *postWithMedia)
+		if err != nil {
+			// Определить тип ошибки
+			mediaErrors.Errs = append(mediaErrors.Errs, attachmentError{err: err, pos: i})
+		}
+	}
+	return mediaErrors
 }
 
 // получение ленты, будь то публичных или нет постов (унификация чезер callbach-функцию getCursoredPosts)

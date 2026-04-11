@@ -12,10 +12,9 @@ import (
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	pgerrors "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/pg_errors"
 	"github.com/google/uuid"
-	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -46,37 +45,6 @@ type UserAccountStorage struct {
 func NewUserAccountStorage(db *pgxpool.Pool) UserAccountRepo {
 	return &UserAccountStorage{
 		db: db,
-	}
-}
-
-func mapPgError(err error) error {
-	if err != nil {
-
-		var pgErr *pgconn.PgError
-		if !errors.As(err, &pgErr) {
-			return err
-		}
-
-		switch pgErr.Code {
-		case pgerrcode.UniqueViolation:
-			return mapUniqueViolation(pgErr.ConstraintName)
-		default:
-			return err
-		}
-	}
-	return nil
-}
-
-func mapUniqueViolation(constraint string) error {
-	switch constraint {
-	case models.ConstraintUserEmail:
-		return models.ErrEmailAlreadyTaken
-	case models.ConstraintUserUsername:
-		return models.ErrUsernameAlreadyTaken
-	case models.ConstraintUserPhone:
-		return models.ErrPhoneAlreadyTaken
-	default:
-		return models.ErrDuplicateEntry
 	}
 }
 
@@ -113,7 +81,7 @@ func (storage *UserAccountStorage) Update(ctx context.Context, dto dto.UpdateUse
 
 	res, err := storage.db.Exec(ctx, query, args...)
 	if err != nil {
-		return mapPgError(err)
+		return pgerrors.MapPgError(err)
 	}
 
 	if res.RowsAffected() != 1 {

@@ -2,7 +2,7 @@
 
 set -eu
 
-ENV_FILE="${1:-.env.compose}"
+ENV_FILE="${1:-./.env.compose}"
 TIMEOUT_SECONDS="${2:-120}"
 
 if [ ! -f "$ENV_FILE" ]; then

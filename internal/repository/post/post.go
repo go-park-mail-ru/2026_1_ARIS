@@ -9,6 +9,8 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
+	pgerrors "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/pg_errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -35,14 +37,14 @@ func NewPostStorage(db *pgxpool.Pool) PostRepo {
 }
 
 func (storage *postStorage) Save(ctx context.Context, post models.Post) (int64, error) {
-	query := `INSERT INTO post (uid, post_text, author_id, is_public_demo) VALUES ($1, $2, $3, $4) RETURNING id`
+	query := `INSERT INTO post (uid, post_text, author_id, is_public_demo, allow_comments) VALUES ($1, $2, $3, $4, $5) RETURNING id`
 
-	row := storage.db.QueryRow(ctx, query, uuid.New(), post.Text, post.AuthorID, post.IsPublicDemo)
+	row := storage.db.QueryRow(ctx, query, uuid.New(), post.Text, post.AuthorID, post.IsPublicDemo, post.AllowComments)
 
 	var postID int64
 
 	if err := row.Scan(&postID); err != nil {
-		return 0, err
+		return 0, pgerrors.MapPgError(err)
 	}
 
 	return postID, nil
@@ -53,11 +55,16 @@ func (storage *postStorage) Delete(ctx context.Context, id int64) error {
 
 	res, err := storage.db.Exec(ctx, query, id)
 	if err != nil {
+		// подумать...
 		return err
 	}
 
-	if res.RowsAffected() != 1 {
-		return errors.New("DELETE affected not on 1 row")
+	if res.RowsAffected() == 0 {
+		return xerrors.PostNotFound
+	}
+
+	if res.RowsAffected() > 1 {
+		return xerrors.MultipleRowsAffect
 	}
 
 	return nil
@@ -85,6 +92,9 @@ func (storage *postStorage) Get(ctx context.Context, id int64) (*models.Post, er
 	var post models.Post
 
 	if err := pgxscan.Get(ctx, storage.db, &post, query, id); err != nil {
+		if pgxscan.NotFound(err) {
+			return nil, xerrors.PostNotFound
+		}
 		return nil, err
 	}
 

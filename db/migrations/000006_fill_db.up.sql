@@ -1,24 +1,24 @@
-INSERT INTO media (uid, link, media_name, extension, mime_type, description, size) VALUES
-('aa000001-0000-0000-0000-000000000001', 'media/link/1',  'avatar_gleb',        'jpg',  'image/jpeg', 'Аватар Глеба',                          204800),
-('aa000001-0000-0000-0000-000000000002', 'media/link/2',  'avatar_ivan',        'jpg',  'image/jpeg', 'Аватар Ивана',                          189400),
-('aa000001-0000-0000-0000-000000000003', 'media/link/3',  'avatar_anna',        'png',  'image/png',  'Аватар Анны',                           312000),
-('aa000001-0000-0000-0000-000000000004', 'media/link/4',  'avatar_dmitry',      'jpg',  'image/jpeg', 'Аватар Дмитрия',                        95000),
-('aa000001-0000-0000-0000-000000000005', 'media/link/5',  'avatar_maria',       'png',  'image/png',  'Аватар Марии',                          450000),
-('aa000001-0000-0000-0000-000000000006', 'media/link/6',  'post_hiking',        'jpg',  'image/jpeg', 'Фото из похода',                        1048576),
-('aa000001-0000-0000-0000-000000000007', 'media/link/7',  'post_sunset',        'jpg',  'image/jpeg', 'Закат на море',                         2097152),
-('aa000001-0000-0000-0000-000000000008', 'media/link/8',  'post_concert',       'mp4',  'video/mp4',  'Видео с концерта',                      10485760),
-('aa000001-0000-0000-0000-000000000009', 'media/link/9',  'post_code',          'png',  'image/png',  'Скриншот кода',                         180000),
-('aa000001-0000-0000-0000-000000000010', 'media/link/0',  'post_food',          'jpg',  'image/jpeg', 'Ужин в ресторане',                      320000),
-('aa000001-0000-0000-0000-000000000011', 'media/link/11', 'chat_team_avatar',   'png',  'image/png',  'Аватар командного чата',                51200),
-('aa000001-0000-0000-0000-000000000012', 'media/link/12', 'msg_meme',           'jpg',  'image/jpeg', 'Мем в сообщении',                       512000),
-('aa000001-0000-0000-0000-000000000013', 'media/link/13', 'comment_screenshot', 'jpg',  'image/jpeg', 'Скриншот в комментарии',                256000),
-('aa000001-0000-0000-0000-000000000014', 'media/link/14', 'ad_tech_banner',     'png',  'image/png',  'Баннер техно-рекламы',                  307200),
-('aa000001-0000-0000-0000-000000000015', 'media/link/15', 'comm_dev_avatar',    'png',  'image/png',  'Аватар сообщества разработчиков',       102400),
-('aa000001-0000-0000-0000-000000000016', 'media/link/16', 'comm_music_avatar',  'jpg',  'image/jpeg', 'Аватар музыкального сообщества',        88000),
-('aa000001-0000-0000-0000-000000000017', 'media/link/17', 'comm_sport_avatar',  'png',  'image/png',  'Аватар спортивного сообщества',         95000),
-('aa000001-0000-0000-0000-000000000018', 'media/link/18', 'comm_food_avatar',   'jpg',  'image/jpeg', 'Аватар кулинарного сообщества',         110000),
-('aa000001-0000-0000-0000-000000000019', 'media/link/19', 'comm_travel_avatar', 'png',  'image/png',  'Аватар туристического сообщества',      125000),
-('aa000001-0000-0000-0000-000000000020', 'media/link/20', 'ad_food_banner',     'jpg',  'image/jpeg', 'Баннер рекламы кофе',                   280000);
+INSERT INTO media (uid, author_id, link, media_name, extension, mime_type, description, size) VALUES
+('aa000001-0000-0000-0000-000000000001', 1, 'media/link/1',  'avatar_gleb',        'jpg',  'image/jpeg', 'Аватар Глеба',                          204800),
+('aa000001-0000-0000-0000-000000000002', 1, 'media/link/2',  'avatar_ivan',        'jpg',  'image/jpeg', 'Аватар Ивана',                          189400),
+('aa000001-0000-0000-0000-000000000003', 1, 'media/link/3',  'avatar_anna',        'png',  'image/png',  'Аватар Анны',                           312000),
+('aa000001-0000-0000-0000-000000000004', 1, 'media/link/4',  'avatar_dmitry',      'jpg',  'image/jpeg', 'Аватар Дмитрия',                        95000),
+('aa000001-0000-0000-0000-000000000005', 1, 'media/link/5',  'avatar_maria',       'png',  'image/png',  'Аватар Марии',                          450000),
+('aa000001-0000-0000-0000-000000000006', 1, 'media/link/6',  'post_hiking',        'jpg',  'image/jpeg', 'Фото из похода',                        1048576),
+('aa000001-0000-0000-0000-000000000007', 1, 'media/link/7',  'post_sunset',        'jpg',  'image/jpeg', 'Закат на море',                         2097152),
+('aa000001-0000-0000-0000-000000000008', 1, 'media/link/8',  'post_concert',       'mp4',  'video/mp4',  'Видео с концерта',                      10485760),
+('aa000001-0000-0000-0000-000000000009', 1, 'media/link/9',  'post_code',          'png',  'image/png',  'Скриншот кода',                         180000),
+('aa000001-0000-0000-0000-000000000010', 1, 'media/link/0',  'post_food',          'jpg',  'image/jpeg', 'Ужин в ресторане',                      320000),
+('aa000001-0000-0000-0000-000000000011', 1, 'media/link/11', 'chat_team_avatar',   'png',  'image/png',  'Аватар командного чата',                51200),
+('aa000001-0000-0000-0000-000000000012', 1, 'media/link/12', 'msg_meme',           'jpg',  'image/jpeg', 'Мем в сообщении',                       512000),
+('aa000001-0000-0000-0000-000000000013', 1, 'media/link/13', 'comment_screenshot', 'jpg',  'image/jpeg', 'Скриншот в комментарии',                256000),
+('aa000001-0000-0000-0000-000000000014', 1, 'media/link/14', 'ad_tech_banner',     'png',  'image/png',  'Баннер техно-рекламы',                  307200),
+('aa000001-0000-0000-0000-000000000015', 1, 'media/link/15', 'comm_dev_avatar',    'png',  'image/png',  'Аватар сообщества разработчиков',       102400),
+('aa000001-0000-0000-0000-000000000016', 1, 'media/link/16', 'comm_music_avatar',  'jpg',  'image/jpeg', 'Аватар музыкального сообщества',        88000),
+('aa000001-0000-0000-0000-000000000017', 1, 'media/link/17', 'comm_sport_avatar',  'png',  'image/png',  'Аватар спортивного сообщества',         95000),
+('aa000001-0000-0000-0000-000000000018', 1, 'media/link/18', 'comm_food_avatar',   'jpg',  'image/jpeg', 'Аватар кулинарного сообщества',         110000),
+('aa000001-0000-0000-0000-000000000019', 1, 'media/link/19', 'comm_travel_avatar', 'png',  'image/png',  'Аватар туристического сообщества',      125000),
+('aa000001-0000-0000-0000-000000000020', 1, 'media/link/20', 'ad_food_banner',     'jpg',  'image/jpeg', 'Баннер рекламы кофе',                   280000);
 
 INSERT INTO profile (uid, avatar_id) VALUES
 ('bb000001-0000-0000-0000-000000000001',  1),
@@ -167,12 +167,12 @@ INSERT INTO reaction (uid, message_id, reaction_type, author_id) VALUES
 ('c2bfafcf-0b3a-44f8-9d7f-0f95498008ba', 3, '\happy',   4),
 ('c2bfafcf-0b3a-44f8-9d7f-0f95598008ba', 4, '\like',    2);
 
-INSERT INTO friendship (friend1_id, friend2_id, requester_id, status) VALUES
-(1, 2, 1, 'accepted'),
-(1, 3, 1, 'accepted'),
-(2, 3, 2, 'pending'),
-(3, 4, 3, 'accepted'),
-(4, 5, 4, 'accepted');
+INSERT INTO friendship (requester_id, addressee_id, status) VALUES
+(1, 2, 'accepted'),
+(1, 3, 'accepted'),
+(2, 3, 'pending'),
+(3, 4, 'accepted'),
+(4, 5, 'accepted');
 
 INSERT INTO ad (uid, title, description, link, media_id, author_id) VALUES
 ('6ba7f1e8-a62c-4853-a977-d91a633b2a20', 'Курсы Go с нуля',        'Онлайн-курс по Go для начинающих разработчиков', 'https://go-course.ru',  14, 1),

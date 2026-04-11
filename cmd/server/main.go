@@ -24,6 +24,7 @@ import (
 	feedhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
 	friendshiphandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/friend"
 	mediahandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/media"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/post"
 	profilehandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
 	userhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
 
@@ -171,7 +172,7 @@ func main() {
 	chatMemberRepo := repository.NewChatMemberStorage(db)
 	messageRepo := repository.NewMessageStorage(db)
 
-	postService := postservice.NewPostService(postRepo, profileRepo, commentRepo, repostRepo, likeRepo)
+	postService := postservice.NewPostService(postRepo, postWithMediaRepo, profileRepo, commentRepo, repostRepo, likeRepo)
 	userService := userservice.NewUserService(userAccountRepo, profileRepo, userProfileRepo)
 	authService := authservice.NewAuthService(userAccountRepo, profileRepo, userProfileRepo)
 	sessService := sessionservice.NewSessionService(sessionRepo)
@@ -187,16 +188,17 @@ func main() {
 	authHandler := authhandler.NewAuthHandler(authService, sessService, userService)
 	userHandler := userhandler.NewUserHandler(userService, mediaService)
 	feedHandler := feedhandler.NewFeedHandler(postService, mediaService, userService)
-	mediaHandler := mediahandler.NewMediaHandler(mediaService, sessService)
+	mediaHandler := mediahandler.NewMediaHandler(mediaService, sessService, userService)
 	profileHandler := profilehandler.NewProfileHandler(userService, mediaService, sessService)
 	chatHandler := chathandler.NewChatHandler(chatSvc, messageSvc, userAccountRepo, userService, hub)
 	friendHandler := friendshiphandler.NewFriendHandler(sessService, userService, friendshipService)
 	wsHandler := wsHandler.NewWebSocketHandler(hub, chatSvc)
+	postHandler := post.NewPostHandler(userService, postService, mediaService)
 
 	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo)
 
 	// создаём роутер
-	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, mediaHandler, profileHandler, chatHandler, friendHandler, wsHandler)
+	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, mediaHandler, profileHandler, chatHandler, friendHandler, wsHandler, postHandler)
 
 	ensureKnownTestUser(ctx, userAccountRepo, userService, "sergeyshulginenko", "chatcheck123", "Сергей", "Шульгиненко")
 	ensureKnownPassword(ctx, db, "sergeyshulginenko", "chatcheck123")

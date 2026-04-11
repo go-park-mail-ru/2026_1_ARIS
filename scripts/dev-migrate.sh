@@ -39,19 +39,7 @@ psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 
   -f ./db/migrations/000004_create_triggers.up.sql
 psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
   -f ./db/migrations/000005_create_index.up.sql
-
-sed '/^INSERT INTO friendship (friend1_id, friend2_id, requester_id, status) VALUES/,/^);$/d' \
-  ./db/migrations/000006_fill_db.up.sql > /tmp/000006_fill_db.compat.sql
-
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
-  -f /tmp/000006_fill_db.compat.sql
-
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
-  -c "INSERT INTO friendship (requester_id, addressee_id, status) VALUES
-      (1, 2, 'accepted'),
-      (1, 3, 'accepted'),
-      (2, 3, 'pending'),
-      (3, 4, 'accepted'),
-      (4, 5, 'accepted');"
+# psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
+#   -f ./db/migrations/000006_fill_db.up.sql
 
 echo "Development bootstrap completed."

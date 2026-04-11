@@ -1,9 +1,7 @@
 .PHONY: test coverage clean dev down reset-db logs migrate backend-shell frontend-shell
 
-COMPOSE_FILE=docker-compose.dev.yml
-COMPOSE_ENV_FILE=.env.compose
-
-include .env
+COMPOSE_FILE=./docker-compose.dev.yml
+COMPOSE_ENV_FILE=./.env.compose
 
 MIGRATE=migrate -source "file://./db/migrations" -database "postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=${SSL_MODE}"
 
@@ -69,6 +67,9 @@ reset-db:
 
 logs:
 	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) logs -f
+
+logs-backend:
+	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) logs -f backend
 
 backend-shell:
 	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) exec backend sh

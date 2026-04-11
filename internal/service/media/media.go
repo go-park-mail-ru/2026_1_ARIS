@@ -11,6 +11,7 @@ import (
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/post"
 	"github.com/google/uuid"
@@ -26,7 +27,7 @@ type mediaService struct {
 type MediaService interface {
 	GetAvatarByID(ctx context.Context, avatarID *int64) (*models.Media, error)
 	GetMediasByPostID(ctx context.Context, postID int64) []models.Media
-	Save(ctx context.Context, name string, size int64, fileReader multipart.File) (int64, string, error)
+	Save(ctx context.Context, name string, size int64, fileReader multipart.File, contentType string, authorID int64) (int64, string, error)
 }
 
 func NewMediaService(mediaRepo media.MediaRepo, postWithMediaRepo post.PostWithMediaRepo, minioClient media.S3Repo) MediaService {
@@ -69,10 +70,14 @@ func (s *mediaService) GetMediasByPostID(ctx context.Context, postID int64) []mo
 	return medias
 }
 
-func (s *mediaService) Save(ctx context.Context, name string, size int64, fileReader multipart.File) (int64, string, error) {
+func (s *mediaService) Save(ctx context.Context, name string, size int64, fileReader multipart.File, contentType string, authorID int64) (int64, string, error) {
 	mediaUUID := uuid.New()
 
 	mType, extension, err := GetMimeType(fileReader)
+
+	if !isAllowed(mType, contentType) {
+		return 0, "", xerrors.UnsupportedContentType
+	}
 
 	fileReader.Seek(0, io.SeekStart)
 
@@ -86,7 +91,7 @@ func (s *mediaService) Save(ctx context.Context, name string, size int64, fileRe
 		return 0, "", err
 	}
 
-	createdMedia := models.NewMedia(name, extension, mediaUUID, nil, mType, mediaLink)
+	createdMedia := models.NewMedia(name, extension, mediaUUID, nil, mType, mediaLink, authorID)
 
 	mediaID, err := s.mediaRepo.Save(ctx, *createdMedia)
 	if err != nil {
@@ -103,4 +108,20 @@ func GetMimeType(file io.Reader) (string, string, error) {
 	}
 
 	return mType.String(), "", err
+}
+
+var allowedByContext = map[string][]string{
+	"post": {"image/"},
+	//"post_attachment": {},
+	"avatar": {"image/"},
+	//"message": {},
+}
+
+func isAllowed(mimeType string, allowed string) bool {
+	for _, prefix := range allowedByContext[allowed] {
+		if strings.HasPrefix(mimeType, prefix) {
+			return true
+		}
+	}
+	return false
 }
