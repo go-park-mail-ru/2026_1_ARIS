@@ -10,6 +10,7 @@ import (
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -172,6 +173,9 @@ func (storage *userProfileStorage) GetByProfileID(ctx context.Context, profileID
 
 	err := pgxscan.Get(ctx, storage.db, &userProfile, query, profileID)
 	if err != nil {
+		if pgxscan.NotFound(err) {
+			return nil, xerrors.UserProfileNotFound
+		}
 		return nil, err
 	}
 

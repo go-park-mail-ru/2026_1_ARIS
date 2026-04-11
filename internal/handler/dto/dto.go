@@ -79,3 +79,9 @@ type MediaRequestData struct {
 	MediaID  int64  `json:"mediaID"`
 	MediaURL string `json:"mediaURL"`
 }
+
+type PostUpdateDTO struct {
+	Text *string `json:"text"`
+	//AllowComments bool `json:"allowComments"`
+	//IsPublicDemo  bool `json:"isPublicDemo"`
+}

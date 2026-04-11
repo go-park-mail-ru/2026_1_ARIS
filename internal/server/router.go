@@ -100,6 +100,9 @@ func NewRouter(
 		r.Group(func(r chi.Router) {
 			r.Use(mymiddleware.AuthMiddleware(sessSvc))
 			r.Post("/upload", postHandler.CreatePost)
+			r.Delete("/{id}", postHandler.DeletePost)
+			r.Get("/{id}", postHandler.GetPost)
+			r.Patch("/{id}", postHandler.UpdatePost)
 		})
 	})
 

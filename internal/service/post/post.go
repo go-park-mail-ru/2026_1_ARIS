@@ -36,6 +36,7 @@ type FeedParams struct {
 }
 
 type PostService interface {
+	Get(ctx context.Context, postID int64) (*models.Post, error)
 	getFeed(ctx context.Context, getCursoredPosts func(ctx context.Context, params FeedParams) ([]models.Post, error), rawCursor string, limit int) (FeedResult, error)
 	GetFeed(ctx context.Context, rawCursor string, limit int) (FeedResult, error)
 	GetPublicFeed(ctx context.Context, rawCursor string, limit int) (FeedResult, error)
@@ -47,6 +48,8 @@ type PostService interface {
 	GetPublicPopularPosts(ctx context.Context) ([]models.Post, error)
 	GetPopularPosts(ctx context.Context) ([]models.Post, error)
 	AttachMedia(ctx context.Context, postID int64, mediaID []dto.MediaRequestData) mediaErrors
+	Delete(ctx context.Context, postID int64) error
+	//Update(ctx context.Context, dto dto.PostUpdateDTO) error
 }
 
 func NewPostService(postRepo post.PostRepo,
@@ -73,6 +76,18 @@ type attachmentError struct {
 
 type mediaErrors struct {
 	Errs []attachmentError
+}
+
+// func (s *postService) Update(ctx context.Context, dto dto.PostUpdateDTO) error {
+
+// }
+
+func (s *postService) Get(ctx context.Context, postID int64) (*models.Post, error) {
+	return s.PostRepo.Get(ctx, postID)
+}
+
+func (s *postService) Delete(ctx context.Context, postID int64) error {
+	return s.PostRepo.Delete(ctx, postID)
 }
 
 func (s *postService) AttachMedia(ctx context.Context, postID int64, mediaID []dto.MediaRequestData) mediaErrors {

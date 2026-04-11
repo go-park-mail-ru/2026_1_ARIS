@@ -9,6 +9,7 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	pgerrors "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/pg_errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -54,11 +55,16 @@ func (storage *postStorage) Delete(ctx context.Context, id int64) error {
 
 	res, err := storage.db.Exec(ctx, query, id)
 	if err != nil {
+		// подумать...
 		return err
 	}
 
-	if res.RowsAffected() != 1 {
-		return errors.New("DELETE affected not on 1 row")
+	if res.RowsAffected() == 0 {
+		return xerrors.PostNotFound
+	}
+
+	if res.RowsAffected() > 1 {
+		return xerrors.MultipleRowsAffect
 	}
 
 	return nil
@@ -86,6 +92,9 @@ func (storage *postStorage) Get(ctx context.Context, id int64) (*models.Post, er
 	var post models.Post
 
 	if err := pgxscan.Get(ctx, storage.db, &post, query, id); err != nil {
+		if pgxscan.NotFound(err) {
+			return nil, xerrors.PostNotFound
+		}
 		return nil, err
 	}
 
