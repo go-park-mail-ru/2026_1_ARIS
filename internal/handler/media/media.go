@@ -26,8 +26,13 @@ func NewMediaHandler(mediaService media.MediaService, sessionService session.Ses
 	}
 }
 
+type mediaResponse struct {
+	MediaID  int64  `json:"mediaID"`
+	MediaURL string `json:"mediaURL"`
+}
+
 type fileResponse struct {
-	Files []string `json:"files"`
+	Files []mediaResponse `json:"media"`
 }
 
 func (h *MediaHandler) SaveFiles(w http.ResponseWriter, r *http.Request) {
@@ -58,7 +63,7 @@ func (h *MediaHandler) SaveFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var fileLinks []string
+	var fileLinks []mediaResponse
 
 	for _, fileHeader := range r.MultipartForm.File["files"] {
 
@@ -68,7 +73,8 @@ func (h *MediaHandler) SaveFiles(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		mediaLink, err := h.mediaService.Save(r.Context(), fileHeader.Filename, fileHeader.Size, file, fileFor, profile.ID)
+		mediaID, mediaLink, err := h.mediaService.Save(r.Context(), fileHeader.Filename, fileHeader.Size, file, fileFor, profile.ID)
+
 		if err != nil {
 			if errors.Is(err, xerrors.UnsupportedContentType) {
 				utils.WriteError(w, err.Error(), http.StatusUnsupportedMediaType)
@@ -78,7 +84,7 @@ func (h *MediaHandler) SaveFiles(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		fileLinks = append(fileLinks, mediaLink)
+		fileLinks = append(fileLinks, mediaResponse{MediaID: mediaID, MediaURL: mediaLink})
 	}
 
 	response := fileResponse{
