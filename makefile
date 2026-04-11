@@ -2,6 +2,7 @@
 
 COMPOSE_FILE=./docker-compose.dev.yml
 COMPOSE_ENV_FILE=./.env.compose
+COMPOSE=docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE)
 
 MIGRATE=migrate -source "file://./db/migrations" -database "postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=${SSL_MODE}"
 
@@ -54,25 +55,25 @@ services-stop:
 	docker compose -f ./docker/docker-compose.yml --env-file ./.env stop
 
 dev:
-	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) up --build -d
+	$(COMPOSE) up --build -d
 	sh ./scripts/dev-ready.sh $(COMPOSE_ENV_FILE)
 
 down:
-	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) down
+	$(COMPOSE) down
 
 reset-db:
-	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) down -v
-	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) up --build -d
+	$(COMPOSE) down -v
+	$(COMPOSE) up --build -d
 	sh ./scripts/dev-ready.sh $(COMPOSE_ENV_FILE)
 
 logs:
-	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) logs -f
+	$(COMPOSE) logs -f
 
 logs-backend:
-	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) logs -f backend
+	$(COMPOSE) logs -f backend
 
 backend-shell:
-	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) exec backend sh
+	$(COMPOSE) exec backend sh
 
 frontend-shell:
-	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) exec frontend sh
+	$(COMPOSE) exec frontend sh
