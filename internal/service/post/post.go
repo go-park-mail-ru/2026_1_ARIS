@@ -70,12 +70,12 @@ func NewPostService(postRepo post.PostRepo,
 }
 
 type attachmentError struct {
-	err error
-	pos int
+	Err error `json:"error"`
+	Pos int   `json:"position"`
 }
 
 type mediaErrors struct {
-	Errs []attachmentError
+	Errs []attachmentError `json:"errors"`
 }
 
 // func (s *postService) Update(ctx context.Context, dto dto.PostUpdateDTO) error {
@@ -103,7 +103,7 @@ func (s *postService) AttachMedia(ctx context.Context, postID int64, mediaID []d
 		err := s.PostWithMediaRepo.Save(ctx, *postWithMedia)
 		if err != nil {
 			// Определить тип ошибки
-			mediaErrors.Errs = append(mediaErrors.Errs, attachmentError{err: err, pos: i})
+			mediaErrors.Errs = append(mediaErrors.Errs, attachmentError{Err: err, Pos: i})
 		}
 	}
 	return mediaErrors

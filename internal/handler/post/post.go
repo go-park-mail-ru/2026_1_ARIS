@@ -3,7 +3,6 @@ package post
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -71,11 +70,11 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	var request PostCreationRequest
 
+	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		utils.WriteError(w, xerrors.InvalidRequestBody, http.StatusBadRequest)
 		return
 	}
-	defer r.Body.Close()
 
 	if request.Media == nil && request.Text == nil {
 		utils.WriteError(w, xerrors.PostContentRequired, http.StatusBadRequest)
@@ -86,7 +85,6 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	postID, err := h.postService.Save(r.Context(), *post)
 	if err != nil {
-		fmt.Println("Can't save post" + err.Error())
 		utils.WriteError(w, "Can't save post", http.StatusInternalServerError)
 		return
 	}
@@ -95,7 +93,6 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		// проверка на тип
 		err := h.postService.AttachMedia(r.Context(), postID, *request.Media)
 		if len(err.Errs) != 0 {
-			fmt.Println("Can't attach media", err)
 			utils.WriteError(w, "Can't attach media", http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(err)
 			return
@@ -260,7 +257,7 @@ func (h *PostHandler) GetPost(w http.ResponseWriter, r *http.Request) {
 
 	postMedia := h.mediaService.GetMediasByPostID(r.Context(), int64(postID))
 
-	postMediaURL := make([]string, len(postMedia))
+	postMediaURL := make([]string, 0, len(postMedia))
 
 	for _, media := range postMedia {
 		postMediaURL = append(postMediaURL, media.Link)
@@ -314,10 +311,9 @@ func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 
 	var request PostCreationRequest
 
+	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		utils.WriteError(w, xerrors.InvalidRequestBody, http.StatusBadRequest)
 		return
 	}
-	defer r.Body.Close()
-
 }
