@@ -4,7 +4,7 @@ COMPOSE_FILE=./docker-compose.dev.yml
 COMPOSE_ENV_FILE=./.env.compose
 COMPOSE=docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE)
 
-MIGRATE=migrate -source "file://./db/migrations" -database "postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=${SSL_MODE}"
+MIGRATE=migrate -path ./db/migrations -database "postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=${SSL_MODE}"
 
 test:
 	go test -v ./...
@@ -16,17 +16,14 @@ coverage: clean
 	go test -coverprofile=coverage.out -coverpkg=./internal/... ./...
 	go tool cover -html=coverage.out
 
-migrate-up: migrate
-	$(MIGRATE) up 5
+migrate-up:
+    $(MIGRATE) up
 
-migrate-down: migrate
-	$(MIGRATE) down
+migrate-down:
+    $(MIGRATE) down 1
 
-migrate-version: migrate
-	${MIGRATE} version
-
-migrate-force-down: migrate
-	${MIGRATE} force 1
+migrate-version:
+    $(MIGRATE) version
 
 migrate:
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
