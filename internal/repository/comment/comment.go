@@ -32,7 +32,7 @@ type CommentRepo interface {
 }
 
 func (storage *commentStorage) GetCommentCount(ctx context.Context, postID int64) int {
-	query := `SELECT COUNT(*) FROM comment WHERE post_id=$1;`
+	query := `SELECT COUNT(*) FROM comment WHERE post_id=$1 AND is_active=true;`
 
 	comments := storage.db.QueryRow(ctx, query, postID)
 

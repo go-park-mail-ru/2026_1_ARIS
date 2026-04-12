@@ -71,7 +71,7 @@ func (storage *postStorage) Delete(ctx context.Context, id int64) error {
 }
 
 func (storage *postStorage) List(ctx context.Context, offset, limit int) ([]models.Post, error) {
-	query := `SELECT id, uid, post_text, author_id, is_public_demo, allow_comments, is_active, created_at, updated_at FROM post ORDER BY id LIMIT $1 OFFSET $2`
+	query := `SELECT id, uid, post_text, author_id, is_public_demo, allow_comments, is_active, created_at, updated_at FROM post WHERE is_active=true ORDER BY id LIMIT $1 OFFSET $2;`
 
 	rows, err := storage.db.Query(ctx, query, limit, offset)
 	if err != nil {
@@ -87,7 +87,7 @@ func (storage *postStorage) List(ctx context.Context, offset, limit int) ([]mode
 }
 
 func (storage *postStorage) Get(ctx context.Context, id int64) (*models.Post, error) {
-	query := `SELECT id, uid, post_text, author_id, is_public_demo, allow_comments, is_active, created_at, updated_at FROM post WHERE id=$1`
+	query := `SELECT id, uid, post_text, author_id, is_public_demo, allow_comments, is_active, created_at, updated_at FROM post WHERE id=$1 AND is_active=true;`
 
 	var post models.Post
 
@@ -102,7 +102,7 @@ func (storage *postStorage) Get(ctx context.Context, id int64) (*models.Post, er
 }
 
 func (storage *postStorage) GetAll(ctx context.Context) ([]models.Post, error) {
-	query := `SELECT id, uid, post_text, author_id, is_public_demo, allow_comments, is_active, created_at, updated_at FROM post`
+	query := `SELECT id, uid, post_text, author_id, is_public_demo, allow_comments, is_active, created_at, updated_at FROM post WHERE is_active=true;`
 
 	rows, err := storage.db.Query(ctx, query)
 	if err != nil {

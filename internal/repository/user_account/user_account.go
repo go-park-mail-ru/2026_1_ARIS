@@ -125,7 +125,7 @@ func (storage *UserAccountStorage) Delete(ctx context.Context, id int64) error {
 }
 
 func (storage *UserAccountStorage) Get(ctx context.Context, id int64) (*models.UserAccount, error) {
-	query := `SELECT id, uid, username, email, phone, is_active, created_at, updated_at FROM user_account WHERE id=$1;`
+	query := `SELECT id, uid, username, email, phone, is_active, created_at, updated_at FROM user_account WHERE id=$1 AND is_active=true;`
 
 	var userAccount models.UserAccount
 
@@ -138,7 +138,7 @@ func (storage *UserAccountStorage) Get(ctx context.Context, id int64) (*models.U
 }
 
 func (storage *UserAccountStorage) GetByEmail(ctx context.Context, email string) (*models.UserAccount, error) {
-	query := `SELECT id, uid, username, email, phone, is_active, created_at, updated_at FROM user_account WHERE email=$1;`
+	query := `SELECT id, uid, username, email, phone, is_active, created_at, updated_at FROM user_account WHERE email=$1 AND is_active=true;`
 
 	var userAccount models.UserAccount
 
@@ -151,7 +151,7 @@ func (storage *UserAccountStorage) GetByEmail(ctx context.Context, email string)
 }
 
 func (storage *UserAccountStorage) GetByPhone(ctx context.Context, phone string) (*models.UserAccount, error) {
-	query := `SELECT * FROM user_account WHERE phone=$1;`
+	query := `SELECT id, uid, username, email, phone, is_active, created_at, updated_at FROM user_account WHERE phone=$1 AND is_active=true;`
 
 	var userAccount models.UserAccount
 
@@ -164,7 +164,7 @@ func (storage *UserAccountStorage) GetByPhone(ctx context.Context, phone string)
 }
 
 func (storage *UserAccountStorage) GetByUsername(ctx context.Context, username string) (*models.UserAccount, error) {
-	query := `SELECT * FROM user_account WHERE username=$1;`
+	query := `SELECT id, uid, username, email, phone, is_active, created_at, updated_at FROM user_account WHERE username=$1 AND is_active=true;`
 
 	var userAccount models.UserAccount
 
@@ -177,7 +177,7 @@ func (storage *UserAccountStorage) GetByUsername(ctx context.Context, username s
 }
 
 func (storage *UserAccountStorage) GetByUid(ctx context.Context, uid uuid.UUID) (*models.UserAccount, error) {
-	query := `SELECT * FROM user_account WHERE uid=$1;`
+	query := `SELECT id, uid, username, email, phone, is_active, created_at, updated_at FROM user_account WHERE uid=$1 AND is_active=true;`
 
 	var userAccount models.UserAccount
 
@@ -190,7 +190,7 @@ func (storage *UserAccountStorage) GetByUid(ctx context.Context, uid uuid.UUID) 
 }
 
 func (storage *UserAccountStorage) List(ctx context.Context, offset, limit int) ([]models.UserAccount, error) {
-	query := `SELECT * FROM user_account ORDER BY id LIMIT $1 OFFSET $2`
+	query := `SELECT id, uid, username, email, phone, is_active, created_at, updated_at FROM user_account WHERE is_active=true ORDER BY id LIMIT $1 OFFSET $2`
 
 	rows, err := storage.db.Query(ctx, query, limit, offset)
 	if err != nil {

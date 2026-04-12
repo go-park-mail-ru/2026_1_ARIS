@@ -30,7 +30,7 @@ func NewMediaStorage(db *pgxpool.Pool) MediaRepo {
 }
 
 func (storage *mediaStorage) Get(ctx context.Context, id int64) (*models.Media, error) {
-	query := `SELECT id, uid, media_name, author_id, extension, description, mime_type, link, size, is_active, created_at, updated_at FROM media WHERE id=$1`
+	query := `SELECT id, uid, media_name, author_id, extension, description, mime_type, link, size, is_active, created_at, updated_at FROM media WHERE id=$1 AND is_active=true;`
 
 	var media models.Media
 
@@ -60,7 +60,7 @@ func (storage *mediaStorage) Save(ctx context.Context, media models.Media) (int6
 }
 
 func (storage *mediaStorage) GetLink(ctx context.Context, id int64) (string, error) {
-	query := `SELECT link FROM media WHERE id=$1`
+	query := `SELECT link FROM media WHERE id=$1 AND is_active=true;`
 
 	row := storage.db.QueryRow(ctx, query, id)
 

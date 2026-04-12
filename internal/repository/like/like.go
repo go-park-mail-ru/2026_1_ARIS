@@ -56,7 +56,7 @@ func (storage *likeStorage) Save(ctx context.Context, like models.Like) (int64, 
 }
 
 func (storage *likeStorage) Get(ctx context.Context, likeID int64) (*models.Like, error) {
-	query := `SELECT id, uid, post_id, comment_id, author_id, is_active, created_at, updated_at FROM like_record WHERE id=$1`
+	query := `SELECT id, uid, post_id, comment_id, author_id, is_active, created_at, updated_at FROM like_record WHERE id=$1 AND is_active=true;`
 
 	var like models.Like
 
@@ -70,7 +70,7 @@ func (storage *likeStorage) Get(ctx context.Context, likeID int64) (*models.Like
 }
 
 func (storage *likeStorage) GetLikeCountOnPost(ctx context.Context, postID int64) int {
-	query := `SELECT COUNT(*) FROM like_record WHERE post_id=$1`
+	query := `SELECT COUNT(*) FROM like_record WHERE post_id=$1 AND is_active=true;`
 
 	likes := storage.db.QueryRow(ctx, query, postID)
 

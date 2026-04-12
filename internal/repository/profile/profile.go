@@ -43,7 +43,7 @@ func (storage *profileStorage) GetByUserAccountID(ctx context.Context, userAccou
 	FROM user_account ua 
 		JOIN user_profile up ON up.user_account_id=ua.id 
 		JOIN profile p ON up.profile_id=p.id 
-	WHERE ua.id=$1;`
+	WHERE ua.id=$1 AND p.is_active=true AND ua.is_active=true AND up.is_active=true;`
 
 	var profile models.Profile
 
@@ -59,7 +59,7 @@ func (storage *profileStorage) GetByUserAccountID(ctx context.Context, userAccou
 }
 
 func (storage *profileStorage) Get(ctx context.Context, profileID int64) (*models.Profile, error) {
-	query := `SELECT id, uid, avatar_id, is_active, created_at, updated_at FROM profile WHERE id=$1;`
+	query := `SELECT id, uid, avatar_id, is_active, created_at, updated_at FROM profile WHERE id=$1 AND is_active=true;`
 
 	var profile models.Profile
 
@@ -89,7 +89,7 @@ func (storage *profileStorage) Save(ctx context.Context, profile models.Profile)
 }
 
 func (storage *profileStorage) GetAll(ctx context.Context) ([]models.Profile, error) {
-	query := `SELECT id, uid, avatar_id, is_active, created_at, updated_at FROM profile`
+	query := `SELECT id, uid, avatar_id, is_active, created_at, updated_at FROM profile WHERE is_active=true;`
 
 	rows, err := storage.db.Query(ctx, query)
 	if err != nil {
