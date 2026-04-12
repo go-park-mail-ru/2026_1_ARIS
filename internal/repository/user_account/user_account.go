@@ -107,7 +107,7 @@ func (storage *UserAccountStorage) Save(ctx context.Context, userAccount models.
 }
 
 func (storage *UserAccountStorage) Delete(ctx context.Context, id int64) error {
-	query := `DELETE FROM user_account WHERE id=$1`
+	query := `UPDATE user_account SET is_active=false WHERE id=$1`
 
 	res, err := storage.db.Exec(ctx, query, id)
 	if err != nil {
@@ -138,7 +138,7 @@ func (storage *UserAccountStorage) Get(ctx context.Context, id int64) (*models.U
 }
 
 func (storage *UserAccountStorage) GetByEmail(ctx context.Context, email string) (*models.UserAccount, error) {
-	query := `SELECT * FROM user_account WHERE email=$1;`
+	query := `SELECT id, uid, username, email, phone, is_active, created_at, updated_at FROM user_account WHERE email=$1;`
 
 	var userAccount models.UserAccount
 

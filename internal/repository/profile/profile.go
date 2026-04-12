@@ -38,7 +38,12 @@ func NewProfileStorage(db *pgxpool.Pool) ProfileRepo {
 }
 
 func (storage *profileStorage) GetByUserAccountID(ctx context.Context, userAccountID int64) (*models.Profile, error) {
-	query := `select p.id, p.uid, p.avatar_id, p.is_active, p.created_at, p.updated_at from user_account ua join user_profile up on up.user_account_id=ua.id join profile p on up.profile_id=p.id where ua.id=$1;`
+	query := `
+	SELECT p.id, p.uid, p.avatar_id, p.is_active, p.created_at, p.updated_at 
+	FROM user_account ua 
+		JOIN user_profile up ON up.user_account_id=ua.id 
+		JOIN profile p ON up.profile_id=p.id 
+	WHERE ua.id=$1;`
 
 	var profile models.Profile
 
@@ -54,7 +59,7 @@ func (storage *profileStorage) GetByUserAccountID(ctx context.Context, userAccou
 }
 
 func (storage *profileStorage) Get(ctx context.Context, profileID int64) (*models.Profile, error) {
-	query := `SELECT * FROM profile WHERE id=$1;`
+	query := `SELECT id, uid, avatar_id, is_active, created_at, updated_at FROM profile WHERE id=$1;`
 
 	var profile models.Profile
 
@@ -84,7 +89,7 @@ func (storage *profileStorage) Save(ctx context.Context, profile models.Profile)
 }
 
 func (storage *profileStorage) GetAll(ctx context.Context) ([]models.Profile, error) {
-	query := `SELECT * FROM profile`
+	query := `SELECT id, uid, avatar_id, is_active, created_at, updated_at FROM profile`
 
 	rows, err := storage.db.Query(ctx, query)
 	if err != nil {

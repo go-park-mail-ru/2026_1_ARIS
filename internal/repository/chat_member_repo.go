@@ -33,7 +33,7 @@ func (s *chatMemberStorage) Save(ctx context.Context, member models.ChatMember) 
 }
 
 func (s *chatMemberStorage) GetByChatID(ctx context.Context, chatID int64) ([]models.ChatMember, error) {
-	query := `SELECT * FROM chat_member WHERE chat_id=$1 AND leave_at IS NULL`
+	query := `SELECT id, uid, chat_id, profile_id, joined_at, is_active, leave_at, created_at, updated_at, chat_role FROM chat_member WHERE chat_id=$1 AND leave_at IS NULL`
 	var members []models.ChatMember
 	err := pgxscan.Select(ctx, s.db, &members, query, chatID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -43,7 +43,7 @@ func (s *chatMemberStorage) GetByChatID(ctx context.Context, chatID int64) ([]mo
 }
 
 func (s *chatMemberStorage) GetByUserID(ctx context.Context, userID int64) ([]models.ChatMember, error) {
-	query := `SELECT * FROM chat_member WHERE profile_id=$1 AND leave_at IS NULL`
+	query := `SELECT id, uid, chat_id, profile_id, joined_at, is_active, leave_at, created_at, updated_at, chat_role FROM chat_member WHERE profile_id=$1 AND leave_at IS NULL`
 	var members []models.ChatMember
 	err := pgxscan.Select(ctx, s.db, &members, query, userID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -53,7 +53,7 @@ func (s *chatMemberStorage) GetByUserID(ctx context.Context, userID int64) ([]mo
 }
 
 func (s *chatMemberStorage) Delete(ctx context.Context, id int64) error {
-	query := `UPDATE chat_member SET leave_at=NOW(), updated_at=NOW() WHERE id=$1`
+	query := `UPDATE chat_member SET leave_at=NOW(), is_active=false WHERE id=$1`
 	_, err := s.db.Exec(ctx, query, id)
 	return err
 }

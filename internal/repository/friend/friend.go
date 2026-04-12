@@ -37,17 +37,17 @@ func NewFriendshipStorage(db *pgxpool.Pool) FriendshipRepo {
 
 func (storage *friendshipStorage) GetFriends(ctx context.Context, profileID int64, status models.FriendshipStatus) ([]dto.FriendDTO, error) {
 	query := `
-select p.avatar_id, p.id, up.first_name, up.last_name, ua.username, m.link, status, f.created_at, f.updated_at from 
-	(select f.created_at, f.updated_at, status, case 
-		when requester_id = $1 then addressee_id
-		when addressee_id = $1 then requester_id
-		end as friend
-	from friendship f
-	where $1 in (requester_id, addressee_id) AND status=$2) as f
-join profile p on p.id=friend
-join user_profile up on up.profile_id=friend
-join user_account ua on up.user_account_id=ua.id
-left join media m on p.avatar_id=m.id where m.mime_type='image' or mime_type is NULL ORDER BY p.id ASC;`
+SELECT p.avatar_id, p.id, up.first_name, up.last_name, ua.username, m.link, status, f.created_at, f.updated_at FROM 
+	(SELECT f.created_at, f.updated_at, status, CASE 
+		WHEN requester_id = $1 THEN addressee_id
+		WHEN addressee_id = $1 THEN requester_id
+		END AS friend
+	FROM friendship f
+	WHERE $1 IN (requester_id, addressee_id) AND status=$2) AS f
+JOIN profile p ON p.id=friend
+JOIN user_profile up ON up.profile_id=friend
+JOIN user_account ua ON up.user_account_id=ua.id
+LEFT JOIN media m ON p.avatar_id=m.id WHERE m.mime_type='image' OR mime_type IS NULL ORDER BY p.id ASC;`
 
 	rows, err := storage.db.Query(ctx, query, profileID, string(status))
 	if err != nil {
@@ -68,10 +68,10 @@ left join media m on p.avatar_id=m.id where m.mime_type='image' or mime_type is 
 
 func (storage *friendshipStorage) GetFriendshipStatus(ctx context.Context, profileID1, profileID2 int64) (string, error) {
 	query := `
-select status from friendship 
-	where 
-		least(requester_id, addressee_id)=least($1::bigint, $2::bigint) and 
-		greatest(requester_id, addressee_id)=greatest($1::bigint, $2::bigint);`
+SELECT status FROM friendship 
+	WHERE 
+		LEAST(requester_id, addressee_id)=LEAST($1::BIGINT, $2::BIGINT) AND 
+		GREATEST(requester_id, addressee_id)=GREATEST($1::BIGINT, $2::BIGINT);`
 
 	var status string
 
@@ -89,7 +89,7 @@ select status from friendship
 }
 
 func (storage *friendshipStorage) GetFriendshipStatusBy(ctx context.Context, profileID, friendID int64) (string, error) {
-	query := `select status from friendship where requester_id=$1 and addressee_id=$2;`
+	query := `SELECT status FROM friendship WHERE requester_id=$1 AND addressee_id=$2;`
 
 	var status string
 
@@ -108,8 +108,8 @@ func (storage *friendshipStorage) GetFriendshipStatusBy(ctx context.Context, pro
 func (storage *friendshipStorage) DeleteFriend(ctx context.Context, profileID, friendID int64) error {
 	query := `
 	DELETE FROM friendship 
-		WHERE LEAST(requester_id, addressee_id)=LEAST($1::bigint, $2::bigint) AND 
-		GREATEST(requester_id, addressee_id)=GREATEST($1::bigint, $2::bigint) AND 
+		WHERE LEAST(requester_id, addressee_id)=LEAST($1::BIGINT, $2::BIGINT) AND 
+		GREATEST(requester_id, addressee_id)=GREATEST($1::BIGINT, $2::BIGINT) AND 
 		status='accepted'::friendship_status`
 
 	res, err := storage.db.Exec(ctx, query, profileID, friendID)
@@ -130,11 +130,11 @@ func (storage *friendshipStorage) DeleteFriend(ctx context.Context, profileID, f
 
 func (storage *friendshipStorage) GetOutgoingFriends(ctx context.Context, profileID int64, status string) ([]dto.FriendDTO, error) {
 	query := `
-select f.addressee_id as id, p.avatar_id, up.first_name, up.last_name, ua.username, m.link, f.status, f.created_at, f.updated_at from friendship f
-	join profile p on p.id=f.addressee_id
-	join user_profile up on up.profile_id=p.id
-	join user_account ua on ua.id=up.user_account_id 
-	left join media m on m.id=p.avatar_id where f.requester_id=$1 AND f.status=$2;`
+SELECT f.addressee_id AS id, p.avatar_id, up.first_name, up.last_name, ua.username, m.link, f.status, f.created_at, f.updated_at from friendship f
+	JOIN profile p ON p.id=f.addressee_id
+	JOIN user_profile up ON up.profile_id=p.id
+	JOIN user_account ua ON ua.id=up.user_account_id 
+	LEFT JOIN media m ON m.id=p.avatar_id where f.requester_id=$1 AND f.status=$2;`
 
 	rows, err := storage.db.Query(ctx, query, profileID, status)
 	if err != nil {
@@ -155,11 +155,11 @@ select f.addressee_id as id, p.avatar_id, up.first_name, up.last_name, ua.userna
 
 func (storage *friendshipStorage) GetIncomingFriends(ctx context.Context, profileID int64, status string) ([]dto.FriendDTO, error) {
 	query := `
-select f.requester_id as id, p.avatar_id, up.first_name, up.last_name, ua.username, m.link, f.status, f.created_at, f.updated_at from friendship f
-	join profile p on p.id=f.requester_id
-	join user_profile up on up.profile_id=p.id
-	join user_account ua on ua.id=up.user_account_id 
-	left join media m on m.id=p.avatar_id where f.addressee_id=$1 and f.status=$2;`
+SELECT f.requester_id as id, p.avatar_id, up.first_name, up.last_name, ua.username, m.link, f.status, f.created_at, f.updated_at from friendship f
+	JOIN profile p ON p.id=f.requester_id
+	JOIN user_profile up ON up.profile_id=p.id
+	JOIN user_account ua ON ua.id=up.user_account_id 
+	LEFT JOIN media m ON m.id=p.avatar_id where f.addressee_id=$1 AND f.status=$2;`
 
 	rows, err := storage.db.Query(ctx, query, profileID, status)
 	if err != nil {
@@ -179,7 +179,7 @@ select f.requester_id as id, p.avatar_id, up.first_name, up.last_name, ua.userna
 }
 
 func (storage *friendshipStorage) Create(ctx context.Context, profileID, friendID int64, status string) error {
-	query := `insert into friendship (requester_id, addressee_id, status) values ($1, $2, $3)`
+	query := `INSERT INTO friendship (requester_id, addressee_id, status) VALUES ($1, $2, $3)`
 
 	res, err := storage.db.Exec(ctx, query, profileID, friendID, status)
 	if err != nil {
@@ -198,10 +198,10 @@ func (storage *friendshipStorage) Create(ctx context.Context, profileID, friendI
 }
 
 func (storage *friendshipStorage) AcceptFriendship(ctx context.Context, profileID1, profileID2 int64) error {
-	query := `update friendship f set status='accepted' 
-		where 
-			least(requester_id, addressee_id)=least($1::bigint, $2::bigint) and
-			greatest(requester_id, addressee_id)=greatest($1::bigint, $2::bigint) and
+	query := `UPDATE friendship f SET status='accepted' 
+		WHERE 
+			LEAST(requester_id, addressee_id)=LEAST($1::BIGINT, $2::BIGINT) AND
+			GREATEST(requester_id, addressee_id)=GREATEST($1::BIGINT, $2::BIGINT) AND
 			status='pending'::friendship_status;`
 
 	res, err := storage.db.Exec(ctx, query, profileID1, profileID2)
@@ -221,7 +221,7 @@ func (storage *friendshipStorage) AcceptFriendship(ctx context.Context, profileI
 }
 
 func (storage *friendshipStorage) DeclineFriendship(ctx context.Context, profileID1, profileID2 int64) error {
-	query := `DELETE FROM friendship WHERE LEAST(requester_id, addressee_id)=LEAST($1::bigint, $2::bigint) AND GREATEST(requester_id, addressee_id)=GREATEST($1::bigint, $2::bigint) AND status='pending'`
+	query := `DELETE FROM friendship WHERE LEAST(requester_id, addressee_id)=LEAST($1::bigint, $2::bigint) AND GREATEST(requester_id, addressee_id)=GREATEST($1::bigint, $2::bigint) AND status='pending';`
 
 	res, err := storage.db.Exec(ctx, query, profileID1, profileID2)
 	if err != nil {
@@ -240,7 +240,7 @@ func (storage *friendshipStorage) DeclineFriendship(ctx context.Context, profile
 }
 
 func (storage *friendshipStorage) RevokeFriendRequest(ctx context.Context, profileID, friendID int64) error {
-	query := `DELETE FROM friendship where requester_id=$1 AND addressee_id=$2 AND status='pending'`
+	query := `DELETE FROM friendship WHERE requester_id=$1 AND addressee_id=$2 AND status='pending';`
 
 	res, err := storage.db.Exec(ctx, query, profileID, friendID)
 	if err != nil {

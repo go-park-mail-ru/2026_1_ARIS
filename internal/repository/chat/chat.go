@@ -30,7 +30,7 @@ func (r *SQLChatRepo) Save(ctx context.Context, chat *models.Chat) error {
 }
 
 func (r *SQLChatRepo) GetByID(ctx context.Context, id int64) (*models.Chat, error) {
-	query := `SELECT * FROM chat WHERE id=$1`
+	query := `SELECT id, uid, chat_type, title, avatar_id, is_active, created_at, updated_at FROM chat WHERE id=$1 AND is_active=true`
 	var chat models.Chat
 	err := pgxscan.Get(ctx, r.db, &chat, query, id)
 	if err != nil {

@@ -15,7 +15,7 @@ type MediaRepo interface {
 	Get(ctx context.Context, id int64) (*models.Media, error)
 	Save(ctx context.Context, media models.Media) (int64, error)
 	GetLink(ctx context.Context, id int64) (string, error)
-	UpdateLink(ctx context.Context, id int64, newLink string) error
+	//UpdateLink(ctx context.Context, id int64, newLink string) error
 }
 
 type mediaStorage struct {
@@ -30,7 +30,7 @@ func NewMediaStorage(db *pgxpool.Pool) MediaRepo {
 }
 
 func (storage *mediaStorage) Get(ctx context.Context, id int64) (*models.Media, error) {
-	query := `SELECT * FROM media WHERE id=$1`
+	query := `SELECT id, uid, media_name, author_id, extension, description, mime_type, link, size, is_active, created_at, updated_at FROM media WHERE id=$1`
 
 	var media models.Media
 
@@ -87,11 +87,6 @@ func (storage *mediaStorage) UpdateLink(ctx context.Context, id int64, newLink s
 
 	return nil
 }
-
-// func (storage *mediaStorage) GetBatch(ctx context.Context, ids []int64) error {
-// 	query := `SELECT id, uid, mime_type, link
-// 	FROM media WHERE id=ANY($1)`
-// }
 
 type inmemoryMediaRepo struct {
 	mu     sync.RWMutex

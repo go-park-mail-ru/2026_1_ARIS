@@ -154,7 +154,7 @@ func (storage *userProfileStorage) Save(ctx context.Context, userProfile models.
 }
 
 func (storage *userProfileStorage) Get(ctx context.Context, userProfileID int64) (*models.UserProfile, error) {
-	query := `SELECT * FROM user_profile WHERE id=$1;`
+	query := `SELECT id, uid, user_account_id, profile_id, first_name, last_name, bio, birthday_date, gender, native_town, town, institution, study_group, company, job_title, interests, fav_music, is_active, created_at, updated_at FROM user_profile WHERE id=$1;`
 
 	var userProfile models.UserProfile
 
@@ -167,7 +167,7 @@ func (storage *userProfileStorage) Get(ctx context.Context, userProfileID int64)
 }
 
 func (storage *userProfileStorage) GetByProfileID(ctx context.Context, profileID int64) (*models.UserProfile, error) {
-	query := `SELECT * FROM user_profile WHERE profile_id=$1;`
+	query := `SELECT id, uid, user_account_id, profile_id, first_name, last_name, bio, birthday_date, gender, native_town, town, institution, study_group, company, job_title, interests, fav_music, is_active, created_at, updated_at FROM user_profile WHERE profile_id=$1;`
 
 	var userProfile models.UserProfile
 
@@ -183,7 +183,7 @@ func (storage *userProfileStorage) GetByProfileID(ctx context.Context, profileID
 }
 
 func (storage *userProfileStorage) GetByUserAccountID(ctx context.Context, userAccountID int64) (*models.UserProfile, error) {
-	query := `SELECT * FROM user_profile WHERE user_account_id=$1;`
+	query := `SELECT id, uid, user_account_id, profile_id, first_name, last_name, bio, birthday_date, gender, native_town, town, institution, study_group, company, job_title, interests, fav_music, is_active, created_at, updated_at FROM user_profile WHERE user_account_id=$1;`
 
 	var userProfile models.UserProfile
 

@@ -77,7 +77,7 @@ type UserAccount struct {
 	Username     string    `db:"username"`
 	Email        *string   `db:"email"`
 	Phone        *string   `db:"phone"`
-	PasswordHash string    `db:"password_hash"`
+	PasswordHash string    `db:"-"`
 	IsActive     bool      `db:"is_active"`
 	CreatedAt    time.Time `db:"created_at"`
 	UpdatedAt    time.Time `db:"updated_at"`
@@ -274,7 +274,7 @@ type ChatMember struct {
 	ChatID    int64      `db:"chat_id" json:"chat"`
 	MemberID  int64      `db:"profile_id" json:"member"`
 	JoinedAt  time.Time  `db:"joined_at" json:"joinedAt"`
-	IsActive  bool       `json:"isActive"`
+	IsActive  bool       `db:"is_active" json:"isActive"`
 	LeaveAt   *time.Time `db:"leave_at" json:"leaveAt,omitempty"`
 	CreatedAt time.Time  `db:"created_at" json:"createdAt"`
 	UpdatedAt time.Time  `db:"updated_at" json:"updatedAt"`
