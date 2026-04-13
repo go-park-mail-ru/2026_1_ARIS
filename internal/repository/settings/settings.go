@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
@@ -58,7 +59,7 @@ func (r *userSettingsRepository) Update(ctx context.Context, userID int64, upd d
 	// lang
 	var langArg any
 	if upd.Language != nil {
-		langArg = string(*upd.Language)
+		langArg = strings.ToUpper(string(*upd.Language))
 		args = append(args, langArg)
 		setClauses = append(setClauses, fmt.Sprintf("lang = $%d", len(args)))
 	}
@@ -66,7 +67,7 @@ func (r *userSettingsRepository) Update(ctx context.Context, userID int64, upd d
 	// theme
 	var themeArg any
 	if upd.Theme != nil {
-		themeArg = string(*upd.Theme)
+		themeArg = strings.ToLower(string(*upd.Theme))
 		args = append(args, themeArg)
 		setClauses = append(setClauses, fmt.Sprintf("theme = $%d", len(args)))
 	}
