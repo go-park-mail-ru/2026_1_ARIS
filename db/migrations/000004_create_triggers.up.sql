@@ -73,3 +73,7 @@ UPDATE
 CREATE TRIGGER trg_repost_updated_at BEFORE
 UPDATE
     ON repost  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER trg_create_user_settings AFTER INSERT ON user_account
+    FOR EACH ROW
+    EXECUTE FUNCTION create_default_user_settings();

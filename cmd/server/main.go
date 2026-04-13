@@ -38,8 +38,10 @@ import (
 	profilerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/profile"
 	repostrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/repost"
 	sessionrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/session"
+	settingsrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/settings"
 	useraccountrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_account"
 	userprofilerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_profile"
+	settingsservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/settings"
 
 	chatservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
 	authservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/auth"
@@ -167,7 +169,7 @@ func main() {
 	mediaRepo := mediarepo.NewMediaStorage(db)
 	postWithMediaRepo := postrepo.NewPostWithMediaStorage(db)
 	friendshipRepo := friendshiprepo.NewFriendshipStorage(db)
-
+	settingsRepo := settingsrepo.NewUserSettingsStorage(db)
 	chatRepo := chatstorage.NewSQLChatRepo(db)
 	chatMemberRepo := repository.NewChatMemberStorage(db)
 	messageRepo := repository.NewMessageStorage(db)
@@ -180,13 +182,14 @@ func main() {
 	chatSvc := chatservice.NewChatService(chatRepo, chatMemberRepo, userService)
 	messageSvc := chatservice.NewMessageService(messageRepo)
 	friendshipService := friendshipservice.NewFriendshipService(friendshipRepo)
+	settingsService := settingsservice.NewUserSettingsService(settingsRepo)
 
 	// WebSocket Hub
 	hub := websocket.NewHub()
 	go hub.Run()
 
 	authHandler := authhandler.NewAuthHandler(authService, sessService, userService)
-	userHandler := userhandler.NewUserHandler(userService, mediaService)
+	userHandler := userhandler.NewUserHandler(userService, mediaService, settingsService)
 	feedHandler := feedhandler.NewFeedHandler(postService, mediaService, userService)
 	mediaHandler := mediahandler.NewMediaHandler(mediaService, sessService, userService)
 	profileHandler := profilehandler.NewProfileHandler(userService, mediaService, sessService)

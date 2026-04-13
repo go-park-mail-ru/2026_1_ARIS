@@ -2,17 +2,24 @@ package user
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/settings"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
+	"github.com/go-playground/validator/v10"
 )
 
 type UserHandler struct {
-	UserService  user.UserService
-	MediaService media.MediaService
+	UserService     user.UserService
+	MediaService    media.MediaService
+	SettingsService settings.UserSettingsService
 }
 
 type latestEventDTO struct {
@@ -40,12 +47,15 @@ type suggestedUsersResponse struct {
 	Items []suggestedUserDTO `json:"items"`
 }
 
-func NewUserHandler(userService user.UserService, mediaService media.MediaService) *UserHandler {
+func NewUserHandler(userService user.UserService, mediaService media.MediaService, settingsService settings.UserSettingsService) *UserHandler {
 	return &UserHandler{
-		UserService:  userService,
-		MediaService: mediaService,
+		UserService:     userService,
+		MediaService:    mediaService,
+		SettingsService: settingsService,
 	}
 }
+
+var validate = validator.New()
 
 // @Description		Get suggested users
 // @ID				get-sug-users
@@ -222,4 +232,56 @@ func (h *UserHandler) GetLatestEvents(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(latestEventsResponse{
 		Items: items,
 	})
+}
+
+func (h *UserHandler) SetSettings(w http.ResponseWriter, r *http.Request) {
+	userAccountID, ok := r.Context().Value("user_id").(int64)
+	if !ok {
+		utils.WriteError(w, xerrors.InvalidCtxUserAccountValue, http.StatusUnauthorized)
+		return
+	}
+
+	var request dto.UserSettingsUpdate
+
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		utils.WriteError(w, xerrors.InvalidRequestBody, http.StatusBadRequest)
+		return
+	}
+
+	if err := validate.Struct(request); err != nil {
+		utils.WriteError(w, xerrors.ValidationError, http.StatusBadRequest)
+		return
+	}
+
+	settings, err := h.SettingsService.Update(r.Context(), userAccountID, request)
+	if errors.Is(err, xerrors.ErrNothingToUpdate) {
+		settings, err = h.SettingsService.GetByUserID(r.Context(), userAccountID)
+	}
+	if err != nil {
+		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(settings)
+}
+
+func (h *UserHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
+	userAccountID, ok := r.Context().Value("user_id").(int64)
+	if !ok {
+		utils.WriteError(w, xerrors.InvalidCtxUserAccountValue, http.StatusUnauthorized)
+		return
+	}
+
+	settings, err := h.SettingsService.GetByUserID(r.Context(), userAccountID)
+	if err != nil {
+		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(settings)
 }

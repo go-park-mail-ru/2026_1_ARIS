@@ -106,6 +106,14 @@ func NewRouter(
 		})
 	})
 
+	r.Route("/api/settings", func(r chi.Router) {
+		r.Group(func(r chi.Router) {
+			r.Use(mymiddleware.AuthMiddleware(sessSvc))
+			r.Get("/", userHandler.GetSettings)
+			r.Post("/", userHandler.SetSettings)
+		})
+	})
+
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	return r

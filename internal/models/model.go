@@ -69,6 +69,20 @@ const (
 	Read
 )
 
+type LanguageSetting string
+
+const (
+	LanguageRU LanguageSetting = "RU"
+	LanguageEN LanguageSetting = "EN"
+)
+
+type ThemeSetting string
+
+const (
+	ThemeLight ThemeSetting = "light"
+	ThemeDark  ThemeSetting = "dark"
+)
+
 // models structs
 // credentials данные
 type UserAccount struct {
@@ -498,4 +512,10 @@ func NewRepost(authorID, chatID, postID int64) *Repost {
 		ChatID:   chatID,
 		PostID:   postID,
 	}
+}
+
+type UserSettings struct {
+	UserAccountID int64           `db:"user_account_id" json:"userAccountID"`
+	Language      LanguageSetting `db:"lang" json:"language"`
+	Theme         ThemeSetting    `db:"theme" json:"theme"`
 }

@@ -6,3 +6,5 @@ DROP TYPE IF EXISTS community_member_role;
 DROP TYPE IF EXISTS friendship_status;
 DROP TYPE IF EXISTS message_status;
 DROP TYPE IF EXISTS reaction_type;
+DROP TYPE IF EXISTS language_setting;
+DROP TYPE IF EXISTS theme_setting;

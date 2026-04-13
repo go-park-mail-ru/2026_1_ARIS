@@ -85,3 +85,12 @@ type PostUpdateDTO struct {
 	//AllowComments bool `json:"allowComments"`
 	//IsPublicDemo  bool `json:"isPublicDemo"`
 }
+
+type UserSettingsUpdate struct {
+	Language *models.LanguageSetting `json:"language" validate:"omitempty,omitnil,omitzero,oneofci=RU EN"`
+	Theme    *models.ThemeSetting    `json:"theme" validate:"omitempty,omitnil,omitzero,oneofci=light dark"`
+}
+
+func (u *UserSettingsUpdate) IsEmpty() bool {
+	return u.Language == nil && u.Theme == nil
+}

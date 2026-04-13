@@ -27,4 +27,14 @@ CREATE TYPE reaction_type AS ENUM (
     '\dislike',
     '\anger',
     '\happy'
-)
+);
+
+CREATE TYPE language_setting AS ENUM (
+    'RU',
+    'EN'
+);
+
+CREATE TYPE theme_setting AS ENUM (
+    'light',
+    'dark'
+);
