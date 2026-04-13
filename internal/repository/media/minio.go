@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 
 	xminio "github.com/go-park-mail-ru/2026_1_ARIS/pkg/minio"
 	"github.com/google/uuid"
@@ -35,5 +34,8 @@ func (client *MinioClient) Save(ctx context.Context, bucketName string, reader i
 		return "", err
 	}
 
-	return fmt.Sprintf("http://%s:%s/%s/%s", os.Getenv("MINIO_PUBLIC_HOST"), os.Getenv("MINIO_PORT"), uploadInto.Bucket, uploadInto.Key), nil
+	return fmt.Sprintf("http://arisnet.ru/%s/%s",
+		uploadInto.Bucket,
+		uploadInto.Key,
+	), nil
 }
