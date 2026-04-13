@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
@@ -14,6 +15,7 @@ type MessageRepo interface {
 	Save(ctx context.Context, msg *models.Message) error
 	GetByID(ctx context.Context, id int64) (*models.Message, error)
 	GetByChatID(ctx context.Context, chatID int64, limit, offset int) ([]models.Message, error)
+	Update(ctx context.Context, msg *models.Message) error // новый
 	Delete(ctx context.Context, id int64) error
 }
 
@@ -21,6 +23,11 @@ type messageStorage struct {
 	db *pgxpool.Pool
 }
 
+func (s *messageStorage) Update(ctx context.Context, msg *models.Message) error {
+	query := `UPDATE message SET message_text=$1, updated_at=$2 WHERE id=$3 AND is_active=true`
+	_, err := s.db.Exec(ctx, query, msg.Text, time.Now(), msg.ID)
+	return err
+}
 func NewMessageStorage(db *pgxpool.Pool) MessageRepo {
 	return &messageStorage{db: db}
 }

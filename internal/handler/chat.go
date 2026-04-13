@@ -267,6 +267,55 @@ func (h *ChatHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(msgResponse)
 }
 
+func (h *ChatHandler) UpdateMessage(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value("user_id").(int64)
+	if !ok {
+		utils.WriteError(w, "не авторизован", http.StatusUnauthorized)
+		return
+	}
+
+	authorProfileID, err := h.getViewerProfileID(r.Context(), userID)
+	if err != nil {
+		utils.WriteError(w, "ошибка профиля пользователя", http.StatusInternalServerError)
+		return
+	}
+
+	messageIDStr := chi.URLParam(r, "messageID")
+	messageID, err := strconv.ParseInt(messageIDStr, 10, 64)
+	if err != nil {
+		utils.WriteError(w, "неверный ID сообщения", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Text string `json:"text"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteError(w, "неверный формат запроса", http.StatusBadRequest)
+		return
+	}
+	if req.Text == "" {
+		utils.WriteError(w, "текст сообщения не может быть пустым", http.StatusBadRequest)
+		return
+	}
+
+	updatedMsg, err := h.messageService.UpdateMessage(r.Context(), messageID, authorProfileID, req.Text)
+	if err != nil {
+		if err.Error() == "forbidden: you can only edit your own messages" {
+			utils.WriteError(w, "доступ запрещён", http.StatusForbidden)
+			return
+		}
+		utils.WriteError(w, "ошибка обновления сообщения", http.StatusInternalServerError)
+		return
+	}
+
+	msgResponse := h.mapMessageResponse(r.Context(), *updatedMsg)
+	msgBytes, _ := json.Marshal(msgResponse)
+	h.hub.BroadcastToChat(strconv.FormatInt(updatedMsg.ChatID, 10), msgBytes)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(msgResponse)
+}
 func (h *ChatHandler) mapChatsResponse(ctx context.Context, chats []models.Chat, viewerUserID int64) []ChatResponse {
 	result := make([]ChatResponse, 0, len(chats))
 	for _, chat := range chats {
