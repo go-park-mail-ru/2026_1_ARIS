@@ -35,5 +35,5 @@ func (client *MinioClient) Save(ctx context.Context, bucketName string, reader i
 		return "", err
 	}
 
-	return fmt.Sprintf("http://%s:%s/%s/%s", os.Getenv("MINIO_HOST"), os.Getenv("MINIO_PORT"), uploadInto.Bucket, uploadInto.Key), nil
+	return fmt.Sprintf("http://%s:%s/%s/%s", os.Getenv("MINIO_PUBLIC_HOST"), os.Getenv("MINIO_PORT"), uploadInto.Bucket, uploadInto.Key), nil
 }
