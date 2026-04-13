@@ -47,7 +47,7 @@ select p.avatar_id, p.id, up.first_name, up.last_name, ua.username, m.link, stat
 join profile p on p.id=friend
 join user_profile up on up.profile_id=friend
 join user_account ua on up.user_account_id=ua.id
-left join media m on p.avatar_id=m.id where m.mime_type='image' or mime_type is NULL ORDER BY p.id ASC;`
+left join media m on p.avatar_id=m.id and (m.mime_type like 'image/%' or m.mime_type='image') ORDER BY p.id ASC;`
 
 	rows, err := storage.db.Query(ctx, query, profileID, string(status))
 	if err != nil {
