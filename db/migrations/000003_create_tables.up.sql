@@ -310,3 +310,9 @@ CREATE TABLE IF NOT EXISTS repost (
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS user_settings (
+    user_account_id BIGINT NOT NULL REFERENCES user_account(id) ON DELETE CASCADE,
+    lang language_setting NOT NULL DEFAULT 'RU',
+    theme theme_setting NOT NULL DEFAULT 'light'
+);

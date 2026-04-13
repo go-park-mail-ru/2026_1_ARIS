@@ -8,4 +8,5 @@ const (
 	InvalidCtxUserAccountValue = "Can't read user account from context"
 	InvalidID                  = "Invlalid ID parameter"
 	PostContentRequired        = "Post content required"
+	ValidationError            = "validation error"
 )
