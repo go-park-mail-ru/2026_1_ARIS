@@ -2,10 +2,6 @@ package post
 
 import (
 	"context"
-	"errors"
-	"maps"
-	"slices"
-	"sync"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
@@ -17,8 +13,9 @@ import (
 )
 
 type PostRepo interface {
-	Save(ctx context.Context, post models.Post) (int64, error)
+	Save(ctx context.Context, Tx pgx.Tx, post models.Post) (int64, error)
 	Delete(ctx context.Context, id int64) error
+	Update(ctx context.Context, query string, args []any) error
 
 	List(ctx context.Context, offset, limit int) ([]models.Post, error)
 	Get(ctx context.Context, id int64) (*models.Post, error)
@@ -36,10 +33,27 @@ func NewPostStorage(db *pgxpool.Pool) PostRepo {
 	}
 }
 
-func (storage *postStorage) Save(ctx context.Context, post models.Post) (int64, error) {
+func (storage *postStorage) Update(ctx context.Context, query string, args []any) error {
+	res, err := storage.db.Exec(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	if res.RowsAffected() == 0 {
+		return xerrors.NoRowsAffected
+	}
+
+	if res.RowsAffected() != 1 {
+		return xerrors.MultipleRowsAffect
+	}
+
+	return nil
+}
+
+func (storage *postStorage) Save(ctx context.Context, Tx pgx.Tx, post models.Post) (int64, error) {
 	query := `INSERT INTO post (uid, post_text, author_id, is_public_demo, allow_comments) VALUES ($1, $2, $3, $4, $5) RETURNING id`
 
-	row := storage.db.QueryRow(ctx, query, uuid.New(), post.Text, post.AuthorID, post.IsPublicDemo, post.AllowComments)
+	row := Tx.QueryRow(ctx, query, uuid.New(), post.Text, post.AuthorID, post.IsPublicDemo, post.AllowComments)
 
 	var postID int64
 
@@ -115,72 +129,4 @@ func (storage *postStorage) GetAll(ctx context.Context) ([]models.Post, error) {
 	}
 
 	return posts, nil
-}
-
-type inmemoryPostRepo struct {
-	mu    sync.RWMutex
-	Posts map[int64]models.Post
-}
-
-func NewPostRepo() PostRepo {
-	repo := inmemoryPostRepo{}
-	repo.Posts = make(map[int64]models.Post)
-	return &repo
-}
-
-func (r *inmemoryPostRepo) Save(ctx context.Context, post models.Post) (int64, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	_, ok := r.Posts[post.ID]
-	if !ok {
-		r.Posts[post.ID] = post
-	}
-
-	return post.ID, nil
-}
-
-func (r *inmemoryPostRepo) Delete(ctx context.Context, id int64) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	_, ok := r.Posts[id]
-
-	if !ok {
-		return nil //errors.New("post not found")
-	}
-
-	delete(r.Posts, id)
-	return nil
-}
-
-func (r *inmemoryPostRepo) List(ctx context.Context, offset, limit int) ([]models.Post, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	if offset >= len(r.Posts) {
-		return []models.Post{}, nil
-	}
-
-	if offset+limit > len(r.Posts) {
-		return slices.Collect(maps.Values(r.Posts))[offset:], nil
-	}
-
-	return slices.Collect(maps.Values(r.Posts))[offset:offset:limit], nil
-}
-
-func (r *inmemoryPostRepo) Get(ctx context.Context, id int64) (*models.Post, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	profile, ok := r.Posts[id]
-	if !ok {
-		return nil, errors.New("Profile not found")
-	}
-
-	return &profile, nil
-}
-
-func (r *inmemoryPostRepo) GetAll(ctx context.Context) ([]models.Post, error) {
-	return slices.Collect(maps.Values(r.Posts)), nil
 }

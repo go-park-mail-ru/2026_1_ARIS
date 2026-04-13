@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models" // добавлен импорт
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/comment"
@@ -491,215 +492,255 @@ func MakeMock(mediaRepo media.MediaRepo,
 	post8.CreatedAt = now.Add(-48 * time.Hour)
 	post8.UpdatedAt = post8.CreatedAt
 
-	post1ID, err := postService.Save(context.Background(), *post1)
+	var postMedia1 []dto.MediaRequestData
+	postMedia1 = append(postMedia1, dto.MediaRequestData{MediaID: media1ID, MediaURL: "https://img.freepik.com/free-photo/mountains-lake_1398-1150.jpg"})
+	postMedia1 = append(postMedia1, dto.MediaRequestData{MediaID: media2ID, MediaURL: "https://img51994.kanal-o.ru/img/2024-09-09/fmt_81_24_shutterstock_2141488197.jpg"})
+
+	var postMedia2 []dto.MediaRequestData
+	postMedia2 = append(postMedia2, dto.MediaRequestData{MediaID: media3ID, MediaURL: "https://moya-planeta.ru/upload/images/l/eb/e2/ebe21cb5a55a808b104f3d51c3ff96284bae5182.jpg"})
+	postMedia2 = append(postMedia2, dto.MediaRequestData{MediaID: media5ID, MediaURL: "https://oboitd.ru/images/goods/big/20200125110231_Priroda_10-344.jpg"})
+	postMedia2 = append(postMedia2, dto.MediaRequestData{MediaID: media6ID, MediaURL: "https://www.advantour.com/img/kazakhstan/images/nature.jpg"})
+	postMedia2 = append(postMedia2, dto.MediaRequestData{MediaID: media7ID, MediaURL: "https://img.goodfon.com/wallpaper/big/5/18/italiia-gory-ozero-peizazh-otrazhenie-priroda.webp"})
+
+	var postMedia3 []dto.MediaRequestData
+	postMedia3 = append(postMedia3, dto.MediaRequestData{MediaID: media8ID, MediaURL: "https://marathonec.ru/wp-content/uploads/2019/07/utrennyaya-probezhka-1.jpg"})
+	postMedia3 = append(postMedia3, dto.MediaRequestData{MediaID: media9ID, MediaURL: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlVOAM_1swHsumck2XbdMEeEKauDRDiXn86g&s"})
+
+	var postMedia4 []dto.MediaRequestData
+	postMedia4 = append(postMedia4, dto.MediaRequestData{MediaID: media10ID, MediaURL: "https://media.licdn.com/dms/image/v2/D5612AQGuHFW9idrbfw/article-cover_image-shrink_720_1280/article-cover_image-shrink_720_1280/0/1714747679466?e=2147483647&v=beta&t=c9gny1mV4A13_niAAW-2wjP9iglUYtsdoXiMzxfoAxo"})
+
+	var postMedia5 []dto.MediaRequestData
+	postMedia5 = append(postMedia5, dto.MediaRequestData{MediaID: media11ID, MediaURL: "https://ubifi.net/wp-content/uploads/2025/06/Kinds-of-Internet-Connection.webp"})
+	postMedia5 = append(postMedia5, dto.MediaRequestData{MediaID: media12ID, MediaURL: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTs3HaWprjBE3nMGKyH-Myd8D3jK0U0EUqTLw&s"})
+	postMedia5 = append(postMedia5, dto.MediaRequestData{MediaID: media13ID, MediaURL: "https://image.geo.de/30140508/t/r4/v4/w1440/r0/-/internetz-f-209777524-jpg--79960-.jpg"})
+	postMedia5 = append(postMedia5, dto.MediaRequestData{MediaID: media14ID, MediaURL: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS7N25ADdSYwSC-m7qUSqlwPsKd4ALT9F425Q&s"})
+	postMedia5 = append(postMedia5, dto.MediaRequestData{MediaID: media15ID, MediaURL: "https://www.wiwi.uni-wuerzburg.de/fileadmin/_processed_/3/9/csm_computer-1209641_1920_3a999762b2.jpg"})
+
+	var postMedia6 []dto.MediaRequestData
+	postMedia6 = append(postMedia6, dto.MediaRequestData{MediaID: media17ID, MediaURL: "https://fitaliancook.com/wp-content/uploads/2025/07/pasta-e-fagioli-rezept-beitragsbild.jpg"})
+	postMedia6 = append(postMedia6, dto.MediaRequestData{MediaID: media18ID, MediaURL: "https://eat.de/wp-content/uploads/2025/03/tuerkische-pasta-7014.jpg"})
+	postMedia6 = append(postMedia6, dto.MediaRequestData{MediaID: media19ID, MediaURL: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT0kWh_aX8DW5H8BkMJ3xqzXsRXPY2kyZu5ww&s"})
+	postMedia6 = append(postMedia6, dto.MediaRequestData{MediaID: media20ID, MediaURL: "https://images.gastronom.ru/TYj7-7529vyMsVom2kYJQl8MFrkWsrOY5hgaQPa1zsk/pr:article-cover-image/g:ce/rs:auto:0:0:0/L2Ntcy9hbGwtaW1hZ2VzL2IzY2RlN2ZjLTgzZjEtNGJlYi1iOGZmLWZhMzM3YzY1ODFlYy5qcGc.webp"})
+
+	var postMedia7 []dto.MediaRequestData
+	postMedia7 = append(postMedia7, dto.MediaRequestData{MediaID: media21ID, MediaURL: "https://boxru.ru/upload/resize_cache/iblock/1af/400_400_140cd750bba9870f18aada2478b24840a/q3bxff3vhe8iljlcbpn4jlbx3szt2p1w.jpg"})
+	postMedia7 = append(postMedia7, dto.MediaRequestData{MediaID: media22ID, MediaURL: "https://s1.stc.all.kpcdn.net/putevoditel/projectid_346574/images/tild3037-3837-4461-a261-663863336336__photo.jpg"})
+
+	var postMedia8 []dto.MediaRequestData
+	postMedia8 = append(postMedia8, dto.MediaRequestData{MediaID: media23ID, MediaURL: "https://space-pm.ru/uploads/market/stati/small/1719495934.jpg"})
+
+	post1ID, err := postService.Save(context.Background(), *post1, post1.AuthorID, &postMedia1)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println(post1.AuthorID)
 		return
 	}
 
-	post2ID, err := postService.Save(context.Background(), *post2)
+	post2ID, err := postService.Save(context.Background(), *post2, post2.AuthorID, &postMedia2)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	post3ID, err := postService.Save(context.Background(), *post3)
+	post3ID, err := postService.Save(context.Background(), *post3, post3.AuthorID, &postMedia3)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	post4ID, err := postService.Save(context.Background(), *post4)
+	post4ID, err := postService.Save(context.Background(), *post4, post4.AuthorID, &postMedia4)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	post5ID, err := postService.Save(context.Background(), *post5)
+	post5ID, err := postService.Save(context.Background(), *post5, post5.AuthorID, &postMedia5)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	post6ID, err := postService.Save(context.Background(), *post6)
+	post6ID, err := postService.Save(context.Background(), *post6, post6.AuthorID, &postMedia6)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	_ = post6ID
 
-	post7ID, err := postService.Save(context.Background(), *post7)
+	post7ID, err := postService.Save(context.Background(), *post7, post7.AuthorID, &postMedia7)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	_ = post7ID
 
-	post8ID, err := postService.Save(context.Background(), *post8)
+	post8ID, err := postService.Save(context.Background(), *post8, post8.AuthorID, &postMedia8)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	_ = post8ID
 
 	fmt.Println("посты успешно созданы")
 
-	postWithMedia1 := models.NewPostWithMedia(post1ID, media1ID, 0)
-	postWithMedia2 := models.NewPostWithMedia(post1ID, media2ID, 1)
+	// postWithMedia1 := models.NewPostWithMedia(post1ID, media1ID, 0)
+	// postWithMedia2 := models.NewPostWithMedia(post1ID, media2ID, 1)
 
-	postWithMedia3 := models.NewPostWithMedia(post2ID, media3ID, 0)
-	postWithMedia4 := models.NewPostWithMedia(post2ID, media5ID, 2)
-	postWithMedia5 := models.NewPostWithMedia(post2ID, media6ID, 3)
-	postWithMedia6 := models.NewPostWithMedia(post2ID, media7ID, 4)
+	// postWithMedia3 := models.NewPostWithMedia(post2ID, media3ID, 0)
+	// postWithMedia4 := models.NewPostWithMedia(post2ID, media5ID, 2)
+	// postWithMedia5 := models.NewPostWithMedia(post2ID, media6ID, 3)
+	// postWithMedia6 := models.NewPostWithMedia(post2ID, media7ID, 4)
 
-	postWithMedia7 := models.NewPostWithMedia(post3ID, media8ID, 0)
-	postWithMedia8 := models.NewPostWithMedia(post3ID, media9ID, 1)
+	// postWithMedia7 := models.NewPostWithMedia(post3ID, media8ID, 0)
+	// postWithMedia8 := models.NewPostWithMedia(post3ID, media9ID, 1)
 
-	postWithMedia9 := models.NewPostWithMedia(post4ID, media10ID, 0)
+	// postWithMedia9 := models.NewPostWithMedia(post4ID, media10ID, 0)
 
-	postWithMedia10 := models.NewPostWithMedia(post5ID, media11ID, 0)
-	postWithMedia11 := models.NewPostWithMedia(post5ID, media12ID, 1)
-	postWithMedia12 := models.NewPostWithMedia(post5ID, media13ID, 2)
-	postWithMedia13 := models.NewPostWithMedia(post5ID, media14ID, 3)
-	postWithMedia14 := models.NewPostWithMedia(post5ID, media15ID, 4)
+	// postWithMedia10 := models.NewPostWithMedia(post5ID, media11ID, 0)
+	// postWithMedia11 := models.NewPostWithMedia(post5ID, media12ID, 1)
+	// postWithMedia12 := models.NewPostWithMedia(post5ID, media13ID, 2)
+	// postWithMedia13 := models.NewPostWithMedia(post5ID, media14ID, 3)
+	// postWithMedia14 := models.NewPostWithMedia(post5ID, media15ID, 4)
 
-	postWithMedia15 := models.NewPostWithMedia(post6ID, media17ID, 0)
-	postWithMedia16 := models.NewPostWithMedia(post6ID, media18ID, 1)
-	postWithMedia17 := models.NewPostWithMedia(post6ID, media19ID, 2)
-	postWithMedia18 := models.NewPostWithMedia(post6ID, media20ID, 3)
+	// postWithMedia15 := models.NewPostWithMedia(post6ID, media17ID, 0)
+	// postWithMedia16 := models.NewPostWithMedia(post6ID, media18ID, 1)
+	// postWithMedia17 := models.NewPostWithMedia(post6ID, media19ID, 2)
+	// postWithMedia18 := models.NewPostWithMedia(post6ID, media20ID, 3)
 
-	postWithMedia19 := models.NewPostWithMedia(post7ID, media21ID, 0)
-	postWithMedia20 := models.NewPostWithMedia(post7ID, media22ID, 1)
+	// postWithMedia19 := models.NewPostWithMedia(post7ID, media21ID, 0)
+	// postWithMedia20 := models.NewPostWithMedia(post7ID, media22ID, 1)
 
-	postWithMedia21 := models.NewPostWithMedia(post8ID, media23ID, 1)
+	// postWithMedia21 := models.NewPostWithMedia(post8ID, media23ID, 1)
 
-	// connect post with medias to get PostWithMedia
-	postWithMediaRepo.Save(context.Background(), *postWithMedia1)
-	postWithMediaRepo.Save(context.Background(), *postWithMedia2)
+	// // connect post with medias to get PostWithMedia
+	// postWithMediaRepo.Save(context.Background(), *postWithMedia1)
+	// postWithMediaRepo.Save(context.Background(), *postWithMedia2)
 
-	//postWithMediaRepo.Save(post2, media4, 1)
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia3)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// //postWithMediaRepo.Save(post2, media4, 1)
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia3)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia4)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia4)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia5)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia5)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia6)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia6)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia7)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia7)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia8)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia8)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia9)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia9)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia10)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia10)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia11)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia11)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia12)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia12)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia13)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia13)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia14)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia14)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia15)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia15)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia16)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia16)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia17)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia17)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia18)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia18)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia19)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia19)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia20)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia20)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
-	err = postWithMediaRepo.Save(context.Background(), *postWithMedia21)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// err = postWithMediaRepo.Save(context.Background(), *postWithMedia21)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
 	fmt.Println("посты-с-медиа успешно созданы")
 
 	//postWithMediaRepo.Save(post5, media16, 5)
 
-	like1 := models.NewLikeToPost(post1.ID, user4.ID)
-	like2 := models.NewLikeToPost(post2.ID, user5.ID)
-	like3 := models.NewLikeToPost(post3.ID, user1.ID)
-	like4 := models.NewLikeToPost(post4.ID, user2.ID)
-	like5 := models.NewLikeToPost(post5.ID, user3.ID)
-	like6 := models.NewLikeToPost(post6.ID, user3.ID)
+	like1 := models.NewLikeToPost(post1ID, user4.ID)
+	like2 := models.NewLikeToPost(post2ID, user5.ID)
+	like3 := models.NewLikeToPost(post3ID, user1.ID)
+	like4 := models.NewLikeToPost(post4ID, user2.ID)
+	like5 := models.NewLikeToPost(post5ID, user3.ID)
+	like6 := models.NewLikeToPost(post6ID, user3.ID)
 	likeRepo := like.NewLikeRepo()
 
 	_, err = likeRepo.Save(context.Background(), *like1)

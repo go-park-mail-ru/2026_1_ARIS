@@ -3,16 +3,21 @@ package post
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/comment"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/like"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/post"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/profile"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/repost"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/cursor"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type FeedResult struct {
@@ -22,6 +27,7 @@ type FeedResult struct {
 }
 
 type postService struct {
+	pool              *pgxpool.Pool
 	PostRepo          post.PostRepo
 	PostWithMediaRepo post.PostWithMediaRepo
 	ProfileRepo       profile.ProfileRepo
@@ -41,15 +47,16 @@ type PostService interface {
 	GetFeed(ctx context.Context, rawCursor string, limit int) (FeedResult, error)
 	GetPublicFeed(ctx context.Context, rawCursor string, limit int) (FeedResult, error)
 	GetPostAuthor(ctx context.Context, postID int64) (*models.Profile, error)
-	Save(ctx context.Context, post models.Post) (int64, error)
+	Save(ctx context.Context, post models.Post, profileID int64, attachedMedia *[]dto.MediaRequestData) (int64, error)
 	GetLikeCount(ctx context.Context, postID int64) int
 	GetCommentCount(ctx context.Context, postID int64) int
 	GetRepostCount(ctx context.Context, postID int64) int
 	GetPublicPopularPosts(ctx context.Context) ([]models.Post, error)
 	GetPopularPosts(ctx context.Context) ([]models.Post, error)
-	AttachMedia(ctx context.Context, postID int64, mediaID []dto.MediaRequestData) mediaErrors
+	AttachMedia(ctx context.Context, postID, authorID int64, Tx pgx.Tx, mediaID []dto.MediaRequestData) error
+	detachMedia(ctx context.Context, postID, authorID int64, Tx pgx.Tx) error
 	Delete(ctx context.Context, postID int64) error
-	//Update(ctx context.Context, dto dto.PostUpdateDTO) error
+	Update(ctx context.Context, postID, authorID int64, dto dto.PostRequestDTO) error
 }
 
 func NewPostService(postRepo post.PostRepo,
@@ -57,7 +64,8 @@ func NewPostService(postRepo post.PostRepo,
 	profileRepo profile.ProfileRepo,
 	commentRepo comment.CommentRepo,
 	repostRepo repost.RepostRepo,
-	likeRepo like.LikeRepo) PostService {
+	likeRepo like.LikeRepo,
+	pool *pgxpool.Pool) PostService {
 
 	return &postService{
 		PostRepo:          postRepo,
@@ -66,21 +74,86 @@ func NewPostService(postRepo post.PostRepo,
 		RepostRepo:        repostRepo,
 		LikeRepo:          likeRepo,
 		PostWithMediaRepo: postWithMediaRepo,
+		pool:              pool,
 	}
 }
 
-type attachmentError struct {
-	Err error `json:"error"`
-	Pos int   `json:"position"`
-}
-
-type mediaErrors struct {
-	Errs []attachmentError `json:"errors"`
-}
-
-// func (s *postService) Update(ctx context.Context, dto dto.PostUpdateDTO) error {
-
+// type attachmentError struct {
+// 	Err error `json:"error"`
+// 	Pos int   `json:"position"`
 // }
+
+// type mediaErrors struct {
+// 	Errs []attachmentError `json:"errors"`
+// }
+
+func (s *postService) detachMedia(ctx context.Context, postID, authorID int64, Tx pgx.Tx) error {
+	post, err := s.Get(ctx, int64(postID))
+	if err != nil {
+		return err
+	}
+
+	if authorID != post.AuthorID {
+		return xerrors.AccessDeny
+	}
+
+	if err := s.PostWithMediaRepo.DeletePostMedia(ctx, postID, Tx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *postService) Update(ctx context.Context, postID, authorID int64, dto dto.PostRequestDTO) error {
+	Tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer Tx.Rollback(ctx)
+
+	post, err := s.Get(ctx, int64(postID))
+	if err != nil {
+		return err
+	}
+
+	if authorID != post.AuthorID {
+		return xerrors.AccessDeny
+	}
+
+	setClauses := []string{}
+	args := []any{}
+	argIdx := 1
+
+	if dto.Text != nil && post.Text != nil && *dto.Text != *post.Text {
+		setClauses = append(setClauses, fmt.Sprintf("post_text=$%d", argIdx))
+		args = append(args, *dto.Text)
+		argIdx++
+	}
+
+	if len(args) != 0 {
+		args = append(args, postID)
+		query := fmt.Sprintf("UPDATE post SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx)
+
+		err := s.PostRepo.Update(ctx, query, args)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := s.detachMedia(ctx, postID, authorID, Tx); err != nil {
+		if !errors.Is(err, xerrors.NoRowsAffected) {
+			return err
+		}
+	}
+
+	if dto.Media != nil {
+		if err := s.AttachMedia(ctx, postID, authorID, Tx, *dto.Media); err != nil {
+			return err
+		}
+	}
+
+	return Tx.Commit(ctx)
+}
 
 func (s *postService) Get(ctx context.Context, postID int64) (*models.Post, error) {
 	return s.PostRepo.Get(ctx, postID)
@@ -90,9 +163,7 @@ func (s *postService) Delete(ctx context.Context, postID int64) error {
 	return s.PostRepo.Delete(ctx, postID)
 }
 
-func (s *postService) AttachMedia(ctx context.Context, postID int64, mediaID []dto.MediaRequestData) mediaErrors {
-	var mediaErrors mediaErrors
-
+func (s *postService) AttachMedia(ctx context.Context, postID, authorID int64, Tx pgx.Tx, mediaID []dto.MediaRequestData) error {
 	mediaIDs := make([]int64, len(mediaID))
 	for i, media := range mediaID {
 		mediaIDs[i] = media.MediaID
@@ -100,13 +171,13 @@ func (s *postService) AttachMedia(ctx context.Context, postID int64, mediaID []d
 
 	for i, media := range mediaID {
 		postWithMedia := models.NewPostWithMedia(postID, media.MediaID, i)
-		err := s.PostWithMediaRepo.Save(ctx, *postWithMedia)
+		err := s.PostWithMediaRepo.Save(ctx, Tx, *postWithMedia)
 		if err != nil {
 			// Определить тип ошибки
-			mediaErrors.Errs = append(mediaErrors.Errs, attachmentError{Err: err, Pos: i})
+			return fmt.Errorf("can't save media:%d", i)
 		}
 	}
-	return mediaErrors
+	return nil
 }
 
 // получение ленты, будь то публичных или нет постов (унификация чезер callbach-функцию getCursoredPosts)
@@ -180,8 +251,27 @@ func (s *postService) GetPostAuthor(ctx context.Context, postID int64) (*models.
 	return profile, nil
 }
 
-func (s *postService) Save(ctx context.Context, post models.Post) (int64, error) {
-	return s.PostRepo.Save(ctx, post)
+func (s *postService) Save(ctx context.Context, post models.Post, profileID int64, attachedMedia *[]dto.MediaRequestData) (int64, error) {
+	Tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer Tx.Rollback(ctx)
+
+	postID, err := s.PostRepo.Save(ctx, Tx, post)
+	if err != nil {
+		return 0, err
+	}
+
+	if attachedMedia != nil {
+		// проверка на тип
+		err := s.AttachMedia(ctx, postID, profileID, Tx, *attachedMedia)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	return postID, Tx.Commit(ctx)
 }
 
 func (s *postService) GetLikeCount(ctx context.Context, postID int64) int {

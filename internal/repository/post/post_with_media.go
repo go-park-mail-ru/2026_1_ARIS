@@ -3,22 +3,18 @@ package post
 import (
 	"context"
 	"errors"
-	"slices"
-	"sync"
+	"fmt"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type inmemoryPostWithMediaRepo struct {
-	mu             sync.RWMutex
-	postWithMedias []models.PostWithMedia
-}
-
 type PostWithMediaRepo interface {
 	GetMediaByPostID(ctx context.Context, postID int64) []int64
-	Save(ctx context.Context, postWithMedia models.PostWithMedia) error
+	Save(ctx context.Context, Tx pgx.Tx, postWithMedia models.PostWithMedia) error
+	DeletePostMedia(ctx context.Context, postID int64, Tx pgx.Tx) error
 }
 
 type postWithMediaStorage struct {
@@ -30,6 +26,23 @@ func NewPostWithMediaStorage(db *pgxpool.Pool) PostWithMediaRepo {
 	return &postWithMediaStorage{
 		db: db,
 	}
+}
+
+func (storage *postWithMediaStorage) DeletePostMedia(ctx context.Context, postID int64, Tx pgx.Tx) error {
+	query := `DELETE FROM post_with_media WHERE post_id=$1`
+
+	res, err := Tx.Exec(ctx, query, postID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(res.RowsAffected())
+
+	if res.RowsAffected() == 0 {
+		return xerrors.NoRowsAffected
+	}
+
+	return nil
 }
 
 func (storage *postWithMediaStorage) GetMediaByPostID(ctx context.Context, postID int64) []int64 {
@@ -49,10 +62,10 @@ func (storage *postWithMediaStorage) GetMediaByPostID(ctx context.Context, postI
 	return medias
 }
 
-func (storage *postWithMediaStorage) Save(ctx context.Context, postWithMedia models.PostWithMedia) error {
+func (storage *postWithMediaStorage) Save(ctx context.Context, Tx pgx.Tx, postWithMedia models.PostWithMedia) error {
 	query := `INSERT INTO post_with_media (post_id, media_id, sort_order) VALUES ($1, $2, $3)`
 
-	res, err := storage.db.Exec(ctx, query, postWithMedia.PostID, postWithMedia.MediaID, postWithMedia.Order)
+	res, err := Tx.Exec(ctx, query, postWithMedia.PostID, postWithMedia.MediaID, postWithMedia.Order)
 	if err != nil {
 		return err
 	}
@@ -60,42 +73,5 @@ func (storage *postWithMediaStorage) Save(ctx context.Context, postWithMedia mod
 	if res.RowsAffected() != 1 {
 		return errors.New("affected not on 1 row")
 	}
-	return nil
-}
-
-func NewPostWithMediaRepo() PostWithMediaRepo {
-	return &inmemoryPostWithMediaRepo{}
-}
-
-// убрать отсюда, переложить в сервис
-func (r *inmemoryPostWithMediaRepo) GetMediaByPostID(ctx context.Context, postID int64) []int64 {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	var mediaIDs []int64
-
-	slices.SortFunc(r.postWithMedias, func(i, j models.PostWithMedia) int {
-		if i.Order < j.Order {
-			return -1
-		} else if i.Order > j.Order {
-			return 1
-		}
-		return 0
-	})
-
-	for _, p := range r.postWithMedias {
-		if p.PostID == postID {
-			mediaIDs = append(mediaIDs, p.MediaID)
-		}
-	}
-
-	return mediaIDs
-}
-
-func (r *inmemoryPostWithMediaRepo) Save(ctx context.Context, postWithMedia models.PostWithMedia) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.postWithMedias = append(r.postWithMedias, postWithMedia)
 	return nil
 }

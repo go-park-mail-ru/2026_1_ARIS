@@ -15,6 +15,7 @@ import (
 	"github.com/minio/minio-go/v7"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/server"
 
@@ -49,7 +50,6 @@ import (
 	sessionservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
 	userservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/config"
 	connectdb "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/connect_db"
 	connectminio "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/connect_minio"
@@ -172,7 +172,7 @@ func main() {
 	chatMemberRepo := repository.NewChatMemberStorage(db)
 	messageRepo := repository.NewMessageStorage(db)
 
-	postService := postservice.NewPostService(postRepo, postWithMediaRepo, profileRepo, commentRepo, repostRepo, likeRepo)
+	postService := postservice.NewPostService(postRepo, postWithMediaRepo, profileRepo, commentRepo, repostRepo, likeRepo, db)
 	userService := userservice.NewUserService(userAccountRepo, profileRepo, userProfileRepo)
 	authService := authservice.NewAuthService(userAccountRepo, profileRepo, userProfileRepo)
 	sessService := sessionservice.NewSessionService(sessionRepo)

@@ -30,16 +30,8 @@ func NewPostHandler(userService user.UserService, postService post.PostService, 
 	}
 }
 
-type PostCreationRequest struct {
-	Media *[]dto.MediaRequestData `json:"media"`
-	Text  *string                 `json:"text"`
-	//Documents     *[]int64 `json:"documents"`
-	//AllowComments bool `json:"allowComments"`
-	//IsPublicDemo  bool `json:"isPublicDemo"`
-	//NotifyFriends bool `json:"notifyFriends"`
-}
-
 type PostCreationResponse struct {
+	PostID        int64    `json:"id"`
 	MediaURL      []string `json:"mediaURL"`
 	Text          *string  `json:"text"`
 	FirstName     string   `json:"firstName"`
@@ -68,7 +60,7 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	//////////////////////////////////////////////////////////////////////////////////////////////
 
-	var request PostCreationRequest
+	var request dto.PostRequestDTO
 
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -81,27 +73,30 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	post := models.NewPost(request.Text, profile.ID, true, true)
+	post := models.NewPost(request.Text, profile.ID, false, true)
 
-	postID, err := h.postService.Save(r.Context(), *post)
+	_, err = h.postService.Save(r.Context(), *post, profile.ID, request.Media)
 	if err != nil {
 		utils.WriteError(w, "Can't save post", http.StatusInternalServerError)
 		return
 	}
 
-	if request.Media != nil {
-		// проверка на тип
-		err := h.postService.AttachMedia(r.Context(), postID, *request.Media)
-		if len(err.Errs) != 0 {
-			utils.WriteError(w, "Can't attach media", http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(err)
-			return
-		}
-	}
+	// if request.Media != nil {
+	// 	// проверка на тип
+	// 	err := h.postService.AttachMedia(r.Context(), postID, profile.ID, *request.Media)
+	// 	if err != nil {
+	// 		fmt.Println(err)
+	// 		utils.WriteError(w, "Can't attach media", http.StatusInternalServerError)
+	// 		json.NewEncoder(w).Encode(err)
+	// 		return
+	// 	}
+	// }
 
 	//////////////////////////////////////////////////////////////////////////////////////////////
 
 	var response PostCreationResponse
+
+	response.PostID = post.ID
 
 	if request.Text != nil {
 		// postText := html.EscapeString(*request.Text)
@@ -230,6 +225,8 @@ func (h *PostHandler) GetPost(w http.ResponseWriter, r *http.Request) {
 
 	var response PostCreationResponse
 
+	response.PostID = post.ID
+
 	response.FirstName = userProfile.FirstName
 	response.LastName = userProfile.LastName
 
@@ -294,26 +291,60 @@ func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	post, err := h.postService.Get(r.Context(), int64(postID))
-	if err != nil {
-		if errors.Is(err, xerrors.PostNotFound) {
-			utils.WriteError(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
-		return
-	}
-
-	if post.AuthorID != profile.ID {
-		utils.WriteError(w, "Denied", http.StatusForbidden)
-		return
-	}
-
-	var request PostCreationRequest
+	var request dto.PostRequestDTO
 
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		utils.WriteError(w, xerrors.InvalidRequestBody, http.StatusBadRequest)
 		return
 	}
+
+	if err := h.postService.Update(r.Context(), int64(postID), profile.ID, request); err != nil {
+		utils.WriteError(w, "Can't update post", http.StatusInternalServerError)
+		return
+	}
+
+	//////////////////////////////////////////////////////
+
+	var response PostCreationResponse
+
+	response.PostID = int64(postID)
+
+	if request.Text != nil {
+		// postText := html.EscapeString(*request.Text)
+		// response.Text = &postText
+		response.Text = request.Text
+	}
+
+	if request.Media != nil {
+		for _, media := range *request.Media {
+			response.MediaURL = append(response.MediaURL, media.MediaURL)
+		}
+	}
+
+	userProfile, err := h.userService.GetUserProfileByProfileID(r.Context(), profile.ID)
+	if err != nil {
+		utils.WriteError(w, "", 500)
+		return
+	}
+
+	response.FirstName = userProfile.FirstName
+	response.LastName = userProfile.LastName
+
+	if profile.AvatarID != nil {
+		avatar, err := h.mediaService.GetAvatarByID(r.Context(), profile.AvatarID)
+		if err != nil {
+			utils.WriteError(w, "", 500)
+			return
+		}
+		response.AvatarURL = &avatar.Link
+	}
+
+	response.UserAccountID = userAccountID
+
+	//////////////////////////////////////////////////////////////////////////////////////////////
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(response)
 }

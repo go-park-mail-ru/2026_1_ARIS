@@ -11,6 +11,8 @@ var FriendshipNotFound = errors.New("friendship not found")
 var MediaNotFound = errors.New("media not found")
 var PostNotFound = errors.New("post not found")
 
+var AccessDeny = errors.New("access deny")
+
 var NoRowsAffected = errors.New("affected on 0 rows")
 
 var AllreadyExists = errors.New("Resource already exists")

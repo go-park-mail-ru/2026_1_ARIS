@@ -3,6 +3,8 @@
 COMPOSE_FILE=./docker-compose.dev.yml
 COMPOSE_ENV_FILE=./.env.compose
 
+# include .env
+
 MIGRATE=migrate -source "file://./db/migrations" -database "postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=${SSL_MODE}"
 
 test:
@@ -52,6 +54,9 @@ services-up:
 
 services-stop:
 	docker compose -f ./docker/docker-compose.yml --env-file ./.env stop
+
+services-down:
+	docker compose -f ./docker/docker-compose.yml --env-file ./.env down -v
 
 dev:
 	docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE) up --build -d

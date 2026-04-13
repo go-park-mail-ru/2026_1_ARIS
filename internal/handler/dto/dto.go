@@ -80,8 +80,11 @@ type MediaRequestData struct {
 	MediaURL string `json:"mediaURL"`
 }
 
-type PostUpdateDTO struct {
-	Text *string `json:"text"`
+type PostRequestDTO struct {
+	Media *[]MediaRequestData `json:"media"`
+	Text  *string             `json:"text"`
+	//Documents     *[]int64 `json:"documents"`
 	//AllowComments bool `json:"allowComments"`
 	//IsPublicDemo  bool `json:"isPublicDemo"`
+	//NotifyFriends bool `json:"notifyFriends"`
 }
