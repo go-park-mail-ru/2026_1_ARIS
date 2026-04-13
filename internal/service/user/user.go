@@ -121,6 +121,20 @@ func (s *userService) UpdateMe(ctx context.Context, updateDTO dto.UpdateFullProf
 		}
 	}
 
+	if updateDTO.RemoveAvatar != nil && *updateDTO.RemoveAvatar {
+		err := s.ProfileRepo.UpdateAvatar(ctx, updateDTO.ProfileID, nil)
+		if err != nil {
+			return err
+		}
+	}
+
+	if updateDTO.AvatarID != nil {
+		err := s.ProfileRepo.UpdateAvatar(ctx, updateDTO.ProfileID, updateDTO.AvatarID)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

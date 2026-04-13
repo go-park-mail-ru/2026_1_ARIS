@@ -20,12 +20,15 @@ type UpdateFullProfileRequestDTO struct {
 	Email         *string `json:"email,omitempty" db:"email,omitempty" validate:"omitempty,omitnil,email"`
 	Phone         *string `json:"phone,omitempty" db:"phone,omitempty" validate:"omitempty,omitnil,e164"`
 
+	ProfileID     int64          `json:"-"`
 	UserProfileID int64          `json:"-"`
 	FirstName     *string        `db:"first_name,omitempty" json:"firstName,omitempty" validate:"omitempty,omitnil,alphaunicode"`
 	LastName      *string        `db:"last_name,omitempty" json:"lastName,omitempty" validate:"omitempty,omitnil,alphaunicode"`
 	Bio           *string        `db:"bio,omitempty" json:"bio,omitempty"`
 	BirthdayDate  *string        `db:"birthday_date,omitempty" json:"birthdayDate,omitempty" validate:"omitempty,omitnil,min=8,max=10,datetime=2006-01-02" example:"2000-11-26"`
 	Gender        *models.Gender `db:"gender,omitempty" json:"gender,omitempty" validate:"omitempty,omitnil,oneof=male female"`
+	AvatarID      *int64         `db:"avatar_id,omitempty" json:"avatarID,omitempty"`
+	RemoveAvatar  *bool          `json:"removeAvatar,omitempty"`
 
 	NativeTown  *string `db:"native_town,omitempty" json:"nativeTown,omitempty"`
 	Town        *string `db:"town,omitempty" json:"town,omitempty"`

@@ -188,8 +188,8 @@ func main() {
 	hub := websocket.NewHub()
 	go hub.Run()
 
-	authHandler := authhandler.NewAuthHandler(authService, sessService, userService)
 	userHandler := userhandler.NewUserHandler(userService, mediaService, settingsService)
+	authHandler := authhandler.NewAuthHandler(authService, sessService, userService, mediaService)
 	feedHandler := feedhandler.NewFeedHandler(postService, mediaService, userService)
 	mediaHandler := mediahandler.NewMediaHandler(mediaService, sessService, userService)
 	profileHandler := profilehandler.NewProfileHandler(userService, mediaService, sessService)

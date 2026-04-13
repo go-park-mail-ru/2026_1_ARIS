@@ -77,6 +77,12 @@ func NewRouter(
 		r.Get("/api/chats/{chatID}/messages", chatHandler.GetMessages)
 		r.Post("/api/chats/{chatID}/messages", chatHandler.SendMessage)
 		r.Get("/ws/{chatID}", wsHandler.HandleWebSocket)
+		r.Get("/api/chats", chatHandler.GetChats)
+		r.Post("/api/chats", chatHandler.CreateChat)
+		r.Get("/api/chats/{chatID}/messages", chatHandler.GetMessages)
+		r.Post("/api/chats/{chatID}/messages", chatHandler.SendMessage)
+		r.Put("/api/chats/{chatID}/messages/{messageID}", chatHandler.UpdateMessage)
+		r.Get("/ws/{chatID}", wsHandler.HandleWebSocket)
 	})
 
 	r.Route("/api/friends", func(r chi.Router) {

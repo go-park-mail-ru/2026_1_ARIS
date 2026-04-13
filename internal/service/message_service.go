@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
@@ -12,6 +13,22 @@ import (
 type MessageService interface {
 	SendMessage(ctx context.Context, chatID, authorID int64, text string) (*models.Message, error)
 	GetMessages(ctx context.Context, chatID int64, limit, offset int) ([]models.Message, error)
+	UpdateMessage(ctx context.Context, messageID, authorID int64, newText string) (*models.Message, error) // новый
+}
+
+func (s *messageService) UpdateMessage(ctx context.Context, messageID, authorID int64, newText string) (*models.Message, error) {
+	msg, err := s.msgRepo.GetByID(ctx, messageID)
+	if err != nil {
+		return nil, err
+	}
+	if msg.AuthorID != authorID {
+		return nil, errors.New("forbidden: you can only edit your own messages")
+	}
+	msg.Text = &newText
+	if err := s.msgRepo.Update(ctx, msg); err != nil {
+		return nil, err
+	}
+	return msg, nil
 }
 
 type messageService struct {
