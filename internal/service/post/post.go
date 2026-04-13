@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
@@ -48,7 +49,10 @@ type PostService interface {
 	GetPublicPopularPosts(ctx context.Context) ([]models.Post, error)
 	GetPopularPosts(ctx context.Context) ([]models.Post, error)
 	AttachMedia(ctx context.Context, postID int64, mediaID []dto.MediaRequestData) mediaErrors
+	ReplaceMedia(ctx context.Context, postID int64, mediaID []dto.MediaRequestData) mediaErrors
 	Delete(ctx context.Context, postID int64) error
+	GetByAuthorID(ctx context.Context, authorID int64) ([]models.Post, error)
+	Update(ctx context.Context, post models.Post) error
 	//Update(ctx context.Context, dto dto.PostUpdateDTO) error
 }
 
@@ -82,6 +86,15 @@ type mediaErrors struct {
 
 // }
 
+func (s *postService) GetByAuthorID(ctx context.Context, authorID int64) ([]models.Post, error) {
+	return s.PostRepo.GetByAuthorID(ctx, authorID)
+}
+
+func (s *postService) Update(ctx context.Context, post models.Post) error {
+	post.UpdatedAt = time.Now()
+	return s.PostRepo.Update(ctx, post)
+}
+
 func (s *postService) Get(ctx context.Context, postID int64) (*models.Post, error) {
 	return s.PostRepo.Get(ctx, postID)
 }
@@ -107,6 +120,20 @@ func (s *postService) AttachMedia(ctx context.Context, postID int64, mediaID []d
 		}
 	}
 	return mediaErrors
+}
+
+func (s *postService) ReplaceMedia(ctx context.Context, postID int64, mediaID []dto.MediaRequestData) mediaErrors {
+	if err := s.PostWithMediaRepo.DeleteByPostID(ctx, postID); err != nil {
+		return mediaErrors{
+			Errs: []attachmentError{{err: err, pos: -1}},
+		}
+	}
+
+	if len(mediaID) == 0 {
+		return mediaErrors{}
+	}
+
+	return s.AttachMedia(ctx, postID, mediaID)
 }
 
 // получение ленты, будь то публичных или нет постов (унификация чезер callbach-функцию getCursoredPosts)

@@ -163,10 +163,14 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		likeCount := h.PostService.GetLikeCount(r.Context(), post.ID)
 		commentCount := h.PostService.GetCommentCount(r.Context(), post.ID)
 		repostCount := h.PostService.GetRepostCount(r.Context(), post.ID)
+		postText := ""
+		if post.Text != nil {
+			postText = *post.Text
+		}
 
 		posts = append(posts, postFeedDTO{
 			Id:        post.Uid,
-			Text:      *post.Text,
+			Text:      postText,
 			Author:    author,
 			CreatedAt: post.CreatedAt,
 			Likes:     likeCount,
@@ -332,10 +336,14 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 		likeCount := h.PostService.GetLikeCount(r.Context(), post.ID)
 		commentCount := h.PostService.GetCommentCount(r.Context(), post.ID)
 		repostCount := h.PostService.GetRepostCount(r.Context(), post.ID)
+		postText := ""
+		if post.Text != nil {
+			postText = *post.Text
+		}
 
 		posts = append(posts, postFeedDTO{
 			Id:        post.Uid,
-			Text:      *post.Text,
+			Text:      postText,
 			Author:    author,
 			CreatedAt: post.CreatedAt,
 			Likes:     likeCount,

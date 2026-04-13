@@ -19,6 +19,7 @@ type inmemoryPostWithMediaRepo struct {
 type PostWithMediaRepo interface {
 	GetMediaByPostID(ctx context.Context, postID int64) []int64
 	Save(ctx context.Context, postWithMedia models.PostWithMedia) error
+	DeleteByPostID(ctx context.Context, postID int64) error
 }
 
 type postWithMediaStorage struct {
@@ -63,6 +64,13 @@ func (storage *postWithMediaStorage) Save(ctx context.Context, postWithMedia mod
 	return nil
 }
 
+func (storage *postWithMediaStorage) DeleteByPostID(ctx context.Context, postID int64) error {
+	query := `DELETE FROM post_with_media WHERE post_id=$1`
+
+	_, err := storage.db.Exec(ctx, query, postID)
+	return err
+}
+
 func NewPostWithMediaRepo() PostWithMediaRepo {
 	return &inmemoryPostWithMediaRepo{}
 }
@@ -97,5 +105,20 @@ func (r *inmemoryPostWithMediaRepo) Save(ctx context.Context, postWithMedia mode
 	defer r.mu.Unlock()
 
 	r.postWithMedias = append(r.postWithMedias, postWithMedia)
+	return nil
+}
+
+func (r *inmemoryPostWithMediaRepo) DeleteByPostID(ctx context.Context, postID int64) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	filtered := r.postWithMedias[:0]
+	for _, item := range r.postWithMedias {
+		if item.PostID != postID {
+			filtered = append(filtered, item)
+		}
+	}
+
+	r.postWithMedias = filtered
 	return nil
 }
