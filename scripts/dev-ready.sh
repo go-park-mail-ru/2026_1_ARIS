@@ -35,7 +35,7 @@ backend_ready() {
 elapsed=0
 while [ "$elapsed" -lt "$TIMEOUT_SECONDS" ]; do
   if backend_ready && frontend_ready; then
-    cat <<EOF
+    cat <<OUT
 
 ARIS dev environment is ready:
 Frontend: http://${FRONTEND_HOST}:${FRONTEND_PORT}
@@ -45,7 +45,7 @@ Postgres: ${DB_HOST_LOCAL}:${DB_PORT}
 
 You can start testing now.
 To follow logs: make logs
-EOF
+OUT
     exit 0
   fi
 
@@ -53,11 +53,11 @@ EOF
   elapsed=$((elapsed + 2))
 done
 
-cat <<EOF
+cat <<OUT
 
 Services are still starting or did not become ready within ${TIMEOUT_SECONDS}s.
 Check logs with:
 make logs
-EOF
+OUT
 
 exit 1

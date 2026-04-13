@@ -105,6 +105,10 @@ func NewRouter(
 	r.Route("/api/post", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			r.Use(mymiddleware.AuthMiddleware(sessSvc))
+
+			r.Get("/me", postHandler.GetMyPosts)
+			r.Get("/profile/{profileID}", postHandler.GetProfilePosts)
+
 			r.Post("/upload", postHandler.CreatePost)
 			r.Delete("/{id}", postHandler.DeletePost)
 			r.Get("/{id}", postHandler.GetPost)

@@ -19,7 +19,9 @@ import (
 type PostRepo interface {
 	Save(ctx context.Context, post models.Post) (int64, error)
 	Delete(ctx context.Context, id int64) error
+	Update(ctx context.Context, post models.Post) error
 
+	GetByAuthorID(ctx context.Context, authorID int64) ([]models.Post, error)
 	List(ctx context.Context, offset, limit int) ([]models.Post, error)
 	Get(ctx context.Context, id int64) (*models.Post, error)
 	GetAll(ctx context.Context) ([]models.Post, error)
@@ -117,6 +119,22 @@ func (storage *postStorage) GetAll(ctx context.Context) ([]models.Post, error) {
 	return posts, nil
 }
 
+func (storage *postStorage) GetByAuthorID(ctx context.Context, authorID int64) ([]models.Post, error) {
+	query := `SELECT * FROM post WHERE author_id=$1 ORDER BY created_at DESC`
+
+	rows, err := storage.db.Query(ctx, query, authorID)
+	if err != nil {
+		return nil, err
+	}
+
+	posts, err := pgx.CollectRows(rows, pgx.RowToStructByName[models.Post])
+	if err != nil {
+		return nil, err
+	}
+
+	return posts, nil
+}
+
 type inmemoryPostRepo struct {
 	mu    sync.RWMutex
 	Posts map[int64]models.Post
@@ -154,6 +172,25 @@ func (r *inmemoryPostRepo) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
+func (storage *postStorage) Update(ctx context.Context, post models.Post) error {
+	query := `UPDATE post SET post_text=$1, updated_at=$2 WHERE id=$3`
+
+	res, err := storage.db.Exec(ctx, query, post.Text, post.UpdatedAt, post.ID)
+	if err != nil {
+		return pgerrors.MapPgError(err)
+	}
+
+	if res.RowsAffected() == 0 {
+		return xerrors.PostNotFound
+	}
+
+	if res.RowsAffected() > 1 {
+		return xerrors.MultipleRowsAffect
+	}
+
+	return nil
+}
+
 func (r *inmemoryPostRepo) List(ctx context.Context, offset, limit int) ([]models.Post, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -183,4 +220,42 @@ func (r *inmemoryPostRepo) Get(ctx context.Context, id int64) (*models.Post, err
 
 func (r *inmemoryPostRepo) GetAll(ctx context.Context) ([]models.Post, error) {
 	return slices.Collect(maps.Values(r.Posts)), nil
+}
+
+func (r *inmemoryPostRepo) GetByAuthorID(ctx context.Context, authorID int64) ([]models.Post, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	posts := make([]models.Post, 0)
+
+	for _, post := range r.Posts {
+		if post.AuthorID == authorID {
+			posts = append(posts, post)
+		}
+	}
+
+	slices.SortFunc(posts, func(a, b models.Post) int {
+		if a.CreatedAt.After(b.CreatedAt) {
+			return -1
+		}
+		if a.CreatedAt.Before(b.CreatedAt) {
+			return 1
+		}
+		return 0
+	})
+
+	return posts, nil
+}
+
+func (r *inmemoryPostRepo) Update(ctx context.Context, post models.Post) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	_, ok := r.Posts[post.ID]
+	if !ok {
+		return xerrors.PostNotFound
+	}
+
+	r.Posts[post.ID] = post
+	return nil
 }
