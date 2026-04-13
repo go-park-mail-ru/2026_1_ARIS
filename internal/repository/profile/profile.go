@@ -19,6 +19,7 @@ type ProfileRepo interface {
 	Save(ctx context.Context, profile models.Profile) (int64, error)
 	GetAll(ctx context.Context) ([]models.Profile, error)
 	GetByUserAccountID(ctx context.Context, userAccountID int64) (*models.Profile, error)
+	UpdateAvatar(ctx context.Context, profileID int64, avatarID *int64) error
 }
 
 type profileStorage struct {
@@ -67,6 +68,28 @@ func (storage *profileStorage) Get(ctx context.Context, profileID int64) (*model
 	}
 
 	return &profile, nil
+}
+
+func (storage *profileStorage) UpdateAvatar(
+	ctx context.Context,
+	profileID int64,
+	avatarID *int64,
+) error {
+	commandTag, err := storage.db.Exec(
+		ctx,
+		`UPDATE profile SET avatar_id = $1, updated_at = NOW() WHERE id = $2`,
+		avatarID,
+		profileID,
+	)
+	if err != nil {
+		return err
+	}
+
+	if commandTag.RowsAffected() != 1 {
+		return errors.New("UPDATE affected not on 1 row")
+	}
+
+	return nil
 }
 
 func (storage *profileStorage) Save(ctx context.Context, profile models.Profile) (int64, error) {
@@ -138,4 +161,19 @@ func (r *inmemoryProfileRepo) GetAll(ctx context.Context) ([]models.Profile, err
 
 func (r *inmemoryProfileRepo) GetByUserAccountID(ctx context.Context, userAccountID int64) (*models.Profile, error) {
 	return nil, nil
+}
+
+func (r *inmemoryProfileRepo) UpdateAvatar(ctx context.Context, profileID int64, avatarID *int64) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	profile, ok := r.Profiles[profileID]
+	if !ok {
+		return errors.New("Profile not found")
+	}
+
+	profile.AvatarID = avatarID
+	r.Profiles[profileID] = profile
+
+	return nil
 }
