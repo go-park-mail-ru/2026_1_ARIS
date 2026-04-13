@@ -255,6 +255,7 @@ func (h *ProfileHandler) EditProfileMe(w http.ResponseWriter, r *http.Request) {
 
 	req.UserAccountID = userAccount.ID
 	req.UserProfileID = userProfile.ID
+	req.ProfileID = userProfile.ProfileID
 
 	fmt.Println("Пошло на обновление !")
 	fmt.Println(req)

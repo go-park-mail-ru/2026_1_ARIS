@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/auth"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
@@ -54,13 +55,15 @@ type AuthHandler struct {
 	authService    auth.AuthService
 	sessionService session.SessionService
 	userService    user.UserService
+	mediaService   media.MediaService
 }
 
 type LoginResponse struct {
-	ID        string `json:"id"`
-	CreatedAt string `json:"createdAt"`
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
+	ID         string `json:"id"`
+	CreatedAt  string `json:"createdAt"`
+	FirstName  string `json:"firstName"`
+	LastName   string `json:"lastName"`
+	AvatarLink string `json:"avatarLink,omitempty"`
 }
 
 type UserDTO struct {
@@ -73,11 +76,22 @@ type CommonResponse struct {
 	Message string `json:"message"`
 }
 
-func NewAuthHandler(authService auth.AuthService, sessSvc session.SessionService, usService user.UserService) *AuthHandler {
+func NewAuthHandler(
+	authService auth.AuthService,
+	sessSvc session.SessionService,
+	usService user.UserService,
+	mediaServices ...media.MediaService,
+) *AuthHandler {
+	var mediaService media.MediaService
+	if len(mediaServices) > 0 {
+		mediaService = mediaServices[0]
+	}
+
 	return &AuthHandler{
 		authService:    authService,
 		sessionService: sessSvc,
 		userService:    usService,
+		mediaService:   mediaService,
 	}
 }
 
@@ -309,9 +323,23 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	avatar := ""
+	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), userID)
+	if err == nil && profile != nil && profile.AvatarID != nil && h.mediaService != nil {
+		media, mediaErr := h.mediaService.GetAvatarByID(r.Context(), profile.AvatarID)
+		if mediaErr == nil && media != nil {
+			avatar = media.Link
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(userProfile)
+	json.NewEncoder(w).Encode(LoginResponse{
+		ID:         strconv.FormatInt(userProfile.ProfileID, 10),
+		FirstName:  userProfile.FirstName,
+		LastName:   userProfile.LastName,
+		AvatarLink: avatar,
+	})
 }
 
 // @Description	Validate register first step
