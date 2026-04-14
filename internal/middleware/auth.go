@@ -13,15 +13,18 @@ func AuthMiddleware(sessionService session.SessionService) func(http.Handler) ht
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie("session_id")
-			fmt.Println("session")
 			if err != nil {
 				http.Error(w, `{"error":"неавторизован"}`, http.StatusUnauthorized)
 				return
 			}
 
 			sessionID := models.SessionID(cookie.Value)
+
+			fmt.Println("ID session = ", sessionID)
+
 			session, err := sessionService.Get(r.Context(), sessionID)
 			if err != nil {
+				fmt.Println(err)
 				http.Error(w, `{"error":"сессия недействительна или истекла"}`, http.StatusUnauthorized)
 				return
 			}

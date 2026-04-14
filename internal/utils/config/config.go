@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/caarlos0/env/v11"
 )
@@ -23,6 +24,16 @@ type EnvConfig struct {
 	MinioRootUser     string `env:"MINIO_ROOT_USER"`
 	MinioRootPassword string `env:"MINIO_ROOT_PASSWORD"`
 	MinioUseSSL       bool   `env:"MINIO_USE_SSL"`
+
+	RedisAddr        string        `env:"REDIS_ADDR"`
+	RedisHost        string        `env:"REDIS_HOST"`
+	RedisPort        string        `env:"REDIS_PORT"`
+	RedisUsername    string        `env:"REDIS_USER"`
+	RedisPassword    string        `env:"REDIS_USER_PASSWORD"`
+	RedisDB          int           `env:"REDIS_DB"`
+	RedisMaxRetries  int           `env:"REDIS_MAX_RETRIES"`
+	RedisDialTimeout time.Duration `env:"REDIS_DIAL_TIMEOUT"`
+	RedisTimeout     time.Duration `env:"REDIS_TIMEOUT"`
 }
 
 // нужно будет прокинуть логгер
