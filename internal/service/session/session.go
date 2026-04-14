@@ -26,11 +26,13 @@ func NewSessionService(repo session.SessionRepo) SessionService {
 		repo: repo,
 	}
 }
+
 func (s *sessionService) Delete(ctx context.Context, sessionID models.SessionID) error {
 	return s.repo.Delete(ctx, sessionID)
 }
+
 func (s *sessionService) validateSession(userID int64) error {
-	if userID == 0 {
+	if userID <= 0 {
 		return errors.New("invalid user id")
 	}
 	return nil
@@ -50,7 +52,10 @@ func (s *sessionService) Create(ctx context.Context, userID int64) (*models.Sess
 		ExpiredAt: time.Now().Add(sessionTTL),
 	}
 
-	s.repo.Save(ctx, sess)
+	if err := s.repo.Save(ctx, sess); err != nil {
+		return nil, err
+	}
+
 	return &sess, nil
 }
 

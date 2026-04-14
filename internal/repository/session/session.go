@@ -2,54 +2,75 @@ package session
 
 import (
 	"context"
-	"sync"
+	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
+	"github.com/redis/go-redis/v9"
 )
 
 type SessionRepo interface {
-	Save(ctx context.Context, session models.Session)
+	Save(ctx context.Context, session models.Session) error
 	Delete(ctx context.Context, id models.SessionID) error
 	GetByID(ctx context.Context, id models.SessionID) (*models.Session, error)
 }
 
-type inmemorySessionRepo struct {
-	mu       sync.RWMutex
-	sessions map[models.SessionID]models.Session
+type sessionRedis struct {
+	client *redis.Client
+	// logger
 }
 
-func NewSessionRepo() SessionRepo {
-	return &inmemorySessionRepo{
-		sessions: make(map[models.SessionID]models.Session),
+func NewSessionStorage(client *redis.Client) SessionRepo {
+	return &sessionRedis{
+		client: client,
 	}
 }
 
-func (r *inmemorySessionRepo) Save(ctx context.Context, session models.Session) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+func (r *sessionRedis) Save(ctx context.Context, session models.Session) error {
+	sessionID := session.SessionID
 
-	r.sessions[session.SessionID] = session
-}
-
-func (r *inmemorySessionRepo) Delete(ctx context.Context, id models.SessionID) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	_, ok := r.sessions[id]
-	if !ok {
-		return xerrors.SessionNotFound
+	marshaled, err := json.Marshal(session)
+	if err != nil {
+		return err
 	}
-	delete(r.sessions, id)
+
+	res := r.client.Set(ctx, string(sessionID), marshaled, time.Until(session.ExpiredAt))
+	if res.Err() != nil {
+		return res.Err()
+	}
+
+	fmt.Println("Session Saved:", sessionID, string(marshaled))
+
 	return nil
 }
 
-func (r *inmemorySessionRepo) GetByID(ctx context.Context, id models.SessionID) (*models.Session, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	val, ok := r.sessions[id]
-	if !ok {
-		return nil, xerrors.SessionNotFound
+func (r *sessionRedis) Delete(ctx context.Context, id models.SessionID) error {
+	res := r.client.Del(ctx, string(id))
+	if res.Err() != nil {
+		return res.Err()
 	}
-	return &val, nil
+
+	return nil
+}
+
+func (r *sessionRedis) GetByID(ctx context.Context, id models.SessionID) (*models.Session, error) {
+
+	res, err := r.client.Get(ctx, string(id)).Bytes()
+	if err != nil {
+		if err == redis.Nil {
+			return nil, xerrors.SessionNotFound
+		}
+		return nil, err
+	}
+
+	var session models.Session
+
+	if err := json.Unmarshal(res, &session); err != nil {
+		fmt.Println("json.Unmarshal error", string(res))
+		return nil, err
+	}
+
+	return &session, nil
 }

@@ -46,6 +46,22 @@ services:
       - .:/workspace/arisback
     command: ["sh", "/workspace/arisback/scripts/dev-migrate.sh"]
 
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+    container_name: ${REDIS_CONTAINER_NAME}
+    environment:
+      REDIS_PASSWORD: ${REDIS_USER_PASSWORD}
+    ports:
+      - "${REDIS_PUBLIC_PORT}:6379"
+    volumes:
+      - aris_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_USER_PASSWORD}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   backend:
     image: golang:alpine
     restart: unless-stopped
@@ -67,6 +83,17 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       MINIO_HOST: ${MINIO_HOST}
       MINIO_USE_SSL: "false"
+
+      REDIS_CONTAINER_NAME: ${REDIS_CONTAINER_NAME}
+      REDIS_DB: ${REDIS_DB}
+      REDIS_USER_PASSWORD: ${REDIS_USER_PASSWORD}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PUBLIC_PORT: ${REDIS_PUBLIC_PORT}
+      REDIS_MAX_RETRIES: ${REDIS_MAX_RETRIES}
+      REDIS_DIAL_TIMEOUT: ${REDIS_DIAL_TIMEOUT}
+      REDIS_TIMEOUT: ${REDIS_TIMEOUT}
+      REDIS_ADDR: ${REDIS_ADDR}
     depends_on:
       db:
         condition: service_healthy
@@ -74,6 +101,8 @@ services:
         condition: service_started
       migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 8080"]
       interval: 5s
@@ -124,3 +153,4 @@ volumes:
   aris_go_pkg:
   aris_go_build:
   aris_frontend_node_modules:
+  aris_redis_data:
