@@ -427,6 +427,44 @@ func TestUserHandler_GetSettings_ServiceError(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
+func TestUserHandler_GetSuggestedUsers_ProfileError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockMediaSvc := mock_service.NewMockMediaService(ctrl)
+	mockSettingsSvc := mock_service.NewMockUserSettingsService(ctrl)
+
+	handler := NewUserHandler(mockUserSvc, mockMediaSvc, mockSettingsSvc)
+
+	userID := int64(1)
+	profileID := int64(100)
+
+	profiles := []models.Profile{
+		{ID: profileID, AvatarID: nil},
+	}
+	mockUserSvc.EXPECT().
+		GetSuggestedUsers(gomock.Any(), userID).
+		Return(profiles, nil)
+
+	// Ошибка при получении UserProfile
+	mockUserSvc.EXPECT().
+		GetUserProfileByProfileID(gomock.Any(), profileID).
+		Return(nil, errors.New("not found"))
+
+	req := httptest.NewRequest("GET", "/users/suggested", nil)
+	req = req.WithContext(contextWithUserID(userID))
+	w := httptest.NewRecorder()
+
+	handler.GetSuggestedUsers(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp suggestedUsersResponse
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.NoError(t, err)
+	assert.Empty(t, resp.Items) // пропущен из-за ошибки
+}
 
 // Вспомогательная функция для указателя на int64
 func ptrInt64(i int64) *int64 {
