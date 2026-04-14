@@ -35,6 +35,7 @@ func NewRouter(
 
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(mymiddleware.XSSMiddlewares()...)
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3001", "http://arisnet.ru", "https://arisnet.ru"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
