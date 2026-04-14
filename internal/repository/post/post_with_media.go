@@ -1,20 +1,15 @@
 package post
 
+//go:generate mockgen -destination=./../mocks/post_with_media_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/post PostWithMediaRepo
+
 import (
 	"context"
 	"errors"
-	"slices"
-	"sync"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgconn"
 )
-
-type inmemoryPostWithMediaRepo struct {
-	mu             sync.RWMutex
-	postWithMedias []models.PostWithMedia
-}
 
 type PostWithMediaRepo interface {
 	GetMediaByPostID(ctx context.Context, postID int64) []int64
@@ -23,11 +18,17 @@ type PostWithMediaRepo interface {
 }
 
 type postWithMediaStorage struct {
-	db *pgxpool.Pool
+	db postWithMediaDB
 	// logger
 }
 
-func NewPostWithMediaStorage(db *pgxpool.Pool) PostWithMediaRepo {
+type postWithMediaDB interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}
+
+func NewPostWithMediaStorage(db postWithMediaDB) PostWithMediaRepo {
 	return &postWithMediaStorage{
 		db: db,
 	}
@@ -69,56 +70,4 @@ func (storage *postWithMediaStorage) DeleteByPostID(ctx context.Context, postID 
 
 	_, err := storage.db.Exec(ctx, query, postID)
 	return err
-}
-
-func NewPostWithMediaRepo() PostWithMediaRepo {
-	return &inmemoryPostWithMediaRepo{}
-}
-
-// убрать отсюда, переложить в сервис
-func (r *inmemoryPostWithMediaRepo) GetMediaByPostID(ctx context.Context, postID int64) []int64 {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	var mediaIDs []int64
-
-	slices.SortFunc(r.postWithMedias, func(i, j models.PostWithMedia) int {
-		if i.Order < j.Order {
-			return -1
-		} else if i.Order > j.Order {
-			return 1
-		}
-		return 0
-	})
-
-	for _, p := range r.postWithMedias {
-		if p.PostID == postID {
-			mediaIDs = append(mediaIDs, p.MediaID)
-		}
-	}
-
-	return mediaIDs
-}
-
-func (r *inmemoryPostWithMediaRepo) Save(ctx context.Context, postWithMedia models.PostWithMedia) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.postWithMedias = append(r.postWithMedias, postWithMedia)
-	return nil
-}
-
-func (r *inmemoryPostWithMediaRepo) DeleteByPostID(ctx context.Context, postID int64) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	filtered := r.postWithMedias[:0]
-	for _, item := range r.postWithMedias {
-		if item.PostID != postID {
-			filtered = append(filtered, item)
-		}
-	}
-
-	r.postWithMedias = filtered
-	return nil
 }

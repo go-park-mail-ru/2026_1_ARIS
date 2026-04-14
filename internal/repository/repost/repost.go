@@ -1,12 +1,13 @@
 package repost
 
+//go:generate mockgen -destination=./../mocks/repost_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/repost RepostRepo
+
 import (
 	"context"
-	"sync"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
 )
 
 type RepostRepo interface {
@@ -15,11 +16,15 @@ type RepostRepo interface {
 }
 
 type RepostStorage struct {
-	db *pgxpool.Pool
+	db repostDB
 	// logger
 }
 
-func NewRepostStorage(db *pgxpool.Pool) RepostRepo {
+type repostDB interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
+func NewRepostStorage(db repostDB) RepostRepo {
 	return &RepostStorage{
 		db: db,
 	}
@@ -51,42 +56,4 @@ func (storage *RepostStorage) GetRepostCount(ctx context.Context, postID int64) 
 	}
 
 	return int(repostCount)
-}
-
-type inmemoryRepostRepo struct {
-	reposts map[int64]models.Repost
-	mu      sync.RWMutex
-}
-
-func NewRepostRepo() RepostRepo {
-	return &inmemoryRepostRepo{
-		reposts: make(map[int64]models.Repost),
-	}
-}
-
-func (r *inmemoryRepostRepo) Save(ctx context.Context, repost models.Repost) (int64, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	_, ok := r.reposts[repost.ID]
-	if !ok {
-		r.reposts[repost.ID] = repost
-	}
-
-	return repost.ID, nil
-}
-
-func (r *inmemoryRepostRepo) GetRepostCount(ctx context.Context, postID int64) int {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	count := 0
-
-	for _, repost := range r.reposts {
-		if repost.PostID == postID {
-			count++
-		}
-	}
-
-	return count
 }

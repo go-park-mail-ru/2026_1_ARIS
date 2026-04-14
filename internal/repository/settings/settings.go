@@ -1,5 +1,7 @@
 package settings
 
+//go:generate mockgen -destination=./../mocks/settings_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/settings UserSettingsRepository
+
 import (
 	"context"
 	"errors"
@@ -10,11 +12,10 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type userSettingsRepository struct {
-	db *pgxpool.Pool
+	db settingsDB
 }
 
 type UserSettingsRepository interface {
@@ -22,7 +23,11 @@ type UserSettingsRepository interface {
 	Update(ctx context.Context, userID int64, upd dto.UserSettingsUpdate) (*models.UserSettings, error)
 }
 
-func NewUserSettingsStorage(db *pgxpool.Pool) UserSettingsRepository {
+type settingsDB interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+}
+
+func NewUserSettingsStorage(db settingsDB) UserSettingsRepository {
 	return &userSettingsRepository{db: db}
 }
 

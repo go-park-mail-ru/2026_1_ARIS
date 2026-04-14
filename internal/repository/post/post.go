@@ -1,11 +1,9 @@
 package post
 
+//go:generate mockgen -destination=./../mocks/post_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/post PostRepo
+
 import (
 	"context"
-	"errors"
-	"maps"
-	"slices"
-	"sync"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
@@ -13,7 +11,7 @@ import (
 	pgerrors "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/pg_errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type PostRepo interface {
@@ -28,11 +26,17 @@ type PostRepo interface {
 }
 
 type postStorage struct {
-	db *pgxpool.Pool
+	db postDB
 	// logger
 }
 
-func NewPostStorage(db *pgxpool.Pool) PostRepo {
+type postDB interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}
+
+func NewPostStorage(db postDB) PostRepo {
 	return &postStorage{
 		db: db,
 	}
@@ -135,43 +139,6 @@ func (storage *postStorage) GetByAuthorID(ctx context.Context, authorID int64) (
 	return posts, nil
 }
 
-type inmemoryPostRepo struct {
-	mu    sync.RWMutex
-	Posts map[int64]models.Post
-}
-
-func NewPostRepo() PostRepo {
-	repo := inmemoryPostRepo{}
-	repo.Posts = make(map[int64]models.Post)
-	return &repo
-}
-
-func (r *inmemoryPostRepo) Save(ctx context.Context, post models.Post) (int64, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	_, ok := r.Posts[post.ID]
-	if !ok {
-		r.Posts[post.ID] = post
-	}
-
-	return post.ID, nil
-}
-
-func (r *inmemoryPostRepo) Delete(ctx context.Context, id int64) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	_, ok := r.Posts[id]
-
-	if !ok {
-		return nil //errors.New("post not found")
-	}
-
-	delete(r.Posts, id)
-	return nil
-}
-
 func (storage *postStorage) Update(ctx context.Context, post models.Post) error {
 	query := `UPDATE post SET post_text=$1, updated_at=$2 WHERE id=$3`
 
@@ -188,74 +155,5 @@ func (storage *postStorage) Update(ctx context.Context, post models.Post) error 
 		return xerrors.MultipleRowsAffect
 	}
 
-	return nil
-}
-
-func (r *inmemoryPostRepo) List(ctx context.Context, offset, limit int) ([]models.Post, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	if offset >= len(r.Posts) {
-		return []models.Post{}, nil
-	}
-
-	if offset+limit > len(r.Posts) {
-		return slices.Collect(maps.Values(r.Posts))[offset:], nil
-	}
-
-	return slices.Collect(maps.Values(r.Posts))[offset:offset:limit], nil
-}
-
-func (r *inmemoryPostRepo) Get(ctx context.Context, id int64) (*models.Post, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	profile, ok := r.Posts[id]
-	if !ok {
-		return nil, errors.New("Profile not found")
-	}
-
-	return &profile, nil
-}
-
-func (r *inmemoryPostRepo) GetAll(ctx context.Context) ([]models.Post, error) {
-	return slices.Collect(maps.Values(r.Posts)), nil
-}
-
-func (r *inmemoryPostRepo) GetByAuthorID(ctx context.Context, authorID int64) ([]models.Post, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	posts := make([]models.Post, 0)
-
-	for _, post := range r.Posts {
-		if post.AuthorID == authorID {
-			posts = append(posts, post)
-		}
-	}
-
-	slices.SortFunc(posts, func(a, b models.Post) int {
-		if a.CreatedAt.After(b.CreatedAt) {
-			return -1
-		}
-		if a.CreatedAt.Before(b.CreatedAt) {
-			return 1
-		}
-		return 0
-	})
-
-	return posts, nil
-}
-
-func (r *inmemoryPostRepo) Update(ctx context.Context, post models.Post) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	_, ok := r.Posts[post.ID]
-	if !ok {
-		return xerrors.PostNotFound
-	}
-
-	r.Posts[post.ID] = post
 	return nil
 }

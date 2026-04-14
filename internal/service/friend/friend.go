@@ -1,5 +1,7 @@
 package friend
 
+//go:generate mockgen -destination=../mocks/friendship_service_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/service/friend FriendshipService
+
 import (
 	"context"
 	"errors"

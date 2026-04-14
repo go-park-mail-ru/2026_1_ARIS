@@ -23,7 +23,8 @@ func MakeMock(mediaRepo media.MediaRepo,
 	postWithMediaRepo postrepo.PostWithMediaRepo,
 	commentRepo comment.CommentRepo,
 	repostRepo repost.RepostRepo,
-	chatRepo *chat.SQLChatRepo, // изменён тип
+	chatRepo chat.ChatRepo, // изменён тип
+	likeRepo like.LikeRepo,
 ) {
 
 	// create Profiles (users)
@@ -700,7 +701,6 @@ func MakeMock(mediaRepo media.MediaRepo,
 	like4 := models.NewLikeToPost(post4.ID, user2.ID)
 	like5 := models.NewLikeToPost(post5.ID, user3.ID)
 	like6 := models.NewLikeToPost(post6.ID, user3.ID)
-	likeRepo := like.NewLikeRepo()
 
 	_, err = likeRepo.Save(context.Background(), *like1)
 	if err != nil {

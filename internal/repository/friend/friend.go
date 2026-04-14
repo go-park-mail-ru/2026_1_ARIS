@@ -1,5 +1,7 @@
 package friend
 
+//go:generate mockgen -destination=./../mocks/friend_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/friend FriendshipRepo
+
 import (
 	"context"
 
@@ -8,12 +10,18 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/dto"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type friendshipStorage struct {
-	db *pgxpool.Pool
+	db friendDB
 	// logger
+}
+
+type friendDB interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 }
 
 type FriendshipRepo interface {
@@ -29,7 +37,7 @@ type FriendshipRepo interface {
 	RevokeFriendRequest(ctx context.Context, profileID, friendID int64) error
 }
 
-func NewFriendshipStorage(db *pgxpool.Pool) FriendshipRepo {
+func NewFriendshipStorage(db friendDB) FriendshipRepo {
 	return &friendshipStorage{
 		db: db,
 	}

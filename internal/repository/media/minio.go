@@ -1,5 +1,7 @@
 package media
 
+//go:generate mockgen -destination=../mocks/s3_repo_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media S3Repo
+
 import (
 	"context"
 	"fmt"

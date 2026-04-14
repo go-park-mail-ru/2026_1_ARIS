@@ -1,13 +1,12 @@
 package useraccount
 
+//go:generate mockgen -destination=./../mocks/user_account_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_account UserAccountRepo
+
 import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
-	"slices"
 	"strings"
-	"sync"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
@@ -15,7 +14,7 @@ import (
 	pgerrors "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/pg_errors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type UserAccountRepo interface {
@@ -32,17 +31,18 @@ type UserAccountRepo interface {
 	List(ctx context.Context, offset, limit int) ([]models.UserAccount, error)
 }
 
-type inmemoryUserRepo struct {
-	mu           sync.RWMutex
-	userAccounts map[int64]models.UserAccount
-}
-
 type UserAccountStorage struct {
-	db *pgxpool.Pool
+	db userAccountDB
 	// logger
 }
 
-func NewUserAccountStorage(db *pgxpool.Pool) UserAccountRepo {
+type userAccountDB interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}
+
+func NewUserAccountStorage(db userAccountDB) UserAccountRepo {
 	return &UserAccountStorage{
 		db: db,
 	}
@@ -203,111 +203,4 @@ func (storage *UserAccountStorage) List(ctx context.Context, offset, limit int) 
 	}
 
 	return userAccounts, nil
-}
-
-func NewUserRepo() UserAccountRepo {
-	repo := inmemoryUserRepo{}
-	repo.userAccounts = make(map[int64]models.UserAccount)
-	return &repo
-}
-
-func (r *inmemoryUserRepo) Save(ctx context.Context, userAccount models.UserAccount) (int64, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.userAccounts[userAccount.ID] = userAccount
-	return userAccount.ID, nil
-}
-
-func (r *inmemoryUserRepo) Delete(ctx context.Context, id int64) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	_, ok := r.userAccounts[id]
-
-	if ok {
-		delete(r.userAccounts, id)
-		return nil
-	}
-
-	return errors.New("user not found")
-}
-
-func (r *inmemoryUserRepo) Get(ctx context.Context, id int64) (*models.UserAccount, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	user, ok := r.userAccounts[id]
-
-	if !ok {
-		return nil, errors.New("user not found")
-	}
-	return &user, nil
-}
-
-func (r *inmemoryUserRepo) GetByEmail(ctx context.Context, email string) (*models.UserAccount, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	for _, u := range r.userAccounts {
-		if *u.Email == email {
-			return &u, nil
-		}
-	}
-	return nil, errors.New("user not found")
-}
-
-func (r *inmemoryUserRepo) GetByPhone(ctx context.Context, phone string) (*models.UserAccount, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	for _, u := range r.userAccounts {
-		if *u.Phone == phone {
-			return &u, nil
-		}
-	}
-	return nil, errors.New("user not found")
-}
-
-func (r *inmemoryUserRepo) List(ctx context.Context, offset, limit int) ([]models.UserAccount, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	if offset >= len(r.userAccounts) {
-		return []models.UserAccount{}, nil
-	}
-	if offset+limit > len(r.userAccounts) {
-		return slices.Collect(maps.Values(r.userAccounts))[offset:], nil
-	}
-
-	return slices.Collect(maps.Values(r.userAccounts))[offset : offset+limit], nil
-}
-
-func (r *inmemoryUserRepo) GetByUsername(ctx context.Context, username string) (*models.UserAccount, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	for _, u := range r.userAccounts {
-		if u.Username == username {
-			return &u, nil
-		}
-	}
-	return nil, errors.New("User not found")
-}
-
-func (r *inmemoryUserRepo) GetByUid(ctx context.Context, uid uuid.UUID) (*models.UserAccount, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	for _, u := range r.userAccounts {
-		if u.Uid == uid {
-			return &u, nil
-		}
-	}
-	return nil, errors.New("User not found")
-}
-
-// заглушка
-func (r *inmemoryUserRepo) Update(ctx context.Context, dto dto.UpdateUserAccountDTO) error {
-	return nil
 }

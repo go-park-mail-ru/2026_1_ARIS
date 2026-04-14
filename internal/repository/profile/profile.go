@@ -1,17 +1,17 @@
 package profile
 
-//go:generage mockgen -destination ./../mocks/profile_mock.go -package mocks
+//go:generate mockgen -destination=./../mocks/profile_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/profile ProfileRepo
+
 import (
 	"context"
 	"errors"
-	"sync"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type ProfileRepo interface {
@@ -23,16 +23,17 @@ type ProfileRepo interface {
 }
 
 type profileStorage struct {
-	db *pgxpool.Pool
+	db profileDB
 	// logger
 }
 
-type inmemoryProfileRepo struct {
-	mu       sync.RWMutex
-	Profiles map[int64]models.Profile
+type profileDB interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 }
 
-func NewProfileStorage(db *pgxpool.Pool) ProfileRepo {
+func NewProfileStorage(db profileDB) ProfileRepo {
 	return &profileStorage{
 		db: db,
 	}
@@ -120,60 +121,4 @@ func (storage *profileStorage) GetAll(ctx context.Context) ([]models.Profile, er
 	}
 
 	return profiles, nil
-}
-
-func NewProfileRepo() ProfileRepo {
-	repo := inmemoryProfileRepo{}
-	repo.Profiles = make(map[int64]models.Profile)
-	return &repo
-}
-
-func (r *inmemoryProfileRepo) Get(ctx context.Context, profileID int64) (*models.Profile, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	profile, ok := r.Profiles[profileID]
-	if !ok {
-		return nil, errors.New("Profile not found")
-	}
-	return &profile, nil
-}
-
-func (r *inmemoryProfileRepo) Save(ctx context.Context, profile models.Profile) (int64, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.Profiles[profile.ID] = profile
-	return profile.ID, nil
-}
-
-func (r *inmemoryProfileRepo) GetAll(ctx context.Context) ([]models.Profile, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	profiles := make([]models.Profile, 0, len(r.Profiles))
-	for _, p := range r.Profiles {
-		profiles = append(profiles, p)
-	}
-
-	return profiles, nil
-}
-
-func (r *inmemoryProfileRepo) GetByUserAccountID(ctx context.Context, userAccountID int64) (*models.Profile, error) {
-	return nil, nil
-}
-
-func (r *inmemoryProfileRepo) UpdateAvatar(ctx context.Context, profileID int64, avatarID *int64) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	profile, ok := r.Profiles[profileID]
-	if !ok {
-		return errors.New("Profile not found")
-	}
-
-	profile.AvatarID = avatarID
-	r.Profiles[profileID] = profile
-
-	return nil
 }
