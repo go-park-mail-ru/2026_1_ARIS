@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestLikeStorageSave(t *testing.T) {
@@ -29,7 +31,10 @@ func TestLikeStorageSave(t *testing.T) {
 			WithArgs(pgxmock.AnyArg(), like.PostID, like.CommentID, like.AuthorID).
 			WillReturnRows(rows)
 
-		id, err := repo.Save(context.Background(), like)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		id, err := repo.Save(ctx, like)
 		require.NoError(t, err)
 		require.Equal(t, int64(101), id)
 		require.NoError(t, mockPool.ExpectationsWereMet())
@@ -48,7 +53,10 @@ func TestLikeStorageSave(t *testing.T) {
 			WithArgs(pgxmock.AnyArg(), like.PostID, like.CommentID, like.AuthorID).
 			WillReturnError(errors.New("insert failed"))
 
-		_, err = repo.Save(context.Background(), like)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		_, err = repo.Save(ctx, like)
 		require.EqualError(t, err, "insert failed")
 		require.NoError(t, mockPool.ExpectationsWereMet())
 	})
@@ -69,7 +77,10 @@ func TestLikeStorageGetAndCount(t *testing.T) {
 			AddRow(int64(1), uuid.New(), &postID, nil, int64(2), true, now, now)
 		mockPool.ExpectQuery("SELECT \\* FROM like_record WHERE id=\\$1").WithArgs(int64(1)).WillReturnRows(rows)
 
-		got, err := repo.Get(context.Background(), 1)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		got, err := repo.Get(ctx, 1)
 		require.NoError(t, err)
 		require.Equal(t, int64(1), got.ID)
 		require.NoError(t, mockPool.ExpectationsWereMet())
@@ -81,7 +92,11 @@ func TestLikeStorageGetAndCount(t *testing.T) {
 		require.NoError(t, err)
 		defer mockPool.Close()
 		repo := NewLikeStorage(mockPool)
-		got := repo.GetLikeCountOnPost(context.Background(), 10)
+
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		got := repo.GetLikeCountOnPost(ctx, 10)
 		require.Equal(t, 0, got)
 	})
 }

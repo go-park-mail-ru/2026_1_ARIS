@@ -8,10 +8,12 @@ import (
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestPostStorageDelete(t *testing.T) {
@@ -54,7 +56,9 @@ func TestPostStorageDelete(t *testing.T) {
 				WithArgs(int64(10)).
 				WillReturnResult(pgxmock.NewResult("DELETE", tc.affected))
 
-			err = repo.Delete(context.Background(), 10)
+			mockLogger := zap.NewNop()
+			ctx := logger.WithLogger(context.Background(), mockLogger)
+			err = repo.Delete(ctx, 10)
 
 			if tc.wantError == nil {
 				require.NoError(t, err)
@@ -86,7 +90,9 @@ func TestPostStorageUpdate(t *testing.T) {
 		WithArgs(post.Text, post.UpdatedAt, post.ID).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	err = repo.Update(context.Background(), post)
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+	err = repo.Update(ctx, post)
 	require.NoError(t, err)
 	require.NoError(t, mockPool.ExpectationsWereMet())
 }
@@ -113,7 +119,10 @@ func TestPostStorageSave(t *testing.T) {
 		WithArgs(pgxmock.AnyArg(), post.Text, post.AuthorID, post.IsPublicDemo, post.AllowComments).
 		WillReturnRows(rows)
 
-	gotID, err := repo.Save(context.Background(), post)
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+
+	gotID, err := repo.Save(ctx, post)
 	require.NoError(t, err)
 	assert.Equal(t, int64(42), gotID)
 	require.NoError(t, mockPool.ExpectationsWereMet())
@@ -134,7 +143,10 @@ func TestPostStorageReadMethods(t *testing.T) {
 		rows := pgxmock.NewRows(cols).AddRow(int64(5), uuid.New(), &text, int64(2), true, true, true, now, now)
 		mockPool.ExpectQuery("SELECT \\* FROM post WHERE id=\\$1").WithArgs(int64(5)).WillReturnRows(rows)
 
-		got, err := repo.Get(context.Background(), 5)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		got, err := repo.Get(ctx, 5)
 		require.NoError(t, err)
 		require.Equal(t, int64(5), got.ID)
 		require.NoError(t, mockPool.ExpectationsWereMet())
@@ -148,7 +160,10 @@ func TestPostStorageReadMethods(t *testing.T) {
 		rows := pgxmock.NewRows(cols)
 		mockPool.ExpectQuery("SELECT \\* FROM post WHERE id=\\$1").WithArgs(int64(500)).WillReturnRows(rows)
 
-		_, err := repo.Get(context.Background(), 500)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		_, err := repo.Get(ctx, 500)
 		require.ErrorIs(t, err, xerrors.PostNotFound)
 	})
 
@@ -159,7 +174,10 @@ func TestPostStorageReadMethods(t *testing.T) {
 		repo := NewPostStorage(mockPool)
 		rows := pgxmock.NewRows(cols).AddRow(int64(1), uuid.New(), &text, int64(2), true, true, true, now, now)
 		mockPool.ExpectQuery("SELECT \\* FROM post").WillReturnRows(rows)
-		got, err := repo.GetAll(context.Background())
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		got, err := repo.GetAll(ctx)
 		require.NoError(t, err)
 		require.Len(t, got, 1)
 	})
@@ -171,7 +189,11 @@ func TestPostStorageReadMethods(t *testing.T) {
 		repo := NewPostStorage(mockPool)
 		rows := pgxmock.NewRows(cols).AddRow(int64(1), uuid.New(), &text, int64(2), true, true, true, now, now)
 		mockPool.ExpectQuery("SELECT \\* FROM post ORDER BY id LIMIT \\$1 OFFSET \\$2").WithArgs(10, 0).WillReturnRows(rows)
-		got, err := repo.List(context.Background(), 0, 10)
+
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		got, err := repo.List(ctx, 0, 10)
 		require.NoError(t, err)
 		require.Len(t, got, 1)
 	})
@@ -183,7 +205,11 @@ func TestPostStorageReadMethods(t *testing.T) {
 		repo := NewPostStorage(mockPool)
 		rows := pgxmock.NewRows(cols).AddRow(int64(3), uuid.New(), &text, int64(77), true, true, true, now, now)
 		mockPool.ExpectQuery("SELECT \\* FROM post WHERE author_id=\\$1 ORDER BY created_at DESC").WithArgs(int64(77)).WillReturnRows(rows)
-		got, err := repo.GetByAuthorID(context.Background(), 77)
+
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		got, err := repo.GetByAuthorID(ctx, 77)
 		require.NoError(t, err)
 		require.Len(t, got, 1)
 	})
@@ -194,7 +220,11 @@ func TestPostStorageReadMethods(t *testing.T) {
 		defer mockPool.Close()
 		repo := NewPostStorage(mockPool)
 		mockPool.ExpectQuery("SELECT \\* FROM post ORDER BY id LIMIT \\$1 OFFSET \\$2").WithArgs(10, 0).WillReturnError(errors.New("db err"))
-		_, err := repo.List(context.Background(), 0, 10)
+
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		_, err := repo.List(ctx, 0, 10)
 		require.EqualError(t, err, "db err")
 	})
 }

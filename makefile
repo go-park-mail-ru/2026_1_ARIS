@@ -16,7 +16,9 @@ mocks:
 	go generate ./...
 
 clean:
-	[ -f ./coverage.out ] && rm ./coverage.out
+	rm -f ./coverage.out ./coverage.out.tmp
+	touch ./coverage.out
+	touch ./coverage.out.tmp
 
 coverage: clean
 	go test -coverprofile=coverage.out -coverpkg=./internal/... ./...
@@ -95,6 +97,8 @@ backend-shell:
 
 frontend-shell:
 	$(COMPOSE) exec frontend sh
+	
 coverage-excluding-mocks: clean
-	go test -coverprofile=coverage.out -coverpkg=./internal/... $(shell go list ./internal/... | grep -v /mocks)
+	go test ./... -coverprofile=coverage.out.tmp -coverpkg=./internal/...
+	cat coverage.out.tmp | grep -v -E "(mock|generated|pb\.go|mocks|_test\.go)" > coverage.out
 	go tool cover -func=coverage.out | grep total

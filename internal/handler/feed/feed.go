@@ -93,11 +93,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	if l := r.URL.Query().Get("limit"); l != "" {
 		parsed, err := strconv.Atoi(l)
 		if err != nil {
-			log.Warn("invalid_limit_param",
-				zap.String("limit", l),
-				zap.String("path", r.URL.Path),
-				zap.Error(err),
-			)
+			log.Warn("invalid_limit_param", zap.String("limit", l), zap.String("path", r.URL.Path), zap.Error(err))
 			utils.WriteError(w, "Cant parse limit", http.StatusBadRequest)
 			return
 		}
@@ -146,20 +142,14 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 		authorUserProfile, err := h.UserProfileService.GetUserProfileByProfileID(r.Context(), postAuthor.ID)
 		if err != nil {
-			log.Error("get_author_profile_failed",
-				zap.Int64("author_id", postAuthor.ID),
-				zap.Error(err),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		authorUserAccount, err := h.UserProfileService.GetUserAccountByUserProfileID(r.Context(), authorUserProfile.ID)
 		if err != nil {
-			log.Error("get_author_account_failed",
-				zap.Int64("author_profile_id", authorUserProfile.ID),
-				zap.Error(err),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -306,11 +296,7 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 	if l := r.URL.Query().Get("limit"); l != "" {
 		parsed, err := strconv.Atoi(l)
 		if err != nil {
-			log.Warn("invalid_limit_param",
-				zap.String("limit", l),
-				zap.String("path", r.URL.Path),
-				zap.Error(err),
-			)
+			log.Warn("invalid_limit_param", zap.String("limit", l), zap.String("path", r.URL.Path), zap.Error(err))
 			utils.WriteError(w, "Cant parse limit", http.StatusBadRequest)
 			return
 		}
@@ -333,10 +319,7 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 	for _, post := range feed.Posts {
 		postAuthor, err := h.PostService.GetPostAuthor(r.Context(), post.ID)
 		if err != nil {
-			log.Error("get_post_author_failed",
-				zap.Int64("post_id", post.ID),
-				zap.Error(err),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -346,10 +329,7 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 		if postAuthor.AvatarID != nil {
 			authorAvatar, err := h.MediaService.GetAvatarByID(r.Context(), postAuthor.AvatarID)
 			if err != nil {
-				log.Warn("get_author_avatar_failed",
-					zap.Int64("author_id", postAuthor.ID),
-					zap.Error(err),
-				)
+
 				utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -358,20 +338,14 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 
 		authorUserProfile, err := h.UserProfileService.GetUserProfileByProfileID(r.Context(), postAuthor.ID)
 		if err != nil {
-			log.Error("get_author_profile_failed",
-				zap.Int64("author_id", postAuthor.ID),
-				zap.Error(err),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		authorUserAccount, err := h.UserProfileService.GetUserAccountByUserProfileID(r.Context(), authorUserProfile.ID)
 		if err != nil {
-			log.Error("get_author_account_failed",
-				zap.Int64("author_profile_id", authorUserProfile.ID),
-				zap.Error(err),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

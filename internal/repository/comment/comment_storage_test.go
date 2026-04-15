@@ -6,8 +6,10 @@ import (
 	"testing"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestCommentStorageGetCommentCount(t *testing.T) {
@@ -25,7 +27,10 @@ func TestCommentStorageGetCommentCount(t *testing.T) {
 			WithArgs(int64(11)).
 			WillReturnRows(rows)
 
-		count := repo.GetCommentCount(context.Background(), 11)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		count := repo.GetCommentCount(ctx, 11)
 		require.Equal(t, 3, count)
 		require.NoError(t, mockPool.ExpectationsWereMet())
 	})
@@ -42,7 +47,10 @@ func TestCommentStorageGetCommentCount(t *testing.T) {
 			WithArgs(int64(11)).
 			WillReturnRows(rows)
 
-		count := repo.GetCommentCount(context.Background(), 11)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		count := repo.GetCommentCount(ctx, 11)
 		require.Equal(t, 0, count)
 		require.NoError(t, mockPool.ExpectationsWereMet())
 	})
@@ -65,7 +73,10 @@ func TestCommentStorageSave(t *testing.T) {
 			WithArgs(pgxmock.AnyArg(), comment.Text, comment.TargetPostID, comment.ParentCommentID, comment.StickerID, comment.AuthorID).
 			WillReturnRows(rows)
 
-		id, err := repo.Save(context.Background(), comment)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		id, err := repo.Save(ctx, comment)
 		require.NoError(t, err)
 		require.Equal(t, int64(44), id)
 		require.NoError(t, mockPool.ExpectationsWereMet())
@@ -84,7 +95,10 @@ func TestCommentStorageSave(t *testing.T) {
 			WithArgs(pgxmock.AnyArg(), comment.Text, comment.TargetPostID, comment.ParentCommentID, comment.StickerID, comment.AuthorID).
 			WillReturnRows(rows)
 
-		_, err = repo.Save(context.Background(), comment)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		_, err = repo.Save(ctx, comment)
 		require.EqualError(t, err, "Bad query")
 		require.NoError(t, mockPool.ExpectationsWereMet())
 	})
@@ -101,7 +115,10 @@ func TestCommentStorageSave(t *testing.T) {
 			WithArgs(pgxmock.AnyArg(), comment.Text, comment.TargetPostID, comment.ParentCommentID, comment.StickerID, comment.AuthorID).
 			WillReturnError(errors.New("db down"))
 
-		_, err = repo.Save(context.Background(), comment)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		_, err = repo.Save(ctx, comment)
 		require.EqualError(t, err, "db down")
 		require.NoError(t, mockPool.ExpectationsWereMet())
 	})

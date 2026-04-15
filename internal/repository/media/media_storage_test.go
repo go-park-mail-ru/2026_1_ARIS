@@ -7,9 +7,11 @@ import (
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestMediaStorageSaveGetAndGetLink(t *testing.T) {
@@ -38,7 +40,10 @@ func TestMediaStorageSaveGetAndGetLink(t *testing.T) {
 		WithArgs(int64(5)).
 		WillReturnRows(linkRows)
 
-	id, err := repo.Save(context.Background(), models.Media{
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+
+	id, err := repo.Save(ctx, models.Media{
 		Uid:       uuid.MustParse("00000000-0000-0000-0000-000000000010"),
 		Name:      "name",
 		Extension: "png",
@@ -50,11 +55,11 @@ func TestMediaStorageSaveGetAndGetLink(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(5), id)
 
-	got, err := repo.Get(context.Background(), 5)
+	got, err := repo.Get(ctx, 5)
 	require.NoError(t, err)
 	require.Equal(t, int64(5), got.ID)
 
-	link, err := repo.GetLink(context.Background(), 5)
+	link, err := repo.GetLink(ctx, 5)
 	require.NoError(t, err)
 	require.Equal(t, "https://s3/link", link)
 	require.NoError(t, mockPool.ExpectationsWereMet())
@@ -73,7 +78,10 @@ func TestMediaStorageGetNotFound(t *testing.T) {
 		WithArgs(int64(404)).
 		WillReturnRows(rows)
 
-	_, err = repo.Get(context.Background(), 404)
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+
+	_, err = repo.Get(ctx, 404)
 	require.ErrorIs(t, err, xerrors.MediaNotFound)
 	require.NoError(t, mockPool.ExpectationsWereMet())
 }
@@ -90,7 +98,10 @@ func TestMediaStorageUpdateLink(t *testing.T) {
 		WithArgs("new-link", int64(8)).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	err = repo.UpdateLink(context.Background(), 8, "new-link")
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+
+	err = repo.UpdateLink(ctx, 8, "new-link")
 	require.NoError(t, err)
 	require.NoError(t, mockPool.ExpectationsWereMet())
 }

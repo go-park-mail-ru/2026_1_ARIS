@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestRepostStorageSave(t *testing.T) {
@@ -22,7 +24,10 @@ func TestRepostStorageSave(t *testing.T) {
 		WithArgs(pgxmock.AnyArg(), int64(1), int64(2), int64(3)).
 		WillReturnRows(rows)
 
-	id, err := repo.Save(context.Background(), models.Repost{
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+
+	id, err := repo.Save(ctx, models.Repost{
 		AuthorID: 1,
 		ChatID:   2,
 		PostID:   3,
@@ -47,7 +52,10 @@ func TestRepostStorageGetRepostCount(t *testing.T) {
 			WithArgs(int64(99)).
 			WillReturnRows(rows)
 
-		count := repo.GetRepostCount(context.Background(), 99)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		count := repo.GetRepostCount(ctx, 99)
 		require.Equal(t, 4, count)
 		require.NoError(t, mockPool.ExpectationsWereMet())
 	})
@@ -64,7 +72,10 @@ func TestRepostStorageGetRepostCount(t *testing.T) {
 			WithArgs(int64(99)).
 			WillReturnRows(rows)
 
-		count := repo.GetRepostCount(context.Background(), 99)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		count := repo.GetRepostCount(ctx, 99)
 		require.Equal(t, 0, count)
 		require.NoError(t, mockPool.ExpectationsWereMet())
 	})

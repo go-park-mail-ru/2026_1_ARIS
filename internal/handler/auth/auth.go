@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/auth"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
@@ -112,34 +111,22 @@ func NewAuthHandler(
 // @Router		/auth/register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	log := logger.FromContext(r.Context())
-	now := time.Now()
 
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Warn("http_request",
-			zap.String("message", xerrors.InvalidRequestBody),
-			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path),
-			zap.Duration("duration_ms", time.Since(now)),
-			zap.Int("status", http.StatusBadRequest),
-		)
+		log.Warn("http_request", zap.String("auth", "register"))
 		utils.WriteError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	if err := validate.Struct(req); err != nil {
-		log.Warn("http_request",
-			zap.String("message", "validation failed: "+err.Error()),
-			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path),
-			zap.Duration("duration_ms", time.Since(now)),
-			zap.Int("status", http.StatusBadRequest),
-		)
+		log.Warn("http_request", zap.String("auth", "register"))
 		utils.WriteError(w, "validation failed: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if req.Password1 != req.Password2 {
+		log.Warn("http_request", zap.String("auth", "register"))
 		utils.WriteError(w, "passwords do not match", http.StatusBadRequest)
 		return
 	}
@@ -182,13 +169,11 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	userProfile, err := h.userService.GetUserProfileByProfileID(r.Context(), profile.ID)
 	if err != nil {
-		log.Warn(xerrors.UserProfileNotFound.Error(), zap.Int64("profile_id", profile.ID))
 		utils.WriteError(w, "user profile not found", http.StatusInternalServerError)
 		return
 	}
 	userAccount, err := h.userService.GetUserAccountByUserProfileID(r.Context(), userProfile.ID)
 	if err != nil {
-		log.Warn(xerrors.UserAccountNotFound.Error(), zap.Int64("userProfile_id", userProfile.ID))
 		utils.WriteError(w, "user account not found", http.StatusInternalServerError)
 		return
 	}
@@ -231,23 +216,13 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Warn("http_request",
-			zap.String("message", xerrors.InvalidRequestBody),
-			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path),
-			zap.Int("status", http.StatusBadRequest),
-		)
 		utils.WriteError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
 	userAccount, err := h.authService.Login(r.Context(), req.Login, req.Password)
 	if err != nil {
-		log.Warn("auth_login_failed",
-			zap.String("login", req.Login),
-			zap.String("message", err.Error()),
-			zap.Int("status", http.StatusUnauthorized),
-		)
+		log.Warn("auth_login_failed", zap.String("auth", "login"))
 		utils.WriteError(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
@@ -256,19 +231,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errMsg := err.Error()
 		if errMsg == ErrUserNotFound {
-			log.Warn("user_profile_not_found",
-				zap.Int64("userAccount_id", userAccount.ID),
-				zap.String("message", errMsg),
-				zap.Int("status", http.StatusNotFound),
-			)
 			utils.WriteError(w, ErrUserNotFound, http.StatusNotFound)
 			return
 		}
 
-		log.Error("failed_get_user_profile",
-			zap.Int64("userAccount_id", userAccount.ID),
-			zap.Error(err),
-		)
 		utils.WriteError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -322,11 +288,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
-		log.Info("logout_already_logged_out",
-			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path),
-			zap.String("message", "no session cookie"),
-		)
+		log.Info("logout_already_logged_out", zap.String("message", "no session cookie"))
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(CommonResponse{Message: "already logged out"})
 		return
@@ -373,22 +335,13 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 	userIDFromCtx := r.Context().Value("user_id")
 	if userIDFromCtx == nil {
-		log.Warn("unauthorized",
-			zap.String("message", "missing user_id in context"),
-			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path),
-		)
+		log.Warn("unauthorized", zap.String("message", "user id not found in context"), zap.String("method", r.Method), zap.String("path", r.URL.Path))
 		utils.WriteError(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	userID, ok := userIDFromCtx.(int64)
 	if !ok {
-		log.Warn("unauthorized",
-			zap.String("message", "invalid user id type in context"),
-			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path),
-		)
 		utils.WriteError(w, "invalid user id in context", http.StatusUnauthorized)
 		return
 	}
@@ -412,11 +365,6 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		media, mediaErr := h.mediaService.GetAvatarByID(r.Context(), profile.AvatarID)
 		if mediaErr == nil && media != nil {
 			avatar = media.Link
-		} else if mediaErr != nil {
-			log.Warn("failed_get_avatar",
-				zap.Int64("userAccount_id", userID),
-				zap.Error(mediaErr),
-			)
 		}
 	}
 
@@ -451,12 +399,7 @@ func (h *AuthHandler) ValidateRegisterStepOne(w http.ResponseWriter, r *http.Req
 
 	var req RegisterStepOneRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Warn("http_request",
-			zap.String("message", xerrors.InvalidRequestBody),
-			zap.String("method", r.Method),
-			zap.String("path", r.URL.Path),
-			zap.Int("status", http.StatusBadRequest),
-		)
+		log.Warn("http_request", zap.String("auth", "validate_register_step_one"))
 		utils.WriteError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}

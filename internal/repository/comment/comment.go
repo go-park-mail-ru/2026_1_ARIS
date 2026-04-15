@@ -5,10 +5,13 @@ package comment
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 type commentStorage struct {
@@ -33,9 +36,15 @@ type CommentRepo interface {
 }
 
 func (storage *commentStorage) GetCommentCount(ctx context.Context, postID int64) int {
+	logger := logger.FromContext(ctx)
 	query := `SELECT COUNT(*) FROM comment WHERE post_id=$1;`
 
+	start := time.Now()
 	comments := storage.db.QueryRow(ctx, query, postID)
+	logger.Debug("db query",
+		zap.String("query", "GetUserByID"),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 
 	var commentCount int64
 	if err := comments.Scan(&commentCount); err != nil {
@@ -45,10 +54,12 @@ func (storage *commentStorage) GetCommentCount(ctx context.Context, postID int64
 }
 
 func (storage *commentStorage) Save(ctx context.Context, comment models.Comment) (int64, error) {
+	logger := logger.FromContext(ctx)
 	query := `INSERT INTO comment (uid, comment_text, post_id, parent_comment_id, sticker_id, author_id) VALUES
 	($1, $2, $3, $4, $5, $6)
 	RETURNING id;`
 
+	start := time.Now()
 	rows, err := storage.db.Query(ctx, query,
 		uuid.New(),
 		comment.Text,
@@ -56,6 +67,10 @@ func (storage *commentStorage) Save(ctx context.Context, comment models.Comment)
 		comment.ParentCommentID,
 		comment.StickerID,
 		comment.AuthorID)
+	logger.Debug("db query",
+		zap.String("query", "GetUserByID"),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 	if err != nil {
 		return 0, err
 	}

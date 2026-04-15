@@ -289,10 +289,7 @@ func (h *ProfileHandler) EditProfileMe(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		log.Warn("cannot_edit_profile_me_invalid_body",
-			zap.String("path", r.URL.Path),
-			zap.Error(err),
-		)
+
 		utils.WriteError(w, "Invalid body", http.StatusBadRequest)
 		return
 	}
@@ -325,11 +322,7 @@ func (h *ProfileHandler) EditProfileMe(w http.ResponseWriter, r *http.Request) {
 
 	err = h.userService.UpdateMe(r.Context(), req)
 	if err != nil {
-		log.Error("failed_to_update_profile",
-			zap.Int64("userAccount_id", userAccount.ID),
-			zap.Int64("profile_id", userProfile.ProfileID),
-			zap.Error(err),
-		)
+
 		utils.WriteError(w, "Update failed", http.StatusInternalServerError)
 		return
 	}
