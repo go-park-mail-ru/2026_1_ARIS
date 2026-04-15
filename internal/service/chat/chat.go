@@ -13,7 +13,6 @@ import (
 	chatmember "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat_member"
 	userservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/google/uuid"
-	"golang.org/x/net/html"
 )
 
 type ChatService interface {
@@ -59,7 +58,7 @@ func (s *chatService) GetUserChats(ctx context.Context, userID int64) ([]models.
 		if err != nil {
 			continue
 		}
-		chat.Title = html.EscapeString(chat.Title)
+
 		chats = append(chats, *chat)
 	}
 

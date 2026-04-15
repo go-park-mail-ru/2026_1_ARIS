@@ -2,7 +2,6 @@ package profile
 
 import (
 	"encoding/json"
-	"html"
 	"net/http"
 	"strconv"
 	"strings"
@@ -89,50 +88,9 @@ func (h *ProfileHandler) buildProfileResponse(r *http.Request, profileID int64) 
 		}
 	}
 
-	bio := userProfile.Bio
-	if bio != nil {
-		b := html.EscapeString(*bio)
-		bio = &b
-	}
-	town := userProfile.Town
-	if town != nil {
-		t := html.EscapeString(*town)
-		town = &t
-	}
-	interests := userProfile.Interests
-	if interests != nil {
-		i := html.EscapeString(*interests)
-		interests = &i
-	}
-	fav := userProfile.FavMusic
-	if fav != nil {
-		t := html.EscapeString(*fav)
-		fav = &t
-	}
-	institution := userProfile.Institution
-	if institution != nil {
-		t := html.EscapeString(*institution)
-		institution = &t
-	}
-	group := userProfile.Group
-	if group != nil {
-		t := html.EscapeString(*group)
-		group = &t
-	}
-	company := userProfile.Company
-	if company != nil {
-		t := html.EscapeString(*company)
-		company = &t
-	}
-	jon := userProfile.JobTitle
-	if jon != nil {
-		t := html.EscapeString(*jon)
-		jon = &t
-	}
-
 	response := &GetProfileMeResponse{
-		FirstName:  html.EscapeString(userProfile.FirstName),
-		LastName:   html.EscapeString(userProfile.LastName),
+		FirstName:  userProfile.FirstName,
+		LastName:   userProfile.LastName,
 		Bio:        userProfile.Bio,
 		ImageLink:  imageLink,
 		Gender:     userProfile.Gender,

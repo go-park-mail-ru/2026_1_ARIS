@@ -2,7 +2,6 @@ package auth
 
 import (
 	"encoding/json"
-	"html"
 	"net/http"
 	"strconv"
 	"time"
@@ -265,8 +264,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	loginResponse := LoginResponse{
 		ID:        strconv.FormatInt(userProfile.ID, 10),
 		CreatedAt: userProfile.CreatedAt.UTC().Format(time.RFC3339Nano),
-		FirstName: html.EscapeString(userProfile.FirstName),
-		LastName:  html.EscapeString(userProfile.LastName),
+		FirstName: userProfile.FirstName,
+		LastName:  userProfile.LastName,
 	}
 
 	log.Info("user_logged_in",
@@ -384,8 +383,8 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(LoginResponse{
 		ID:         strconv.FormatInt(userProfile.ProfileID, 10),
-		FirstName:  html.EscapeString(userProfile.FirstName),
-		LastName:   html.EscapeString(userProfile.LastName),
+		FirstName:  userProfile.FirstName,
+		LastName:   userProfile.LastName,
 		AvatarLink: avatar,
 	})
 }
