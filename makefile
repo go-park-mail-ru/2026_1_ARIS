@@ -92,3 +92,6 @@ backend-shell:
 
 frontend-shell:
 	$(COMPOSE) exec frontend sh
+coverage-excluding-mocks: clean
+	go test -coverprofile=coverage.out -coverpkg=./internal/... $(shell go list ./internal/... | grep -v /mocks)
+	go tool cover -func=coverage.out | grep total
