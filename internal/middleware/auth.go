@@ -2,16 +2,19 @@ package middleware
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
+	"go.uber.org/zap"
 )
 
 func AuthMiddleware(sessionService session.SessionService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log := logger.FromContext(r.Context())
+
 			cookie, err := r.Cookie("session_id")
 			if err != nil {
 				http.Error(w, `{"error":"неавторизован"}`, http.StatusUnauthorized)
@@ -20,11 +23,9 @@ func AuthMiddleware(sessionService session.SessionService) func(http.Handler) ht
 
 			sessionID := models.SessionID(cookie.Value)
 
-			fmt.Println("ID session = ", sessionID)
-
 			session, err := sessionService.Get(r.Context(), sessionID)
 			if err != nil {
-				fmt.Println(err)
+				log.Error("invalid_session", zap.Error(err), zap.String("session_id", string(sessionID)))
 				http.Error(w, `{"error":"сессия недействительна или истекла"}`, http.StatusUnauthorized)
 				return
 			}

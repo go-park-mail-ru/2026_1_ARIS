@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 
 	chathandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
@@ -33,8 +34,9 @@ func TestNewRouter(t *testing.T) {
 	friendshipHandler := &friend.FriendHandler{}
 	wsHandler := chathandler.NewWebSocketHandler(nil, nil) // создаём wsHandler
 	postHandler := posthandler.NewPostHandler(nil, nil, nil)
+	logger := &zap.Logger{}
 
-	router := NewRouter(authHandler, nil, feedHandler, userHandler, mediaHandler, profileHandler, chatHandler, friendshipHandler, wsHandler, postHandler)
+	router := NewRouter(authHandler, nil, feedHandler, userHandler, mediaHandler, profileHandler, chatHandler, friendshipHandler, wsHandler, postHandler, logger)
 
 	assert.NotNil(t, router)
 	assert.IsType(t, &chi.Mux{}, router)

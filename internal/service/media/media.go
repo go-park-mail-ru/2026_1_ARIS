@@ -3,7 +3,6 @@ package media
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"mime/multipart"
 	"os"
@@ -87,7 +86,6 @@ func (s *mediaService) Save(ctx context.Context, name string, size int64, fileRe
 
 	mediaLink, err := s.minioClient.Save(ctx, os.Getenv("MINIO_BUCKET_NAME"), fileReader, mediaUUID, size, extension, opts)
 	if err != nil {
-		fmt.Println(err)
 		return 0, "", err
 	}
 

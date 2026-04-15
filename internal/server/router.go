@@ -13,6 +13,7 @@ import (
 	mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
 	httpSwagger "github.com/swaggo/http-swagger"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -30,9 +31,12 @@ func NewRouter(
 	friendshipHandler *friend.FriendHandler,
 	wsHandler *chathandler.WebSocketHandler,
 	postHandler *post.PostHandler,
+	logger *zap.Logger,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
+	r.Use(mymiddleware.RequestIDMiddleware(logger))
+	r.Use(mymiddleware.AccessLogMiddleware(logger))
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{

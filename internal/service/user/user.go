@@ -4,7 +4,6 @@ package user
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/rand"
 	"strings"
 	"time"
@@ -105,7 +104,6 @@ func (s *userService) UpdateMe(ctx context.Context, updateDTO dto.UpdateFullProf
 	// Если данные изменились - есть смысл сохранять
 	// email phone username - unique
 	if userAccountDTO.HasUpdates() {
-		fmt.Println("Изменили userAccount")
 		err := s.UserAccountRepo.Update(ctx, userAccountDTO)
 		if err != nil {
 			return err
@@ -114,7 +112,6 @@ func (s *userService) UpdateMe(ctx context.Context, updateDTO dto.UpdateFullProf
 
 	// Если данные изменились - есть смысл сохранять
 	if userProfileDTO.HasUpdates() {
-		fmt.Println("Изменили userProfile")
 		err := s.UserProfileRepo.Update(ctx, userProfileDTO)
 		if err != nil {
 			return err

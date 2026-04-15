@@ -3,7 +3,6 @@ package like
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
@@ -62,7 +61,6 @@ func (storage *likeStorage) Get(ctx context.Context, likeID int64) (*models.Like
 
 	err := pgxscan.Get(ctx, storage.db, &like, query, likeID)
 	if err != nil {
-		fmt.Println("Error : ", err)
 		return nil, err
 	}
 

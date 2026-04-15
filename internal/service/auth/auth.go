@@ -4,7 +4,6 @@ package auth
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -67,13 +66,11 @@ func (s *authService) Login(ctx context.Context, login, password string) (*model
 
 	user, err := s.userAccountRepo.GetByUsername(ctx, login)
 	if err != nil {
-		fmt.Println("Error 1", err)
 		return nil, errors.New("недействительные учётные данные")
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
-		fmt.Println("Error 2", err)
 		return nil, errors.New("недействительные учётные данные")
 	}
 
