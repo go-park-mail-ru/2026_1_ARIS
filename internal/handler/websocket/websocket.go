@@ -1,21 +1,21 @@
-package handlers
+package websocket
 
 import (
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/chat"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/websocket"
 )
 
 type WebSocketHandler struct {
 	hub         *websocket.Hub
-	chatService service.ChatService
+	chatService chat.ChatService
 }
 
-func NewWebSocketHandler(hub *websocket.Hub, chatService service.ChatService) *WebSocketHandler {
+func NewWebSocketHandler(hub *websocket.Hub, chatService chat.ChatService) *WebSocketHandler {
 	return &WebSocketHandler{
 		hub:         hub,
 		chatService: chatService,

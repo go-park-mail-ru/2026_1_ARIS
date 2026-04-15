@@ -1,4 +1,6 @@
-package service
+package chat
+
+//go:generate mockgen -destination=../mocks/chat_service_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/service/chat ChatService
 
 import (
 	"context"
@@ -7,8 +9,8 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
+	chatmember "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat_member"
 	userservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/google/uuid"
 )
@@ -22,14 +24,14 @@ type ChatService interface {
 }
 
 type chatService struct {
-	chatRepo       *chat.SQLChatRepo
-	chatMemberRepo repository.ChatMemberRepo
+	chatRepo       chat.ChatRepo
+	chatMemberRepo chatmember.ChatMemberRepo
 	userService    userservice.UserService
 }
 
 func NewChatService(
-	chatRepo *chat.SQLChatRepo,
-	chatMemberRepo repository.ChatMemberRepo,
+	chatRepo chat.ChatRepo,
+	chatMemberRepo chatmember.ChatMemberRepo,
 	userService userservice.UserService,
 ) ChatService {
 	return &chatService{

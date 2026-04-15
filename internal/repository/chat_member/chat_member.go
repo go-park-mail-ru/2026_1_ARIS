@@ -1,4 +1,6 @@
-package repository
+package chatmember
+
+//go:generate mockgen -destination=./../mocks/chat_member_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat_member ChatMemberRepo
 
 import (
 	"context"
@@ -7,7 +9,7 @@ import (
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type ChatMemberRepo interface {
@@ -18,10 +20,16 @@ type ChatMemberRepo interface {
 }
 
 type chatMemberStorage struct {
-	db *pgxpool.Pool
+	db chatMemberDB
 }
 
-func NewChatMemberStorage(db *pgxpool.Pool) ChatMemberRepo {
+type chatMemberDB interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}
+
+func NewChatMemberStorage(db chatMemberDB) ChatMemberRepo {
 	return &chatMemberStorage{db: db}
 }
 

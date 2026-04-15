@@ -1,4 +1,4 @@
-.PHONY: test coverage clean dev down reset-db logs migrate backend-shell frontend-shell
+.PHONY: test coverage clean dev down reset-db logs migrate backend-shell frontend-shell mocks
 
 COMPOSE_FILE=./docker-compose.dev.yml
 COMPOSE_ENV_FILE=./.env.compose
@@ -12,8 +12,11 @@ MIGRATE=migrate -source "file://./db/migrations" -database "postgres://${DB_USER
 test:
 	go test -v ./...
 
+mocks:
+	go generate ./...
+
 clean:
-	if exist coverage.out del /f coverage.out
+	[ -f ./coverage.out ] && rm ./coverage.out
 
 coverage: clean
 	go test -coverprofile=coverage.out -coverpkg=./internal/... ./...

@@ -11,7 +11,7 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/settings"
 )
 
-//go:generate mockgen -source=user_settings.go -destination=mocks/mock_user_settings.go -package=mocks
+//go:generate mockgen -destination=../mocks/user_settings_service_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/service/settings UserSettingsService
 
 type UserSettingsService interface {
 	GetByUserID(ctx context.Context, userID int64) (*models.UserSettings, error)

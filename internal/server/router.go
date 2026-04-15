@@ -1,8 +1,8 @@
 package server
 
 import (
-	chathandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/chat"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/friend"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/media"
@@ -10,6 +10,7 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/proxy"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/websocket"
 	mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -26,9 +27,9 @@ func NewRouter(
 	userHandler *user.UserHandler,
 	mediaHandler *media.MediaHandler,
 	profileHandler *profile.ProfileHandler,
-	chatHandler *chathandler.ChatHandler,
+	chatHandler *chat.ChatHandler,
 	friendshipHandler *friend.FriendHandler,
-	wsHandler *chathandler.WebSocketHandler,
+	wsHandler *websocket.WebSocketHandler,
 	postHandler *post.PostHandler,
 ) *chi.Mux {
 	r := chi.NewRouter()

@@ -1,4 +1,6 @@
-package repository
+package message
+
+//go:generate mockgen -destination=./../mocks/message_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/message MessageRepo
 
 import (
 	"context"
@@ -8,7 +10,7 @@ import (
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type MessageRepo interface {
@@ -20,7 +22,13 @@ type MessageRepo interface {
 }
 
 type messageStorage struct {
-	db *pgxpool.Pool
+	db messageDB
+}
+
+type messageDB interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 }
 
 func (s *messageStorage) Update(ctx context.Context, msg *models.Message) error {
@@ -28,7 +36,7 @@ func (s *messageStorage) Update(ctx context.Context, msg *models.Message) error 
 	_, err := s.db.Exec(ctx, query, msg.Text, time.Now(), msg.ID)
 	return err
 }
-func NewMessageStorage(db *pgxpool.Pool) MessageRepo {
+func NewMessageStorage(db messageDB) MessageRepo {
 	return &messageStorage{db: db}
 }
 

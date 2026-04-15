@@ -1,18 +1,20 @@
 package userprofile
 
+//go:generate mockgen -destination=./../mocks/user_profile_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_profile UserProfileRepo
+
 import (
 	"context"
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type UserProfileRepo interface {
@@ -24,25 +26,20 @@ type UserProfileRepo interface {
 }
 
 type userProfileStorage struct {
-	db *pgxpool.Pool
+	db userProfileDB
 	// logger
 }
 
-type inmemoryUserProfileRepo struct {
-	mu           sync.RWMutex
-	userProfiles map[int64]models.UserProfile
+type userProfileDB interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 }
 
-func NewUserProfileStorage(db *pgxpool.Pool) UserProfileRepo {
+func NewUserProfileStorage(db userProfileDB) UserProfileRepo {
 	return &userProfileStorage{
 		db: db,
 	}
-}
-
-func NewUserProfileRepo() UserProfileRepo {
-	repo := inmemoryUserProfileRepo{}
-	repo.userProfiles = make(map[int64]models.UserProfile)
-	return &repo
 }
 
 func (storage *userProfileStorage) Update(ctx context.Context, dto dto.UpdateUserProfileDTO) error {
@@ -193,56 +190,4 @@ func (storage *userProfileStorage) GetByUserAccountID(ctx context.Context, userA
 	}
 
 	return &userProfile, nil
-}
-
-func (r *inmemoryUserProfileRepo) Save(ctx context.Context, userProfile models.UserProfile) (int64, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.userProfiles[userProfile.ID] = userProfile
-	return userProfile.ID, nil
-}
-
-func (r *inmemoryUserProfileRepo) Get(ctx context.Context, userProfileID int64) (*models.UserProfile, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	userProfile, ok := r.userProfiles[userProfileID]
-	if !ok {
-		return nil, errors.New("UserProfile not found")
-	}
-
-	return &userProfile, nil
-}
-
-func (r *inmemoryUserProfileRepo) GetByProfileID(ctx context.Context, profileID int64) (*models.UserProfile, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	for _, p := range r.userProfiles {
-		if p.ProfileID == profileID {
-			fmt.Println("returned GetByProfileID. profileID =", profileID)
-			return &p, nil
-		}
-	}
-	fmt.Println("error in GetByProfileID. profileID =", profileID)
-	return nil, errors.New("UserProfile not found")
-}
-
-func (r *inmemoryUserProfileRepo) GetByUserAccountID(ctx context.Context, userAccountID int64) (*models.UserProfile, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	for _, p := range r.userProfiles {
-		if p.UserAccountID == userAccountID {
-			return &p, nil
-		}
-	}
-
-	return nil, errors.New("UserProfile not found")
-}
-
-// заглушка
-func (r *inmemoryUserProfileRepo) Update(ctx context.Context, dto dto.UpdateUserProfileDTO) error {
-	return nil
 }

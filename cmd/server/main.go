@@ -18,22 +18,23 @@ import (
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/server"
 
-	chathandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
-	wsHandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
 	authhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
+	chathandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/chat"
 	feedhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
 	friendshiphandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/friend"
 	mediahandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/media"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/post"
+	posthandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/post"
 	profilehandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
 	userhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
+	wsHandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/websocket"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
-	chatstorage "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
+	chatrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
+	chatmemberrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat_member"
 	commentrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/comment"
 	friendshiprepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/friend"
 	likerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/like"
 	mediarepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
+	messagerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/message"
 	postrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/post"
 	profilerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/profile"
 	repostrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/repost"
@@ -41,14 +42,15 @@ import (
 	settingsrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/settings"
 	useraccountrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_account"
 	userprofilerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_profile"
-	settingsservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/settings"
 
-	chatservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
 	authservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/auth"
+	chatservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/chat"
 	friendshipservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/friend"
 	mediaservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
+	messageservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/message"
 	postservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
 	sessionservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
+	settingsservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/settings"
 	userservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
@@ -192,9 +194,9 @@ func main() {
 	postWithMediaRepo := postrepo.NewPostWithMediaStorage(db)
 	friendshipRepo := friendshiprepo.NewFriendshipStorage(db)
 	settingsRepo := settingsrepo.NewUserSettingsStorage(db)
-	chatRepo := chatstorage.NewSQLChatRepo(db)
-	chatMemberRepo := repository.NewChatMemberStorage(db)
-	messageRepo := repository.NewMessageStorage(db)
+	chatRepo := chatrepo.NewChatStorage(db)
+	chatMemberRepo := chatmemberrepo.NewChatMemberStorage(db)
+	messageRepo := messagerepo.NewMessageStorage(db)
 
 	postService := postservice.NewPostService(postRepo, postWithMediaRepo, profileRepo, commentRepo, repostRepo, likeRepo)
 	userService := userservice.NewUserService(userAccountRepo, profileRepo, userProfileRepo)
@@ -202,7 +204,7 @@ func main() {
 	sessService := sessionservice.NewSessionService(sessionRepo)
 	mediaService := mediaservice.NewMediaService(mediaRepo, postWithMediaRepo, client)
 	chatSvc := chatservice.NewChatService(chatRepo, chatMemberRepo, userService)
-	messageSvc := chatservice.NewMessageService(messageRepo)
+	messageSvc := messageservice.NewMessageService(messageRepo)
 	friendshipService := friendshipservice.NewFriendshipService(friendshipRepo)
 	settingsService := settingsservice.NewUserSettingsService(settingsRepo)
 
@@ -218,9 +220,9 @@ func main() {
 	chatHandler := chathandler.NewChatHandler(chatSvc, messageSvc, userAccountRepo, userService, hub)
 	friendHandler := friendshiphandler.NewFriendHandler(sessService, userService, friendshipService)
 	wsHandler := wsHandler.NewWebSocketHandler(hub, chatSvc)
-	postHandler := post.NewPostHandler(userService, postService, mediaService)
+	postHandler := posthandler.NewPostHandler(userService, postService, mediaService)
 
-	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo)
+	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo, likeRepo)
 
 	// создаём роутер
 	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, mediaHandler, profileHandler, chatHandler, friendHandler, wsHandler, postHandler)

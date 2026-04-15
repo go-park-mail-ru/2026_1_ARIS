@@ -1,14 +1,16 @@
 package media
 
+//go:generate mockgen -destination=./../mocks/media_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media MediaRepo
+
 import (
 	"context"
 	"errors"
-	"sync"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type MediaRepo interface {
@@ -19,11 +21,17 @@ type MediaRepo interface {
 }
 
 type mediaStorage struct {
-	db *pgxpool.Pool
+	db mediaDB
 	// logger
 }
 
-func NewMediaStorage(db *pgxpool.Pool) MediaRepo {
+type mediaDB interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}
+
+func NewMediaStorage(db mediaDB) MediaRepo {
 	return &mediaStorage{
 		db: db,
 	}
@@ -85,50 +93,5 @@ func (storage *mediaStorage) UpdateLink(ctx context.Context, id int64, newLink s
 		return errors.New("affected not on 1 row")
 	}
 
-	return nil
-}
-
-// func (storage *mediaStorage) GetBatch(ctx context.Context, ids []int64) error {
-// 	query := `SELECT id, uid, mime_type, link
-// 	FROM media WHERE id=ANY($1)`
-// }
-
-type inmemoryMediaRepo struct {
-	mu     sync.RWMutex
-	medias map[int64]models.Media
-}
-
-func NewMediaRepo() MediaRepo {
-	repo := inmemoryMediaRepo{}
-	repo.medias = make(map[int64]models.Media)
-	return &repo
-}
-
-func (r *inmemoryMediaRepo) Get(ctx context.Context, id int64) (*models.Media, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	media, ok := r.medias[id]
-	if !ok {
-		return nil, errors.New("Media not found")
-	}
-
-	return &media, nil
-}
-
-func (r *inmemoryMediaRepo) Save(ctx context.Context, media models.Media) (int64, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.medias[media.ID] = media
-	return media.ID, nil
-}
-
-// заглушки
-func (r *inmemoryMediaRepo) GetLink(ctx context.Context, id int64) (string, error) {
-	return "", nil
-}
-
-func (r *inmemoryMediaRepo) UpdateLink(ctx context.Context, id int64, newLink string) error {
 	return nil
 }

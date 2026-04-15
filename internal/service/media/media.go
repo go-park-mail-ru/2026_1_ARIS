@@ -1,5 +1,7 @@
 package media
 
+//go:generate mockgen -destination=../mocks/media_service_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media MediaService
+
 import (
 	"context"
 	"errors"

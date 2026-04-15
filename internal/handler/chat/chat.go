@@ -1,4 +1,4 @@
-package handlers
+package chat
 
 import (
 	"context"
@@ -10,23 +10,24 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	useraccount "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_account"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/chat"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/message"
 	userservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/websocket"
 )
 
 type ChatHandler struct {
-	chatService     service.ChatService
-	messageService  service.MessageService
+	chatService     chat.ChatService
+	messageService  message.MessageService
 	userAccountRepo useraccount.UserAccountRepo
 	userService     userservice.UserService
 	hub             *websocket.Hub
 }
 
 func NewChatHandler(
-	chatService service.ChatService,
-	messageService service.MessageService,
+	chatService chat.ChatService,
+	messageService message.MessageService,
 	userAccountRepo useraccount.UserAccountRepo,
 	userService userservice.UserService,
 	hub *websocket.Hub,
