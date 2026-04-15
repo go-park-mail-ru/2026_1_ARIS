@@ -5,6 +5,7 @@ package message
 import (
 	"context"
 	"errors"
+	"html"
 	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
@@ -110,6 +111,14 @@ func (s *messageStorage) GetByChatID(ctx context.Context, chatID int64, limit, o
 	}
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
+	}
+
+	for i, _ := range messages {
+		if messages[i].Text != nil {
+			text := html.EscapeString(*messages[i].Text)
+
+			*messages[i].Text = text
+		}
 	}
 
 	return messages, nil
