@@ -2,7 +2,8 @@
 
 COMPOSE_FILE=./docker-compose.dev.yml
 COMPOSE_ENV_FILE=./.env.compose
-COMPOSE=docker-compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE)
+COMPOSE=docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE)
+COMPOSE_LOCAL=docker compose -f ./docker/docker-compose.yml --env-file ./.env
 
 # include .env
 
@@ -42,22 +43,22 @@ swagger:
 
 # будет подтянут postgres:16
 db-up:
-	docker-compose -f ./docker/docker-compose.yml --env-file ./.env up -d ARISNET-DB
+	$(COMPOSE_LOCAL) up -d ARISNET-DB
 
 db-stop:
-	docker-compose -f ./docker/docker-compose.yml --env-file ./.env stop ARISNET-DB
+	$(COMPOSE_LOCAL) stop ARISNET-DB
 
 s3-up:
-	docker-compose -f ./docker/docker-compose.yml --env-file ./.env up -d ARISNET-MINIO
+	$(COMPOSE_LOCAL) up -d ARISNET-MINIO
 
 s3-stop:
-	docker-compose -f ./docker/docker-compose.yml --env-file ./.env stop ARISNET-MINIO
+	$(COMPOSE_LOCAL) stop ARISNET-MINIO
 
 services-up:
-	docker-compose -f ./docker/docker-compose.yml --env-file ./.env up -d
+	$(COMPOSE_LOCAL) up -d
 
 services-stop:
-	docker-compose -f ./docker/docker-compose.yml --env-file ./.env stop
+	$(COMPOSE_LOCAL) stop
 
 dev:
 	$(COMPOSE) up --build -d
@@ -76,6 +77,15 @@ logs:
 
 logs-backend:
 	$(COMPOSE) logs -f backend
+
+logs-redis:
+	$(COMPOSE) logs -f redis
+
+logs-db:
+	$(COMPOSE) logs -f db
+
+logs-migrate:
+	$(COMPOSE) logs -f migrate
 
 backend-shell:
 	$(COMPOSE) exec backend sh

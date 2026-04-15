@@ -57,6 +57,7 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/config"
 	connectdb "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/connect_db"
 	connectminio "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/connect_minio"
+	connectredis "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/connect_redis"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/websocket"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -94,6 +95,27 @@ func main() {
 	}
 
 	fmt.Println("Successfully connected to PostgreSQL")
+
+	// Подключаем Redis
+
+	fmt.Println(os.Getenv("REDIS_CONTAINER_NAME"))
+	fmt.Println(os.Getenv("REDIS_USER"))
+	fmt.Println(os.Getenv("REDIS_USER_PASSWORD"))
+	fmt.Println(os.Getenv("REDIS_PORT"))
+	fmt.Println(os.Getenv("REDIS_PUBLIC_PORT"))
+	fmt.Println(os.Getenv("REDIS_HOST"))
+	fmt.Println(os.Getenv("REDIS_DB"))
+	fmt.Println(os.Getenv("REDIS_MAX_RETRIES"))
+	fmt.Println(os.Getenv("REDIS_DIAL_TIMEOUT"))
+	fmt.Println(os.Getenv("REDIS_TIMEOUT"))
+	fmt.Println(os.Getenv("REDIS_ADDR"))
+
+	redisClient, err := connectredis.InitRedis(ctx, envConf)
+	if err != nil {
+		log.Fatal("Can't connect to Redis", err)
+	}
+
+	fmt.Println("Successfully connected to Redis")
 
 	// Подключаем MinIO
 
@@ -167,7 +189,7 @@ func main() {
 	likeRepo := likerepo.NewLikeStorage(db)
 	userAccountRepo := useraccountrepo.NewUserAccountStorage(db)
 	userProfileRepo := userprofilerepo.NewUserProfileStorage(db)
-	sessionRepo := sessionrepo.NewSessionRepo()
+	sessionRepo := sessionrepo.NewSessionStorage(redisClient)
 	mediaRepo := mediarepo.NewMediaStorage(db)
 	postWithMediaRepo := postrepo.NewPostWithMediaStorage(db)
 	friendshipRepo := friendshiprepo.NewFriendshipStorage(db)
