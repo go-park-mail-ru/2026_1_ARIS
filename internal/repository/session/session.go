@@ -45,9 +45,11 @@ func (r *sessionRedis) Save(ctx context.Context, session models.Session) error {
 	if res.Err() != nil {
 		return res.Err()
 	}
-	logger.Debug("db query",
-		zap.String("query", "sessionRepo.Save"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "sessionRepo.Save"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	return nil
 }
@@ -59,9 +61,11 @@ func (r *sessionRedis) Delete(ctx context.Context, id models.SessionID) error {
 	if res.Err() != nil {
 		return res.Err()
 	}
-	logger.Debug("db query",
-		zap.String("query", "sessionRepo.Delete"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "sessionRepo.Delete"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	return nil
 }
@@ -76,10 +80,11 @@ func (r *sessionRedis) GetByID(ctx context.Context, id models.SessionID) (*model
 		}
 		return nil, err
 	}
-	logger.Debug("db query",
-		zap.String("query", "sessionRepo.GetByID"),
-		zap.Duration("duration_ms", time.Since(start)))
-
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "sessionRepo.GetByID"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	var session models.Session
 
 	if err := json.Unmarshal(res, &session); err != nil {

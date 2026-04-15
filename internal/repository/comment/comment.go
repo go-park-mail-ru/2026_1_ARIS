@@ -41,10 +41,12 @@ func (storage *commentStorage) GetCommentCount(ctx context.Context, postID int64
 
 	start := time.Now()
 	comments := storage.db.QueryRow(ctx, query, postID)
-	logger.Debug("db query",
-		zap.String("query", "GetUserByID"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "GetUserByID"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 
 	var commentCount int64
 	if err := comments.Scan(&commentCount); err != nil {
@@ -67,10 +69,12 @@ func (storage *commentStorage) Save(ctx context.Context, comment models.Comment)
 		comment.ParentCommentID,
 		comment.StickerID,
 		comment.AuthorID)
-	logger.Debug("db query",
-		zap.String("query", "GetUserByID"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "GetUserByID"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 	if err != nil {
 		return 0, err
 	}

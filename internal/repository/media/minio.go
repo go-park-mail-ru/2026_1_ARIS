@@ -36,10 +36,12 @@ func (client *MinioClient) Save(ctx context.Context, bucketName string, reader i
 
 	start := time.Now()
 	uploadInto, err := client.client.PutObject(ctx, bucketName, objectName, reader, size, opts)
-	logger.Debug("db query",
-		zap.String("query", "GetUserByID"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "GetUserByID"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 	if err != nil {
 		fmt.Println(err)
 		return "", err

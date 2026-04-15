@@ -88,9 +88,11 @@ func (storage *UserAccountStorage) Update(ctx context.Context, dto dto.UpdateUse
 	if err != nil {
 		return pgerrors.MapPgError(err)
 	}
-	logger.Debug("db query",
-		zap.String("query", "userAccountStorage.Update"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "userAccountStorage.Update"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	if res.RowsAffected() != 1 {
 		return errors.New("UPDATE affected not on 1 row")
@@ -105,9 +107,11 @@ func (storage *UserAccountStorage) Save(ctx context.Context, userAccount models.
 
 	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, uuid.New(), userAccount.Email, userAccount.Phone, userAccount.PasswordHash, userAccount.Username)
-	logger.Debug("db query",
-		zap.String("query", "userAccountStorage.Save"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "userAccountStorage.Save"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	var userAccountID int64
 
@@ -128,9 +132,11 @@ func (storage *UserAccountStorage) Delete(ctx context.Context, id int64) error {
 	if err != nil {
 		return err
 	}
-	logger.Debug("db query",
-		zap.String("query", "userAccountStorage.Delete"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "userAccountStorage.Delete"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	if res.RowsAffected() == 0 {
 		// ни одна запись не удалилась
@@ -153,9 +159,11 @@ func (storage *UserAccountStorage) Get(ctx context.Context, id int64) (*models.U
 	if err != nil {
 		return nil, err
 	}
-	logger.Debug("db query",
-		zap.String("query", "userAccountStorage.Get"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "userAccountStorage.Get"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	return &userAccount, nil
 }
@@ -171,9 +179,11 @@ func (storage *UserAccountStorage) GetByEmail(ctx context.Context, email string)
 	if err != nil {
 		return nil, err
 	}
-	logger.Debug("db query",
-		zap.String("query", "userAccountStorage.GetByEmail"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "userAccountStorage.GetByEmail"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	return &userAccount, nil
 }
@@ -189,9 +199,11 @@ func (storage *UserAccountStorage) GetByPhone(ctx context.Context, phone string)
 	if err != nil {
 		return nil, err
 	}
-	logger.Debug("db query",
-		zap.String("query", "userAccountStorage.GetByPhone"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "userAccountStorage.GetByPhone"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	return &userAccount, nil
 }
@@ -207,9 +219,11 @@ func (storage *UserAccountStorage) GetByUsername(ctx context.Context, username s
 	if err != nil {
 		return nil, err
 	}
-	logger.Debug("db query",
-		zap.String("query", "userAccountStorage.GetByUsername"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "userAccountStorage.GetByUsername"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	return &userAccount, nil
 }
@@ -225,9 +239,11 @@ func (storage *UserAccountStorage) GetByUid(ctx context.Context, uid uuid.UUID) 
 	if err != nil {
 		return nil, err
 	}
-	logger.Debug("db query",
-		zap.String("query", "userAccountStorage.GetByUid"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "userAccountStorage.GetByUid"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	return &userAccount, nil
 }
@@ -242,9 +258,11 @@ func (storage *UserAccountStorage) List(ctx context.Context, offset, limit int) 
 		return []models.UserAccount{}, err
 	}
 
-	logger.Debug("db query",
-		zap.String("query", "userAccountStorage.List"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "userAccountStorage.List"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	userAccounts, err := pgx.CollectRows(rows, pgx.RowToStructByName[models.UserAccount])
 	if err != nil {

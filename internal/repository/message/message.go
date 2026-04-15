@@ -38,9 +38,11 @@ func (s *messageStorage) Update(ctx context.Context, msg *models.Message) error 
 	query := `UPDATE message SET message_text=$1, updated_at=$2 WHERE id=$3 AND is_active=true`
 	start := time.Now()
 	_, err := s.db.Exec(ctx, query, msg.Text, time.Now(), msg.ID)
-	logger.Debug("db query",
-		zap.String("query", "updateMessageByID"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "updateMessageByID"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	return err
 }
 func NewMessageStorage(db messageDB) MessageRepo {
@@ -53,9 +55,11 @@ func (s *messageStorage) Save(ctx context.Context, msg *models.Message) error {
 	var id int64
 	start := time.Now()
 	err := s.db.QueryRow(ctx, query, msg.Uid, msg.Text, msg.ChatID, msg.AuthorID).Scan(&id)
-	logger.Debug("db query",
-		zap.String("query", "saveMessage"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "saveMessage"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	if err != nil {
 		return err
 	}
@@ -71,9 +75,11 @@ func (s *messageStorage) GetByID(ctx context.Context, id int64) (*models.Message
 	var msg models.Message
 	start := time.Now()
 	err := pgxscan.Get(ctx, s.db, &msg, query, id)
-	logger.Debug("db query",
-		zap.String("query", "getMessageByID"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "getMessageByID"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("message not found")
@@ -97,9 +103,11 @@ func (s *messageStorage) GetByChatID(ctx context.Context, chatID int64, limit, o
 	var messages []models.Message
 	start := time.Now()
 	err := pgxscan.Select(ctx, s.db, &messages, query, chatID, limit, offset)
-	logger.Debug("db query",
-		zap.String("query", "getMessagesByChatID"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "getMessagesByChatID"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	}
@@ -112,8 +120,10 @@ func (s *messageStorage) Delete(ctx context.Context, id int64) error {
 	start := time.Now()
 
 	_, err := s.db.Exec(ctx, query, id)
-	logger.Debug("db query",
-		zap.String("query", "deleteMessageByID"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "deleteMessageByID"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	return err
 }

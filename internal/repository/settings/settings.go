@@ -46,9 +46,11 @@ func (r *userSettingsRepository) GetByUserID(ctx context.Context, userID int64) 
 	if err != nil {
 		return nil, fmt.Errorf("userSettingsRepository.GetByUserID query: %w", err)
 	}
-	logger.Debug("db query",
-		zap.String("query", "userSettingsRepository.GetByUserID"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "userSettingsRepository.GetByUserID"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	settings, err := pgx.CollectOneRow(row, pgx.RowToAddrOfStructByName[models.UserSettings])
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -108,9 +110,11 @@ func (r *userSettingsRepository) Update(ctx context.Context, userID int64, upd d
 	if err != nil {
 		return nil, fmt.Errorf("userSettingsRepository.Update query: %w", err)
 	}
-	logger.Debug("db query",
-		zap.String("query", "userSettingsRepository.Update"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "userSettingsRepository.Update"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	settings, err := pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByName[models.UserSettings])
 	if errors.Is(err, pgx.ErrNoRows) {

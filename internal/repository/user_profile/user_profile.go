@@ -132,9 +132,12 @@ func (storage *userProfileStorage) Update(ctx context.Context, dto dto.UpdateUse
 	if err != nil {
 		return err
 	}
-	logger.Debug("db query",
-		zap.String("query", "userProfileStorage.Update"),
-		zap.Duration("duration_ms", time.Since(start)))
+
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "userProfileStorage.Update"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	if res.RowsAffected() != 1 {
 		return errors.New("UPDATE affected not on 1 row")
@@ -150,9 +153,11 @@ func (storage *userProfileStorage) Save(ctx context.Context, userProfile models.
 	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, uuid.New(), userProfile.UserAccountID, userProfile.ProfileID, userProfile.FirstName, userProfile.LastName, userProfile.Bio, userProfile.BirthdayDate, userProfile.Gender)
 
-	logger.Debug("db query",
-		zap.String("query", "userProfileStorage.Save"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "userProfileStorage.Save"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	var userAccountID int64
 
@@ -174,9 +179,11 @@ func (storage *userProfileStorage) Get(ctx context.Context, userProfileID int64)
 	if err != nil {
 		return nil, err
 	}
-	logger.Debug("db query",
-		zap.String("query", "userProfileStorage.Get"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "userProfileStorage.Get"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	return &userProfile, nil
 }
@@ -195,9 +202,11 @@ func (storage *userProfileStorage) GetByProfileID(ctx context.Context, profileID
 		}
 		return nil, err
 	}
-	logger.Debug("db query",
-		zap.String("query", "userProfileStorage.GetByProfileID"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "userProfileStorage.GetByProfileID"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	return &userProfile, nil
 }
@@ -213,9 +222,11 @@ func (storage *userProfileStorage) GetByUserAccountID(ctx context.Context, userA
 	if err != nil {
 		return nil, err
 	}
-	logger.Debug("db query",
-		zap.String("query", "userProfileStorage.GetByUserAccountID"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "userProfileStorage.GetByUserAccountID"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	return &userProfile, nil
 }

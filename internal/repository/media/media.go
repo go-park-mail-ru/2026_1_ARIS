@@ -48,10 +48,11 @@ func (storage *mediaStorage) Get(ctx context.Context, id int64) (*models.Media, 
 	start := time.Now()
 	err := pgxscan.Get(ctx, storage.db, &media, query, id)
 
-	logger.Debug("db query",
-		zap.String("query", "GetMediaByID"),
-		zap.Duration("duration_ms", time.Since(start)))
-
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "GetMediaByID"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	if err != nil {
 		if pgxscan.NotFound(err) {
 			return nil, xerrors.MediaNotFound
@@ -69,9 +70,11 @@ func (storage *mediaStorage) Save(ctx context.Context, media models.Media) (int6
 	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, media.Uid, media.Name, media.Extension, media.MimeType, media.Size, media.Link, media.AuthorID)
 
-	logger.Debug("db query",
-		zap.String("query", "SaveMedia"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "SaveMedia"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	var mediaID int64
 
 	if err := row.Scan(&mediaID); err != nil {
@@ -88,9 +91,11 @@ func (storage *mediaStorage) GetLink(ctx context.Context, id int64) (string, err
 	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, id)
 
-	logger.Debug("db query",
-		zap.String("query", "GetMediaLinkByID"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "GetMediaLinkByID"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 
 	var link string
 
@@ -107,9 +112,11 @@ func (storage *mediaStorage) UpdateLink(ctx context.Context, id int64, newLink s
 
 	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, newLink, id)
-	logger.Debug("db query",
-		zap.String("query", "UpdateMediaLinkByID"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "UpdateMediaLinkByID"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	if err != nil {
 		return err
 	}

@@ -41,10 +41,12 @@ func (r *chatStorage) Save(ctx context.Context, chat *models.Chat) error {
 	var id int64
 	start := time.Now()
 	err := r.db.QueryRow(ctx, query, chat.Uid, chat.Type, chat.Title, chat.AvatarID).Scan(&id)
-	logger.Debug("db query",
-		zap.String("query", "GetUserByID"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "GetUserByID"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 	if err != nil {
 		return err
 	}
@@ -58,10 +60,12 @@ func (r *chatStorage) GetByID(ctx context.Context, id int64) (*models.Chat, erro
 	var chat models.Chat
 	start := time.Now()
 	err := pgxscan.Get(ctx, r.db, &chat, query, id)
-	logger.Debug("db query",
-		zap.String("query", "GetUserByID"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "GetUserByID"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("chat not found")
@@ -76,9 +80,11 @@ func (r *chatStorage) Delete(ctx context.Context, id int64) error {
 	start := time.Now()
 	query := `UPDATE chat SET is_active=false WHERE id=$1`
 	_, err := r.db.Exec(ctx, query, id)
-	logger.Debug("db query",
-		zap.String("query", "GetUserByID"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "GetUserByID"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 	return err
 }

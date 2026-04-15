@@ -51,10 +51,11 @@ func (storage *postStorage) Save(ctx context.Context, post models.Post) (int64, 
 
 	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, uuid.New(), post.Text, post.AuthorID, post.IsPublicDemo, post.AllowComments)
-	logger.Debug("db query",
-		zap.String("query", "PostStorage.Save"),
-		zap.Duration("duration_ms", time.Since(start)))
-
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "PostStorage.Save"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	var postID int64
 
 	if err := row.Scan(&postID); err != nil {
@@ -70,9 +71,11 @@ func (storage *postStorage) Delete(ctx context.Context, id int64) error {
 
 	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, id)
-	logger.Debug("db query",
-		zap.String("query", "PostStorage.Delete"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "PostStorage.Delete"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	if err != nil {
 		// подумать...
 		return err
@@ -95,9 +98,11 @@ func (storage *postStorage) List(ctx context.Context, offset, limit int) ([]mode
 
 	start := time.Now()
 	rows, err := storage.db.Query(ctx, query, limit, offset)
-	logger.Debug("db query",
-		zap.String("query", "PostStorage.List"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "PostStorage.List"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -123,10 +128,11 @@ func (storage *postStorage) Get(ctx context.Context, id int64) (*models.Post, er
 		}
 		return nil, err
 	}
-	logger.Debug("db query",
-		zap.String("query", "PostStorage.Get"),
-		zap.Duration("duration_ms", time.Since(start)))
-
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "PostStorage.Get"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	return &post, nil
 }
 
@@ -136,9 +142,11 @@ func (storage *postStorage) GetAll(ctx context.Context) ([]models.Post, error) {
 
 	start := time.Now()
 	rows, err := storage.db.Query(ctx, query)
-	logger.Debug("db query",
-		zap.String("query", "PostStorage.GetAll"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "PostStorage.GetAll"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -157,9 +165,11 @@ func (storage *postStorage) GetByAuthorID(ctx context.Context, authorID int64) (
 
 	start := time.Now()
 	rows, err := storage.db.Query(ctx, query, authorID)
-	logger.Debug("db query",
-		zap.String("query", "PostStorage.GetByAuthorID"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "PostStorage.GetByAuthorID"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -178,9 +188,11 @@ func (storage *postStorage) Update(ctx context.Context, post models.Post) error 
 
 	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, post.Text, post.UpdatedAt, post.ID)
-	logger.Debug("db query",
-		zap.String("query", "PostStorage.Update"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "PostStorage.Update"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	if err != nil {
 		return pgerrors.MapPgError(err)
 	}

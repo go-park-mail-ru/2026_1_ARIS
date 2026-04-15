@@ -50,9 +50,11 @@ func (storage *profileStorage) GetByUserAccountID(ctx context.Context, userAccou
 
 	start := time.Now()
 	err := pgxscan.Get(ctx, storage.db, &profile, query, userAccountID)
-	logger.Debug("db query",
-		zap.String("query", "profileRepo.GetByUserAccountID"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "profileRepo.GetByUserAccountID"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	if err != nil {
 		if pgxscan.NotFound(err) {
 			return nil, xerrors.ProfileNotFound
@@ -71,9 +73,11 @@ func (storage *profileStorage) Get(ctx context.Context, profileID int64) (*model
 
 	start := time.Now()
 	err := pgxscan.Get(ctx, storage.db, &profile, query, profileID)
-	logger.Debug("db query",
-		zap.String("query", "profileRepo.Get"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "profileRepo.Get"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	if err != nil {
 		if pgxscan.NotFound(err) {
 			return nil, xerrors.ProfileNotFound
@@ -97,9 +101,11 @@ func (storage *profileStorage) UpdateAvatar(
 		avatarID,
 		profileID,
 	)
-	logger.Debug("db query",
-		zap.String("query", "profileRepo.UpdateAvatar"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "profileRepo.UpdateAvatar"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	if err != nil {
 		return err
 	}
@@ -118,9 +124,11 @@ func (storage *profileStorage) Save(ctx context.Context, profile models.Profile)
 	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, uuid.New(), profile.AvatarID)
 
-	logger.Debug("db query",
-		zap.String("query", "profileRepo.Save"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "profileRepo.Save"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	var profileID int64
 
 	if err := row.Scan(&profileID); err != nil {
@@ -136,9 +144,11 @@ func (storage *profileStorage) GetAll(ctx context.Context) ([]models.Profile, er
 
 	start := time.Now()
 	rows, err := storage.db.Query(ctx, query)
-	logger.Debug("db query",
-		zap.String("query", "profileRepo.GetAll"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "profileRepo.GetAll"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	if err != nil {
 		return nil, err
 	}

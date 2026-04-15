@@ -39,9 +39,11 @@ func (storage *RepostStorage) Save(ctx context.Context, repost models.Repost) (i
 
 	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, uuid.New(), repost.AuthorID, repost.ChatID, repost.PostID)
-	logger.Debug("db query",
-		zap.String("query", "repostRepo.Save"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "repostRepo.Save"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	var repostID int64
 
 	if err := row.Scan(&repostID); err != nil {
@@ -57,9 +59,11 @@ func (storage *RepostStorage) GetRepostCount(ctx context.Context, postID int64) 
 	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, postID)
 
-	logger.Debug("db query",
-		zap.String("query", "repostRepo.GetRepostCount"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "repostRepo.GetRepostCount"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	var repostCount int64
 
 	if err := row.Scan(&repostCount); err != nil {

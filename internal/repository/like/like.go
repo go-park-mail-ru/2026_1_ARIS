@@ -48,10 +48,13 @@ func (storage *likeStorage) Save(ctx context.Context, like models.Like) (int64, 
 		like.PostID,
 		like.CommentID,
 		like.AuthorID)
-	logger.Debug("db query",
-		zap.String("query", "GetUserByID"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "GetUserByID"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 
 	var likeID int64
 
@@ -71,10 +74,12 @@ func (storage *likeStorage) Get(ctx context.Context, likeID int64) (*models.Like
 
 	start := time.Now()
 	err := pgxscan.Get(ctx, storage.db, &like, query, likeID)
-	logger.Debug("db query",
-		zap.String("query", "GetUserByID"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "GetUserByID"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 	if err != nil {
 		return nil, err
 	}

@@ -63,10 +63,12 @@ left join media m on p.avatar_id=m.id and (m.mime_type like 'image/%' or m.mime_
 
 	start := time.Now()
 	rows, err := storage.db.Query(ctx, query, profileID, string(status))
-	logger.Debug("db query",
-		zap.String("query", "GetUserByID"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "GetUserByID"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 	if err != nil {
 		if pgxscan.NotFound(err) {
 			return []dto.FriendDTO{}, nil
@@ -95,10 +97,12 @@ select status from friendship
 
 	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, profileID1, profileID2)
-	logger.Debug("db query",
-		zap.String("query", "GetUserByID"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "GetUserByID"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 
 	err := row.Scan(&status)
 	if err != nil {
@@ -119,10 +123,12 @@ func (storage *friendshipStorage) GetFriendshipStatusBy(ctx context.Context, pro
 
 	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, profileID, friendID)
-	logger.Debug("db query",
-		zap.String("query", "GetUserByID"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "GetUserByID"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 	if err := row.Scan(&status); err != nil {
 		if pgxscan.NotFound(err) {
 			return "", nil
@@ -143,10 +149,12 @@ func (storage *friendshipStorage) DeleteFriend(ctx context.Context, profileID, f
 
 	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, profileID, friendID)
-	logger.Debug("db query",
-		zap.String("query", "GetUserByID"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "GetUserByID"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 	if err != nil {
 		return err
 	}
@@ -173,10 +181,12 @@ select f.addressee_id as id, p.avatar_id, up.first_name, up.last_name, ua.userna
 
 	start := time.Now()
 	rows, err := storage.db.Query(ctx, query, profileID, status)
-	logger.Debug("db query",
-		zap.String("query", "GetOutgoingFriends"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "GetOutgoingFriends"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 	if err != nil {
 		if pgxscan.NotFound(err) {
 			return []dto.FriendDTO{}, nil
@@ -203,10 +213,12 @@ select f.requester_id as id, p.avatar_id, up.first_name, up.last_name, ua.userna
 	left join media m on m.id=p.avatar_id where f.addressee_id=$1 and f.status=$2;`
 	start := time.Now()
 	rows, err := storage.db.Query(ctx, query, profileID, status)
-	logger.Debug("db query",
-		zap.String("query", "GetIncomingFriends"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "GetIncomingFriends"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 
 	if err != nil {
 		if pgxscan.NotFound(err) {
@@ -229,10 +241,12 @@ func (storage *friendshipStorage) Create(ctx context.Context, profileID, friendI
 	query := `insert into friendship (requester_id, addressee_id, status) values ($1, $2, $3)`
 	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, profileID, friendID, status)
-	logger.Debug("db query",
-		zap.String("query", "CreateFriendship"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "CreateFriendship"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 	if err != nil {
 		return err
 	}
@@ -258,10 +272,12 @@ func (storage *friendshipStorage) AcceptFriendship(ctx context.Context, profileI
 
 	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, profileID1, profileID2)
-	logger.Debug("db query",
-		zap.String("query", "AcceptFriendship"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "AcceptFriendship"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 	if err != nil {
 		return err
 	}
@@ -283,10 +299,12 @@ func (storage *friendshipStorage) DeclineFriendship(ctx context.Context, profile
 
 	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, profileID1, profileID2)
-	logger.Debug("db query",
-		zap.String("query", "DeclineFriendship"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "DeclineFriendship"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 	if err != nil {
 		return err
 	}
@@ -308,10 +326,12 @@ func (storage *friendshipStorage) RevokeFriendRequest(ctx context.Context, profi
 
 	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, profileID, friendID)
-	logger.Debug("db query",
-		zap.String("query", "RevokeFriendRequest"),
-		zap.Duration("duration_ms", time.Since(start)),
-	)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "RevokeFriendRequest"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
 	if err != nil {
 		return err
 	}
