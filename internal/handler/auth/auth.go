@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/auth"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
@@ -170,13 +169,11 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	userProfile, err := h.userService.GetUserProfileByProfileID(r.Context(), profile.ID)
 	if err != nil {
-		log.Warn(xerrors.UserProfileNotFound.Error(), zap.Int64("profile_id", profile.ID))
 		utils.WriteError(w, "user profile not found", http.StatusInternalServerError)
 		return
 	}
 	userAccount, err := h.userService.GetUserAccountByUserProfileID(r.Context(), userProfile.ID)
 	if err != nil {
-		log.Warn(xerrors.UserAccountNotFound.Error(), zap.Int64("userProfile_id", userProfile.ID))
 		utils.WriteError(w, "user account not found", http.StatusInternalServerError)
 		return
 	}
@@ -219,7 +216,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Warn("http_request", zap.String("auth", "login"))
 		utils.WriteError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
@@ -235,15 +231,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errMsg := err.Error()
 		if errMsg == ErrUserNotFound {
-			log.Warn("user_profile_not_found", zap.Int64("userAccount_id", userAccount.ID))
 			utils.WriteError(w, ErrUserNotFound, http.StatusNotFound)
 			return
 		}
 
-		log.Error("failed_get_user_profile",
-			zap.Int64("userAccount_id", userAccount.ID),
-			zap.Error(err),
-		)
 		utils.WriteError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -351,7 +342,6 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 	userID, ok := userIDFromCtx.(int64)
 	if !ok {
-		log.Warn("unauthorized", zap.String("message", "invalid user id in context"), zap.String("method", r.Method), zap.String("path", r.URL.Path))
 		utils.WriteError(w, "invalid user id in context", http.StatusUnauthorized)
 		return
 	}
@@ -375,11 +365,6 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		media, mediaErr := h.mediaService.GetAvatarByID(r.Context(), profile.AvatarID)
 		if mediaErr == nil && media != nil {
 			avatar = media.Link
-		} else if mediaErr != nil {
-			log.Warn("failed_get_avatar",
-				zap.Int64("userAccount_id", userID),
-				zap.Error(mediaErr),
-			)
 		}
 	}
 

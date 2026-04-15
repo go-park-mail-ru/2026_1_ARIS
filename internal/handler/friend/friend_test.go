@@ -725,3 +725,38 @@ func TestGetOutgoingFriendRequests_Success(t *testing.T) {
 	}
 	assert.True(t, found)
 }
+
+func TestFriendHandler_DeleteFriend_InvalidID(t *testing.T) {
+	handler := NewFriendHandler(nil, nil, nil)
+
+	req := httptest.NewRequest("DELETE", "/friends/abc", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("userID", "abc")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	handler.DeleteFriend(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "Invalid ID parameter")
+}
+
+func TestFriendHandler_RequestFriendship_InvalidBody(t *testing.T) {
+	handler := NewFriendHandler(nil, nil, nil)
+
+	req := httptest.NewRequest("POST", "/friends/request", bytes.NewReader([]byte("{invalid-json")))
+	req.Header.Set("Content-Type", "application/json")
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	w := httptest.NewRecorder()
+	handler.RequestFriendship(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}

@@ -585,29 +585,20 @@ func (h *FriendHandler) DeclineFriendRequest(w http.ResponseWriter, r *http.Requ
 	requesterIDstr := chi.URLParam(r, "requesterID")
 	requesterID, err := strconv.Atoi(requesterIDstr)
 	if err != nil {
-		log.Warn("cannot_decline_friend_request_invalid_id",
-			zap.String("requesterID", requesterIDstr),
-			zap.String("path", r.URL.Path),
-			zap.Error(err),
-		)
+
 		utils.WriteError(w, "Invalid ID parameter", http.StatusBadRequest)
 		return
 	}
 
 	if requesterID <= 0 {
-		log.Warn("cannot_decline_friend_request_invalid_id",
-			zap.Int("requesterID", requesterID),
-			zap.String("path", r.URL.Path),
-		)
+
 		utils.WriteError(w, "Invalid ID parameter", http.StatusBadRequest)
 		return
 	}
 
 	userAccountID, ok := r.Context().Value("user_id").(int64)
 	if !ok {
-		log.Warn("cannot_decline_friend_request_missing_user",
-			zap.String("path", r.URL.Path),
-		)
+
 		utils.WriteError(w, xerrors.InvalidCtxUserAccountValue, http.StatusUnauthorized)
 		return
 	}
@@ -615,16 +606,11 @@ func (h *FriendHandler) DeclineFriendRequest(w http.ResponseWriter, r *http.Requ
 	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), userAccountID)
 	if err != nil {
 		if errors.Is(err, xerrors.ProfileNotFound) {
-			log.Warn("cannot_decline_friend_request_profile_not_found",
-				zap.Int64("userAccount_id", userAccountID),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		log.Error("failed_to_get_profile",
-			zap.Int64("userAccount_id", userAccountID),
-			zap.Error(err),
-		)
+
 		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 		return
 	}
@@ -633,26 +619,15 @@ func (h *FriendHandler) DeclineFriendRequest(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		switch {
 		case errors.Is(err, xerrors.NoRowsAffected):
-			log.Warn("cannot_decline_friend_request_not_found",
-				zap.Int64("requester_id", int64(requesterID)),
-				zap.Int64("profile_id", profile.ID),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
 			return
 		case errors.Is(err, xerrors.MultipleRowsAffect):
-			log.Error("failed_to_decline_friend_request_multiple_rows",
-				zap.Int64("requester_id", int64(requesterID)),
-				zap.Int64("profile_id", profile.ID),
-				zap.Error(err),
-			)
+
 			utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 			return
 		default:
-			log.Error("failed_to_decline_friend_request",
-				zap.Int64("requester_id", int64(requesterID)),
-				zap.Int64("profile_id", profile.ID),
-				zap.Error(err),
-			)
+
 			utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 			return
 		}
@@ -815,16 +790,11 @@ func (h *FriendHandler) RevokeFriendRequest(w http.ResponseWriter, r *http.Reque
 	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), userAccountID)
 	if err != nil {
 		if errors.Is(err, xerrors.ProfileNotFound) {
-			log.Warn("cannot_revoke_friend_request_profile_not_found",
-				zap.Int64("userAccount_id", userAccountID),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		log.Error("failed_to_get_profile",
-			zap.Int64("userAccount_id", userAccountID),
-			zap.Error(err),
-		)
+
 		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 		return
 	}
@@ -833,26 +803,15 @@ func (h *FriendHandler) RevokeFriendRequest(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		switch {
 		case errors.Is(err, xerrors.NoRowsAffected):
-			log.Warn("cannot_revoke_friend_request_not_found",
-				zap.Int64("addressee_id", int64(addresseeID)),
-				zap.Int64("profile_id", profile.ID),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
 			return
 		case errors.Is(err, xerrors.MultipleRowsAffect):
-			log.Error("failed_to_revoke_friend_request_multiple_rows",
-				zap.Int64("addressee_id", int64(addresseeID)),
-				zap.Int64("profile_id", profile.ID),
-				zap.Error(err),
-			)
+
 			utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 			return
 		default:
-			log.Error("failed_to_revoke_friend_request",
-				zap.Int64("addressee_id", int64(addresseeID)),
-				zap.Int64("profile_id", profile.ID),
-				zap.Error(err),
-			)
+
 			utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 			return
 		}

@@ -184,18 +184,12 @@ func (h *UserHandler) GetPublicPopularUsers(w http.ResponseWriter, r *http.Reque
 
 		userProfile, err := h.UserService.GetUserProfileByProfileID(r.Context(), user.ID)
 		if err != nil {
-			log.Warn("cannot_build_public_popular_user_missing_profile",
-				zap.Int64("profile_id", user.ID),
-				zap.Error(err),
-			)
+
 			continue
 		}
 		userAccount, err := h.UserService.GetUserAccountByUserProfileID(r.Context(), userProfile.ID)
 		if err != nil {
-			log.Warn("cannot_build_public_popular_user_missing_account",
-				zap.Int64("profile_id", userProfile.ID),
-				zap.Error(err),
-			)
+
 			continue
 		}
 
@@ -254,18 +248,12 @@ func (h *UserHandler) GetLatestEvents(w http.ResponseWriter, r *http.Request) {
 
 		userProfile, err := h.UserService.GetUserProfileByProfileID(r.Context(), user.ID)
 		if err != nil {
-			log.Warn("cannot_build_latest_event_missing_profile",
-				zap.Int64("profile_id", user.ID),
-				zap.Error(err),
-			)
+
 			continue
 		}
 		userAccount, err := h.UserService.GetUserAccountByUserProfileID(r.Context(), userProfile.ID)
 		if err != nil {
-			log.Warn("cannot_build_latest_event_missing_account",
-				zap.Int64("profile_id", userProfile.ID),
-				zap.Error(err),
-			)
+
 			continue
 		}
 

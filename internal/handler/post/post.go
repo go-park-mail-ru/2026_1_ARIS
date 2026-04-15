@@ -167,10 +167,7 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		// проверка на тип
 		err := h.postService.AttachMedia(r.Context(), postID, *request.Media)
 		if len(err.Errs) != 0 {
-			log.Error("failed_to_attach_media",
-				zap.Int64("post_id", postID),
-				zap.Int("errors", len(err.Errs)),
-			)
+
 			utils.WriteError(w, "Can't attach media", http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(err)
 			return
@@ -257,16 +254,11 @@ func (h *PostHandler) GetMyPosts(w http.ResponseWriter, r *http.Request) {
 	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), userAccountID)
 	if err != nil {
 		if errors.Is(err, xerrors.ProfileNotFound) {
-			log.Warn("cannot_get_my_posts_profile_not_found",
-				zap.Int64("userAccount_id", userAccountID),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		log.Error("failed_to_get_profile",
-			zap.Int64("userAccount_id", userAccountID),
-			zap.Error(err),
-		)
+
 		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 		return
 	}
@@ -351,16 +343,11 @@ func (h *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) {
 	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), userAccountID)
 	if err != nil {
 		if errors.Is(err, xerrors.ProfileNotFound) {
-			log.Warn("cannot_delete_post_profile_not_found",
-				zap.Int64("userAccount_id", userAccountID),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		log.Error("failed_to_get_profile",
-			zap.Int64("userAccount_id", userAccountID),
-			zap.Error(err),
-		)
+
 		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 		return
 	}
@@ -380,16 +367,11 @@ func (h *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) {
 	post, err := h.postService.Get(r.Context(), int64(postID))
 	if err != nil {
 		if errors.Is(err, xerrors.PostNotFound) {
-			log.Warn("cannot_delete_post_not_found",
-				zap.Int64("post_id", int64(postID)),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		log.Error("failed_to_get_post",
-			zap.Int64("post_id", int64(postID)),
-			zap.Error(err),
-		)
+
 		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 		return
 	}
@@ -406,24 +388,15 @@ func (h *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) {
 	if err := h.postService.Delete(r.Context(), post.ID); err != nil {
 		switch {
 		case errors.Is(err, xerrors.PostNotFound):
-			log.Warn("cannot_delete_post_not_found",
-				zap.Int64("post_id", post.ID),
-				zap.Error(err),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
 			return
 		case errors.Is(err, xerrors.MultipleRowsAffect):
-			log.Error("failed_to_delete_post",
-				zap.Int64("post_id", post.ID),
-				zap.Error(err),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 			return
 		default:
-			log.Error("failed_to_delete_post",
-				zap.Int64("post_id", post.ID),
-				zap.Error(err),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -455,16 +428,11 @@ func (h *PostHandler) GetPost(w http.ResponseWriter, r *http.Request) {
 	post, err := h.postService.Get(r.Context(), int64(postID))
 	if err != nil {
 		if errors.Is(err, xerrors.PostNotFound) {
-			log.Warn("cannot_get_post_not_found",
-				zap.Int64("post_id", int64(postID)),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		log.Error("failed_to_get_post",
-			zap.Int64("post_id", int64(postID)),
-			zap.Error(err),
-		)
+
 		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 		return
 	}
@@ -474,16 +442,11 @@ func (h *PostHandler) GetPost(w http.ResponseWriter, r *http.Request) {
 	userProfile, err := h.userService.GetUserProfileByProfileID(r.Context(), authorID)
 	if err != nil {
 		if errors.Is(err, xerrors.UserProfileNotFound) {
-			log.Warn("cannot_get_post_user_profile_not_found",
-				zap.Int64("author_id", authorID),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		log.Error("failed_to_get_user_profile",
-			zap.Int64("author_id", authorID),
-			zap.Error(err),
-		)
+
 		utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -498,16 +461,11 @@ func (h *PostHandler) GetPost(w http.ResponseWriter, r *http.Request) {
 	profile, err := h.userService.GetProfileByProfileID(r.Context(), userProfile.ProfileID)
 	if err != nil {
 		if errors.Is(err, xerrors.ProfileNotFound) {
-			log.Warn("cannot_get_post_profile_not_found",
-				zap.Int64("profile_id", userProfile.ProfileID),
-			)
+
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		log.Error("failed_to_get_profile",
-			zap.Int64("profile_id", userProfile.ProfileID),
-			zap.Error(err),
-		)
+
 		utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -612,10 +570,7 @@ func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if post.AuthorID != profile.ID {
-		log.Warn("cannot_update_post_denied",
-			zap.Int64("post_id", post.ID),
-			zap.Int64("profile_id", profile.ID),
-		)
+
 		utils.WriteError(w, "Denied", http.StatusForbidden)
 		return
 	}
@@ -623,18 +578,13 @@ func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	var request PostCreationRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		log.Warn("cannot_update_post_invalid_body",
-			zap.String("path", r.URL.Path),
-			zap.Error(err),
-		)
+
 		utils.WriteError(w, xerrors.InvalidRequestBody, http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
 	if request.Text == nil {
-		log.Warn("cannot_update_post_empty_text",
-			zap.String("path", r.URL.Path),
-		)
+
 		utils.WriteError(w, xerrors.PostContentRequired, http.StatusBadRequest)
 		return
 	}
@@ -642,10 +592,7 @@ func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	post.Text = request.Text
 
 	if err := h.postService.Update(r.Context(), *post); err != nil {
-		log.Error("failed_to_update_post",
-			zap.Int64("post_id", post.ID),
-			zap.Error(err),
-		)
+
 		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 		return
 	}
@@ -653,10 +600,7 @@ func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	if request.Media != nil {
 		err := h.postService.ReplaceMedia(r.Context(), post.ID, *request.Media)
 		if len(err.Errs) != 0 {
-			log.Error("failed_to_replace_media",
-				zap.Int64("post_id", post.ID),
-				zap.Int("errors", len(err.Errs)),
-			)
+
 			utils.WriteError(w, "Can't replace media", http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(err)
 			return
@@ -665,10 +609,7 @@ func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 
 	updatedPost, err := h.postService.Get(r.Context(), int64(postID))
 	if err != nil {
-		log.Error("failed_to_get_updated_post",
-			zap.Int64("post_id", int64(postID)),
-			zap.Error(err),
-		)
+
 		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 		return
 	}

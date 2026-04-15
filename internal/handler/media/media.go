@@ -89,10 +89,7 @@ func (h *MediaHandler) SaveFiles(w http.ResponseWriter, r *http.Request) {
 
 		file, err := fileHeader.Open()
 		if err != nil {
-			log.Warn("cannot_save_files_open_file",
-				zap.String("filename", fileHeader.Filename),
-				zap.Error(err),
-			)
+
 			utils.WriteError(w, "Can't get file", http.StatusBadRequest)
 			return
 		}
@@ -108,11 +105,7 @@ func (h *MediaHandler) SaveFiles(w http.ResponseWriter, r *http.Request) {
 				utils.WriteError(w, err.Error(), http.StatusUnsupportedMediaType)
 				return
 			}
-			log.Error("failed_to_save_file",
-				zap.String("filename", fileHeader.Filename),
-				zap.Int64("profile_id", profile.ID),
-				zap.Error(err),
-			)
+
 			utils.WriteError(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
