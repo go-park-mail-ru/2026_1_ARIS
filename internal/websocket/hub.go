@@ -8,7 +8,7 @@ type Hub struct {
 	register   chan *Client
 	unregister chan *Client
 	rooms      map[string]map[*Client]bool
-	mu         sync.RWMutex
+	mu         sync.Mutex
 }
 
 func NewHub() *Hub {
@@ -48,8 +48,8 @@ func (h *Hub) Run() {
 }
 
 func (h *Hub) BroadcastToChat(chatID string, message []byte) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	if clients, ok := h.rooms[chatID]; ok {
 		for client := range clients {
 			select {

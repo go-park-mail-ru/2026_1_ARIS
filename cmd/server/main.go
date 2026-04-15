@@ -276,9 +276,6 @@ func main() {
 
 	// создаём роутер
 
-	ensureKnownTestUser(ctx, userAccountRepo, userService, "sergeyshulginenko", "chatcheck123", "Сергей", "Шульгиненко")
-	ensureKnownPassword(ctx, db, "sergeyshulginenko", "chatcheck123")
-
 	fmt.Println("Swagger is running on http://localhost:8080/swagger/index.html")
 
 	srv := &http.Server{
