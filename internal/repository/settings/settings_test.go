@@ -7,8 +7,10 @@ import (
 	hdto "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestUserSettingsRepositoryGetByUserID(t *testing.T) {
@@ -27,7 +29,10 @@ func TestUserSettingsRepositoryGetByUserID(t *testing.T) {
 			WithArgs(int64(12)).
 			WillReturnRows(rows)
 
-		got, err := repo.GetByUserID(context.Background(), 12)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		got, err := repo.GetByUserID(ctx, 12)
 		require.NoError(t, err)
 		require.Equal(t, int64(12), got.UserAccountID)
 		require.Equal(t, models.LanguageSetting("RU"), got.Language)
@@ -47,7 +52,10 @@ func TestUserSettingsRepositoryGetByUserID(t *testing.T) {
 			WithArgs(int64(77)).
 			WillReturnRows(rows)
 
-		_, err = repo.GetByUserID(context.Background(), 77)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		_, err = repo.GetByUserID(ctx, 77)
 		require.ErrorIs(t, err, xerrors.ErrUserSettingsNotFound)
 		require.NoError(t, mockPool.ExpectationsWereMet())
 	})
@@ -70,10 +78,14 @@ func TestUserSettingsRepositoryUpdate(t *testing.T) {
 		WithArgs(int64(5), "EN", "dark").
 		WillReturnRows(rows)
 
-	got, err := repo.Update(context.Background(), 5, hdto.UserSettingsUpdate{
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+
+	got, err := repo.Update(ctx, 5, hdto.UserSettingsUpdate{
 		Language: &lang,
 		Theme:    &theme,
 	})
+
 	require.NoError(t, err)
 	require.Equal(t, int64(5), got.UserAccountID)
 	require.Equal(t, models.LanguageSetting("EN"), got.Language)

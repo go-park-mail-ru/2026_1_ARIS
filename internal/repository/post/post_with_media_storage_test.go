@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestPostWithMediaStorageGetMediaByPostID(t *testing.T) {
@@ -22,7 +24,10 @@ func TestPostWithMediaStorageGetMediaByPostID(t *testing.T) {
 		WithArgs(int64(7)).
 		WillReturnRows(rows)
 
-	got := repo.GetMediaByPostID(context.Background(), 7)
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+
+	got := repo.GetMediaByPostID(ctx, 7)
 	require.Equal(t, []int64{11, 12}, got)
 	require.NoError(t, mockPool.ExpectationsWereMet())
 }
@@ -42,9 +47,12 @@ func TestPostWithMediaStorageSaveAndDeleteByPostID(t *testing.T) {
 		WithArgs(int64(1)).
 		WillReturnResult(pgxmock.NewResult("DELETE", 2))
 
-	err = repo.Save(context.Background(), models.PostWithMedia{PostID: 1, MediaID: 2, Order: 3})
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+
+	err = repo.Save(ctx, models.PostWithMedia{PostID: 1, MediaID: 2, Order: 3})
 	require.NoError(t, err)
-	err = repo.DeleteByPostID(context.Background(), 1)
+	err = repo.DeleteByPostID(ctx, 1)
 	require.NoError(t, err)
 	require.NoError(t, mockPool.ExpectationsWereMet())
 }

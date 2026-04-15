@@ -8,10 +8,12 @@ import (
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestProfileStorageSave(t *testing.T) {
@@ -29,7 +31,10 @@ func TestProfileStorageSave(t *testing.T) {
 		WithArgs(pgxmock.AnyArg(), &avatarID).
 		WillReturnRows(rows)
 
-	gotID, err := repo.Save(context.Background(), models.Profile{AvatarID: &avatarID})
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+
+	gotID, err := repo.Save(ctx, models.Profile{AvatarID: &avatarID})
 	require.NoError(t, err)
 	assert.Equal(t, int64(55), gotID)
 	require.NoError(t, mockPool.ExpectationsWereMet())
@@ -64,7 +69,10 @@ func TestProfileStorageUpdateAvatar(t *testing.T) {
 				WithArgs(&avatarID, int64(10)).
 				WillReturnResult(pgxmock.NewResult("UPDATE", tc.affected))
 
-			err = repo.UpdateAvatar(context.Background(), 10, &avatarID)
+			mockLogger := zap.NewNop()
+			ctx := logger.WithLogger(context.Background(), mockLogger)
+
+			err = repo.UpdateAvatar(ctx, 10, &avatarID)
 			if tc.wantError {
 				require.Error(t, err)
 			} else {
@@ -93,7 +101,10 @@ func TestProfileStorageGet(t *testing.T) {
 			WithArgs(int64(3)).
 			WillReturnRows(rows)
 
-		got, err := repo.Get(context.Background(), 3)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		got, err := repo.Get(ctx, 3)
 		require.NoError(t, err)
 		require.Equal(t, int64(3), got.ID)
 		require.NoError(t, mockPool.ExpectationsWereMet())
@@ -111,7 +122,10 @@ func TestProfileStorageGet(t *testing.T) {
 			WithArgs(int64(404)).
 			WillReturnRows(rows)
 
-		_, err = repo.Get(context.Background(), 404)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		_, err = repo.Get(ctx, 404)
 		require.ErrorIs(t, err, xerrors.ProfileNotFound)
 		require.NoError(t, mockPool.ExpectationsWereMet())
 	})
@@ -134,7 +148,10 @@ func TestProfileStorageGetByUserAccountID(t *testing.T) {
 			WithArgs(int64(44)).
 			WillReturnRows(rows)
 
-		got, err := repo.GetByUserAccountID(context.Background(), 44)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		got, err := repo.GetByUserAccountID(ctx, 44)
 		require.NoError(t, err)
 		require.Equal(t, int64(8), got.ID)
 		require.NoError(t, mockPool.ExpectationsWereMet())
@@ -152,7 +169,10 @@ func TestProfileStorageGetByUserAccountID(t *testing.T) {
 			WithArgs(int64(404)).
 			WillReturnRows(rows)
 
-		_, err = repo.GetByUserAccountID(context.Background(), 404)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		_, err = repo.GetByUserAccountID(ctx, 404)
 		require.ErrorIs(t, err, xerrors.ProfileNotFound)
 		require.NoError(t, mockPool.ExpectationsWereMet())
 	})
@@ -175,7 +195,10 @@ func TestProfileStorageGetAll(t *testing.T) {
 		mockPool.ExpectQuery("SELECT \\* FROM profile").
 			WillReturnRows(rows)
 
-		got, err := repo.GetAll(context.Background())
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		got, err := repo.GetAll(ctx)
 		require.NoError(t, err)
 		require.Len(t, got, 2)
 		require.NoError(t, mockPool.ExpectationsWereMet())
@@ -191,7 +214,10 @@ func TestProfileStorageGetAll(t *testing.T) {
 		mockPool.ExpectQuery("SELECT \\* FROM profile").
 			WillReturnError(errors.New("db error"))
 
-		_, err = repo.GetAll(context.Background())
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		_, err = repo.GetAll(ctx)
 		require.EqualError(t, err, "db error")
 		require.NoError(t, mockPool.ExpectationsWereMet())
 	})

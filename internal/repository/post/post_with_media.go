@@ -5,10 +5,13 @@ package post
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"go.uber.org/zap"
 )
 
 type PostWithMediaRepo interface {
@@ -35,9 +38,14 @@ func NewPostWithMediaStorage(db postWithMediaDB) PostWithMediaRepo {
 }
 
 func (storage *postWithMediaStorage) GetMediaByPostID(ctx context.Context, postID int64) []int64 {
+	logger := logger.FromContext(ctx)
 	query := `SELECT media_id FROM post_with_media WHERE post_id=$1`
 
+	start := time.Now()
 	rows, err := storage.db.Query(ctx, query, postID)
+	logger.Debug("db query",
+		zap.String("query", "PostWithMediaStorage.GetMediaByPostID"),
+		zap.Duration("duration_ms", time.Since(start)))
 	if err != nil {
 		return nil
 	}
@@ -52,9 +60,14 @@ func (storage *postWithMediaStorage) GetMediaByPostID(ctx context.Context, postI
 }
 
 func (storage *postWithMediaStorage) Save(ctx context.Context, postWithMedia models.PostWithMedia) error {
+	logger := logger.FromContext(ctx)
 	query := `INSERT INTO post_with_media (post_id, media_id, sort_order) VALUES ($1, $2, $3)`
 
+	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, postWithMedia.PostID, postWithMedia.MediaID, postWithMedia.Order)
+	logger.Debug("db query",
+		zap.String("query", "PostWithMediaStorage.Save"),
+		zap.Duration("duration_ms", time.Since(start)))
 	if err != nil {
 		return err
 	}
@@ -66,8 +79,13 @@ func (storage *postWithMediaStorage) Save(ctx context.Context, postWithMedia mod
 }
 
 func (storage *postWithMediaStorage) DeleteByPostID(ctx context.Context, postID int64) error {
+	logger := logger.FromContext(ctx)
 	query := `DELETE FROM post_with_media WHERE post_id=$1`
 
+	start := time.Now()
 	_, err := storage.db.Exec(ctx, query, postID)
+	logger.Debug("db query",
+		zap.String("query", "PostWithMediaStorage.DeleteByPostID"),
+		zap.Duration("duration_ms", time.Since(start)))
 	return err
 }

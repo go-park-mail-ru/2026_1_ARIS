@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestSQLChatRepoSave(t *testing.T) {
@@ -30,7 +32,10 @@ func TestSQLChatRepoSave(t *testing.T) {
 		WithArgs(chat.Uid, chat.Type, chat.Title, chat.AvatarID).
 		WillReturnRows(rows)
 
-	err = repo.Save(context.Background(), chat)
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+
+	err = repo.Save(ctx, chat)
 	require.NoError(t, err)
 	require.Equal(t, int64(12), chat.ID)
 	require.NoError(t, mockPool.ExpectationsWereMet())
@@ -53,7 +58,10 @@ func TestSQLChatRepoGetByID(t *testing.T) {
 			WithArgs(int64(5)).
 			WillReturnRows(rows)
 
-		got, err := repo.GetByID(context.Background(), 5)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		got, err := repo.GetByID(ctx, 5)
 		require.NoError(t, err)
 		require.Equal(t, int64(5), got.ID)
 		require.NoError(t, mockPool.ExpectationsWereMet())
@@ -71,7 +79,10 @@ func TestSQLChatRepoGetByID(t *testing.T) {
 			WithArgs(int64(404)).
 			WillReturnRows(rows)
 
-		_, err = repo.GetByID(context.Background(), 404)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		_, err = repo.GetByID(ctx, 404)
 		require.EqualError(t, err, "chat not found")
 		require.NoError(t, mockPool.ExpectationsWereMet())
 	})
@@ -89,7 +100,10 @@ func TestSQLChatRepoDelete(t *testing.T) {
 		WithArgs(int64(7)).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	err = repo.Delete(context.Background(), 7)
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+
+	err = repo.Delete(ctx, 7)
 	require.NoError(t, err)
 	require.NoError(t, mockPool.ExpectationsWereMet())
 }

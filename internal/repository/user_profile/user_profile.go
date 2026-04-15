@@ -7,14 +7,17 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"go.uber.org/zap"
 )
 
 type UserProfileRepo interface {
@@ -43,6 +46,7 @@ func NewUserProfileStorage(db userProfileDB) UserProfileRepo {
 }
 
 func (storage *userProfileStorage) Update(ctx context.Context, dto dto.UpdateUserProfileDTO) error {
+	logger := logger.FromContext(ctx)
 	setClauses := []string{}
 	args := []any{}
 	argIdx := 1
@@ -123,10 +127,14 @@ func (storage *userProfileStorage) Update(ctx context.Context, dto dto.UpdateUse
 
 	query := fmt.Sprintf("UPDATE user_profile SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx)
 
+	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, args...)
 	if err != nil {
 		return err
 	}
+	logger.Debug("db query",
+		zap.String("query", "userProfileStorage.Update"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	if res.RowsAffected() != 1 {
 		return errors.New("UPDATE affected not on 1 row")
@@ -136,9 +144,15 @@ func (storage *userProfileStorage) Update(ctx context.Context, dto dto.UpdateUse
 }
 
 func (storage *userProfileStorage) Save(ctx context.Context, userProfile models.UserProfile) (int64, error) {
+	logger := logger.FromContext(ctx)
 	query := `INSERT INTO user_profile (uid, user_account_id, profile_id, first_name, last_name, bio, birthday_date, gender) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id;`
 
+	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, uuid.New(), userProfile.UserAccountID, userProfile.ProfileID, userProfile.FirstName, userProfile.LastName, userProfile.Bio, userProfile.BirthdayDate, userProfile.Gender)
+
+	logger.Debug("db query",
+		zap.String("query", "userProfileStorage.Save"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	var userAccountID int64
 
@@ -151,23 +165,29 @@ func (storage *userProfileStorage) Save(ctx context.Context, userProfile models.
 }
 
 func (storage *userProfileStorage) Get(ctx context.Context, userProfileID int64) (*models.UserProfile, error) {
+	logger := logger.FromContext(ctx)
 	query := `SELECT * FROM user_profile WHERE id=$1;`
 
 	var userProfile models.UserProfile
-
+	start := time.Now()
 	err := pgxscan.Get(ctx, storage.db, &userProfile, query, userProfileID)
 	if err != nil {
 		return nil, err
 	}
+	logger.Debug("db query",
+		zap.String("query", "userProfileStorage.Get"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	return &userProfile, nil
 }
 
 func (storage *userProfileStorage) GetByProfileID(ctx context.Context, profileID int64) (*models.UserProfile, error) {
+	logger := logger.FromContext(ctx)
 	query := `SELECT * FROM user_profile WHERE profile_id=$1;`
 
 	var userProfile models.UserProfile
 
+	start := time.Now()
 	err := pgxscan.Get(ctx, storage.db, &userProfile, query, profileID)
 	if err != nil {
 		if pgxscan.NotFound(err) {
@@ -175,19 +195,27 @@ func (storage *userProfileStorage) GetByProfileID(ctx context.Context, profileID
 		}
 		return nil, err
 	}
+	logger.Debug("db query",
+		zap.String("query", "userProfileStorage.GetByProfileID"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	return &userProfile, nil
 }
 
 func (storage *userProfileStorage) GetByUserAccountID(ctx context.Context, userAccountID int64) (*models.UserProfile, error) {
+	logger := logger.FromContext(ctx)
 	query := `SELECT * FROM user_profile WHERE user_account_id=$1;`
 
 	var userProfile models.UserProfile
 
+	start := time.Now()
 	err := pgxscan.Get(ctx, storage.db, &userProfile, query, userAccountID)
 	if err != nil {
 		return nil, err
 	}
+	logger.Debug("db query",
+		zap.String("query", "userProfileStorage.GetByUserAccountID"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	return &userProfile, nil
 }

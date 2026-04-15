@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestChatMemberStorageSaveAndDelete(t *testing.T) {
@@ -34,9 +36,12 @@ func TestChatMemberStorageSaveAndDelete(t *testing.T) {
 		WithArgs(int64(10)).
 		WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-	err = repo.Save(context.Background(), member)
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+
+	err = repo.Save(ctx, member)
 	require.NoError(t, err)
-	err = repo.Delete(context.Background(), 10)
+	err = repo.Delete(ctx, 10)
 	require.NoError(t, err)
 	require.NoError(t, mockPool.ExpectationsWereMet())
 }
@@ -57,6 +62,9 @@ func TestChatMemberStorageGetByChatIDAndUserID(t *testing.T) {
 		"id", "uid", "chat_id", "profile_id", "joined_at", "is_active", "leave_at", "created_at", "updated_at", "chat_role",
 	}).AddRow(int64(2), uuid.New(), int64(7), int64(11), now, true, nil, now, now, "member")
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+
 	mockPool.ExpectQuery("SELECT \\* FROM chat_member WHERE chat_id=\\$1 AND leave_at IS NULL").
 		WithArgs(int64(7)).
 		WillReturnRows(rows)
@@ -64,11 +72,11 @@ func TestChatMemberStorageGetByChatIDAndUserID(t *testing.T) {
 		WithArgs(int64(11)).
 		WillReturnRows(rows2)
 
-	byChat, err := repo.GetByChatID(context.Background(), 7)
+	byChat, err := repo.GetByChatID(ctx, 7)
 	require.NoError(t, err)
 	require.Len(t, byChat, 1)
 
-	byUser, err := repo.GetByUserID(context.Background(), 11)
+	byUser, err := repo.GetByUserID(ctx, 11)
 	require.NoError(t, err)
 	require.Len(t, byUser, 1)
 	require.NoError(t, mockPool.ExpectationsWereMet())

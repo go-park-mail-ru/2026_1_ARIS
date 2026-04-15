@@ -93,11 +93,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	if l := r.URL.Query().Get("limit"); l != "" {
 		parsed, err := strconv.Atoi(l)
 		if err != nil {
-			log.Warn("invalid_limit_param",
-				zap.String("limit", l),
-				zap.String("path", r.URL.Path),
-				zap.Error(err),
-			)
+			log.Warn("invalid_limit_param", zap.String("limit", l), zap.String("path", r.URL.Path), zap.Error(err))
 			utils.WriteError(w, "Cant parse limit", http.StatusBadRequest)
 			return
 		}
@@ -306,11 +302,7 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 	if l := r.URL.Query().Get("limit"); l != "" {
 		parsed, err := strconv.Atoi(l)
 		if err != nil {
-			log.Warn("invalid_limit_param",
-				zap.String("limit", l),
-				zap.String("path", r.URL.Path),
-				zap.Error(err),
-			)
+			log.Warn("invalid_limit_param", zap.String("limit", l), zap.String("path", r.URL.Path), zap.Error(err))
 			utils.WriteError(w, "Cant parse limit", http.StatusBadRequest)
 			return
 		}

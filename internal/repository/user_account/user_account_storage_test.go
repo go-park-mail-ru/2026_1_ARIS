@@ -7,9 +7,11 @@ import (
 
 	hdto "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestUserAccountStorageSave(t *testing.T) {
@@ -27,7 +29,10 @@ func TestUserAccountStorageSave(t *testing.T) {
 		WithArgs(pgxmock.AnyArg(), &email, &phone, "hash", "alex").
 		WillReturnRows(rows)
 
-	id, err := repo.Save(context.Background(), models.UserAccount{
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+
+	id, err := repo.Save(ctx, models.UserAccount{
 		Email:        &email,
 		Phone:        &phone,
 		PasswordHash: "hash",
@@ -47,8 +52,11 @@ func TestUserAccountStorageUpdate(t *testing.T) {
 		require.NoError(t, err)
 		defer mockPool.Close()
 
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
 		repo := NewUserAccountStorage(mockPool)
-		err = repo.Update(context.Background(), hdto.UpdateUserAccountDTO{ID: 1})
+		err = repo.Update(ctx, hdto.UpdateUserAccountDTO{ID: 1})
 		require.NoError(t, err)
 		require.NoError(t, mockPool.ExpectationsWereMet())
 	})
@@ -66,7 +74,10 @@ func TestUserAccountStorageUpdate(t *testing.T) {
 			WithArgs(email, username, int64(5)).
 			WillReturnResult(pgxmock.NewResult("UPDATE", 1))
 
-		err = repo.Update(context.Background(), hdto.UpdateUserAccountDTO{
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		err = repo.Update(ctx, hdto.UpdateUserAccountDTO{
 			ID:       5,
 			Email:    &email,
 			Username: &username,
@@ -92,7 +103,10 @@ func TestUserAccountStorageList(t *testing.T) {
 		WithArgs(10, 0).
 		WillReturnRows(rows)
 
-	got, err := repo.List(context.Background(), 0, 10)
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+
+	got, err := repo.List(ctx, 0, 10)
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	require.Equal(t, "u1", got[0].Username)
@@ -115,8 +129,12 @@ func TestUserAccountStorageReadAndDeleteMethods(t *testing.T) {
 		defer mockPool.Close()
 		repo := NewUserAccountStorage(mockPool)
 		rows := pgxmock.NewRows(colsShort).AddRow(id, uid, "alex", &email, &phone, true, now, now)
+
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
 		mockPool.ExpectQuery("SELECT id, uid, username, email, phone, is_active, created_at, updated_at FROM user_account WHERE id=\\$1;").WithArgs(id).WillReturnRows(rows)
-		got, err := repo.Get(context.Background(), id)
+		got, err := repo.Get(ctx, id)
 		require.NoError(t, err)
 		require.Equal(t, "alex", got.Username)
 	})
@@ -133,13 +151,17 @@ func TestUserAccountStorageReadAndDeleteMethods(t *testing.T) {
 		mockPool.ExpectQuery("SELECT \\* FROM user_account WHERE phone=\\$1;").WithArgs(phone).WillReturnRows(r2)
 		mockPool.ExpectQuery("SELECT \\* FROM user_account WHERE username=\\$1;").WithArgs("alex").WillReturnRows(r3)
 		mockPool.ExpectQuery("SELECT \\* FROM user_account WHERE uid=\\$1;").WithArgs(uid.String()).WillReturnRows(r4)
-		_, err := repo.GetByEmail(context.Background(), email)
+
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		_, err := repo.GetByEmail(ctx, email)
 		require.NoError(t, err)
-		_, err = repo.GetByPhone(context.Background(), phone)
+		_, err = repo.GetByPhone(ctx, phone)
 		require.NoError(t, err)
-		_, err = repo.GetByUsername(context.Background(), "alex")
+		_, err = repo.GetByUsername(ctx, "alex")
 		require.NoError(t, err)
-		_, err = repo.GetByUid(context.Background(), uid)
+		_, err = repo.GetByUid(ctx, uid)
 		require.NoError(t, err)
 	})
 
@@ -147,8 +169,12 @@ func TestUserAccountStorageReadAndDeleteMethods(t *testing.T) {
 		mockPool, _ := pgxmock.NewPool()
 		defer mockPool.Close()
 		repo := NewUserAccountStorage(mockPool)
+
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
 		mockPool.ExpectExec("DELETE FROM user_account WHERE id=\\$1").WithArgs(id).WillReturnResult(pgxmock.NewResult("DELETE", 1))
-		err := repo.Delete(context.Background(), id)
+		err := repo.Delete(ctx, id)
 		require.NoError(t, err)
 	})
 }

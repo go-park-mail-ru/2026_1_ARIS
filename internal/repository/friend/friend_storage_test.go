@@ -7,8 +7,10 @@ import (
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/pashagolub/pgxmock/v4"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestFriendshipStorageCreate(t *testing.T) {
@@ -38,7 +40,9 @@ func TestFriendshipStorageCreate(t *testing.T) {
 				WithArgs(int64(1), int64(2), "pending").
 				WillReturnResult(pgxmock.NewResult("INSERT", tc.affected))
 
-			err = repo.Create(context.Background(), 1, 2, "pending")
+			mockLogger := zap.NewNop()
+			ctx := logger.WithLogger(context.Background(), mockLogger)
+			err = repo.Create(ctx, 1, 2, "pending")
 			if tc.wantError == nil {
 				require.NoError(t, err)
 			} else {
@@ -62,7 +66,10 @@ func TestFriendshipStorageDeleteFriend(t *testing.T) {
 		WithArgs(int64(3), int64(4)).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
-	err = repo.DeleteFriend(context.Background(), 3, 4)
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+
+	err = repo.DeleteFriend(ctx, 3, 4)
 	require.NoError(t, err)
 	require.NoError(t, mockPool.ExpectationsWereMet())
 }
@@ -94,7 +101,10 @@ func TestFriendshipStorageAcceptFriendship(t *testing.T) {
 				WithArgs(int64(10), int64(11)).
 				WillReturnResult(pgxmock.NewResult("UPDATE", tc.affected))
 
-			err = repo.AcceptFriendship(context.Background(), 10, 11)
+			mockLogger := zap.NewNop()
+			ctx := logger.WithLogger(context.Background(), mockLogger)
+
+			err = repo.AcceptFriendship(ctx, 10, 11)
 			if tc.wantError == nil {
 				require.NoError(t, err)
 			} else {
@@ -121,10 +131,13 @@ func TestFriendshipStorageDeclineAndRevoke(t *testing.T) {
 		WithArgs(int64(6), int64(7)).
 		WillReturnResult(pgxmock.NewResult("DELETE", 1))
 
-	err = repo.DeclineFriendship(context.Background(), 6, 7)
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(context.Background(), mockLogger)
+
+	err = repo.DeclineFriendship(ctx, 6, 7)
 	require.NoError(t, err)
 
-	err = repo.RevokeFriendRequest(context.Background(), 6, 7)
+	err = repo.RevokeFriendRequest(ctx, 6, 7)
 	require.NoError(t, err)
 
 	require.NoError(t, mockPool.ExpectationsWereMet())
@@ -142,7 +155,11 @@ func TestFriendshipStorageReadMethods(t *testing.T) {
 		repo := NewFriendshipStorage(mockPool)
 		rows := pgxmock.NewRows(cols).AddRow(nil, int64(2), "A", "B", "ab", nil, "accepted", now, now)
 		mockPool.ExpectQuery("select p.avatar_id").WithArgs(int64(1), "accepted").WillReturnRows(rows)
-		got, err := repo.GetFriends(context.Background(), 1, models.FriendshipAccepted)
+
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		got, err := repo.GetFriends(ctx, 1, models.FriendshipAccepted)
 		require.NoError(t, err)
 		require.Len(t, got, 1)
 	})
@@ -153,7 +170,11 @@ func TestFriendshipStorageReadMethods(t *testing.T) {
 		repo := NewFriendshipStorage(mockPool)
 		rows := pgxmock.NewRows([]string{"status"}).AddRow("pending")
 		mockPool.ExpectQuery("select status from friendship").WithArgs(int64(1), int64(2)).WillReturnRows(rows)
-		got, err := repo.GetFriendshipStatus(context.Background(), 1, 2)
+
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		got, err := repo.GetFriendshipStatus(ctx, 1, 2)
 		require.NoError(t, err)
 		require.Equal(t, "pending", got)
 	})
@@ -164,7 +185,9 @@ func TestFriendshipStorageReadMethods(t *testing.T) {
 		repo := NewFriendshipStorage(mockPool)
 		rows := pgxmock.NewRows([]string{"status"}).AddRow("accepted")
 		mockPool.ExpectQuery("select status from friendship where requester_id=\\$1 and addressee_id=\\$2;").WithArgs(int64(1), int64(2)).WillReturnRows(rows)
-		got, err := repo.GetFriendshipStatusBy(context.Background(), 1, 2)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+		got, err := repo.GetFriendshipStatusBy(ctx, 1, 2)
 		require.NoError(t, err)
 		require.Equal(t, "accepted", got)
 	})
@@ -177,10 +200,12 @@ func TestFriendshipStorageReadMethods(t *testing.T) {
 		rows2 := pgxmock.NewRows(cols).AddRow(nil, int64(3), "C", "D", "cd", nil, "pending", now, now)
 		mockPool.ExpectQuery("select f.addressee_id as id").WithArgs(int64(1), "pending").WillReturnRows(rows)
 		mockPool.ExpectQuery("select f.requester_id as id").WithArgs(int64(1), "pending").WillReturnRows(rows2)
-		out, err := repo.GetOutgoingFriends(context.Background(), 1, "pending")
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+		out, err := repo.GetOutgoingFriends(ctx, 1, "pending")
 		require.NoError(t, err)
 		require.Len(t, out, 1)
-		in, err := repo.GetIncomingFriends(context.Background(), 1, "pending")
+		in, err := repo.GetIncomingFriends(ctx, 1, "pending")
 		require.NoError(t, err)
 		require.Len(t, in, 1)
 	})
@@ -191,7 +216,9 @@ func TestFriendshipStorageReadMethods(t *testing.T) {
 		repo := NewFriendshipStorage(mockPool)
 		rows := pgxmock.NewRows([]string{"status"})
 		mockPool.ExpectQuery("select status from friendship").WithArgs(int64(9), int64(10)).WillReturnRows(rows)
-		_, err := repo.GetFriendshipStatus(context.Background(), 9, 10)
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+		_, err := repo.GetFriendshipStatus(ctx, 9, 10)
 		require.ErrorIs(t, err, xerrors.FriendshipNotFound)
 	})
 

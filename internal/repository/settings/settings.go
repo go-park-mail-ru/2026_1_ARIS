@@ -7,11 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 type userSettingsRepository struct {
@@ -32,15 +35,20 @@ func NewUserSettingsStorage(db settingsDB) UserSettingsRepository {
 }
 
 func (r *userSettingsRepository) GetByUserID(ctx context.Context, userID int64) (*models.UserSettings, error) {
+	logger := logger.FromContext(ctx)
 	query := `
 		SELECT user_account_id, lang, theme
 		FROM user_settings
 		WHERE user_account_id = $1`
 
+	start := time.Now()
 	row, err := r.db.Query(ctx, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("userSettingsRepository.GetByUserID query: %w", err)
 	}
+	logger.Debug("db query",
+		zap.String("query", "userSettingsRepository.GetByUserID"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	settings, err := pgx.CollectOneRow(row, pgx.RowToAddrOfStructByName[models.UserSettings])
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -54,6 +62,7 @@ func (r *userSettingsRepository) GetByUserID(ctx context.Context, userID int64) 
 }
 
 func (r *userSettingsRepository) Update(ctx context.Context, userID int64, upd dto.UserSettingsUpdate) (*models.UserSettings, error) {
+	logger := logger.FromContext(ctx)
 	if upd.IsEmpty() {
 		return r.GetByUserID(ctx, userID)
 	}
@@ -94,10 +103,14 @@ func (r *userSettingsRepository) Update(ctx context.Context, userID int64, upd d
 		setSQL,
 	)
 
+	start := time.Now()
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("userSettingsRepository.Update query: %w", err)
 	}
+	logger.Debug("db query",
+		zap.String("query", "userSettingsRepository.Update"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	settings, err := pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByName[models.UserSettings])
 	if errors.Is(err, pgx.ErrNoRows) {
