@@ -10,6 +10,8 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
+	"go.uber.org/zap"
 )
 
 type MediaHandler struct {
@@ -36,8 +38,13 @@ type fileResponse struct {
 }
 
 func (h *MediaHandler) SaveFiles(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+
 	userAccountID, ok := r.Context().Value("user_id").(int64)
 	if !ok {
+		log.Warn("cannot_save_files_missing_user",
+			zap.String("path", r.URL.Path),
+		)
 		utils.WriteError(w, xerrors.InvalidCtxUserAccountValue, http.StatusUnauthorized)
 		return
 	}
@@ -45,20 +52,33 @@ func (h *MediaHandler) SaveFiles(w http.ResponseWriter, r *http.Request) {
 	profile, err := h.userService.GetProfileByUserAccountID(r.Context(), userAccountID)
 	if err != nil {
 		if errors.Is(err, xerrors.ProfileNotFound) {
+			log.Warn("cannot_save_files_profile_not_found",
+				zap.Int64("userAccount_id", userAccountID),
+			)
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
 			return
 		}
+		log.Error("failed_to_get_profile",
+			zap.Int64("userAccount_id", userAccountID),
+			zap.Error(err),
+		)
 		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 		return
 	}
 
 	if err := r.ParseMultipartForm(50 << 20); err != nil {
+		log.Warn("cannot_save_files_parse_form",
+			zap.Error(err),
+		)
 		utils.WriteError(w, "Parsing form error", http.StatusBadRequest)
 		return
 	}
 
 	fileFor := r.URL.Query().Get("for")
 	if fileFor == "" {
+		log.Warn("cannot_save_files_invalid_for_query",
+			zap.String("path", r.URL.Path),
+		)
 		utils.WriteError(w, xerrors.InvalidRequest, http.StatusBadRequest)
 		return
 	}
@@ -69,6 +89,10 @@ func (h *MediaHandler) SaveFiles(w http.ResponseWriter, r *http.Request) {
 
 		file, err := fileHeader.Open()
 		if err != nil {
+			log.Warn("cannot_save_files_open_file",
+				zap.String("filename", fileHeader.Filename),
+				zap.Error(err),
+			)
 			utils.WriteError(w, "Can't get file", http.StatusBadRequest)
 			return
 		}
@@ -77,9 +101,18 @@ func (h *MediaHandler) SaveFiles(w http.ResponseWriter, r *http.Request) {
 
 		if err != nil {
 			if errors.Is(err, xerrors.UnsupportedContentType) {
+				log.Warn("cannot_save_files_unsupported_content_type",
+					zap.String("filename", fileHeader.Filename),
+					zap.Error(err),
+				)
 				utils.WriteError(w, err.Error(), http.StatusUnsupportedMediaType)
 				return
 			}
+			log.Error("failed_to_save_file",
+				zap.String("filename", fileHeader.Filename),
+				zap.Int64("profile_id", profile.ID),
+				zap.Error(err),
+			)
 			utils.WriteError(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -90,6 +123,12 @@ func (h *MediaHandler) SaveFiles(w http.ResponseWriter, r *http.Request) {
 	response := fileResponse{
 		Files: fileLinks,
 	}
+
+	log.Info("files_saved",
+		zap.Int64("profile_id", profile.ID),
+		zap.Int("count", len(fileLinks)),
+		zap.String("for", fileFor),
+	)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

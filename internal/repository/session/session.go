@@ -41,8 +41,6 @@ func (r *sessionRedis) Save(ctx context.Context, session models.Session) error {
 		return res.Err()
 	}
 
-	fmt.Println("Session Saved:", sessionID, string(marshaled))
-
 	return nil
 }
 

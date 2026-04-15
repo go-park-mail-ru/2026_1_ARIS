@@ -4,7 +4,6 @@ package like
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
@@ -62,7 +61,6 @@ func (storage *likeStorage) Get(ctx context.Context, likeID int64) (*models.Like
 
 	err := pgxscan.Get(ctx, storage.db, &like, query, likeID)
 	if err != nil {
-		fmt.Println("Error : ", err)
 		return nil, err
 	}
 

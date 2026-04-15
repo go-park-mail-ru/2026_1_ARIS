@@ -3,9 +3,9 @@ package user
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
@@ -13,7 +13,9 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/settings"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/go-playground/validator/v10"
+	"go.uber.org/zap"
 )
 
 type UserHandler struct {
@@ -67,21 +69,34 @@ var validate = validator.New()
 // @Failure			500	{object}	dto.CommonErrorResponse
 // @Router			/users/suggested [get]
 func (h *UserHandler) GetSuggestedUsers(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+	log.Info("called GetSuggestedUsers", zap.Time("call time", time.Now()))
 
 	userIDFromCtx := r.Context().Value("user_id")
 	if userIDFromCtx == nil {
+		log.Warn("cannot_get_suggested_users_missing_user",
+			zap.String("path", r.URL.Path),
+		)
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	userID, ok := userIDFromCtx.(int64)
 	if !ok {
+		log.Warn("cannot_get_suggested_users_invalid_user_id_type",
+			zap.String("path", r.URL.Path),
+			zap.Any("user_id", userIDFromCtx),
+		)
 		http.Error(w, "invalid user id in context", http.StatusUnauthorized)
 		return
 	}
 
 	users, err := h.UserService.GetSuggestedUsers(r.Context(), userID)
 	if err != nil {
+		log.Error("failed_to_get_suggested_users",
+			zap.Int64("userAccount_id", userID),
+			zap.Error(err),
+		)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -100,10 +115,18 @@ func (h *UserHandler) GetSuggestedUsers(w http.ResponseWriter, r *http.Request) 
 		}
 		userProfile, err := h.UserService.GetUserProfileByProfileID(r.Context(), user.ID)
 		if err != nil {
+			log.Warn("cannot_build_suggested_user_missing_profile",
+				zap.Int64("profile_id", user.ID),
+				zap.Error(err),
+			)
 			continue
 		}
 		userAccount, err := h.UserService.GetUserAccountByUserProfileID(r.Context(), userProfile.ID)
 		if err != nil {
+			log.Warn("cannot_build_suggested_user_missing_account",
+				zap.Int64("profile_id", userProfile.ID),
+				zap.Error(err),
+			)
 			continue
 		}
 
@@ -115,6 +138,11 @@ func (h *UserHandler) GetSuggestedUsers(w http.ResponseWriter, r *http.Request) 
 			AvatarLink: avatar,
 		})
 	}
+
+	log.Info("suggested_users_returned",
+		zap.Int64("userAccount_id", userID),
+		zap.Int("count", len(items)),
+	)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -131,19 +159,20 @@ func (h *UserHandler) GetSuggestedUsers(w http.ResponseWriter, r *http.Request) 
 // @Failure			500	{object}	dto.CommonErrorResponse
 // @Router			/public/popular-users [get]
 func (h *UserHandler) GetPublicPopularUsers(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("GetPublicPopularUsers")
+	log := logger.FromContext(r.Context())
+
 	users, err := h.UserService.GetPublicPopularUsers(r.Context())
 	if err != nil {
+		log.Error("failed_to_get_public_popular_users",
+			zap.Error(err),
+		)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Println("not error h.UserService.GetPublicPopularUsers(r.Context())")
-	fmt.Println(users)
 
 	var items []suggestedUserDTO
 
 	for _, user := range users {
-		fmt.Println("User:", user)
 		avatar := ""
 
 		if user.AvatarID != nil && h.MediaService != nil {
@@ -155,12 +184,18 @@ func (h *UserHandler) GetPublicPopularUsers(w http.ResponseWriter, r *http.Reque
 
 		userProfile, err := h.UserService.GetUserProfileByProfileID(r.Context(), user.ID)
 		if err != nil {
-			fmt.Println("Err != nil: h.UserService.GetUserProfileByProfileID", err.Error())
+			log.Warn("cannot_build_public_popular_user_missing_profile",
+				zap.Int64("profile_id", user.ID),
+				zap.Error(err),
+			)
 			continue
 		}
 		userAccount, err := h.UserService.GetUserAccountByUserProfileID(r.Context(), userProfile.ID)
 		if err != nil {
-			fmt.Println(userProfile.ID, err.Error())
+			log.Warn("cannot_build_public_popular_user_missing_account",
+				zap.Int64("profile_id", userProfile.ID),
+				zap.Error(err),
+			)
 			continue
 		}
 
@@ -172,6 +207,10 @@ func (h *UserHandler) GetPublicPopularUsers(w http.ResponseWriter, r *http.Reque
 			AvatarLink: avatar,
 		})
 	}
+
+	log.Info("public_popular_users_returned",
+		zap.Int("count", len(items)),
+	)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -189,8 +228,13 @@ func (h *UserHandler) GetPublicPopularUsers(w http.ResponseWriter, r *http.Reque
 // @Failure			500	{object}	dto.CommonErrorResponse
 // @Router			/users/latest-events [get]
 func (h *UserHandler) GetLatestEvents(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+
 	events, err := h.UserService.GetLatestEvents(r.Context())
 	if err != nil {
+		log.Error("failed_to_get_latest_events",
+			zap.Error(err),
+		)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -210,10 +254,18 @@ func (h *UserHandler) GetLatestEvents(w http.ResponseWriter, r *http.Request) {
 
 		userProfile, err := h.UserService.GetUserProfileByProfileID(r.Context(), user.ID)
 		if err != nil {
+			log.Warn("cannot_build_latest_event_missing_profile",
+				zap.Int64("profile_id", user.ID),
+				zap.Error(err),
+			)
 			continue
 		}
 		userAccount, err := h.UserService.GetUserAccountByUserProfileID(r.Context(), userProfile.ID)
 		if err != nil {
+			log.Warn("cannot_build_latest_event_missing_account",
+				zap.Int64("profile_id", userProfile.ID),
+				zap.Error(err),
+			)
 			continue
 		}
 
@@ -227,6 +279,10 @@ func (h *UserHandler) GetLatestEvents(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	log.Info("latest_events_returned",
+		zap.Int("count", len(items)),
+	)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(latestEventsResponse{
@@ -235,8 +291,13 @@ func (h *UserHandler) GetLatestEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) SetSettings(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+
 	userAccountID, ok := r.Context().Value("user_id").(int64)
 	if !ok {
+		log.Warn("cannot_set_settings_missing_user",
+			zap.String("path", r.URL.Path),
+		)
 		utils.WriteError(w, xerrors.InvalidCtxUserAccountValue, http.StatusUnauthorized)
 		return
 	}
@@ -245,11 +306,19 @@ func (h *UserHandler) SetSettings(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		log.Warn("cannot_set_settings_invalid_body",
+			zap.String("path", r.URL.Path),
+			zap.Error(err),
+		)
 		utils.WriteError(w, xerrors.InvalidRequestBody, http.StatusBadRequest)
 		return
 	}
 
 	if err := validate.Struct(request); err != nil {
+		log.Warn("cannot_set_settings_validation_error",
+			zap.String("path", r.URL.Path),
+			zap.Error(err),
+		)
 		utils.WriteError(w, xerrors.ValidationError, http.StatusBadRequest)
 		return
 	}
@@ -259,9 +328,17 @@ func (h *UserHandler) SetSettings(w http.ResponseWriter, r *http.Request) {
 		settings, err = h.SettingsService.GetByUserID(r.Context(), userAccountID)
 	}
 	if err != nil {
+		log.Error("failed_to_set_settings",
+			zap.Int64("userAccount_id", userAccountID),
+			zap.Error(err),
+		)
 		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 		return
 	}
+
+	log.Info("settings_updated",
+		zap.Int64("userAccount_id", userAccountID),
+	)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -269,17 +346,30 @@ func (h *UserHandler) SetSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+
 	userAccountID, ok := r.Context().Value("user_id").(int64)
 	if !ok {
+		log.Warn("cannot_get_settings_missing_user",
+			zap.String("path", r.URL.Path),
+		)
 		utils.WriteError(w, xerrors.InvalidCtxUserAccountValue, http.StatusUnauthorized)
 		return
 	}
 
 	settings, err := h.SettingsService.GetByUserID(r.Context(), userAccountID)
 	if err != nil {
+		log.Error("failed_to_get_settings",
+			zap.Int64("userAccount_id", userAccountID),
+			zap.Error(err),
+		)
 		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
 		return
 	}
+
+	log.Info("settings_returned",
+		zap.Int64("userAccount_id", userAccountID),
+	)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

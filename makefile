@@ -67,6 +67,9 @@ dev:
 down:
 	$(COMPOSE) down
 
+stop:
+	$(COMPOSE) stop
+
 reset-db:
 	$(COMPOSE) down -v
 	$(COMPOSE) up --build -d

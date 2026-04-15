@@ -2,7 +2,6 @@ package profile
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -15,7 +14,9 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/go-playground/validator/v10"
+	"go.uber.org/zap"
 )
 
 type ProfileHandler struct {
@@ -128,29 +129,53 @@ func (h *ProfileHandler) buildProfileResponse(r *http.Request, profileID int64) 
 // @Failure			500	{object}	dto.CommonErrorResponse
 // @Router			/profile/me [get]
 func (h *ProfileHandler) GetProfileMe(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
+		log.Warn("cannot_get_profile_me_missing_session",
+			zap.String("path", r.URL.Path),
+		)
 		utils.WriteError(w, "Unauthorised", http.StatusUnauthorized)
 		return
 	}
 
 	session, err := h.sessionService.Get(r.Context(), models.SessionID(cookie.Value))
 	if err != nil {
+		log.Warn("cannot_get_profile_me_invalid_session",
+			zap.String("session_id", cookie.Value),
+			zap.String("path", r.URL.Path),
+			zap.Error(err),
+		)
 		utils.WriteError(w, "Unauthorised", http.StatusUnauthorized)
 		return
 	}
 
 	userProfile, err := h.userService.GetUserProfileByUserAccountID(r.Context(), session.UserID)
 	if err != nil {
+		log.Error("failed_to_get_user_profile_by_account",
+			zap.Int64("userAccount_id", session.UserID),
+			zap.Error(err),
+		)
 		utils.WriteError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	response, status, message := h.buildProfileResponse(r, userProfile.ProfileID)
 	if status != http.StatusOK {
+		log.Warn("cannot_get_profile_me_build_response",
+			zap.Int("status", status),
+			zap.String("message", message),
+			zap.Int64("profile_id", userProfile.ProfileID),
+		)
 		utils.WriteError(w, message, status)
 		return
 	}
+
+	log.Info("profile_me_returned",
+		zap.Int64("userAccount_id", session.UserID),
+		zap.Int64("profile_id", userProfile.ProfileID),
+	)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -172,17 +197,33 @@ func (h *ProfileHandler) GetProfileMe(w http.ResponseWriter, r *http.Request) {
 // @Failure			500	{object}	dto.CommonErrorResponse
 // @Router			/profile/{id} [get]
 func (h *ProfileHandler) GetProfileByID(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+
 	profileID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil || profileID <= 0 {
+		log.Warn("cannot_get_profile_by_id_invalid_id",
+			zap.String("profile_id", chi.URLParam(r, "id")),
+			zap.String("path", r.URL.Path),
+			zap.Error(err),
+		)
 		utils.WriteError(w, "invalid profile id", http.StatusBadRequest)
 		return
 	}
 
 	response, status, message := h.buildProfileResponse(r, profileID)
 	if status != http.StatusOK {
+		log.Warn("cannot_get_profile_by_id_build_response",
+			zap.Int("status", status),
+			zap.String("message", message),
+			zap.Int64("profile_id", profileID),
+		)
 		utils.WriteError(w, message, status)
 		return
 	}
+
+	log.Info("profile_by_id_returned",
+		zap.Int64("profile_id", profileID),
+	)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -202,26 +243,44 @@ func (h *ProfileHandler) GetProfileByID(w http.ResponseWriter, r *http.Request) 
 // @Failure			500	{object}	dto.CommonErrorResponse
 // @Router			/profile/me/edit [patch]
 func (h *ProfileHandler) EditProfileMe(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
+		log.Warn("cannot_edit_profile_me_missing_session",
+			zap.String("path", r.URL.Path),
+		)
 		utils.WriteError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	session, err := h.sessionService.Get(r.Context(), models.SessionID(cookie.Value))
 	if err != nil {
+		log.Warn("cannot_edit_profile_me_invalid_session",
+			zap.String("session_id", cookie.Value),
+			zap.String("path", r.URL.Path),
+			zap.Error(err),
+		)
 		utils.WriteError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	userProfile, err := h.userService.GetUserProfileByUserAccountID(r.Context(), session.UserID)
 	if err != nil {
+		log.Error("failed_to_get_user_profile_for_edit",
+			zap.Int64("userAccount_id", session.UserID),
+			zap.Error(err),
+		)
 		utils.WriteError(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	userAccount, err := h.userService.GetUserAccountByUserProfileID(r.Context(), userProfile.ID)
 	if err != nil {
+		log.Error("failed_to_get_user_account_for_edit",
+			zap.Int64("profile_id", userProfile.ID),
+			zap.Error(err),
+		)
 		utils.WriteError(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -230,7 +289,10 @@ func (h *ProfileHandler) EditProfileMe(w http.ResponseWriter, r *http.Request) {
 
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		fmt.Println(err)
+		log.Warn("cannot_edit_profile_me_invalid_body",
+			zap.String("path", r.URL.Path),
+			zap.Error(err),
+		)
 		utils.WriteError(w, "Invalid body", http.StatusBadRequest)
 		return
 	}
@@ -249,6 +311,10 @@ func (h *ProfileHandler) EditProfileMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := validate.Struct(reqForValidation); err != nil {
+		log.Warn("cannot_edit_profile_me_validation_failed",
+			zap.String("path", r.URL.Path),
+			zap.Error(err),
+		)
 		utils.WriteError(w, "validation failed: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -257,14 +323,21 @@ func (h *ProfileHandler) EditProfileMe(w http.ResponseWriter, r *http.Request) {
 	req.UserProfileID = userProfile.ID
 	req.ProfileID = userProfile.ProfileID
 
-	fmt.Println("Пошло на обновление !")
-	fmt.Println(req)
-
 	err = h.userService.UpdateMe(r.Context(), req)
 	if err != nil {
+		log.Error("failed_to_update_profile",
+			zap.Int64("userAccount_id", userAccount.ID),
+			zap.Int64("profile_id", userProfile.ProfileID),
+			zap.Error(err),
+		)
 		utils.WriteError(w, "Update failed", http.StatusInternalServerError)
 		return
 	}
+
+	log.Info("profile_me_updated",
+		zap.Int64("userAccount_id", userAccount.ID),
+		zap.Int64("profile_id", userProfile.ProfileID),
+	)
 
 	w.WriteHeader(http.StatusNoContent)
 }
