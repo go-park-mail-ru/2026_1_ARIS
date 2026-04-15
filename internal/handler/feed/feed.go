@@ -2,7 +2,6 @@ package feed
 
 import (
 	"encoding/json"
-	"html"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -184,7 +183,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 		posts = append(posts, postFeedDTO{
 			Id:        post.Uid,
-			Text:      html.EscapeString(postText),
+			Text:      postText,
 			Author:    author,
 			CreatedAt: post.CreatedAt,
 			Likes:     likeCount,
@@ -380,7 +379,7 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 
 		posts = append(posts, postFeedDTO{
 			Id:        post.Uid,
-			Text:      html.EscapeString(postText),
+			Text:      postText,
 			Author:    author,
 			CreatedAt: post.CreatedAt,
 			Likes:     likeCount,

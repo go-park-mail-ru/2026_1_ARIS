@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"html"
 	"net/http"
 	"strconv"
 	"time"
@@ -90,7 +89,7 @@ func (h *PostHandler) buildPostListItemResponse(ctx context.Context, postModel m
 	}
 
 	if postModel.Text != nil {
-		response.Text = html.EscapeString(*postModel.Text)
+		response.Text = *postModel.Text
 	}
 
 	if !postModel.UpdatedAt.IsZero() {
@@ -185,7 +184,6 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		// postText := html.EscapeString(*request.Text)
 		// response.Text = &postText
 		response.Text = request.Text
-		*response.Text = html.EscapeString(*response.Text)
 	}
 
 	if request.Media != nil {
@@ -205,8 +203,8 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.FirstName = html.EscapeString(userProfile.FirstName)
-	response.LastName = html.EscapeString(userProfile.LastName)
+	response.FirstName = userProfile.FirstName
+	response.LastName = userProfile.LastName
 
 	if profile.AvatarID != nil {
 		avatar, err := h.mediaService.GetAvatarByID(r.Context(), profile.AvatarID)
@@ -457,8 +455,8 @@ func (h *PostHandler) GetPost(w http.ResponseWriter, r *http.Request) {
 	response.ID = post.ID
 	response.ProfileID = post.AuthorID
 
-	response.FirstName = html.EscapeString(userProfile.FirstName)
-	response.LastName = html.EscapeString(userProfile.LastName)
+	response.FirstName = userProfile.FirstName
+	response.LastName = userProfile.LastName
 
 	profile, err := h.userService.GetProfileByProfileID(r.Context(), userProfile.ProfileID)
 	if err != nil {
@@ -486,10 +484,7 @@ func (h *PostHandler) GetPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.Text = post.Text
-	if response.Text != nil {
-		text := html.EscapeString(*response.Text)
-		response.Text = &text
-	}
+
 	response.UserAccountID = userProfile.UserAccountID
 
 	postMedia := h.mediaService.GetMediasByPostID(r.Context(), int64(postID))
@@ -596,10 +591,6 @@ func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	post.Text = request.Text
-	if post.Text != nil {
-		text := html.EscapeString(*post.Text)
-		post.Text = &text
-	}
 
 	if err := h.postService.Update(r.Context(), *post); err != nil {
 
