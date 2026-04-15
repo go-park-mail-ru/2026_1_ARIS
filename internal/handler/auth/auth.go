@@ -190,6 +190,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		Value:    string(session.SessionID),
 		Expires:  session.ExpiredAt,
 		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		Secure:   true,
 		Path:     "/",
 	})
 
@@ -254,6 +256,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Value:    string(session.SessionID),
 		Expires:  session.ExpiredAt,
 		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		Secure:   true,
 		Path:     "/",
 	})
 
@@ -309,6 +313,8 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		Expires:  time.Unix(0, 0),
 		MaxAge:   -1,
 		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		Secure:   true,
 		Path:     "/",
 	})
 
