@@ -100,5 +100,5 @@ frontend-shell:
 	
 coverage-excluding-mocks: clean
 	go test ./... -coverprofile=coverage.out.tmp -coverpkg=./internal/...
-	cat coverage.out.tmp | grep -v -E "(mock|generated|pb\.go|mocks|_test\.go)" > coverage.out
+	cat coverage.out.tmp | grep -v -E "(/mocks/|generated|pb\.go|_test\.go|internal/utils/mock_data\.go)" > coverage.out
 	go tool cover -func=coverage.out | grep total

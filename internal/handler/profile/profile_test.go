@@ -426,4 +426,322 @@ func TestProfileHandler_GetProfileMe_SessionError(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
+
+func TestProfileHandler_GetProfileMe_UserProfileError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	handler := NewProfileHandler(mockUserSvc, nil, mockSessionSvc)
+
+	req := httptest.NewRequest("GET", "/profile/me", nil)
+	req.AddCookie(&http.Cookie{Name: "session_id", Value: "sess123"})
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	mockSessionSvc.EXPECT().
+		Get(gomock.Any(), models.SessionID("sess123")).
+		Return(&models.Session{UserID: 42}, nil)
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), int64(42)).
+		Return(nil, errors.New("boom"))
+
+	w := httptest.NewRecorder()
+	handler.GetProfileMe(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestProfileHandler_GetProfileMe_BuildResponseFailure(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	handler := NewProfileHandler(mockUserSvc, nil, mockSessionSvc)
+
+	req := httptest.NewRequest("GET", "/profile/me", nil)
+	req.AddCookie(&http.Cookie{Name: "session_id", Value: "sess123"})
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	mockSessionSvc.EXPECT().
+		Get(gomock.Any(), models.SessionID("sess123")).
+		Return(&models.Session{UserID: 42}, nil)
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), int64(42)).
+		Return(&models.UserProfile{ID: 5, ProfileID: 77}, nil)
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByProfileID(gomock.Any(), int64(77)).
+		Return(nil, errors.New("not found"))
+
+	w := httptest.NewRecorder()
+	handler.GetProfileMe(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestProfileHandler_GetProfileByID_BuildResponseFailure(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	handler := NewProfileHandler(mockUserSvc, nil, nil)
+
+	req := httptest.NewRequest("GET", "/profile/300", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "300")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByProfileID(gomock.Any(), int64(300)).
+		Return(nil, errors.New("not found"))
+
+	w := httptest.NewRecorder()
+	handler.GetProfileByID(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestProfileHandler_buildProfileResponse_NoAvatarAndBirthday(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockMediaSvc := mock_service.NewMockMediaService(ctrl)
+	handler := &ProfileHandler{
+		userService:  mockUserSvc,
+		mediaService: mockMediaSvc,
+	}
+
+	profileID := int64(301)
+	bio := "<b>bio</b>"
+	town := "<town>"
+	institution := "<uni>"
+
+	userProfile := &models.UserProfile{
+		ID:           33,
+		ProfileID:    profileID,
+		FirstName:    "<Jane>",
+		LastName:     "<Smith>",
+		Bio:          &bio,
+		Town:         &town,
+		Institution:  &institution,
+		Gender:       models.Female,
+		BirthdayDate: time.Date(2000, 2, 3, 0, 0, 0, 0, time.UTC),
+	}
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByProfileID(gomock.Any(), profileID).
+		Return(userProfile, nil)
+
+	mockUserSvc.EXPECT().
+		GetUserAccountByProfileID(gomock.Any(), profileID).
+		Return(&models.UserAccount{}, nil)
+
+	mockUserSvc.EXPECT().
+		GetProfileByUserProfileID(gomock.Any(), userProfile.ID).
+		Return(nil, errors.New("missing profile"))
+
+	req := httptest.NewRequest("GET", "/", nil)
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	resp, status, msg := handler.buildProfileResponse(req, profileID)
+
+	assert.Equal(t, http.StatusOK, status)
+	assert.Empty(t, msg)
+	assert.Equal(t, "&lt;Jane&gt;", resp.FirstName)
+	assert.Equal(t, "&lt;Smith&gt;", resp.LastName)
+	assert.Equal(t, "2000-02-03", resp.BirthdayDate)
+	assert.Nil(t, resp.ImageLink)
+	assert.NotNil(t, resp.Bio)
+	assert.Equal(t, "<b>bio</b>", *resp.Bio)
+	assert.Len(t, resp.Education, 1)
+	assert.NotNil(t, resp.Education[0].Institution)
+	assert.Equal(t, "<uni>", *resp.Education[0].Institution)
+}
+
+func TestProfileHandler_EditProfileMe_InvalidSession(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	handler := NewProfileHandler(nil, nil, mockSessionSvc)
+
+	req := httptest.NewRequest("PATCH", "/profile/me/edit", nil)
+	req.AddCookie(&http.Cookie{Name: "session_id", Value: "bad"})
+	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	mockSessionSvc.EXPECT().
+		Get(gomock.Any(), models.SessionID("bad")).
+		Return(nil, errors.New("bad session"))
+
+	handler.EditProfileMe(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestProfileHandler_EditProfileMe_GetUserProfileError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	handler := NewProfileHandler(mockUserSvc, nil, mockSessionSvc)
+
+	req := httptest.NewRequest("PATCH", "/profile/me/edit", bytes.NewReader([]byte(`{}`)))
+	req.AddCookie(&http.Cookie{Name: "session_id", Value: "sess123"})
+	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	mockSessionSvc.EXPECT().
+		Get(gomock.Any(), models.SessionID("sess123")).
+		Return(&models.Session{UserID: 7}, nil)
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), int64(7)).
+		Return(nil, errors.New("boom"))
+
+	handler.EditProfileMe(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestProfileHandler_EditProfileMe_GetUserAccountError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	handler := NewProfileHandler(mockUserSvc, nil, mockSessionSvc)
+
+	req := httptest.NewRequest("PATCH", "/profile/me/edit", bytes.NewReader([]byte(`{}`)))
+	req.AddCookie(&http.Cookie{Name: "session_id", Value: "sess123"})
+	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	mockSessionSvc.EXPECT().
+		Get(gomock.Any(), models.SessionID("sess123")).
+		Return(&models.Session{UserID: 7}, nil)
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), int64(7)).
+		Return(&models.UserProfile{ID: 70, ProfileID: 700}, nil)
+
+	mockUserSvc.EXPECT().
+		GetUserAccountByUserProfileID(gomock.Any(), int64(70)).
+		Return(nil, errors.New("boom"))
+
+	handler.EditProfileMe(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestProfileHandler_EditProfileMe_InvalidBody(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	handler := NewProfileHandler(mockUserSvc, nil, mockSessionSvc)
+
+	req := httptest.NewRequest("PATCH", "/profile/me/edit", bytes.NewReader([]byte(`{`)))
+	req.AddCookie(&http.Cookie{Name: "session_id", Value: "sess123"})
+	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	mockSessionSvc.EXPECT().
+		Get(gomock.Any(), models.SessionID("sess123")).
+		Return(&models.Session{UserID: 7}, nil)
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), int64(7)).
+		Return(&models.UserProfile{ID: 70, ProfileID: 700}, nil)
+
+	mockUserSvc.EXPECT().
+		GetUserAccountByUserProfileID(gomock.Any(), int64(70)).
+		Return(&models.UserAccount{ID: 88}, nil)
+
+	handler.EditProfileMe(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestProfileHandler_EditProfileMe_UpdateError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	handler := NewProfileHandler(mockUserSvc, nil, mockSessionSvc)
+
+	req := httptest.NewRequest("PATCH", "/profile/me/edit", bytes.NewReader([]byte(`{}`)))
+	req.AddCookie(&http.Cookie{Name: "session_id", Value: "sess123"})
+	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	mockSessionSvc.EXPECT().
+		Get(gomock.Any(), models.SessionID("sess123")).
+		Return(&models.Session{UserID: 7}, nil)
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), int64(7)).
+		Return(&models.UserProfile{ID: 70, ProfileID: 700}, nil)
+
+	mockUserSvc.EXPECT().
+		GetUserAccountByUserProfileID(gomock.Any(), int64(70)).
+		Return(&models.UserAccount{ID: 88}, nil)
+
+	mockUserSvc.EXPECT().
+		UpdateMe(gomock.Any(), gomock.Any()).
+		Return(errors.New("update failed"))
+
+	handler.EditProfileMe(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestNewProfileHandler(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockMediaSvc := mock_service.NewMockMediaService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+
+	handler := NewProfileHandler(mockUserSvc, mockMediaSvc, mockSessionSvc)
+
+	assert.NotNil(t, handler)
+}
+
 func ptrStr(s string) *string { return &s }
