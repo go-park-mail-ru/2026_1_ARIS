@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/mocks"
 	mock_repo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/mocks"
 	mock_service "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/mocks"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/websocket"
@@ -368,11 +369,654 @@ func TestChatHandler_resolveProfileDisplayName_NoService(t *testing.T) {
 	assert.Equal(t, "Пользователь", name)
 }
 
-// Оставляем существующие тесты UpdateMessage
-func TestChatHandler_UpdateMessage_Success(t *testing.T) {
-	// ... (ваш существующий код)
+func TestEnsureGuaranteedDialog_UserAccountRepoNil(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	handler := &ChatHandler{
+		userAccountRepo: nil,
+		chatService:     nil,
+	}
+
+	// Просто вызываем, не должно быть паники
+	handler.ensureGuaranteedDialog(context.Background(), 123)
+	// Проверяем, что моки не вызывались (если бы были)
 }
 
-func TestChatHandler_UpdateMessage_Forbidden(t *testing.T) {
-	// ... (ваш существующий код)
+func TestEnsureGuaranteedDialog_GetCurrentUserError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserRepo := mocks.NewMockUserAccountRepo(ctrl)
+	handler := &ChatHandler{
+		userAccountRepo: mockUserRepo,
+		chatService:     nil,
+	}
+
+	ctx := context.Background()
+	userID := int64(123)
+
+	mockUserRepo.EXPECT().
+		Get(gomock.Any(), userID).
+		Return(nil, errors.New("db error"))
+
+	handler.ensureGuaranteedDialog(ctx, userID)
+	// Никаких дальнейших вызовов не должно быть
+}
+
+func TestEnsureGuaranteedDialog_FindsSergey(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockChatSvc := mock_service.NewMockChatService(ctrl)
+	mockMsgSvc := mock_service.NewMockMessageService(ctrl)
+	mockUserAccountRepo := mock_repo.NewMockUserAccountRepo(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	hub := websocket.NewHub()
+	go hub.Run()
+
+	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, mockUserSvc, hub)
+
+	ctx := context.Background()
+	userID := int64(123)
+	currentUser := &models.UserAccount{ID: userID, Username: "testuser"}
+
+	sergeyUser := &models.UserAccount{ID: 456, Username: "sergeyshulginenko"}
+
+	mockUserAccountRepo.EXPECT().Get(ctx, userID).Return(currentUser, nil)
+	mockUserAccountRepo.EXPECT().GetByUsername(ctx, "sergeyshulginenko").Return(sergeyUser, nil)
+
+	mockChatSvc.EXPECT().
+		CreatePrivateChat(ctx, currentUser.ID, sergeyUser.ID).
+		Return(nil, nil)
+
+	handler.ensureGuaranteedDialog(ctx, userID)
+}
+
+func TestEnsureGuaranteedDialog_FindsSecondTarget(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockChatSvc := mock_service.NewMockChatService(ctrl)
+	mockMsgSvc := mock_service.NewMockMessageService(ctrl)
+	mockUserAccountRepo := mock_repo.NewMockUserAccountRepo(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	hub := websocket.NewHub()
+	go hub.Run()
+
+	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, mockUserSvc, hub)
+
+	ctx := context.Background()
+	userID := int64(123)
+	currentUser := &models.UserAccount{ID: userID, Username: "testuser"}
+
+	targetUser := &models.UserAccount{ID: 789, Username: "ffffff"}
+
+	mockUserAccountRepo.EXPECT().Get(ctx, userID).Return(currentUser, nil)
+
+	// Первый целевой пользователь не найден
+	mockUserAccountRepo.EXPECT().GetByUsername(ctx, "sergeyshulginenko").Return(nil, errors.New("not found"))
+	// Второй найден
+	mockUserAccountRepo.EXPECT().GetByUsername(ctx, "ffffff").Return(targetUser, nil)
+
+	mockChatSvc.EXPECT().
+		CreatePrivateChat(ctx, currentUser.ID, targetUser.ID).
+		Return(nil, nil)
+
+	handler.ensureGuaranteedDialog(ctx, userID)
+}
+
+func TestEnsureGuaranteedDialog_TargetUserIsSelf(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockChatSvc := mock_service.NewMockChatService(ctrl)
+	mockMsgSvc := mock_service.NewMockMessageService(ctrl)
+	mockUserAccountRepo := mock_repo.NewMockUserAccountRepo(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	hub := websocket.NewHub()
+	go hub.Run()
+
+	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, mockUserSvc, hub)
+
+	ctx := context.Background()
+	userID := int64(123)
+	currentUser := &models.UserAccount{ID: userID, Username: "sergeyshulginenko"} // сам себе
+
+	mockUserAccountRepo.EXPECT().Get(ctx, userID).Return(currentUser, nil)
+
+	// Ожидаем, что после проверки целевого пользователя (который равен текущему),
+	// продолжится к следующему или общему списку.
+	// Здесь мы проверяем, что GetByUsername вызовется, но CreatePrivateChat не будет,
+	// а затем переход к общему списку.
+	mockUserAccountRepo.EXPECT().GetByUsername(ctx, "sergeyshulginenko").Return(currentUser, nil)
+	mockUserAccountRepo.EXPECT().GetByUsername(ctx, "ffffff").Return(nil, errors.New("not found"))
+
+	// Список пользователей
+	otherUser := &models.UserAccount{ID: 999, Username: "other"}
+	mockUserAccountRepo.EXPECT().List(ctx, 0, 20).Return([]models.UserAccount{*otherUser}, nil)
+
+	mockChatSvc.EXPECT().
+		CreatePrivateChat(ctx, currentUser.ID, otherUser.ID).
+		Return(nil, nil)
+
+	handler.ensureGuaranteedDialog(ctx, userID)
+}
+
+func TestEnsureGuaranteedDialog_ListUsersError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockChatSvc := mock_service.NewMockChatService(ctrl)
+	mockMsgSvc := mock_service.NewMockMessageService(ctrl)
+	mockUserAccountRepo := mock_repo.NewMockUserAccountRepo(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	hub := websocket.NewHub()
+	go hub.Run()
+
+	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, mockUserSvc, hub)
+
+	ctx := context.Background()
+	userID := int64(123)
+	currentUser := &models.UserAccount{ID: userID, Username: "testuser"}
+
+	mockUserAccountRepo.EXPECT().Get(ctx, userID).Return(currentUser, nil)
+	// Оба целевых не найдены
+	mockUserAccountRepo.EXPECT().GetByUsername(ctx, "sergeyshulginenko").Return(nil, errors.New("not found"))
+	mockUserAccountRepo.EXPECT().GetByUsername(ctx, "ffffff").Return(nil, errors.New("not found"))
+
+	mockUserAccountRepo.EXPECT().List(ctx, 0, 20).Return(nil, errors.New("db error"))
+
+	handler.ensureGuaranteedDialog(ctx, userID)
+	// Никаких вызовов CreatePrivateChat не должно быть
+}
+
+func TestEnsureGuaranteedDialog_FirstFromList(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockChatSvc := mock_service.NewMockChatService(ctrl)
+	mockMsgSvc := mock_service.NewMockMessageService(ctrl)
+	mockUserAccountRepo := mock_repo.NewMockUserAccountRepo(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	hub := websocket.NewHub()
+	go hub.Run()
+
+	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, mockUserSvc, hub)
+
+	ctx := context.Background()
+	userID := int64(123)
+	currentUser := &models.UserAccount{ID: userID, Username: "testuser"}
+
+	mockUserAccountRepo.EXPECT().Get(ctx, userID).Return(currentUser, nil)
+
+	// Целевые пользователи не найдены
+	mockUserAccountRepo.EXPECT().GetByUsername(ctx, "sergeyshulginenko").Return(nil, errors.New("not found"))
+	mockUserAccountRepo.EXPECT().GetByUsername(ctx, "ffffff").Return(nil, errors.New("not found"))
+
+	// Список пользователей: первый — сам текущий, второй — другой
+	users := []models.UserAccount{
+		{ID: userID, Username: "testuser"},
+		{ID: 999, Username: "other"},
+	}
+	mockUserAccountRepo.EXPECT().List(ctx, 0, 20).Return(users, nil)
+
+	mockChatSvc.EXPECT().
+		CreatePrivateChat(ctx, currentUser.ID, int64(999)).
+		Return(nil, nil)
+
+	handler.ensureGuaranteedDialog(ctx, userID)
+}
+
+func TestEnsureGuaranteedDialog_NoOtherUsers(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockChatSvc := mock_service.NewMockChatService(ctrl)
+	mockMsgSvc := mock_service.NewMockMessageService(ctrl)
+	mockUserAccountRepo := mock_repo.NewMockUserAccountRepo(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	hub := websocket.NewHub()
+	go hub.Run()
+
+	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, mockUserSvc, hub)
+
+	ctx := context.Background()
+	userID := int64(123)
+	currentUser := &models.UserAccount{ID: userID, Username: "testuser"}
+
+	mockUserAccountRepo.EXPECT().Get(ctx, userID).Return(currentUser, nil)
+
+	mockUserAccountRepo.EXPECT().GetByUsername(ctx, "sergeyshulginenko").Return(nil, errors.New("not found"))
+	mockUserAccountRepo.EXPECT().GetByUsername(ctx, "ffffff").Return(nil, errors.New("not found"))
+
+	// Список содержит только текущего пользователя
+	users := []models.UserAccount{{ID: userID, Username: "testuser"}}
+	mockUserAccountRepo.EXPECT().List(ctx, 0, 20).Return(users, nil)
+
+	handler.ensureGuaranteedDialog(ctx, userID)
+	// Цикл завершится, не вызвав CreatePrivateChat
+}
+
+func TestChatHasMessages_NilMessageService(t *testing.T) {
+	handler := &ChatHandler{messageService: nil}
+	result := handler.chatHasMessages(context.Background(), 123)
+	assert.False(t, result)
+}
+
+func TestChatHasMessages_ErrorGettingMessages(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockMsgSvc := mock_service.NewMockMessageService(ctrl)
+	handler := &ChatHandler{messageService: mockMsgSvc}
+
+	chatID := int64(123)
+	mockMsgSvc.EXPECT().
+		GetMessages(gomock.Any(), chatID, 1, 0).
+		Return(nil, errors.New("db error"))
+
+	result := handler.chatHasMessages(context.Background(), chatID)
+	assert.False(t, result)
+}
+
+func TestChatHasMessages_EmptyList(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockMsgSvc := mock_service.NewMockMessageService(ctrl)
+	handler := &ChatHandler{messageService: mockMsgSvc}
+
+	chatID := int64(123)
+	mockMsgSvc.EXPECT().
+		GetMessages(gomock.Any(), chatID, 1, 0).
+		Return([]models.Message{}, nil)
+
+	result := handler.chatHasMessages(context.Background(), chatID)
+	assert.False(t, result)
+}
+
+func TestChatHasMessages_HasMessages(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockMsgSvc := mock_service.NewMockMessageService(ctrl)
+	handler := &ChatHandler{messageService: mockMsgSvc}
+
+	chatID := int64(123)
+	messages := []models.Message{{ID: 1}}
+	mockMsgSvc.EXPECT().
+		GetMessages(gomock.Any(), chatID, 1, 0).
+		Return(messages, nil)
+
+	result := handler.chatHasMessages(context.Background(), chatID)
+	assert.True(t, result)
+}
+
+func TestIsSergeySupportChat_NilServices(t *testing.T) {
+	handler := &ChatHandler{chatService: nil, userService: nil}
+	result := handler.isSergeySupportChat(context.Background(), models.Chat{ID: 1}, 123)
+	assert.False(t, result)
+}
+
+func TestIsSergeySupportChat_GetViewerProfileIDError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockChatSvc := mock_service.NewMockChatService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := &ChatHandler{
+		chatService: mockChatSvc,
+		userService: mockUserSvc,
+	}
+
+	ctx := context.Background()
+	viewerUserID := int64(123)
+	chat := models.Chat{ID: 456}
+
+	// Исправлено: GetUserProfileByUserAccountID
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), viewerUserID).
+		Return(nil, errors.New("not found"))
+
+	result := handler.isSergeySupportChat(ctx, chat, viewerUserID)
+	assert.False(t, result)
+}
+
+func TestIsSergeySupportChat_GetChatMembersError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockChatSvc := mock_service.NewMockChatService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := &ChatHandler{
+		chatService: mockChatSvc,
+		userService: mockUserSvc,
+	}
+
+	ctx := context.Background()
+	viewerUserID := int64(123)
+	chat := models.Chat{ID: 456}
+	viewerProfile := &models.UserProfile{ProfileID: 789} // или *models.Profile, зависит от возвращаемого типа
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), viewerUserID).
+		Return(viewerProfile, nil)
+
+	mockChatSvc.EXPECT().
+		GetChatMembers(gomock.Any(), chat.ID).
+		Return(nil, errors.New("db error"))
+
+	result := handler.isSergeySupportChat(ctx, chat, viewerUserID)
+	assert.False(t, result)
+}
+
+func TestIsSergeySupportChat_NoOtherMembers(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockChatSvc := mock_service.NewMockChatService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := &ChatHandler{
+		chatService: mockChatSvc,
+		userService: mockUserSvc,
+	}
+
+	ctx := context.Background()
+	viewerUserID := int64(123)
+	chat := models.Chat{ID: 456}
+	viewerProfile := &models.UserProfile{ProfileID: 789}
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), viewerUserID).
+		Return(viewerProfile, nil)
+
+	members := []models.ChatMember{
+		{MemberID: viewerProfile.ProfileID},
+	}
+	mockChatSvc.EXPECT().
+		GetChatMembers(gomock.Any(), chat.ID).
+		Return(members, nil)
+
+	result := handler.isSergeySupportChat(ctx, chat, viewerUserID)
+	assert.False(t, result)
+}
+
+func TestIsSergeySupportChat_OtherMemberAccountError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockChatSvc := mock_service.NewMockChatService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := &ChatHandler{
+		chatService: mockChatSvc,
+		userService: mockUserSvc,
+	}
+
+	ctx := context.Background()
+	viewerUserID := int64(123)
+	chat := models.Chat{ID: 456}
+	viewerProfile := &models.UserProfile{ProfileID: 789}
+	otherProfileID := int64(999)
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), viewerUserID).
+		Return(viewerProfile, nil)
+
+	members := []models.ChatMember{
+		{MemberID: viewerProfile.ProfileID},
+		{MemberID: otherProfileID},
+	}
+	mockChatSvc.EXPECT().
+		GetChatMembers(gomock.Any(), chat.ID).
+		Return(members, nil)
+
+	mockUserSvc.EXPECT().
+		GetUserAccountByProfileID(gomock.Any(), otherProfileID).
+		Return(nil, errors.New("not found"))
+
+	result := handler.isSergeySupportChat(ctx, chat, viewerUserID)
+	assert.False(t, result)
+}
+
+func TestIsSergeySupportChat_FoundSergey(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockChatSvc := mock_service.NewMockChatService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := &ChatHandler{
+		chatService: mockChatSvc,
+		userService: mockUserSvc,
+	}
+
+	ctx := context.Background()
+	viewerUserID := int64(123)
+	chat := models.Chat{ID: 456}
+	viewerProfile := &models.UserProfile{ProfileID: 789}
+	otherProfileID := int64(999)
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), viewerUserID).
+		Return(viewerProfile, nil)
+
+	members := []models.ChatMember{
+		{MemberID: viewerProfile.ProfileID},
+		{MemberID: otherProfileID},
+	}
+	mockChatSvc.EXPECT().
+		GetChatMembers(gomock.Any(), chat.ID).
+		Return(members, nil)
+
+	sergeyAccount := &models.UserAccount{Username: "sergeyshulginenko"}
+	mockUserSvc.EXPECT().
+		GetUserAccountByProfileID(gomock.Any(), otherProfileID).
+		Return(sergeyAccount, nil)
+
+	result := handler.isSergeySupportChat(ctx, chat, viewerUserID)
+	assert.True(t, result)
+}
+
+func TestIsSergeySupportChat_NotSergey(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockChatSvc := mock_service.NewMockChatService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := &ChatHandler{
+		chatService: mockChatSvc,
+		userService: mockUserSvc,
+	}
+
+	ctx := context.Background()
+	viewerUserID := int64(123)
+	chat := models.Chat{ID: 456}
+	viewerProfile := &models.UserProfile{ProfileID: 789}
+	otherProfileID := int64(999)
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), viewerUserID).
+		Return(viewerProfile, nil)
+
+	members := []models.ChatMember{
+		{MemberID: viewerProfile.ProfileID},
+		{MemberID: otherProfileID},
+	}
+	mockChatSvc.EXPECT().
+		GetChatMembers(gomock.Any(), chat.ID).
+		Return(members, nil)
+
+	otherAccount := &models.UserAccount{Username: "not_sergey"}
+	mockUserSvc.EXPECT().
+		GetUserAccountByProfileID(gomock.Any(), otherProfileID).
+		Return(otherAccount, nil)
+
+	result := handler.isSergeySupportChat(ctx, chat, viewerUserID)
+	assert.False(t, result)
+}
+
+func TestUpdateMessage_MissingUserID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	handler := &ChatHandler{} // зависимости не нужны
+
+	req := httptest.NewRequest(http.MethodPut, "/messages/123", nil)
+	rec := httptest.NewRecorder()
+
+	handler.UpdateMessage(rec, req)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+	assert.Contains(t, rec.Body.String(), "не авторизован")
+}
+
+func TestUpdateMessage_GetViewerProfileIDError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	handler := &ChatHandler{userService: mockUserSvc}
+
+	ctx := context.WithValue(context.Background(), "user_id", int64(123))
+	req := httptest.NewRequest(http.MethodPut, "/messages/456", nil).WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), int64(123)).
+		Return(nil, errors.New("profile not found"))
+
+	handler.UpdateMessage(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "ошибка профиля пользователя")
+}
+
+func TestUpdateMessage_InvalidJSON(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	handler := &ChatHandler{userService: mockUserSvc}
+
+	ctx := context.WithValue(context.Background(), "user_id", int64(123))
+	body := bytes.NewBufferString(`{"text":`)
+	req := httptest.NewRequest(http.MethodPut, "/messages/123", body).WithContext(ctx)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("messageID", "123")
+	ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	viewerProfile := &models.UserProfile{ProfileID: 789}
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), int64(123)).
+		Return(viewerProfile, nil)
+
+	handler.UpdateMessage(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "неверный формат запроса")
+}
+
+func TestUpdateMessage_EmptyText(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	handler := &ChatHandler{userService: mockUserSvc}
+
+	ctx := context.WithValue(context.Background(), "user_id", int64(123))
+	body := bytes.NewBufferString(`{"text": ""}`)
+	req := httptest.NewRequest(http.MethodPut, "/messages/123", body).WithContext(ctx)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("messageID", "123")
+	ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	viewerProfile := &models.UserProfile{ProfileID: 789}
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), int64(123)).
+		Return(viewerProfile, nil)
+
+	handler.UpdateMessage(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "текст сообщения не может быть пустым")
+}
+
+func TestUpdateMessage_ForbiddenError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockMsgSvc := mock_service.NewMockMessageService(ctrl)
+	handler := &ChatHandler{
+		userService:    mockUserSvc,
+		messageService: mockMsgSvc,
+	}
+
+	ctx := context.WithValue(context.Background(), "user_id", int64(123))
+	body := bytes.NewBufferString(`{"text": "new text"}`)
+	req := httptest.NewRequest(http.MethodPut, "/messages/456", body).WithContext(ctx)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("messageID", "456")
+	ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	viewerProfile := &models.UserProfile{ProfileID: 789}
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), int64(123)).
+		Return(viewerProfile, nil)
+
+	mockMsgSvc.EXPECT().
+		UpdateMessage(gomock.Any(), int64(456), viewerProfile.ProfileID, "new text").
+		Return(nil, errors.New("forbidden: you can only edit your own messages"))
+
+	handler.UpdateMessage(rec, req)
+
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Contains(t, rec.Body.String(), "доступ запрещён")
+}
+
+func TestUpdateMessage_InternalError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockMsgSvc := mock_service.NewMockMessageService(ctrl)
+	handler := &ChatHandler{
+		userService:    mockUserSvc,
+		messageService: mockMsgSvc,
+	}
+
+	ctx := context.WithValue(context.Background(), "user_id", int64(123))
+	body := bytes.NewBufferString(`{"text": "new text"}`)
+	req := httptest.NewRequest(http.MethodPut, "/messages/456", body).WithContext(ctx)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("messageID", "456")
+	ctx = context.WithValue(ctx, chi.RouteCtxKey, rctx)
+	req = req.WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	viewerProfile := &models.UserProfile{ProfileID: 789}
+	mockUserSvc.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), int64(123)).
+		Return(viewerProfile, nil)
+
+	mockMsgSvc.EXPECT().
+		UpdateMessage(gomock.Any(), int64(456), viewerProfile.ProfileID, "new text").
+		Return(nil, errors.New("database error"))
+
+	handler.UpdateMessage(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, rec.Body.String(), "ошибка обновления сообщения")
 }

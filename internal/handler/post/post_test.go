@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,7 +13,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
@@ -23,6 +26,17 @@ import (
 )
 
 func strPtr(s string) *string { return &s }
+
+type contextKey string
+
+const LoggerKey contextKey = "logger"
+
+func contextWithObservedLogger() (context.Context, *observer.ObservedLogs) {
+	core, recorded := observer.New(zap.DebugLevel)
+	loggerObserved := zap.New(core)
+	ctx := logger.WithLogger(context.Background(), loggerObserved)
+	return ctx, recorded
+}
 
 // createTestPostService создаёт реальный postService с замоканными репозиториями.
 func createTestPostService(ctrl *gomock.Controller) (post.PostService, *mock_repo.MockPostRepo, *mock_repo.MockPostWithMediaRepo) {
@@ -475,4 +489,170 @@ func TestPostHandler_UpdatePost_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, postID, resp.ID)
 	assert.Equal(t, newText, *resp.Text)
+}
+
+func TestCreatePost_MissingUserID_LogsWarning(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockMediaSvc := mock_service.NewMockMediaService(ctrl)
+	postSvc, _, _ := createTestPostService(ctrl) // postWithMediaRepo не используется в этом тесте
+
+	handler := NewPostHandler(mockUserSvc, postSvc, mockMediaSvc)
+
+	ctx, observed := contextWithObservedLogger()
+	req := httptest.NewRequest(http.MethodPost, "/posts", nil).WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	handler.CreatePost(rec, req)
+
+	assert.Equal(t, http.StatusUnauthorized, rec.Code)
+
+	logs := observed.All()
+	require.Equal(t, 1, len(logs))
+	entry := logs[0]
+	assert.Equal(t, zap.WarnLevel, entry.Level)
+	assert.Equal(t, "cannot_create_post_missing_user", entry.Message)
+	assert.Equal(t, "/posts", entry.ContextMap()["path"])
+}
+
+func TestCreatePost_ProfileNotFound_LogsWarning(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockMediaSvc := mock_service.NewMockMediaService(ctrl)
+	postSvc, _, _ := createTestPostService(ctrl) // postWithMediaRepo не используется в этом тесте
+
+	handler := NewPostHandler(mockUserSvc, postSvc, mockMediaSvc)
+
+	userID := int64(123)
+	ctx, observed := contextWithObservedLogger()
+	ctx = context.WithValue(ctx, "user_id", userID)
+	req := httptest.NewRequest(http.MethodPost, "/posts", nil).WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	mockUserSvc.EXPECT().
+		GetProfileByUserAccountID(gomock.Any(), userID).
+		Return(nil, xerrors.ProfileNotFound)
+
+	handler.CreatePost(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	logs := observed.All()
+	require.Equal(t, 1, len(logs))
+	entry := logs[0]
+	assert.Equal(t, zap.WarnLevel, entry.Level)
+	assert.Equal(t, "cannot_create_post_profile_not_found", entry.Message)
+	assert.Equal(t, userID, entry.ContextMap()["userAccount_id"])
+}
+
+func TestCreatePost_GetProfileError_LogsError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockMediaSvc := mock_service.NewMockMediaService(ctrl)
+	postSvc, _, _ := createTestPostService(ctrl) // postWithMediaRepo не используется в этом тесте
+
+	handler := NewPostHandler(mockUserSvc, postSvc, mockMediaSvc)
+
+	userID := int64(123)
+	ctx, observed := contextWithObservedLogger()
+	ctx = context.WithValue(ctx, "user_id", userID)
+	req := httptest.NewRequest(http.MethodPost, "/posts", nil).WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	dbErr := errors.New("db connection error")
+	mockUserSvc.EXPECT().
+		GetProfileByUserAccountID(gomock.Any(), userID).
+		Return(nil, dbErr)
+
+	handler.CreatePost(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	logs := observed.All()
+	require.Equal(t, 1, len(logs))
+	entry := logs[0]
+	assert.Equal(t, zap.ErrorLevel, entry.Level)
+	assert.Equal(t, "failed_to_get_profile", entry.Message)
+	assert.Equal(t, userID, entry.ContextMap()["userAccount_id"])
+	assert.Contains(t, entry.ContextMap()["error"], dbErr.Error())
+}
+
+func TestCreatePost_InvalidJSONBody_LogsWarning(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockMediaSvc := mock_service.NewMockMediaService(ctrl)
+	postSvc, _, _ := createTestPostService(ctrl) // postWithMediaRepo не используется в этом тесте
+
+	handler := NewPostHandler(mockUserSvc, postSvc, mockMediaSvc)
+
+	userID := int64(123)
+	profile := &models.Profile{ID: 456}
+	ctx, observed := contextWithObservedLogger()
+	ctx = context.WithValue(ctx, "user_id", userID)
+
+	body := bytes.NewBufferString(`{"text": "hello", "media": }`) // broken JSON
+	req := httptest.NewRequest(http.MethodPost, "/posts", body).WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	mockUserSvc.EXPECT().
+		GetProfileByUserAccountID(gomock.Any(), userID).
+		Return(profile, nil)
+
+	handler.CreatePost(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	logs := observed.All()
+	// Ищем нужное сообщение среди всех логов
+	var found bool
+	for _, entry := range logs {
+		if entry.Message == "cannot_create_post_invalid_body" {
+			found = true
+			assert.Equal(t, zap.WarnLevel, entry.Level)
+			assert.Equal(t, "/posts", entry.ContextMap()["path"])
+			assert.NotNil(t, entry.ContextMap()["error"])
+			break
+		}
+	}
+	assert.True(t, found, "expected log not found")
+}
+
+func TestCreatePost_EmptyContent_LogsWarning(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockMediaSvc := mock_service.NewMockMediaService(ctrl)
+	postSvc, _, _ := createTestPostService(ctrl) // postWithMediaRepo не используется в этом тесте
+
+	handler := NewPostHandler(mockUserSvc, postSvc, mockMediaSvc)
+
+	userID := int64(123)
+	profile := &models.Profile{ID: 456}
+	ctx, observed := contextWithObservedLogger()
+	ctx = context.WithValue(ctx, "user_id", userID)
+
+	requestBody := PostCreationRequest{Text: nil, Media: nil}
+	bodyBytes, _ := json.Marshal(requestBody)
+	req := httptest.NewRequest(http.MethodPost, "/posts", bytes.NewBuffer(bodyBytes)).WithContext(ctx)
+	rec := httptest.NewRecorder()
+
+	mockUserSvc.EXPECT().
+		GetProfileByUserAccountID(gomock.Any(), userID).
+		Return(profile, nil)
+
+	handler.CreatePost(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	logs := observed.All()
+	require.Equal(t, 1, len(logs))
+	entry := logs[0]
+	assert.Equal(t, zap.WarnLevel, entry.Level)
+	assert.Equal(t, "cannot_create_post_empty_content", entry.Message)
+	assert.Equal(t, "/posts", entry.ContextMap()["path"])
 }

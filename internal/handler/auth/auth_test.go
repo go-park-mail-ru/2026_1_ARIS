@@ -21,6 +21,195 @@ import (
 	"go.uber.org/zap"
 )
 
+type validationResponse struct {
+	Ok     bool              `json:"ok"`
+	Errors map[string]string `json:"errors"`
+}
+
+func TestValidateRegisterStepOne_InvalidJSON(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockAuthSvc := mock_service.NewMockAuthService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
+
+	reqBody := `{"login": "test", "password1": "123", "password2": }` // broken JSON
+	req := httptest.NewRequest(http.MethodPost, "/validate-step1", bytes.NewBufferString(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+
+	handler.ValidateRegisterStepOne(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invalid request body")
+}
+
+func TestValidateRegisterStepOne_ShortPassword(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockAuthSvc := mock_service.NewMockAuthService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
+
+	reqBody := `{"login": "validlogin", "password1": "123", "password2": "123"}`
+	req := httptest.NewRequest(http.MethodPost, "/validate-step1", bytes.NewBufferString(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+
+	handler.ValidateRegisterStepOne(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var resp validationResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+	assert.False(t, resp.Ok)
+	assert.Equal(t, "Пароль слишком короткий (мин. 7 символов)", resp.Errors["password1"])
+}
+
+func TestValidateRegisterStepOne_LongPassword(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockAuthSvc := mock_service.NewMockAuthService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
+
+	longPass := "thisisaverylongpasswordexceeding20chars"
+	reqBody := map[string]string{
+		"login":     "validlogin",
+		"password1": longPass,
+		"password2": longPass,
+	}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest(http.MethodPost, "/validate-step1", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+
+	handler.ValidateRegisterStepOne(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var resp validationResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+	assert.False(t, resp.Ok)
+	assert.Equal(t, "Пароль может содержать максимум 20 символов", resp.Errors["password1"])
+}
+
+func TestValidateRegisterStepOne_PasswordMismatch(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockAuthSvc := mock_service.NewMockAuthService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
+
+	reqBody := `{"login": "validlogin", "password1": "password123", "password2": "password456"}`
+	req := httptest.NewRequest(http.MethodPost, "/validate-step1", bytes.NewBufferString(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+
+	handler.ValidateRegisterStepOne(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var resp validationResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+	assert.False(t, resp.Ok)
+	assert.Equal(t, "Пароли не совпадают", resp.Errors["password2"])
+	// password1 не должен содержать ошибку (пароль достаточной длины)
+	assert.NotContains(t, resp.Errors, "password1")
+}
+
+func TestValidateRegisterStepOne_ShortLogin(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockAuthSvc := mock_service.NewMockAuthService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
+
+	reqBody := `{"login": "short", "password1": "password123", "password2": "password123"}`
+	req := httptest.NewRequest(http.MethodPost, "/validate-step1", bytes.NewBufferString(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+
+	handler.ValidateRegisterStepOne(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var resp validationResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+	assert.False(t, resp.Ok)
+	assert.Equal(t, "Логин слишком короткий (мин. 6 символов)", resp.Errors["login"])
+}
+
+func TestValidateRegisterStepOne_LongLogin(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockAuthSvc := mock_service.NewMockAuthService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
+
+	reqBody := `{"login": "thisloginistoolong", "password1": "password123", "password2": "password123"}`
+	req := httptest.NewRequest(http.MethodPost, "/validate-step1", bytes.NewBufferString(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+
+	handler.ValidateRegisterStepOne(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var resp validationResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+	assert.False(t, resp.Ok)
+	assert.Equal(t, "Логин может содержать максимум 12 символов", resp.Errors["login"])
+}
+
 func TestAuthHandler_Register_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
