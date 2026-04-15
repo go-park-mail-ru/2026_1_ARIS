@@ -12,12 +12,14 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	mock_repo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/mocks"
 	mock_service "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/mocks"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 )
 
 func strPtr(s string) *string { return &s }
@@ -93,6 +95,10 @@ func TestPostHandler_CreatePost_Success(t *testing.T) {
 	ctx := context.WithValue(req.Context(), "user_id", userAccountID)
 	req = req.WithContext(ctx)
 
+	mockLogger := zap.NewNop()
+	ctx = logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	w := httptest.NewRecorder()
 	handler.CreatePost(w, req)
 
@@ -110,6 +116,11 @@ func TestPostHandler_CreatePost_Success(t *testing.T) {
 func TestPostHandler_CreatePost_Unauthorized(t *testing.T) {
 	handler := NewPostHandler(nil, nil, nil)
 	req := httptest.NewRequest("POST", "/api/posts", nil)
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	w := httptest.NewRecorder()
 	handler.CreatePost(w, req)
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
@@ -137,6 +148,10 @@ func TestPostHandler_CreatePost_NoContent(t *testing.T) {
 	req := httptest.NewRequest("POST", "/api/posts", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	ctx := context.WithValue(req.Context(), "user_id", userAccountID)
+	req = req.WithContext(ctx)
+
+	mockLogger := zap.NewNop()
+	ctx = logger.WithLogger(req.Context(), mockLogger)
 	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
@@ -183,6 +198,10 @@ func TestPostHandler_GetMyPosts_Success(t *testing.T) {
 	ctx := context.WithValue(req.Context(), "user_id", userAccountID)
 	req = req.WithContext(ctx)
 
+	mockLogger := zap.NewNop()
+	ctx = logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	w := httptest.NewRecorder()
 	handler.GetMyPosts(w, req)
 
@@ -219,6 +238,10 @@ func TestPostHandler_GetProfilePosts_Success(t *testing.T) {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("profileID", "200")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
 	handler.GetProfilePosts(w, req)
@@ -261,6 +284,10 @@ func TestPostHandler_DeletePost_Success(t *testing.T) {
 	ctx := context.WithValue(req.Context(), "user_id", userAccountID)
 	req = req.WithContext(ctx)
 
+	mockLogger := zap.NewNop()
+	ctx = logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("id", "55")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
@@ -294,6 +321,10 @@ func TestPostHandler_DeletePost_Forbidden(t *testing.T) {
 
 	req := httptest.NewRequest("DELETE", "/api/posts/55", nil)
 	ctx := context.WithValue(req.Context(), "user_id", userAccountID)
+	req = req.WithContext(ctx)
+
+	mockLogger := zap.NewNop()
+	ctx = logger.WithLogger(req.Context(), mockLogger)
 	req = req.WithContext(ctx)
 
 	rctx := chi.NewRouteContext()
@@ -351,6 +382,10 @@ func TestPostHandler_GetPost_Success(t *testing.T) {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("id", "77")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
 	handler.GetPost(w, req)
@@ -420,6 +455,10 @@ func TestPostHandler_UpdatePost_Success(t *testing.T) {
 	req := httptest.NewRequest("PUT", "/api/posts/88", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	ctx := context.WithValue(req.Context(), "user_id", userAccountID)
+	req = req.WithContext(ctx)
+
+	mockLogger := zap.NewNop()
+	ctx = logger.WithLogger(req.Context(), mockLogger)
 	req = req.WithContext(ctx)
 
 	rctx := chi.NewRouteContext()

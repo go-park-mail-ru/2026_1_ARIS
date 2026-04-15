@@ -1,10 +1,12 @@
 package websocket
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
@@ -39,4 +41,37 @@ func TestHandleWebSocket_NotAWebSocket(t *testing.T) {
 	handler.HandleWebSocket(w, req)
 
 	assert.NotEqual(t, http.StatusSwitchingProtocols, w.Code)
+}
+
+func TestHandleWebSocket_MissingChatID(t *testing.T) {
+	handler := NewWebSocketHandler(nil, nil) // hub и chatService могут быть nil
+
+	req := httptest.NewRequest(http.MethodGet, "/ws/", nil)
+	rec := httptest.NewRecorder()
+
+	ctx := context.WithValue(req.Context(), "user_id", int64(11))
+	req = req.WithContext(ctx)
+
+	handler.HandleWebSocket(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "required")
+}
+
+func TestHandleWebSocket_InvalidChatID_WithRouter(t *testing.T) {
+	handler := NewWebSocketHandler(nil, nil)
+
+	r := chi.NewRouter()
+	r.Get("/ws/{chatID}", handler.HandleWebSocket)
+
+	req := httptest.NewRequest(http.MethodGet, "/ws/abc", nil)
+	// Добавляем user_id через контекст (иначе будет 401)
+	ctx := context.WithValue(req.Context(), "user_id", int64(11))
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invalid chatID")
 }

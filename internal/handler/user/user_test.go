@@ -11,11 +11,13 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	mock_service "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/mocks"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 )
 
 // Вспомогательная функция для создания контекста с user_id
@@ -69,6 +71,10 @@ func TestUserHandler_GetSuggestedUsers_Success(t *testing.T) {
 	req = req.WithContext(contextWithUserID(userID))
 	w := httptest.NewRecorder()
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	handler.GetSuggestedUsers(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -95,6 +101,10 @@ func TestUserHandler_GetSuggestedUsers_Unauthorized(t *testing.T) {
 	// Нет user_id в контексте
 	w := httptest.NewRecorder()
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	handler.GetSuggestedUsers(w, req)
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
@@ -115,6 +125,10 @@ func TestUserHandler_GetSuggestedUsers_ServiceError(t *testing.T) {
 	req := httptest.NewRequest("GET", "/users/suggested", nil)
 	req = req.WithContext(contextWithUserID(userID))
 	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	handler.GetSuggestedUsers(w, req)
 
@@ -148,6 +162,10 @@ func TestUserHandler_GetPublicPopularUsers_Success(t *testing.T) {
 	req := httptest.NewRequest("GET", "/public/popular-users", nil)
 	w := httptest.NewRecorder()
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	handler.GetPublicPopularUsers(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -173,6 +191,10 @@ func TestUserHandler_GetPublicPopularUsers_ServiceError(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/public/popular-users", nil)
 	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	handler.GetPublicPopularUsers(w, req)
 
@@ -209,6 +231,10 @@ func TestUserHandler_GetLatestEvents_Success(t *testing.T) {
 	req := httptest.NewRequest("GET", "/users/latest-events", nil)
 	w := httptest.NewRecorder()
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	handler.GetLatestEvents(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -234,6 +260,10 @@ func TestUserHandler_GetLatestEvents_ServiceError(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/users/latest-events", nil)
 	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	handler.GetLatestEvents(w, req)
 
@@ -273,6 +303,10 @@ func TestUserHandler_SetSettings_Success(t *testing.T) {
 	req = req.WithContext(contextWithUserID(userID))
 	w := httptest.NewRecorder()
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	handler.SetSettings(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -296,6 +330,10 @@ func TestUserHandler_SetSettings_InvalidJSON(t *testing.T) {
 	req = req.WithContext(contextWithUserID(userID))
 	w := httptest.NewRecorder()
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	handler.SetSettings(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
@@ -317,6 +355,10 @@ func TestUserHandler_SetSettings_ValidationError(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req = req.WithContext(contextWithUserID(userID))
 	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	handler.SetSettings(w, req)
 
@@ -349,6 +391,10 @@ func TestUserHandler_SetSettings_ServiceError(t *testing.T) {
 	req = req.WithContext(contextWithUserID(userID))
 	w := httptest.NewRecorder()
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	handler.SetSettings(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
@@ -379,6 +425,10 @@ func TestUserHandler_GetSettings_Success(t *testing.T) {
 	req = req.WithContext(contextWithUserID(userID))
 	w := httptest.NewRecorder()
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	handler.GetSettings(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -398,6 +448,10 @@ func TestUserHandler_GetSettings_Unauthorized(t *testing.T) {
 	req := httptest.NewRequest("GET", "/api/settings", nil)
 	// Нет user_id в контексте
 	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	handler.GetSettings(w, req)
 
@@ -422,6 +476,10 @@ func TestUserHandler_GetSettings_ServiceError(t *testing.T) {
 	req := httptest.NewRequest("GET", "/api/settings", nil)
 	req = req.WithContext(contextWithUserID(userID))
 	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	handler.GetSettings(w, req)
 
@@ -455,6 +513,10 @@ func TestUserHandler_GetSuggestedUsers_ProfileError(t *testing.T) {
 	req := httptest.NewRequest("GET", "/users/suggested", nil)
 	req = req.WithContext(contextWithUserID(userID))
 	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	handler.GetSuggestedUsers(w, req)
 

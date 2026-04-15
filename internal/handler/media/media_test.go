@@ -11,10 +11,12 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	mock_service "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/mocks"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 )
 
 func contextWithUserID(userID int64) context.Context {
@@ -52,6 +54,10 @@ func TestMediaHandler_SaveFiles_Success(t *testing.T) {
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req = req.WithContext(contextWithUserID(userID))
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	w := httptest.NewRecorder()
 	handler.SaveFiles(w, req)
 
@@ -72,6 +78,11 @@ func TestMediaHandler_SaveFiles_Unauthorized(t *testing.T) {
 	handler := NewMediaHandler(nil, nil, nil)
 
 	req := httptest.NewRequest("POST", "/media?for=post", nil)
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	w := httptest.NewRecorder()
 	handler.SaveFiles(w, req)
 
@@ -99,6 +110,10 @@ func TestMediaHandler_SaveFiles_MissingForParam(t *testing.T) {
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req = req.WithContext(contextWithUserID(userID))
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	w := httptest.NewRecorder()
 	handler.SaveFiles(w, req)
 
@@ -119,6 +134,10 @@ func TestMediaHandler_SaveFiles_ProfileNotFound(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "/media?for=post", nil)
 	req = req.WithContext(contextWithUserID(userID))
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
 	handler.SaveFiles(w, req)
@@ -155,6 +174,10 @@ func TestMediaHandler_SaveFiles_UnsupportedContentType(t *testing.T) {
 	req := httptest.NewRequest("POST", "/media?for=post", body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req = req.WithContext(contextWithUserID(userID))
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
 	handler.SaveFiles(w, req)

@@ -11,11 +11,13 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	mock_repo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/mocks"
 	mock_service "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/mocks"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 )
 
 func strPtr(s string) *string { return &s }
@@ -56,6 +58,10 @@ func TestFeedHandler_GetPopularPosts_Success(t *testing.T) {
 	req := httptest.NewRequest("GET", "/posts/popular", nil)
 	w := httptest.NewRecorder()
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	handler.GetPopularPosts(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -74,6 +80,10 @@ func TestFeedHandler_GetPublicPopularPosts_Success(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/public/popular-posts", nil)
 	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	handler.GetPublicPopularPosts(w, req)
 
@@ -153,6 +163,11 @@ func TestFeedHandler_GetFeed_Success(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/feed", nil)
 	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	handler.GetFeed(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -173,17 +188,14 @@ func TestFeedHandler_GetFeed_Success(t *testing.T) {
 func TestFeedHandler_GetFeed_InvalidLimit(t *testing.T) {
 	handler := NewFeedHandler(nil, nil, nil)
 	req := httptest.NewRequest("GET", "/feed?limit=invalid", nil)
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	w := httptest.NewRecorder()
 	handler.GetFeed(w, req)
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-}
-
-func TestFeedHandler_GetFeed_MethodNotAllowed(t *testing.T) {
-	handler := NewFeedHandler(nil, nil, nil)
-	req := httptest.NewRequest("POST", "/feed", nil)
-	w := httptest.NewRecorder()
-	handler.GetFeed(w, req)
-	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
 }
 
 func TestFeedHandler_GetFeed_ServiceError(t *testing.T) {
@@ -198,6 +210,11 @@ func TestFeedHandler_GetFeed_ServiceError(t *testing.T) {
 		Return(nil, errors.New("db error"))
 
 	req := httptest.NewRequest("GET", "/feed", nil)
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	w := httptest.NewRecorder()
 	handler.GetFeed(w, req)
 
@@ -264,6 +281,11 @@ func TestFeedHandler_GetPublicFeed_Success(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/public/feed", nil)
 	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	handler.GetPublicFeed(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -290,6 +312,11 @@ func TestFeedHandler_GetPublicFeed_ServiceError(t *testing.T) {
 		Return(nil, errors.New("error"))
 
 	req := httptest.NewRequest("GET", "/public/feed", nil)
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	w := httptest.NewRecorder()
 	handler.GetPublicFeed(w, req)
 

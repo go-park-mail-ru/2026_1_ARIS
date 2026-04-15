@@ -11,11 +11,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/dto"
 	mock_service "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/mocks"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 )
 
 func contextWithUserID(userID int64) context.Context {
@@ -49,6 +51,10 @@ func TestFriendHandler_GetFriends_Success(t *testing.T) {
 	req := httptest.NewRequest("GET", "/friends/accepted", nil)
 	req = req.WithContext(contextWithUserID(userID))
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("status", "accepted")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
@@ -78,6 +84,10 @@ func TestFriendHandler_GetFriends_InvalidStatus(t *testing.T) {
 	rctx.URLParams.Add("status", "invalid")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	w := httptest.NewRecorder()
 	handler.GetFriends(w, req)
 
@@ -94,6 +104,10 @@ func TestFriendHandler_GetFriends_Unauthorized(t *testing.T) {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("status", "accepted")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
 	handler.GetFriends(w, req)
@@ -127,6 +141,10 @@ func TestFriendHandler_GetUsersFriends_Success(t *testing.T) {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("id", "300")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
 	handler.GetUsersFriends(w, req)
@@ -168,6 +186,10 @@ func TestFriendHandler_DeleteFriend_Success(t *testing.T) {
 	rctx.URLParams.Add("userID", "200")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	w := httptest.NewRecorder()
 	handler.DeleteFriend(w, req)
 
@@ -201,6 +223,10 @@ func TestFriendHandler_RequestFriendship_Success(t *testing.T) {
 	req := httptest.NewRequest("POST", "/friends/request", bytes.NewReader(bodyBytes))
 	req.Header.Set("Content-Type", "application/json")
 	req = req.WithContext(contextWithUserID(userID))
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
 	handler.RequestFriendship(w, req)
@@ -236,6 +262,10 @@ func TestFriendHandler_RequestFriendship_AlreadyExists(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req = req.WithContext(contextWithUserID(userID))
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	w := httptest.NewRecorder()
 	handler.RequestFriendship(w, req)
 
@@ -265,6 +295,10 @@ func TestFriendHandler_AcceptFriendRequest_Success(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "/friends/accept/200", nil)
 	req = req.WithContext(contextWithUserID(userID))
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("requesterID", "200")
@@ -304,6 +338,10 @@ func TestFriendHandler_DeclineFriendRequest_Success(t *testing.T) {
 	rctx.URLParams.Add("requesterID", "200")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	w := httptest.NewRecorder()
 	handler.DeclineFriendRequest(w, req)
 
@@ -337,6 +375,10 @@ func TestFriendHandler_RevokeFriendRequest_Success(t *testing.T) {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("addresseeID", "300")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
 	handler.RevokeFriendRequest(w, req)
@@ -373,6 +415,10 @@ func TestFriendHandler_GetIncomingFriendRequests_Success(t *testing.T) {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("status", "pending")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
 	handler.GetIncomingFriendRequests(w, req)

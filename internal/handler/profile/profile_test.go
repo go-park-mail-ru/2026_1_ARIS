@@ -13,10 +13,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	mock_service "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/mocks"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 )
 
 func TestProfileHandler_GetProfileMe_Success(t *testing.T) {
@@ -68,6 +70,10 @@ func TestProfileHandler_GetProfileMe_Success(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: "session_id", Value: string(sessionID)})
 	w := httptest.NewRecorder()
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	handler.GetProfileMe(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -87,6 +93,10 @@ func TestProfileHandler_GetProfileMe_Unauthorized(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/profile/me", nil)
 	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	handler.GetProfileMe(w, req)
 
@@ -131,6 +141,10 @@ func TestProfileHandler_GetProfileByID_Success(t *testing.T) {
 	rctx.URLParams.Add("id", "200")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	w := httptest.NewRecorder()
 	handler.GetProfileByID(w, req)
 
@@ -152,6 +166,10 @@ func TestProfileHandler_GetProfileByID_InvalidID(t *testing.T) {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("id", "invalid")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
 	handler.GetProfileByID(w, req)
@@ -208,6 +226,10 @@ func TestProfileHandler_EditProfileMe_Success(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: "session_id", Value: string(sessionID)})
 	w := httptest.NewRecorder()
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	handler.EditProfileMe(w, req)
 
 	assert.Equal(t, http.StatusNoContent, w.Code)
@@ -248,6 +270,10 @@ func TestProfileHandler_EditProfileMe_ValidationError(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: "session_id", Value: string(sessionID)})
 	w := httptest.NewRecorder()
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	handler.EditProfileMe(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
@@ -261,6 +287,10 @@ func TestProfileHandler_EditProfileMe_Unauthorized(t *testing.T) {
 
 	req := httptest.NewRequest("PATCH", "/profile/me/edit", nil)
 	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	handler.EditProfileMe(w, req)
 
@@ -280,6 +310,11 @@ func TestProfileHandler_buildProfileResponse_NotFound(t *testing.T) {
 		Return(nil, errors.New("not found"))
 
 	req := httptest.NewRequest("GET", "/", nil)
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	_, status, msg := handler.buildProfileResponse(req, profileID)
 
 	assert.Equal(t, http.StatusNotFound, status)
@@ -326,6 +361,11 @@ func TestProfileHandler_buildProfileResponse_WithAvatar(t *testing.T) {
 		Return(&models.Media{Link: avatarLink}, nil)
 
 	req := httptest.NewRequest("GET", "/", nil)
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	resp, status, msg := handler.buildProfileResponse(req, profileID)
 
 	assert.Equal(t, http.StatusOK, status)
@@ -352,6 +392,11 @@ func TestProfileHandler_buildProfileResponse_UserAccountError(t *testing.T) {
 		Return(nil, errors.New("db error"))
 
 	req := httptest.NewRequest("GET", "/", nil)
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	_, status, msg := handler.buildProfileResponse(req, profileID)
 
 	assert.Equal(t, http.StatusInternalServerError, status)
@@ -367,6 +412,10 @@ func TestProfileHandler_GetProfileMe_SessionError(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/profile/me", nil)
 	req.AddCookie(&http.Cookie{Name: "session_id", Value: "badsession"})
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	mockSessionSvc.EXPECT().
 		Get(gomock.Any(), models.SessionID("badsession")).
