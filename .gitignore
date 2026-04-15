@@ -4,5 +4,5 @@ docker/.env
 aris-server
 .DS_Store
 .gocache/
--coverage.out
+coverage.out
 coverage.out.tmp
