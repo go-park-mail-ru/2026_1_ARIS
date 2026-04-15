@@ -222,8 +222,20 @@ func main() {
 
 	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo)
 
-	// создаём роутер
 	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, mediaHandler, profileHandler, chatHandler, friendHandler, wsHandler, postHandler)
+
+	cop := http.NewCrossOriginProtection()
+	cop.AddTrustedOrigin("http://localhost:3001")
+	cop.AddTrustedOrigin("https://localhost:3001")
+	cop.AddTrustedOrigin("http://arisnet.ru")
+	cop.AddTrustedOrigin("https://arisnet.ru")
+
+	mainMux := http.NewServeMux()
+
+	mainMux.Handle("/ws/", router)
+	mainMux.Handle("/", cop.Handler(router))
+
+	// создаём роутер
 
 	ensureKnownTestUser(ctx, userAccountRepo, userService, "sergeyshulginenko", "chatcheck123", "Сергей", "Шульгиненко")
 	ensureKnownPassword(ctx, db, "sergeyshulginenko", "chatcheck123")
@@ -232,7 +244,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:    ":8080",
-		Handler: router,
+		Handler: mainMux,
 	}
 
 	go func() {
