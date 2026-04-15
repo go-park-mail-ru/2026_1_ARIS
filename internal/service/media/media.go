@@ -1,9 +1,10 @@
 package media
 
+//go:generate mockgen -destination=../mocks/media_service_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media MediaService
+
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"mime/multipart"
 	"os"
@@ -87,7 +88,6 @@ func (s *mediaService) Save(ctx context.Context, name string, size int64, fileRe
 
 	mediaLink, err := s.minioClient.Save(ctx, os.Getenv("MINIO_BUCKET_NAME"), fileReader, mediaUUID, size, extension, opts)
 	if err != nil {
-		fmt.Println(err)
 		return 0, "", err
 	}
 

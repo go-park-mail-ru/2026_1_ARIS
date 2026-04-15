@@ -1,8 +1,8 @@
 package server
 
 import (
-	chathandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/chat"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/friend"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/media"
@@ -10,9 +10,11 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/proxy"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/websocket"
 	mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
 	httpSwagger "github.com/swaggo/http-swagger"
+	"go.uber.org/zap"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -26,13 +28,16 @@ func NewRouter(
 	userHandler *user.UserHandler,
 	mediaHandler *media.MediaHandler,
 	profileHandler *profile.ProfileHandler,
-	chatHandler *chathandler.ChatHandler,
+	chatHandler *chat.ChatHandler,
 	friendshipHandler *friend.FriendHandler,
-	wsHandler *chathandler.WebSocketHandler,
+	wsHandler *websocket.WebSocketHandler,
 	postHandler *post.PostHandler,
+	logger *zap.Logger,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
+	r.Use(mymiddleware.RequestIDMiddleware(logger))
+	r.Use(mymiddleware.AccessLogMiddleware(logger))
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(mymiddleware.XSSMiddlewares()...)

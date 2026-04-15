@@ -2,7 +2,6 @@ package auth
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -13,7 +12,9 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/go-playground/validator/v10"
+	"go.uber.org/zap"
 )
 
 const (
@@ -109,18 +110,23 @@ func NewAuthHandler(
 // @Failure		500		{object}	dto.CommonErrorResponse
 // @Router		/auth/register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Warn("http_request", zap.String("auth", "register"))
 		utils.WriteError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	if err := validate.Struct(req); err != nil {
+		log.Warn("http_request", zap.String("auth", "register"))
 		utils.WriteError(w, "validation failed: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if req.Password1 != req.Password2 {
+		log.Warn("http_request", zap.String("auth", "register"))
 		utils.WriteError(w, "passwords do not match", http.StatusBadRequest)
 		return
 	}
@@ -174,6 +180,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	session, err := h.sessionService.Create(r.Context(), userAccount.ID)
 	if err != nil {
+		log.Warn("failed to create session", zap.Int64("userAccount_id", userAccount.ID))
 		utils.WriteError(w, "failed to create session", http.StatusInternalServerError)
 		return
 	}
@@ -188,6 +195,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 	})
 
+	log.Info("user registered", zap.Int64("profile_id", profile.ID), zap.Int64("userAccount_id", userAccount.ID))
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(profile)
 }
@@ -206,6 +214,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 // @Failure		500		{object}	CommonResponse
 // @Router		/auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		utils.WriteError(w, "invalid request", http.StatusBadRequest)
@@ -214,6 +224,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	userAccount, err := h.authService.Login(r.Context(), req.Login, req.Password)
 	if err != nil {
+		log.Warn("auth_login_failed", zap.String("auth", "login"))
 		utils.WriteError(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
@@ -226,13 +237,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		fmt.Println(err)
 		utils.WriteError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	session, err := h.sessionService.Create(r.Context(), userAccount.ID)
 	if err != nil {
+		log.Error("failed_create_session",
+			zap.Int64("userAccount_id", userAccount.ID),
+			zap.Error(err),
+		)
 		utils.WriteError(w, "failed to create session", http.StatusInternalServerError)
 		return
 	}
@@ -254,6 +268,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		LastName:  userProfile.LastName,
 	}
 
+	log.Info("user_logged_in",
+		zap.Int64("userAccount_id", userAccount.ID),
+		zap.String("login", req.Login),
+		zap.Int64("profile_id", userProfile.ID),
+	)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(loginResponse)
@@ -268,8 +288,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 // @Success		200	{object}	CommonResponse
 // @Router		/auth/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
+		log.Info("logout_already_logged_out", zap.String("message", "no session cookie"))
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(CommonResponse{Message: "already logged out"})
 		return
@@ -277,7 +300,12 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	sessionID := models.SessionID(cookie.Value)
 
-	_ = h.sessionService.Delete(r.Context(), sessionID)
+	if err := h.sessionService.Delete(r.Context(), sessionID); err != nil {
+		log.Warn("failed_delete_session",
+			zap.String("session_id", string(sessionID)),
+			zap.Error(err),
+		)
+	}
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_id",
@@ -289,6 +317,10 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		Secure:   true,
 		Path:     "/",
 	})
+
+	log.Info("user_logged_out",
+		zap.String("session_id", string(sessionID)),
+	)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -305,16 +337,17 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 // @Security	SessionAuth
 // @Router		/auth/me [get]
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+
 	userIDFromCtx := r.Context().Value("user_id")
 	if userIDFromCtx == nil {
-		fmt.Println("Нет контекста")
+		log.Warn("unauthorized", zap.String("message", "user id not found in context"), zap.String("method", r.Method), zap.String("path", r.URL.Path))
 		utils.WriteError(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	userID, ok := userIDFromCtx.(int64)
 	if !ok {
-		fmt.Println("нельзя считать как int64")
 		utils.WriteError(w, "invalid user id in context", http.StatusUnauthorized)
 		return
 	}
@@ -322,9 +355,12 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	//userProfile, err := h.userService.GetUserProfileByUser(r.Context(), userID)
 
 	userProfile, err := h.userService.GetUserProfileByUserAccountID(r.Context(), userID)
-	fmt.Println("ME", userProfile)
 
 	if err != nil {
+		log.Warn("user_profile_not_found",
+			zap.Int64("userAccount_id", userID),
+			zap.Error(err),
+		)
 		utils.WriteError(w, ErrUserNotFound, http.StatusNotFound)
 		return
 	}
@@ -337,6 +373,11 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 			avatar = media.Link
 		}
 	}
+
+	log.Info("me_request_success",
+		zap.Int64("userAccount_id", userID),
+		zap.Int64("profile_id", userProfile.ProfileID),
+	)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -360,8 +401,11 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 // @Failure		500		{object}	CommonResponse
 // @Router		/auth/register/step-one [post]
 func (h *AuthHandler) ValidateRegisterStepOne(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+
 	var req RegisterStepOneRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Warn("http_request", zap.String("auth", "validate_register_step_one"))
 		utils.WriteError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -416,6 +460,12 @@ func (h *AuthHandler) ValidateRegisterStepOne(w http.ResponseWriter, r *http.Req
 			errorsMap[key] = value
 		}
 	}
+
+	log.Info("validate_register_step_one",
+		zap.String("login", req.Login),
+		zap.Bool("ok", len(errorsMap) == 0),
+		zap.Int("errors", len(errorsMap)),
+	)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

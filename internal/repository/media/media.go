@@ -1,14 +1,19 @@
 package media
 
+//go:generate mockgen -destination=./../mocks/media_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media MediaRepo
+
 import (
 	"context"
 	"errors"
-	"sync"
+	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"go.uber.org/zap"
 )
 
 type MediaRepo interface {
@@ -19,22 +24,34 @@ type MediaRepo interface {
 }
 
 type mediaStorage struct {
-	db *pgxpool.Pool
-	// logger
+	db mediaDB
 }
 
-func NewMediaStorage(db *pgxpool.Pool) MediaRepo {
+type mediaDB interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}
+
+func NewMediaStorage(db mediaDB) MediaRepo {
 	return &mediaStorage{
 		db: db,
 	}
 }
 
 func (storage *mediaStorage) Get(ctx context.Context, id int64) (*models.Media, error) {
+	logger := logger.FromContext(ctx)
 	query := `SELECT * FROM media WHERE id=$1`
 
 	var media models.Media
 
+	start := time.Now()
 	err := pgxscan.Get(ctx, storage.db, &media, query, id)
+
+	logger.Debug("db query",
+		zap.String("query", "GetMediaByID"),
+		zap.Duration("duration_ms", time.Since(start)))
+
 	if err != nil {
 		if pgxscan.NotFound(err) {
 			return nil, xerrors.MediaNotFound
@@ -46,10 +63,15 @@ func (storage *mediaStorage) Get(ctx context.Context, id int64) (*models.Media, 
 }
 
 func (storage *mediaStorage) Save(ctx context.Context, media models.Media) (int64, error) {
+	logger := logger.FromContext(ctx)
 	query := `INSERT INTO media (uid, media_name, extension, mime_type, size, link, author_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
 
+	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, media.Uid, media.Name, media.Extension, media.MimeType, media.Size, media.Link, media.AuthorID)
 
+	logger.Debug("db query",
+		zap.String("query", "SaveMedia"),
+		zap.Duration("duration_ms", time.Since(start)))
 	var mediaID int64
 
 	if err := row.Scan(&mediaID); err != nil {
@@ -60,9 +82,15 @@ func (storage *mediaStorage) Save(ctx context.Context, media models.Media) (int6
 }
 
 func (storage *mediaStorage) GetLink(ctx context.Context, id int64) (string, error) {
+	logger := logger.FromContext(ctx)
 	query := `SELECT link FROM media WHERE id=$1`
 
+	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, id)
+
+	logger.Debug("db query",
+		zap.String("query", "GetMediaLinkByID"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	var link string
 
@@ -74,9 +102,14 @@ func (storage *mediaStorage) GetLink(ctx context.Context, id int64) (string, err
 }
 
 func (storage *mediaStorage) UpdateLink(ctx context.Context, id int64, newLink string) error {
+	logger := logger.FromContext(ctx)
 	query := `UPDATE table media SET link=$1 WHERE id=$2`
 
+	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, newLink, id)
+	logger.Debug("db query",
+		zap.String("query", "UpdateMediaLinkByID"),
+		zap.Duration("duration_ms", time.Since(start)))
 	if err != nil {
 		return err
 	}
@@ -85,50 +118,5 @@ func (storage *mediaStorage) UpdateLink(ctx context.Context, id int64, newLink s
 		return errors.New("affected not on 1 row")
 	}
 
-	return nil
-}
-
-// func (storage *mediaStorage) GetBatch(ctx context.Context, ids []int64) error {
-// 	query := `SELECT id, uid, mime_type, link
-// 	FROM media WHERE id=ANY($1)`
-// }
-
-type inmemoryMediaRepo struct {
-	mu     sync.RWMutex
-	medias map[int64]models.Media
-}
-
-func NewMediaRepo() MediaRepo {
-	repo := inmemoryMediaRepo{}
-	repo.medias = make(map[int64]models.Media)
-	return &repo
-}
-
-func (r *inmemoryMediaRepo) Get(ctx context.Context, id int64) (*models.Media, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	media, ok := r.medias[id]
-	if !ok {
-		return nil, errors.New("Media not found")
-	}
-
-	return &media, nil
-}
-
-func (r *inmemoryMediaRepo) Save(ctx context.Context, media models.Media) (int64, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.medias[media.ID] = media
-	return media.ID, nil
-}
-
-// заглушки
-func (r *inmemoryMediaRepo) GetLink(ctx context.Context, id int64) (string, error) {
-	return "", nil
-}
-
-func (r *inmemoryMediaRepo) UpdateLink(ctx context.Context, id int64, newLink string) error {
 	return nil
 }

@@ -1,26 +1,30 @@
 package comment
 
+//go:generate mockgen -destination=./../mocks/comment_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/comment CommentRepo
+
 import (
 	"context"
 	"errors"
-	"sync"
+	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
-type inmemoryCommentRepo struct {
-	mu       sync.RWMutex
-	comments map[int64]models.Comment
-}
-
 type commentStorage struct {
-	db *pgxpool.Pool
+	db commentDB
 	// logger
 }
 
-func NewCommentStorage(db *pgxpool.Pool) CommentRepo {
+type commentDB interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
+func NewCommentStorage(db commentDB) CommentRepo {
 	return &commentStorage{
 		db: db,
 	}
@@ -32,9 +36,15 @@ type CommentRepo interface {
 }
 
 func (storage *commentStorage) GetCommentCount(ctx context.Context, postID int64) int {
+	logger := logger.FromContext(ctx)
 	query := `SELECT COUNT(*) FROM comment WHERE post_id=$1;`
 
+	start := time.Now()
 	comments := storage.db.QueryRow(ctx, query, postID)
+	logger.Debug("db query",
+		zap.String("query", "GetUserByID"),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 
 	var commentCount int64
 	if err := comments.Scan(&commentCount); err != nil {
@@ -44,10 +54,12 @@ func (storage *commentStorage) GetCommentCount(ctx context.Context, postID int64
 }
 
 func (storage *commentStorage) Save(ctx context.Context, comment models.Comment) (int64, error) {
+	logger := logger.FromContext(ctx)
 	query := `INSERT INTO comment (uid, comment_text, post_id, parent_comment_id, sticker_id, author_id) VALUES
 	($1, $2, $3, $4, $5, $6)
 	RETURNING id;`
 
+	start := time.Now()
 	rows, err := storage.db.Query(ctx, query,
 		uuid.New(),
 		comment.Text,
@@ -55,6 +67,10 @@ func (storage *commentStorage) Save(ctx context.Context, comment models.Comment)
 		comment.ParentCommentID,
 		comment.StickerID,
 		comment.AuthorID)
+	logger.Debug("db query",
+		zap.String("query", "GetUserByID"),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -72,36 +88,4 @@ func (storage *commentStorage) Save(ctx context.Context, comment models.Comment)
 		}
 	}
 	return 0, errors.New("Bad query")
-}
-
-func NewCommentRepo() CommentRepo {
-	repo := inmemoryCommentRepo{}
-	repo.comments = make(map[int64]models.Comment)
-	return &repo
-}
-
-func (r *inmemoryCommentRepo) GetCommentCount(ctx context.Context, postID int64) int {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	commentsCount := 0
-
-	for _, c := range r.comments {
-		if c.TargetPostID == postID {
-			commentsCount++
-		}
-	}
-
-	return commentsCount
-}
-
-func (r *inmemoryCommentRepo) Save(ctx context.Context, comment models.Comment) (int64, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	_, ok := r.comments[comment.ID]
-	if !ok {
-		r.comments[comment.ID] = comment
-	}
-	return comment.ID, nil
 }

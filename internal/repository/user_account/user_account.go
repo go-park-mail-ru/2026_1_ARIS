@@ -1,21 +1,23 @@
 package useraccount
 
+//go:generate mockgen -destination=./../mocks/user_account_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_account UserAccountRepo
+
 import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
-	"slices"
 	"strings"
-	"sync"
+	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	pgerrors "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/pg_errors"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgconn"
+	"go.uber.org/zap"
 )
 
 type UserAccountRepo interface {
@@ -32,23 +34,25 @@ type UserAccountRepo interface {
 	List(ctx context.Context, offset, limit int) ([]models.UserAccount, error)
 }
 
-type inmemoryUserRepo struct {
-	mu           sync.RWMutex
-	userAccounts map[int64]models.UserAccount
-}
-
 type UserAccountStorage struct {
-	db *pgxpool.Pool
+	db userAccountDB
 	// logger
 }
 
-func NewUserAccountStorage(db *pgxpool.Pool) UserAccountRepo {
+type userAccountDB interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}
+
+func NewUserAccountStorage(db userAccountDB) UserAccountRepo {
 	return &UserAccountStorage{
 		db: db,
 	}
 }
 
 func (storage *UserAccountStorage) Update(ctx context.Context, dto dto.UpdateUserAccountDTO) error {
+	logger := logger.FromContext(ctx)
 	setClauses := []string{}
 	args := []any{}
 	argIdx := 1
@@ -79,10 +83,14 @@ func (storage *UserAccountStorage) Update(ctx context.Context, dto dto.UpdateUse
 
 	query := fmt.Sprintf("UPDATE user_account SET %s WHERE id=$%d", strings.Join(setClauses, ", "), argIdx)
 
+	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, args...)
 	if err != nil {
 		return pgerrors.MapPgError(err)
 	}
+	logger.Debug("db query",
+		zap.String("query", "userAccountStorage.Update"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	if res.RowsAffected() != 1 {
 		return errors.New("UPDATE affected not on 1 row")
@@ -92,9 +100,14 @@ func (storage *UserAccountStorage) Update(ctx context.Context, dto dto.UpdateUse
 }
 
 func (storage *UserAccountStorage) Save(ctx context.Context, userAccount models.UserAccount) (int64, error) {
+	logger := logger.FromContext(ctx)
 	query := `INSERT INTO user_account (uid, email, phone, password_hash, username) VALUES ($1, $2, $3, $4, $5) RETURNING id;`
 
+	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, uuid.New(), userAccount.Email, userAccount.Phone, userAccount.PasswordHash, userAccount.Username)
+	logger.Debug("db query",
+		zap.String("query", "userAccountStorage.Save"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	var userAccountID int64
 
@@ -107,12 +120,17 @@ func (storage *UserAccountStorage) Save(ctx context.Context, userAccount models.
 }
 
 func (storage *UserAccountStorage) Delete(ctx context.Context, id int64) error {
+	logger := logger.FromContext(ctx)
 	query := `DELETE FROM user_account WHERE id=$1`
 
+	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, id)
 	if err != nil {
 		return err
 	}
+	logger.Debug("db query",
+		zap.String("query", "userAccountStorage.Delete"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	if res.RowsAffected() == 0 {
 		// ни одна запись не удалилась
@@ -125,77 +143,108 @@ func (storage *UserAccountStorage) Delete(ctx context.Context, id int64) error {
 }
 
 func (storage *UserAccountStorage) Get(ctx context.Context, id int64) (*models.UserAccount, error) {
+	logger := logger.FromContext(ctx)
 	query := `SELECT id, uid, username, email, phone, is_active, created_at, updated_at FROM user_account WHERE id=$1;`
 
 	var userAccount models.UserAccount
 
+	start := time.Now()
 	err := pgxscan.Get(ctx, storage.db, &userAccount, query, id)
 	if err != nil {
 		return nil, err
 	}
+	logger.Debug("db query",
+		zap.String("query", "userAccountStorage.Get"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	return &userAccount, nil
 }
 
 func (storage *UserAccountStorage) GetByEmail(ctx context.Context, email string) (*models.UserAccount, error) {
+	logger := logger.FromContext(ctx)
 	query := `SELECT * FROM user_account WHERE email=$1;`
 
 	var userAccount models.UserAccount
 
+	start := time.Now()
 	err := pgxscan.Get(ctx, storage.db, &userAccount, query, email)
 	if err != nil {
 		return nil, err
 	}
+	logger.Debug("db query",
+		zap.String("query", "userAccountStorage.GetByEmail"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	return &userAccount, nil
 }
 
 func (storage *UserAccountStorage) GetByPhone(ctx context.Context, phone string) (*models.UserAccount, error) {
+	logger := logger.FromContext(ctx)
 	query := `SELECT * FROM user_account WHERE phone=$1;`
 
 	var userAccount models.UserAccount
 
+	start := time.Now()
 	err := pgxscan.Get(ctx, storage.db, &userAccount, query, phone)
 	if err != nil {
 		return nil, err
 	}
+	logger.Debug("db query",
+		zap.String("query", "userAccountStorage.GetByPhone"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	return &userAccount, nil
 }
 
 func (storage *UserAccountStorage) GetByUsername(ctx context.Context, username string) (*models.UserAccount, error) {
+	logger := logger.FromContext(ctx)
 	query := `SELECT * FROM user_account WHERE username=$1;`
 
 	var userAccount models.UserAccount
 
+	start := time.Now()
 	err := pgxscan.Get(ctx, storage.db, &userAccount, query, username)
 	if err != nil {
 		return nil, err
 	}
+	logger.Debug("db query",
+		zap.String("query", "userAccountStorage.GetByUsername"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	return &userAccount, nil
 }
 
 func (storage *UserAccountStorage) GetByUid(ctx context.Context, uid uuid.UUID) (*models.UserAccount, error) {
+	logger := logger.FromContext(ctx)
 	query := `SELECT * FROM user_account WHERE uid=$1;`
 
 	var userAccount models.UserAccount
 
+	start := time.Now()
 	err := pgxscan.Get(ctx, storage.db, &userAccount, query, uid.String())
 	if err != nil {
 		return nil, err
 	}
+	logger.Debug("db query",
+		zap.String("query", "userAccountStorage.GetByUid"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	return &userAccount, nil
 }
 
 func (storage *UserAccountStorage) List(ctx context.Context, offset, limit int) ([]models.UserAccount, error) {
+	logger := logger.FromContext(ctx)
 	query := `SELECT * FROM user_account ORDER BY id LIMIT $1 OFFSET $2`
 
+	start := time.Now()
 	rows, err := storage.db.Query(ctx, query, limit, offset)
 	if err != nil {
 		return []models.UserAccount{}, err
 	}
+
+	logger.Debug("db query",
+		zap.String("query", "userAccountStorage.List"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	userAccounts, err := pgx.CollectRows(rows, pgx.RowToStructByName[models.UserAccount])
 	if err != nil {
@@ -203,111 +252,4 @@ func (storage *UserAccountStorage) List(ctx context.Context, offset, limit int) 
 	}
 
 	return userAccounts, nil
-}
-
-func NewUserRepo() UserAccountRepo {
-	repo := inmemoryUserRepo{}
-	repo.userAccounts = make(map[int64]models.UserAccount)
-	return &repo
-}
-
-func (r *inmemoryUserRepo) Save(ctx context.Context, userAccount models.UserAccount) (int64, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.userAccounts[userAccount.ID] = userAccount
-	return userAccount.ID, nil
-}
-
-func (r *inmemoryUserRepo) Delete(ctx context.Context, id int64) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	_, ok := r.userAccounts[id]
-
-	if ok {
-		delete(r.userAccounts, id)
-		return nil
-	}
-
-	return errors.New("user not found")
-}
-
-func (r *inmemoryUserRepo) Get(ctx context.Context, id int64) (*models.UserAccount, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	user, ok := r.userAccounts[id]
-
-	if !ok {
-		return nil, errors.New("user not found")
-	}
-	return &user, nil
-}
-
-func (r *inmemoryUserRepo) GetByEmail(ctx context.Context, email string) (*models.UserAccount, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	for _, u := range r.userAccounts {
-		if *u.Email == email {
-			return &u, nil
-		}
-	}
-	return nil, errors.New("user not found")
-}
-
-func (r *inmemoryUserRepo) GetByPhone(ctx context.Context, phone string) (*models.UserAccount, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	for _, u := range r.userAccounts {
-		if *u.Phone == phone {
-			return &u, nil
-		}
-	}
-	return nil, errors.New("user not found")
-}
-
-func (r *inmemoryUserRepo) List(ctx context.Context, offset, limit int) ([]models.UserAccount, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	if offset >= len(r.userAccounts) {
-		return []models.UserAccount{}, nil
-	}
-	if offset+limit > len(r.userAccounts) {
-		return slices.Collect(maps.Values(r.userAccounts))[offset:], nil
-	}
-
-	return slices.Collect(maps.Values(r.userAccounts))[offset : offset+limit], nil
-}
-
-func (r *inmemoryUserRepo) GetByUsername(ctx context.Context, username string) (*models.UserAccount, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	for _, u := range r.userAccounts {
-		if u.Username == username {
-			return &u, nil
-		}
-	}
-	return nil, errors.New("User not found")
-}
-
-func (r *inmemoryUserRepo) GetByUid(ctx context.Context, uid uuid.UUID) (*models.UserAccount, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	for _, u := range r.userAccounts {
-		if u.Uid == uid {
-			return &u, nil
-		}
-	}
-	return nil, errors.New("User not found")
-}
-
-// заглушка
-func (r *inmemoryUserRepo) Update(ctx context.Context, dto dto.UpdateUserAccountDTO) error {
-	return nil
 }

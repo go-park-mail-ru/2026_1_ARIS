@@ -1,4 +1,6 @@
-package service
+package message
+
+//go:generate mockgen -destination=../mocks/message_service_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/service/message MessageService
 
 import (
 	"context"
@@ -6,7 +8,7 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/message"
 	"github.com/google/uuid"
 )
 
@@ -32,10 +34,10 @@ func (s *messageService) UpdateMessage(ctx context.Context, messageID, authorID 
 }
 
 type messageService struct {
-	msgRepo repository.MessageRepo
+	msgRepo message.MessageRepo
 }
 
-func NewMessageService(msgRepo repository.MessageRepo) MessageService {
+func NewMessageService(msgRepo message.MessageRepo) MessageService {
 	return &messageService{msgRepo: msgRepo}
 }
 

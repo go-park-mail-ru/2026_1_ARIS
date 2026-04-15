@@ -7,15 +7,208 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/mocks"
 	mock_service "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/mocks"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
+
+type validationResponse struct {
+	Ok     bool              `json:"ok"`
+	Errors map[string]string `json:"errors"`
+}
+
+func TestValidateRegisterStepOne_InvalidJSON(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockAuthSvc := mock_service.NewMockAuthService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
+
+	reqBody := `{"login": "test", "password1": "123", "password2": }` // broken JSON
+	req := httptest.NewRequest(http.MethodPost, "/validate-step1", bytes.NewBufferString(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+
+	handler.ValidateRegisterStepOne(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "invalid request body")
+}
+
+func TestValidateRegisterStepOne_ShortPassword(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockAuthSvc := mock_service.NewMockAuthService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
+
+	reqBody := `{"login": "validlogin", "password1": "123", "password2": "123"}`
+	req := httptest.NewRequest(http.MethodPost, "/validate-step1", bytes.NewBufferString(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+
+	handler.ValidateRegisterStepOne(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var resp validationResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+	assert.False(t, resp.Ok)
+	assert.Equal(t, "Пароль слишком короткий (мин. 7 символов)", resp.Errors["password1"])
+}
+
+func TestValidateRegisterStepOne_LongPassword(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockAuthSvc := mock_service.NewMockAuthService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
+
+	longPass := "thisisaverylongpasswordexceeding20chars"
+	reqBody := map[string]string{
+		"login":     "validlogin",
+		"password1": longPass,
+		"password2": longPass,
+	}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest(http.MethodPost, "/validate-step1", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+
+	handler.ValidateRegisterStepOne(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var resp validationResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+	assert.False(t, resp.Ok)
+	assert.Equal(t, "Пароль может содержать максимум 20 символов", resp.Errors["password1"])
+}
+
+func TestValidateRegisterStepOne_PasswordMismatch(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockAuthSvc := mock_service.NewMockAuthService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
+
+	reqBody := `{"login": "validlogin", "password1": "password123", "password2": "password456"}`
+	req := httptest.NewRequest(http.MethodPost, "/validate-step1", bytes.NewBufferString(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+
+	handler.ValidateRegisterStepOne(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var resp validationResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+	assert.False(t, resp.Ok)
+	assert.Equal(t, "Пароли не совпадают", resp.Errors["password2"])
+	// password1 не должен содержать ошибку (пароль достаточной длины)
+	assert.NotContains(t, resp.Errors, "password1")
+}
+
+func TestValidateRegisterStepOne_ShortLogin(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockAuthSvc := mock_service.NewMockAuthService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
+
+	reqBody := `{"login": "short", "password1": "password123", "password2": "password123"}`
+	req := httptest.NewRequest(http.MethodPost, "/validate-step1", bytes.NewBufferString(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+
+	handler.ValidateRegisterStepOne(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var resp validationResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+	assert.False(t, resp.Ok)
+	assert.Equal(t, "Логин слишком короткий (мин. 6 символов)", resp.Errors["login"])
+}
+
+func TestValidateRegisterStepOne_LongLogin(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockAuthSvc := mock_service.NewMockAuthService(ctrl)
+	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
+
+	reqBody := `{"login": "thisloginistoolong", "password1": "password123", "password2": "password123"}`
+	req := httptest.NewRequest(http.MethodPost, "/validate-step1", bytes.NewBufferString(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
+	rec := httptest.NewRecorder()
+
+	handler.ValidateRegisterStepOne(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+
+	var resp validationResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+	assert.False(t, resp.Ok)
+	assert.Equal(t, "Логин может содержать максимум 12 символов", resp.Errors["login"])
+}
 
 func TestAuthHandler_Register_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -39,6 +232,9 @@ func TestAuthHandler_Register_Success(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	profileUid := uuid.New()
 	expectedProfile := &models.Profile{
@@ -129,6 +325,9 @@ func TestAuthHandler_Register_ValidationError(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
 	handler.Register(w, req)
@@ -140,30 +339,38 @@ func TestAuthHandler_Register_PasswordMismatch(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockAuthSvc := mock_service.NewMockAuthService(ctrl)
-	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
-	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockAuthService := mocks.NewMockAuthService(ctrl)
+	mockSessionService := mocks.NewMockSessionService(ctrl)
+	mockUserService := mocks.NewMockUserService(ctrl)
+	// mediaService не используется в этом тесте, можно nil
+	handler := NewAuthHandler(mockAuthService, mockSessionService, mockUserService, nil)
 
-	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
+	requestBody := `{
+		"firstName": "Ivan",
+		"lastName": "Petrov",
+		"login": "ivan123",
+		"password1": "qwerty123",
+		"password2": "different",
+		"birthday": "24/02/2005",
+		"gender": 1
+	}`
 
-	reqBody := RegisterRequest{
-		FirstName: "Ivan",
-		LastName:  "Petrov",
-		Birthday:  "24/02/2005",
-		Gender:    1,
-		Login:     "ivan123",
-		Password1: "qwerty123",
-		Password2: "qwerty456",
-	}
-	body, _ := json.Marshal(reqBody)
-	req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewBufferString(requestBody))
 	req.Header.Set("Content-Type", "application/json")
-
 	w := httptest.NewRecorder()
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	handler.Register(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "passwords do not match")
+
+	var response map[string]string
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	// Хендлер возвращает "validation failed: ..." при ошибке валидации
+	assert.Contains(t, response["error"], "validation failed")
 }
 
 func TestAuthHandler_Register_LoginAlreadyExists(t *testing.T) {
@@ -189,6 +396,10 @@ func TestAuthHandler_Register_LoginAlreadyExists(t *testing.T) {
 	req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	mockAuthSvc.EXPECT().
 		Register(gomock.Any(), "Ivan", "Petrov", "ivan123", "qwerty123", "24/02/2005", models.Gender("male")).
 		Return(nil, errors.New("пользователь с таким login уже существует"))
@@ -204,34 +415,37 @@ func TestAuthHandler_Register_InvalidBirthday(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockAuthSvc := mock_service.NewMockAuthService(ctrl)
-	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
-	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockAuthService := mocks.NewMockAuthService(ctrl)
+	mockSessionService := mocks.NewMockSessionService(ctrl)
+	mockUserService := mocks.NewMockUserService(ctrl)
+	handler := NewAuthHandler(mockAuthService, mockSessionService, mockUserService, nil)
 
-	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
+	requestBody := `{
+		"firstName": "Ivan",
+		"lastName": "Petrov",
+		"login": "ivan123",
+		"password1": "qwerty123",
+		"password2": "qwerty123",
+		"birthday": "invalid-date",
+		"gender": 1
+	}`
 
-	reqBody := RegisterRequest{
-		FirstName: "Ivan",
-		LastName:  "Petrov",
-		Birthday:  "2005-02-24", // неправильный формат
-		Gender:    1,
-		Login:     "ivan123",
-		Password1: "qwerty123",
-		Password2: "qwerty123",
-	}
-	body, _ := json.Marshal(reqBody)
-	req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewReader(body))
+	req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewBufferString(requestBody))
 	req.Header.Set("Content-Type", "application/json")
-
-	mockAuthSvc.EXPECT().
-		Register(gomock.Any(), "Ivan", "Petrov", "ivan123", "qwerty123", "2005-02-24", models.Gender("male")).
-		Return(nil, errors.New("invalid birthday date"))
-
 	w := httptest.NewRecorder()
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	handler.Register(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.Contains(t, w.Body.String(), "invalid birthday date")
+
+	var response map[string]string
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Contains(t, response["error"], "validation failed")
 }
 
 func TestAuthHandler_Register_TooYoung(t *testing.T) {
@@ -256,6 +470,10 @@ func TestAuthHandler_Register_TooYoung(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	mockAuthSvc.EXPECT().
 		Register(gomock.Any(), "Ivan", "Petrov", "ivan123", "qwerty123", "24/02/2020", models.Gender("male")).
@@ -290,6 +508,10 @@ func TestAuthHandler_Register_SessionCreationError(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("POST", "/api/auth/register", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	profileUid := uuid.New()
 	expectedProfile := &models.Profile{Uid: profileUid}
@@ -341,6 +563,10 @@ func TestAuthHandler_Login_Success(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	userID := uuid.New()
 	userAccountID := int64(33)
@@ -416,6 +642,10 @@ func TestAuthHandler_Login_InvalidCredentials(t *testing.T) {
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	mockAuthSvc.EXPECT().
 		Login(gomock.Any(), "ivan123", "wrong").
 		Return(nil, errors.New("invalid credentials"))
@@ -444,6 +674,10 @@ func TestAuthHandler_Login_SessionCreationError(t *testing.T) {
 	body, _ := json.Marshal(reqBody)
 	req := httptest.NewRequest("POST", "/api/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	userUid := uuid.New()
 	userAccountID := int64(23)
@@ -487,6 +721,10 @@ func TestAuthHandler_Logout_Success(t *testing.T) {
 		Value: "sess123",
 	})
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	mockSessionSvc.EXPECT().
 		Delete(gomock.Any(), models.SessionID("sess123")).
 		Return(nil)
@@ -526,6 +764,10 @@ func TestAuthHandler_Logout_NoCookie(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "/api/auth/logout", nil)
 
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
+
 	w := httptest.NewRecorder()
 	handler.Logout(w, req)
 
@@ -551,6 +793,10 @@ func TestAuthHandler_Logout_DeleteError(t *testing.T) {
 		Name:  "session_id",
 		Value: "sess123",
 	})
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	mockSessionSvc.EXPECT().
 		Delete(gomock.Any(), models.SessionID("sess123")).
@@ -578,52 +824,51 @@ func TestAuthHandler_Me_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockAuthSvc := mock_service.NewMockAuthService(ctrl)
-	mockSessionSvc := mock_service.NewMockSessionService(ctrl)
-	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	mockAuthService := mocks.NewMockAuthService(ctrl)
+	mockSessionService := mocks.NewMockSessionService(ctrl)
+	mockUserService := mocks.NewMockUserService(ctrl)
+	mockMediaService := mocks.NewMockMediaService(ctrl) // может быть nil, если не проверяем аватар
 
-	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
+	handler := NewAuthHandler(mockAuthService, mockSessionService, mockUserService, mockMediaService)
 
-	//var expectedID int64 = 1
 	userID := int64(2)
-	//userUid := uuid.New()
-	req := httptest.NewRequest("GET", "/api/auth/me", nil)
+	profileID := int64(1)
+
+	expectedUserProfile := &models.UserProfile{
+		ProfileID: profileID,
+		FirstName: "Ivan",
+		LastName:  "Petrov",
+	}
+
+	// Хендлер вызывает GetUserProfileByUserAccountID
+	mockUserService.EXPECT().
+		GetUserProfileByUserAccountID(gomock.Any(), userID).
+		Return(expectedUserProfile, nil)
+
+	// Может вызываться GetProfileByUserAccountID для аватара
+	mockUserService.EXPECT().
+		GetProfileByUserAccountID(gomock.Any(), userID).
+		Return(&models.Profile{AvatarID: nil}, nil).AnyTimes()
+
+	req := httptest.NewRequest("GET", "/api/me", nil)
 	ctx := context.WithValue(req.Context(), "user_id", userID)
 	req = req.WithContext(ctx)
 
-	// expectedUserAccount := &models.UserAccount{
-	// 	ID:  userID,
-	// 	Uid: userUid,
-	// }
-
-	//*mocks.MockUserService.GetUserProfileByUserAccountUid
-
-	expectedUserProfile := &models.UserProfile{
-		ID:            2,
-		Uid:           uuid.New(),
-		UserAccountID: 1,
-		FirstName:     "Ivan",
-		LastName:      "Petrov",
-	}
-
-	mockUserSvc.EXPECT().
-		GetUserProfileByUserAccountID(ctx, userID).
-		Return(expectedUserProfile, nil)
-
-	// mockUserSvc.EXPECT().
-	// 	GetUserProfileByUserAccountUid(ctx, userUid).
-	// 	Return(expectedUserProfile, nil)
+	mockLogger := zap.NewNop()
+	ctx = logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
 	handler.Me(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var resp models.UserProfile
-	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	var response LoginResponse
+	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, expectedUserProfile.ID, resp.ID)
-	assert.Equal(t, expectedUserProfile.FirstName, resp.FirstName)
+	assert.Equal(t, strconv.FormatInt(profileID, 10), response.ID)
+	assert.Equal(t, "Ivan", response.FirstName)
+	assert.Equal(t, "Petrov", response.LastName)
 }
 
 func TestAuthHandler_Me_Unauthorized(t *testing.T) {
@@ -637,6 +882,10 @@ func TestAuthHandler_Me_Unauthorized(t *testing.T) {
 	handler := NewAuthHandler(mockAuthSvc, mockSessionSvc, mockUserSvc)
 
 	req := httptest.NewRequest("GET", "/api/auth/me", nil)
+
+	mockLogger := zap.NewNop()
+	ctx := logger.WithLogger(req.Context(), mockLogger)
+	req = req.WithContext(ctx)
 
 	w := httptest.NewRecorder()
 	handler.Me(w, req)
@@ -658,6 +907,10 @@ func TestAuthHandler_Me_UserNotFound(t *testing.T) {
 	userID := int64(44)
 	req := httptest.NewRequest("GET", "/api/auth/me", nil)
 	ctx := context.WithValue(req.Context(), "user_id", userID)
+	req = req.WithContext(ctx)
+
+	mockLogger := zap.NewNop()
+	ctx = logger.WithLogger(req.Context(), mockLogger)
 	req = req.WithContext(ctx)
 
 	mockUserSvc.EXPECT().

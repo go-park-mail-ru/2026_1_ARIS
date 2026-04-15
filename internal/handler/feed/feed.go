@@ -11,7 +11,9 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 type FeedResponse struct {
@@ -82,12 +84,7 @@ func NewFeedHandler(postService post.PostService, mediaService media.MediaServic
 // @Param		cursor	query		string	false	"cursor string responded by feed request"
 // @Router		/feed [get]
 func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, "Required method GET", http.StatusMethodNotAllowed)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
+	log := logger.FromContext(r.Context())
 
 	rawCursor := r.URL.Query().Get("cursor")
 
@@ -96,6 +93,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	if l := r.URL.Query().Get("limit"); l != "" {
 		parsed, err := strconv.Atoi(l)
 		if err != nil {
+			log.Warn("invalid_limit_param", zap.String("limit", l), zap.String("path", r.URL.Path), zap.Error(err))
 			utils.WriteError(w, "Cant parse limit", http.StatusBadRequest)
 			return
 		}
@@ -104,6 +102,11 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 	feed, err := h.PostService.GetFeed(r.Context(), rawCursor, limit)
 	if err != nil {
+		log.Error("get_feed_failed",
+			zap.String("cursor", rawCursor),
+			zap.Int("limit", limit),
+			zap.Error(err),
+		)
 		utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -114,6 +117,10 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	for _, post := range feed.Posts {
 		postAuthor, err := h.PostService.GetPostAuthor(r.Context(), post.ID)
 		if err != nil {
+			log.Error("get_post_author_failed",
+				zap.Int64("post_id", post.ID),
+				zap.Error(err),
+			)
 			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -123,6 +130,10 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		if postAuthor.AvatarID != nil {
 			authorAvatar, err := h.MediaService.GetAvatarByID(r.Context(), postAuthor.AvatarID)
 			if err != nil {
+				log.Warn("get_author_avatar_failed",
+					zap.Int64("author_id", postAuthor.ID),
+					zap.Error(err),
+				)
 				utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -131,12 +142,14 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 
 		authorUserProfile, err := h.UserProfileService.GetUserProfileByProfileID(r.Context(), postAuthor.ID)
 		if err != nil {
+
 			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		authorUserAccount, err := h.UserProfileService.GetUserAccountByUserProfileID(r.Context(), authorUserProfile.ID)
 		if err != nil {
+
 			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -186,7 +199,15 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		HasMore:    feed.HasMore,
 	}
 
+	log.Info("get_feed_success",
+		zap.Int("posts", len(posts)),
+		zap.String("cursor", feed.Cursor),
+		zap.Bool("has_more", feed.HasMore),
+	)
+
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+	w.WriteHeader(http.StatusOK)
 }
 
 // @Description	Getting popular posts
@@ -198,6 +219,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 // @Success		200		{object}	popularPostsResponse
 // @Router		/posts/popular [get]
 func (h *FeedHandler) GetPopularPosts(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
 
 	all := []popularPostDTO{
 		{Title: "Как научиться подтягиваться 20 раз?"},
@@ -212,6 +234,10 @@ func (h *FeedHandler) GetPopularPosts(w http.ResponseWriter, r *http.Request) {
 	})
 
 	items := all[:3]
+
+	log.Info("get_popular_posts_success",
+		zap.Int("items", len(items)),
+	)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -228,12 +254,17 @@ func (h *FeedHandler) GetPopularPosts(w http.ResponseWriter, r *http.Request) {
 // @Success		200		{object}	popularPostsResponse
 // @Router		/public/popular-posts [get]
 func (h *FeedHandler) GetPublicPopularPosts(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
 
 	items := []popularPostDTO{
 		{Title: "Как научиться подтягиваться 20 раз?"},
 		{Title: "Почему Rust заменяет C++"},
 		{Title: "Лучшие книги по машинному обучению"},
 	}
+
+	log.Info("get_public_popular_posts_success",
+		zap.Int("items", len(items)),
+	)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -256,12 +287,7 @@ func (h *FeedHandler) GetPublicPopularPosts(w http.ResponseWriter, r *http.Reque
 // @Param		cursor	query		string	false	"cursor string responded by feed request"
 // @Router		/public/feed [get]
 func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		utils.WriteError(w, "Required method GET", http.StatusMethodNotAllowed)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
+	log := logger.FromContext(r.Context())
 
 	rawCursor := r.URL.Query().Get("cursor")
 
@@ -270,6 +296,7 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 	if l := r.URL.Query().Get("limit"); l != "" {
 		parsed, err := strconv.Atoi(l)
 		if err != nil {
+			log.Warn("invalid_limit_param", zap.String("limit", l), zap.String("path", r.URL.Path), zap.Error(err))
 			utils.WriteError(w, "Cant parse limit", http.StatusBadRequest)
 			return
 		}
@@ -278,6 +305,11 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 
 	feed, err := h.PostService.GetPublicFeed(r.Context(), rawCursor, limit)
 	if err != nil {
+		log.Error("get_public_feed_failed",
+			zap.String("cursor", rawCursor),
+			zap.Int("limit", limit),
+			zap.Error(err),
+		)
 		utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -287,6 +319,7 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 	for _, post := range feed.Posts {
 		postAuthor, err := h.PostService.GetPostAuthor(r.Context(), post.ID)
 		if err != nil {
+
 			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -296,6 +329,7 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 		if postAuthor.AvatarID != nil {
 			authorAvatar, err := h.MediaService.GetAvatarByID(r.Context(), postAuthor.AvatarID)
 			if err != nil {
+
 				utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -304,12 +338,14 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 
 		authorUserProfile, err := h.UserProfileService.GetUserProfileByProfileID(r.Context(), postAuthor.ID)
 		if err != nil {
+
 			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		authorUserAccount, err := h.UserProfileService.GetUserAccountByUserProfileID(r.Context(), authorUserProfile.ID)
 		if err != nil {
+
 			utils.WriteError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -359,5 +395,12 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 		HasMore:    false,
 	}
 
+	log.Info("get_public_feed_success",
+		zap.Int("posts", len(posts)),
+		zap.String("cursor", rawCursor),
+	)
+
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+	w.WriteHeader(http.StatusOK)
 }

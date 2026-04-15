@@ -13,27 +13,30 @@ import (
 
 	_ "github.com/go-park-mail-ru/2026_1_ARIS/docs"
 	"github.com/minio/minio-go/v7"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/server"
 
-	chathandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
-	wsHandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler"
 	authhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/auth"
+	chathandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/chat"
 	feedhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/feed"
 	friendshiphandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/friend"
 	mediahandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/media"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/post"
+	posthandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/post"
 	profilehandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
 	userhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
+	wsHandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/websocket"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository"
-	chatstorage "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
+	chatrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
+	chatmemberrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat_member"
 	commentrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/comment"
 	friendshiprepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/friend"
 	likerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/like"
 	mediarepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
+	messagerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/message"
 	postrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/post"
 	profilerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/profile"
 	repostrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/repost"
@@ -41,14 +44,15 @@ import (
 	settingsrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/settings"
 	useraccountrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_account"
 	userprofilerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_profile"
-	settingsservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/settings"
 
-	chatservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service"
 	authservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/auth"
+	chatservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/chat"
 	friendshipservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/friend"
 	mediaservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
+	messageservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/message"
 	postservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
 	sessionservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
+	settingsservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/settings"
 	userservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
@@ -69,75 +73,101 @@ func main() {
 		log.Println("No .env file found, reading from environment: ", err)
 	}
 
+	// Создаём логгер
+
+	logConf := zap.Config{
+		Level:            zap.NewAtomicLevelAt(zap.InfoLevel),
+		Development:      false,
+		Encoding:         "json",
+		OutputPaths:      []string{"stdout"},
+		ErrorOutputPaths: []string{"stderr"},
+		EncoderConfig: zapcore.EncoderConfig{
+			MessageKey:   "message",
+			LevelKey:     "level",
+			TimeKey:      "time",
+			NameKey:      "logger_name",
+			CallerKey:    "caller",
+			FunctionKey:  "function",
+			EncodeLevel:  zapcore.CapitalLevelEncoder,
+			EncodeTime:   zapcore.ISO8601TimeEncoder,
+			EncodeCaller: zapcore.ShortCallerEncoder,
+		},
+	}
+
+	logger, err := logConf.Build()
+	if err != nil {
+		log.Fatalf("Can't configure logger %s", err)
+	}
+	if logger == nil {
+		log.Fatal("logger is nil")
+	}
+	logger.Info("logger initialized")
+
+	defer func() {
+		if err := logger.Sync(); err != nil {
+			logger.Error("Failed to sync logger", zap.Error(err))
+		}
+	}()
+
+	//sugar := logger.Sugar()
+
 	envConf, err := config.NewConfig()
 	if err != nil {
-		log.Fatal("Can't get env config:", err)
+		logger.Fatal("failed to load env variables", zap.Error(err))
 	}
 
 	confStr, err := connectdb.GetConnectURL(envConf)
 	if err != nil {
-		log.Fatal("Can't get db connection string: ", err)
+		logger.Fatal("failed to get db connection string: ", zap.Error(err))
 	}
 
 	ctx := context.Background()
 
 	db, err := pgxpool.New(ctx, confStr)
 	if err != nil {
-		log.Fatal("Can't connect to db: ", err)
+		logger.Fatal("fail to connect to db: ", zap.Error(err))
 	}
 	defer db.Close()
 
 	err = db.Ping(ctx)
 	if err != nil {
-		log.Fatal("Bad db connection: ", err)
+		logger.Fatal("failed db connection check: ", zap.Error(err))
 	}
 
-	fmt.Println("Successfully connected to PostgreSQL")
+	logger.Info("Successfully connected to PostgreSQL")
 
 	// Подключаем Redis
 
-	fmt.Println(os.Getenv("REDIS_CONTAINER_NAME"))
-	fmt.Println(os.Getenv("REDIS_USER"))
-	fmt.Println(os.Getenv("REDIS_USER_PASSWORD"))
-	fmt.Println(os.Getenv("REDIS_PORT"))
-	fmt.Println(os.Getenv("REDIS_PUBLIC_PORT"))
-	fmt.Println(os.Getenv("REDIS_HOST"))
-	fmt.Println(os.Getenv("REDIS_DB"))
-	fmt.Println(os.Getenv("REDIS_MAX_RETRIES"))
-	fmt.Println(os.Getenv("REDIS_DIAL_TIMEOUT"))
-	fmt.Println(os.Getenv("REDIS_TIMEOUT"))
-	fmt.Println(os.Getenv("REDIS_ADDR"))
-
 	redisClient, err := connectredis.InitRedis(ctx, envConf)
 	if err != nil {
-		log.Fatal("Can't connect to Redis", err)
+		logger.Fatal("fail to connect to Redis", zap.Error(err))
 	}
 
-	fmt.Println("Successfully connected to Redis")
+	logger.Info("Successfully connected to Redis")
 
 	// Подключаем MinIO
 
 	// создание MinIO клиента
 	minioClient, err := connectminio.InitMinio(envConf)
 	if err != nil {
-		log.Fatalf("Ошибка инициализации Minio: %v", err)
+		logger.Fatal("fail to initialize MinIO", zap.Error(err))
 	}
 
 	// Проверка на существование бакета
 	exists, err := minioClient.BucketExists(ctx, envConf.MinioBucketName)
 	if err != nil {
-		log.Fatalf("Can't chech bucket existition: %v", err)
+		logger.Fatal("fail to chech MinIO bucket existition", zap.Error(err))
 	}
 
-	fmt.Println("Successfully connected to MinIO")
+	logger.Info("Successfully connected to MinIO")
 
 	// Если бакета нет - его нужно создать
 	if !exists {
 		err := minioClient.MakeBucket(ctx, envConf.MinioBucketName, minio.MakeBucketOptions{})
 		if err != nil {
-			log.Fatalf("Can't create buchet: %v", err)
+			logger.Fatal("fail to create MinIO buchet", zap.Error(err))
 		}
-		fmt.Println("Bucket created")
+		logger.Info(("MinIO bucket created"))
 	}
 
 	// Устанавливаем политику доступа к файлам
@@ -168,12 +198,12 @@ func main() {
 
 	rawPolicy, err := json.Marshal(policy)
 	if err != nil {
-		log.Fatalf("Can't marshal policy: %v", err)
+		logger.Fatal("fail to marshal MinIO policy", zap.Error(err))
 	}
 
 	err = minioClient.SetBucketPolicy(ctx, envConf.MinioBucketName, string(rawPolicy))
 	if err != nil {
-		log.Fatalf("Can't set bucket policy: %v", err)
+		logger.Fatal("fail to set MinIO bucket policy", zap.Error(err))
 	}
 
 	client := mediarepo.NewMinioClient(minioClient)
@@ -192,9 +222,11 @@ func main() {
 	postWithMediaRepo := postrepo.NewPostWithMediaStorage(db)
 	friendshipRepo := friendshiprepo.NewFriendshipStorage(db)
 	settingsRepo := settingsrepo.NewUserSettingsStorage(db)
-	chatRepo := chatstorage.NewSQLChatRepo(db)
-	chatMemberRepo := repository.NewChatMemberStorage(db)
-	messageRepo := repository.NewMessageStorage(db)
+	chatRepo := chatrepo.NewChatStorage(db)
+	chatMemberRepo := chatmemberrepo.NewChatMemberStorage(db)
+	messageRepo := messagerepo.NewMessageStorage(db)
+
+	logger.Info("repositories initialized")
 
 	postService := postservice.NewPostService(postRepo, postWithMediaRepo, profileRepo, commentRepo, repostRepo, likeRepo)
 	userService := userservice.NewUserService(userAccountRepo, profileRepo, userProfileRepo)
@@ -202,13 +234,17 @@ func main() {
 	sessService := sessionservice.NewSessionService(sessionRepo)
 	mediaService := mediaservice.NewMediaService(mediaRepo, postWithMediaRepo, client)
 	chatSvc := chatservice.NewChatService(chatRepo, chatMemberRepo, userService)
-	messageSvc := chatservice.NewMessageService(messageRepo)
+	messageSvc := messageservice.NewMessageService(messageRepo)
 	friendshipService := friendshipservice.NewFriendshipService(friendshipRepo)
 	settingsService := settingsservice.NewUserSettingsService(settingsRepo)
+
+	logger.Info("services initialized")
 
 	// WebSocket Hub
 	hub := websocket.NewHub()
 	go hub.Run()
+
+	logger.Info("ws started")
 
 	userHandler := userhandler.NewUserHandler(userService, mediaService, settingsService)
 	authHandler := authhandler.NewAuthHandler(authService, sessService, userService, mediaService)
@@ -218,11 +254,14 @@ func main() {
 	chatHandler := chathandler.NewChatHandler(chatSvc, messageSvc, userAccountRepo, userService, hub)
 	friendHandler := friendshiphandler.NewFriendHandler(sessService, userService, friendshipService)
 	wsHandler := wsHandler.NewWebSocketHandler(hub, chatSvc)
-	postHandler := post.NewPostHandler(userService, postService, mediaService)
+	postHandler := posthandler.NewPostHandler(userService, postService, mediaService)
 
-	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo)
+	logger.Info("handlers initialized")
 
-	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, mediaHandler, profileHandler, chatHandler, friendHandler, wsHandler, postHandler)
+	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo, likeRepo, logger)
+  
+	// создаём роутер
+	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, mediaHandler, profileHandler, chatHandler, friendHandler, wsHandler, postHandler, logger)
 
 	cop := http.NewCrossOriginProtection()
 	cop.AddTrustedOrigin("http://localhost:3001")
@@ -249,8 +288,9 @@ func main() {
 
 	go func() {
 		fmt.Println("Server is running on http://localhost:8080")
+		logger.Info("server started")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+			logger.Fatal("fail to server listen")
 		}
 	}()
 
@@ -259,14 +299,16 @@ func main() {
 	<-stop
 
 	fmt.Println("Server is stopping")
+	logger.Info("Server is stopping")
 
 	ctxShutdown, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctxShutdown); err != nil {
-		log.Fatal("Server forced to shutdown:", err)
+		logger.Fatal("Server forced to shutdown:", zap.Error(err))
 	}
 
 	fmt.Println("Server stopped")
+	logger.Info("server stopped")
 }
 
 func ensureKnownPassword(ctx context.Context, db *pgxpool.Pool, username string, password string) {

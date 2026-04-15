@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models" // добавлен импорт
@@ -15,6 +14,7 @@ import (
 	postservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 func MakeMock(mediaRepo media.MediaRepo,
@@ -23,7 +23,10 @@ func MakeMock(mediaRepo media.MediaRepo,
 	postWithMediaRepo postrepo.PostWithMediaRepo,
 	commentRepo comment.CommentRepo,
 	repostRepo repost.RepostRepo,
-	chatRepo *chat.SQLChatRepo, // изменён тип
+	chatRepo chat.ChatRepo, // изменён тип
+	likeRepo like.LikeRepo,
+	logger *zap.Logger,
+
 ) {
 
 	// create Profiles (users)
@@ -58,7 +61,7 @@ func MakeMock(mediaRepo media.MediaRepo,
 	// пользователь без аватарки, чтобы создавать все другие аватарки
 	user1, err := userProfileService.CreateRealUserProfile(context.Background(), &email1, &phone1, "hard password hash", "KomandaARIS", "Команда", "АРИС", birthdayDate1, models.Gender("male"), nil)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save user", zap.Error(err))
 		return
 	}
 
@@ -85,96 +88,96 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	// avatar1ID, err := mediaRepo.Save(context.Background(), *avatar1)
 	// if err != nil {
-	// 	fmt.Println(err)
+	// 	logger.Info("faild saving", zap.Error(err))
 	// 	return
 	// }
 
 	avatar2ID, err := mediaRepo.Save(context.Background(), *avatar2)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	avatar3ID, err := mediaRepo.Save(context.Background(), *avatar3)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	avatar4ID, err := mediaRepo.Save(context.Background(), *avatar4)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	avatar5ID, err := mediaRepo.Save(context.Background(), *avatar5)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	avatar6ID, err := mediaRepo.Save(context.Background(), *avatar6)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	avatar7ID, err := mediaRepo.Save(context.Background(), *avatar7)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	avatar8ID, err := mediaRepo.Save(context.Background(), *avatar8)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
-	fmt.Println("аватарки успешно созданы")
+	logger.Info("success avatars creation")
 
 	user2, err := userProfileService.CreateRealUserProfile(context.Background(), &email2, &phone2, "hard password hash", "SergeyShulginenko", "Сергей", "Шульгиненко", birthdayDate2, models.Gender("female"), &avatar2ID)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save user", zap.Error(err))
 		return
 	}
 
 	user3, err := userProfileService.CreateRealUserProfile(context.Background(), &email3, &phone3, "hard password hash", "AnnaOparina", "Анна", "Опарина", birthdayDate3, models.Gender("male"), &avatar3ID)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save user", zap.Error(err))
 		return
 	}
 
 	user4, err := userProfileService.CreateRealUserProfile(context.Background(), &email4, &phone4, "hard password hash", "IvanKhvostov", "Иван", "Хвостов", birthdayDate4, models.Gender("female"), &avatar4ID)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save user", zap.Error(err))
 		return
 	}
 	user5, err := userProfileService.CreateRealUserProfile(context.Background(), &email5, &phone5, "hard password hash", "RinatBaikov", "Ринат", "Байков", birthdayDate5, models.Gender("male"), &avatar5ID)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save user", zap.Error(err))
 		return
 	}
 
 	user6, err := userProfileService.CreateRealUserProfile(context.Background(), &email6, &phone6, "hard password hash", "SofiaSitnichenko", "Софья", "Ситниченко", birthdayDate6, models.Gender("female"), &avatar6ID)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save user", zap.Error(err))
 		return
 	}
 
 	user7, err := userProfileService.CreateRealUserProfile(context.Background(), &email7, &phone7, "hard password hash", "KonstantinGalanin", "Константин", "Галанин", birthdayDate7, models.Gender("male"), &avatar7ID)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save user", zap.Error(err))
 		return
 	}
 
 	user8, err := userProfileService.CreateRealUserProfile(context.Background(), &email8, &phone8, "hard password hash", "DaniilKhasyanov", "Даниил", "Хасьянов", birthdayDate8, models.Gender("female"), &avatar8ID)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save user", zap.Error(err))
 		return
 	}
 
-	fmt.Println("пользователи успешно созданы")
+	logger.Info("success users creation")
 
 	//user9, _ := userProfileService.CreateRealUserProfile(context.Background(), "email444@gmail.com", "+479990001122", "hard password hash", "VladislavAlyokhin", "Владислав", "Алехин", true, nil, models.Gender(1), &avatar9)
 
@@ -236,19 +239,19 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	media1ID, err := mediaRepo.Save(context.Background(), *media1)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media2ID, err := mediaRepo.Save(context.Background(), *media2)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media3ID, err := mediaRepo.Save(context.Background(), *media3)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
@@ -256,67 +259,67 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	media5ID, err := mediaRepo.Save(context.Background(), *media5)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media6ID, err := mediaRepo.Save(context.Background(), *media6)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media7ID, err := mediaRepo.Save(context.Background(), *media7)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media8ID, err := mediaRepo.Save(context.Background(), *media8)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media9ID, err := mediaRepo.Save(context.Background(), *media9)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media10ID, err := mediaRepo.Save(context.Background(), *media10)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media11ID, err := mediaRepo.Save(context.Background(), *media11)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media12ID, err := mediaRepo.Save(context.Background(), *media12)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media13ID, err := mediaRepo.Save(context.Background(), *media13)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media14ID, err := mediaRepo.Save(context.Background(), *media14)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media15ID, err := mediaRepo.Save(context.Background(), *media15)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
@@ -324,47 +327,47 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	media17ID, err := mediaRepo.Save(context.Background(), *media17)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media18ID, err := mediaRepo.Save(context.Background(), *media18)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media19ID, err := mediaRepo.Save(context.Background(), *media19)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media20ID, err := mediaRepo.Save(context.Background(), *media20)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media21ID, err := mediaRepo.Save(context.Background(), *media21)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media22ID, err := mediaRepo.Save(context.Background(), *media22)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
 	media23ID, err := mediaRepo.Save(context.Background(), *media23)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild to save media", zap.Error(err))
 		return
 	}
 
-	fmt.Println("медиа успешно созданы")
+	logger.Info("success media creation")
 
 	// create posts
 
@@ -493,54 +496,53 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	post1ID, err := postService.Save(context.Background(), *post1)
 	if err != nil {
-		fmt.Println(err)
-		fmt.Println(post1.AuthorID)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	post2ID, err := postService.Save(context.Background(), *post2)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	post3ID, err := postService.Save(context.Background(), *post3)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	post4ID, err := postService.Save(context.Background(), *post4)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	post5ID, err := postService.Save(context.Background(), *post5)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	post6ID, err := postService.Save(context.Background(), *post6)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	post7ID, err := postService.Save(context.Background(), *post7)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	post8ID, err := postService.Save(context.Background(), *post8)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
-	fmt.Println("посты успешно созданы")
+	logger.Info("success posts creation")
 
 	postWithMedia1 := models.NewPostWithMedia(post1ID, media1ID, 0)
 	postWithMedia2 := models.NewPostWithMedia(post1ID, media2ID, 1)
@@ -578,119 +580,119 @@ func MakeMock(mediaRepo media.MediaRepo,
 	//postWithMediaRepo.Save(post2, media4, 1)
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia3)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia4)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia5)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia6)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia7)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia8)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia9)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia10)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia11)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia12)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia13)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia14)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia15)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia16)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia17)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia18)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia19)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia20)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	err = postWithMediaRepo.Save(context.Background(), *postWithMedia21)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
-	fmt.Println("посты-с-медиа успешно созданы")
+	logger.Info("success posts-with-media creation")
 
 	//postWithMediaRepo.Save(post5, media16, 5)
 
@@ -700,45 +702,44 @@ func MakeMock(mediaRepo media.MediaRepo,
 	like4 := models.NewLikeToPost(post4.ID, user2.ID)
 	like5 := models.NewLikeToPost(post5.ID, user3.ID)
 	like6 := models.NewLikeToPost(post6.ID, user3.ID)
-	likeRepo := like.NewLikeRepo()
 
 	_, err = likeRepo.Save(context.Background(), *like1)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	_, err = likeRepo.Save(context.Background(), *like2)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	_, err = likeRepo.Save(context.Background(), *like3)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	_, err = likeRepo.Save(context.Background(), *like4)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	_, err = likeRepo.Save(context.Background(), *like5)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	_, err = likeRepo.Save(context.Background(), *like6)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
-	fmt.Println("лайки успешно созданы")
+	logger.Info("success likes creation")
 
 	commentText1 := "comment 1"
 	commentText2 := "comment 2"
@@ -756,41 +757,41 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	_, err = commentRepo.Save(context.Background(), *comment1)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	_, err = commentRepo.Save(context.Background(), *comment2)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	_, err = commentRepo.Save(context.Background(), *comment3)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	_, err = commentRepo.Save(context.Background(), *comment4)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	_, err = commentRepo.Save(context.Background(), *comment5)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
 	_, err = commentRepo.Save(context.Background(), *comment6)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
-	fmt.Println("комменты успешно созданы")
+	logger.Info("success comments creation")
 
 	chat1 := models.NewChat(models.ChatType("personal"), "chat 1 title", nil)
 	chat2 := models.NewChat(models.ChatType("personal"), "chat 2 title", nil)
@@ -799,27 +800,27 @@ func MakeMock(mediaRepo media.MediaRepo,
 	chat5 := models.NewChat(models.ChatType("personal"), "chat 5 title", nil)
 
 	if err := chatRepo.Save(context.Background(), chat1); err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 	if err := chatRepo.Save(context.Background(), chat2); err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 	if err := chatRepo.Save(context.Background(), chat3); err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 	if err := chatRepo.Save(context.Background(), chat4); err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 	if err := chatRepo.Save(context.Background(), chat5); err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
-	fmt.Println("чаты успешно созданы")
+	logger.Info("success chats creation")
 
 	// create reposts
 	repost1 := models.NewRepost(user2.ID, chat1.ID, post1ID)
@@ -834,51 +835,50 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	_, err = repostRepo.Save(context.Background(), *repost1)
 	if err != nil {
-		fmt.Println(err)
-		fmt.Println(user2.ID, post1ID)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 	_, err = repostRepo.Save(context.Background(), *repost2)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 	_, err = repostRepo.Save(context.Background(), *repost3)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 	_, err = repostRepo.Save(context.Background(), *repost4)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 	_, err = repostRepo.Save(context.Background(), *repost5)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 	_, err = repostRepo.Save(context.Background(), *repost6)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 	_, err = repostRepo.Save(context.Background(), *repost7)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 	_, err = repostRepo.Save(context.Background(), *repost8)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 	_, err = repostRepo.Save(context.Background(), *repost9)
 	if err != nil {
-		fmt.Println(err)
+		logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
-	fmt.Println("репосты успешно созданы")
+	logger.Info("success reposts creation")
 
 }

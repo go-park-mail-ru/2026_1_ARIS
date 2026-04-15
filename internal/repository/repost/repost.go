@@ -1,12 +1,16 @@
 package repost
 
+//go:generate mockgen -destination=./../mocks/repost_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/repost RepostRepo
+
 import (
 	"context"
-	"sync"
+	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 type RepostRepo interface {
@@ -15,21 +19,29 @@ type RepostRepo interface {
 }
 
 type RepostStorage struct {
-	db *pgxpool.Pool
+	db repostDB
 	// logger
 }
 
-func NewRepostStorage(db *pgxpool.Pool) RepostRepo {
+type repostDB interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
+func NewRepostStorage(db repostDB) RepostRepo {
 	return &RepostStorage{
 		db: db,
 	}
 }
 
 func (storage *RepostStorage) Save(ctx context.Context, repost models.Repost) (int64, error) {
+	logger := logger.FromContext(ctx)
 	query := `INSERT INTO repost (uid, author_id, chat_id, post_id) VALUES ($1, $2, $3, $4) RETURNING id`
 
+	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, uuid.New(), repost.AuthorID, repost.ChatID, repost.PostID)
-
+	logger.Debug("db query",
+		zap.String("query", "repostRepo.Save"),
+		zap.Duration("duration_ms", time.Since(start)))
 	var repostID int64
 
 	if err := row.Scan(&repostID); err != nil {
@@ -40,10 +52,14 @@ func (storage *RepostStorage) Save(ctx context.Context, repost models.Repost) (i
 }
 
 func (storage *RepostStorage) GetRepostCount(ctx context.Context, postID int64) int {
+	logger := logger.FromContext(ctx)
 	query := `SELECT COUNT(*) FROM repost WHERE post_id=$1`
-
+	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, postID)
 
+	logger.Debug("db query",
+		zap.String("query", "repostRepo.GetRepostCount"),
+		zap.Duration("duration_ms", time.Since(start)))
 	var repostCount int64
 
 	if err := row.Scan(&repostCount); err != nil {
@@ -51,42 +67,4 @@ func (storage *RepostStorage) GetRepostCount(ctx context.Context, postID int64) 
 	}
 
 	return int(repostCount)
-}
-
-type inmemoryRepostRepo struct {
-	reposts map[int64]models.Repost
-	mu      sync.RWMutex
-}
-
-func NewRepostRepo() RepostRepo {
-	return &inmemoryRepostRepo{
-		reposts: make(map[int64]models.Repost),
-	}
-}
-
-func (r *inmemoryRepostRepo) Save(ctx context.Context, repost models.Repost) (int64, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	_, ok := r.reposts[repost.ID]
-	if !ok {
-		r.reposts[repost.ID] = repost
-	}
-
-	return repost.ID, nil
-}
-
-func (r *inmemoryRepostRepo) GetRepostCount(ctx context.Context, postID int64) int {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	count := 0
-
-	for _, repost := range r.reposts {
-		if repost.PostID == postID {
-			count++
-		}
-	}
-
-	return count
 }

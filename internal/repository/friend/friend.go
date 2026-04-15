@@ -1,19 +1,30 @@
 package friend
 
+//go:generate mockgen -destination=./../mocks/friend_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/friend FriendshipRepo
+
 import (
 	"context"
+	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/dto"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgconn"
+	"go.uber.org/zap"
 )
 
 type friendshipStorage struct {
-	db *pgxpool.Pool
+	db friendDB
 	// logger
+}
+
+type friendDB interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 }
 
 type FriendshipRepo interface {
@@ -29,13 +40,14 @@ type FriendshipRepo interface {
 	RevokeFriendRequest(ctx context.Context, profileID, friendID int64) error
 }
 
-func NewFriendshipStorage(db *pgxpool.Pool) FriendshipRepo {
+func NewFriendshipStorage(db friendDB) FriendshipRepo {
 	return &friendshipStorage{
 		db: db,
 	}
 }
 
 func (storage *friendshipStorage) GetFriends(ctx context.Context, profileID int64, status models.FriendshipStatus) ([]dto.FriendDTO, error) {
+	logger := logger.FromContext(ctx)
 	query := `
 select p.avatar_id, p.id, up.first_name, up.last_name, ua.username, m.link, status, f.created_at, f.updated_at from 
 	(select f.created_at, f.updated_at, status, case 
@@ -49,7 +61,12 @@ join user_profile up on up.profile_id=friend
 join user_account ua on up.user_account_id=ua.id
 left join media m on p.avatar_id=m.id and (m.mime_type like 'image/%' or m.mime_type='image') ORDER BY p.id ASC;`
 
+	start := time.Now()
 	rows, err := storage.db.Query(ctx, query, profileID, string(status))
+	logger.Debug("db query",
+		zap.String("query", "GetUserByID"),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 	if err != nil {
 		if pgxscan.NotFound(err) {
 			return []dto.FriendDTO{}, nil
@@ -67,6 +84,7 @@ left join media m on p.avatar_id=m.id and (m.mime_type like 'image/%' or m.mime_
 }
 
 func (storage *friendshipStorage) GetFriendshipStatus(ctx context.Context, profileID1, profileID2 int64) (string, error) {
+	logger := logger.FromContext(ctx)
 	query := `
 select status from friendship 
 	where 
@@ -75,7 +93,12 @@ select status from friendship
 
 	var status string
 
+	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, profileID1, profileID2)
+	logger.Debug("db query",
+		zap.String("query", "GetUserByID"),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 
 	err := row.Scan(&status)
 	if err != nil {
@@ -89,12 +112,17 @@ select status from friendship
 }
 
 func (storage *friendshipStorage) GetFriendshipStatusBy(ctx context.Context, profileID, friendID int64) (string, error) {
+	logger := logger.FromContext(ctx)
 	query := `select status from friendship where requester_id=$1 and addressee_id=$2;`
 
 	var status string
 
+	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, profileID, friendID)
-
+	logger.Debug("db query",
+		zap.String("query", "GetUserByID"),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 	if err := row.Scan(&status); err != nil {
 		if pgxscan.NotFound(err) {
 			return "", nil
@@ -106,13 +134,19 @@ func (storage *friendshipStorage) GetFriendshipStatusBy(ctx context.Context, pro
 }
 
 func (storage *friendshipStorage) DeleteFriend(ctx context.Context, profileID, friendID int64) error {
+	logger := logger.FromContext(ctx)
 	query := `
 	DELETE FROM friendship 
 		WHERE LEAST(requester_id, addressee_id)=LEAST($1::bigint, $2::bigint) AND 
 		GREATEST(requester_id, addressee_id)=GREATEST($1::bigint, $2::bigint) AND 
 		status='accepted'::friendship_status`
 
+	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, profileID, friendID)
+	logger.Debug("db query",
+		zap.String("query", "GetUserByID"),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 	if err != nil {
 		return err
 	}
@@ -129,6 +163,7 @@ func (storage *friendshipStorage) DeleteFriend(ctx context.Context, profileID, f
 }
 
 func (storage *friendshipStorage) GetOutgoingFriends(ctx context.Context, profileID int64, status string) ([]dto.FriendDTO, error) {
+	logger := logger.FromContext(ctx)
 	query := `
 select f.addressee_id as id, p.avatar_id, up.first_name, up.last_name, ua.username, m.link, f.status, f.created_at, f.updated_at from friendship f
 	join profile p on p.id=f.addressee_id
@@ -136,7 +171,12 @@ select f.addressee_id as id, p.avatar_id, up.first_name, up.last_name, ua.userna
 	join user_account ua on ua.id=up.user_account_id 
 	left join media m on m.id=p.avatar_id where f.requester_id=$1 AND f.status=$2;`
 
+	start := time.Now()
 	rows, err := storage.db.Query(ctx, query, profileID, status)
+	logger.Debug("db query",
+		zap.String("query", "GetOutgoingFriends"),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 	if err != nil {
 		if pgxscan.NotFound(err) {
 			return []dto.FriendDTO{}, nil
@@ -154,14 +194,20 @@ select f.addressee_id as id, p.avatar_id, up.first_name, up.last_name, ua.userna
 }
 
 func (storage *friendshipStorage) GetIncomingFriends(ctx context.Context, profileID int64, status string) ([]dto.FriendDTO, error) {
+	logger := logger.FromContext(ctx)
 	query := `
 select f.requester_id as id, p.avatar_id, up.first_name, up.last_name, ua.username, m.link, f.status, f.created_at, f.updated_at from friendship f
 	join profile p on p.id=f.requester_id
 	join user_profile up on up.profile_id=p.id
 	join user_account ua on ua.id=up.user_account_id 
 	left join media m on m.id=p.avatar_id where f.addressee_id=$1 and f.status=$2;`
-
+	start := time.Now()
 	rows, err := storage.db.Query(ctx, query, profileID, status)
+	logger.Debug("db query",
+		zap.String("query", "GetIncomingFriends"),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
+
 	if err != nil {
 		if pgxscan.NotFound(err) {
 			return []dto.FriendDTO{}, nil
@@ -179,9 +225,14 @@ select f.requester_id as id, p.avatar_id, up.first_name, up.last_name, ua.userna
 }
 
 func (storage *friendshipStorage) Create(ctx context.Context, profileID, friendID int64, status string) error {
+	logger := logger.FromContext(ctx)
 	query := `insert into friendship (requester_id, addressee_id, status) values ($1, $2, $3)`
-
+	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, profileID, friendID, status)
+	logger.Debug("db query",
+		zap.String("query", "CreateFriendship"),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 	if err != nil {
 		return err
 	}
@@ -198,13 +249,19 @@ func (storage *friendshipStorage) Create(ctx context.Context, profileID, friendI
 }
 
 func (storage *friendshipStorage) AcceptFriendship(ctx context.Context, profileID1, profileID2 int64) error {
+	logger := logger.FromContext(ctx)
 	query := `update friendship f set status='accepted' 
 		where 
 			least(requester_id, addressee_id)=least($1::bigint, $2::bigint) and
 			greatest(requester_id, addressee_id)=greatest($1::bigint, $2::bigint) and
 			status='pending'::friendship_status;`
 
+	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, profileID1, profileID2)
+	logger.Debug("db query",
+		zap.String("query", "AcceptFriendship"),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 	if err != nil {
 		return err
 	}
@@ -221,9 +278,15 @@ func (storage *friendshipStorage) AcceptFriendship(ctx context.Context, profileI
 }
 
 func (storage *friendshipStorage) DeclineFriendship(ctx context.Context, profileID1, profileID2 int64) error {
+	logger := logger.FromContext(ctx)
 	query := `DELETE FROM friendship WHERE LEAST(requester_id, addressee_id)=LEAST($1::bigint, $2::bigint) AND GREATEST(requester_id, addressee_id)=GREATEST($1::bigint, $2::bigint) AND status='pending'`
 
+	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, profileID1, profileID2)
+	logger.Debug("db query",
+		zap.String("query", "DeclineFriendship"),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 	if err != nil {
 		return err
 	}
@@ -240,9 +303,15 @@ func (storage *friendshipStorage) DeclineFriendship(ctx context.Context, profile
 }
 
 func (storage *friendshipStorage) RevokeFriendRequest(ctx context.Context, profileID, friendID int64) error {
+	logger := logger.FromContext(ctx)
 	query := `DELETE FROM friendship where requester_id=$1 AND addressee_id=$2 AND status='pending'`
 
+	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, profileID, friendID)
+	logger.Debug("db query",
+		zap.String("query", "RevokeFriendRequest"),
+		zap.Duration("duration_ms", time.Since(start)),
+	)
 	if err != nil {
 		return err
 	}

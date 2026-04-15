@@ -1,5 +1,6 @@
 package session
 
+//go:generate mockgen -destination=./../mocks/session_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/session SessionRepo
 import (
 	"context"
 	"encoding/json"
@@ -8,7 +9,9 @@ import (
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 )
 
 type SessionRepo interface {
@@ -29,6 +32,7 @@ func NewSessionStorage(client *redis.Client) SessionRepo {
 }
 
 func (r *sessionRedis) Save(ctx context.Context, session models.Session) error {
+	logger := logger.FromContext(ctx)
 	sessionID := session.SessionID
 
 	marshaled, err := json.Marshal(session)
@@ -36,27 +40,35 @@ func (r *sessionRedis) Save(ctx context.Context, session models.Session) error {
 		return err
 	}
 
+	start := time.Now()
 	res := r.client.Set(ctx, string(sessionID), marshaled, time.Until(session.ExpiredAt))
 	if res.Err() != nil {
 		return res.Err()
 	}
-
-	fmt.Println("Session Saved:", sessionID, string(marshaled))
+	logger.Debug("db query",
+		zap.String("query", "sessionRepo.Save"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	return nil
 }
 
 func (r *sessionRedis) Delete(ctx context.Context, id models.SessionID) error {
+	logger := logger.FromContext(ctx)
+	start := time.Now()
 	res := r.client.Del(ctx, string(id))
 	if res.Err() != nil {
 		return res.Err()
 	}
+	logger.Debug("db query",
+		zap.String("query", "sessionRepo.Delete"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	return nil
 }
 
 func (r *sessionRedis) GetByID(ctx context.Context, id models.SessionID) (*models.Session, error) {
-
+	logger := logger.FromContext(ctx)
+	start := time.Now()
 	res, err := r.client.Get(ctx, string(id)).Bytes()
 	if err != nil {
 		if err == redis.Nil {
@@ -64,6 +76,9 @@ func (r *sessionRedis) GetByID(ctx context.Context, id models.SessionID) (*model
 		}
 		return nil, err
 	}
+	logger.Debug("db query",
+		zap.String("query", "sessionRepo.GetByID"),
+		zap.Duration("duration_ms", time.Since(start)))
 
 	var session models.Session
 

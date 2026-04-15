@@ -1,17 +1,20 @@
 package profile
 
-//go:generage mockgen -destination ./../mocks/profile_mock.go -package mocks
+//go:generate mockgen -destination=./../mocks/profile_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/profile ProfileRepo
+
 import (
 	"context"
 	"errors"
-	"sync"
+	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgconn"
+	"go.uber.org/zap"
 )
 
 type ProfileRepo interface {
@@ -23,27 +26,33 @@ type ProfileRepo interface {
 }
 
 type profileStorage struct {
-	db *pgxpool.Pool
+	db profileDB
 	// logger
 }
 
-type inmemoryProfileRepo struct {
-	mu       sync.RWMutex
-	Profiles map[int64]models.Profile
+type profileDB interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 }
 
-func NewProfileStorage(db *pgxpool.Pool) ProfileRepo {
+func NewProfileStorage(db profileDB) ProfileRepo {
 	return &profileStorage{
 		db: db,
 	}
 }
 
 func (storage *profileStorage) GetByUserAccountID(ctx context.Context, userAccountID int64) (*models.Profile, error) {
+	logger := logger.FromContext(ctx)
 	query := `select p.id, p.uid, p.avatar_id, p.is_active, p.created_at, p.updated_at from user_account ua join user_profile up on up.user_account_id=ua.id join profile p on up.profile_id=p.id where ua.id=$1;`
 
 	var profile models.Profile
 
+	start := time.Now()
 	err := pgxscan.Get(ctx, storage.db, &profile, query, userAccountID)
+	logger.Debug("db query",
+		zap.String("query", "profileRepo.GetByUserAccountID"),
+		zap.Duration("duration_ms", time.Since(start)))
 	if err != nil {
 		if pgxscan.NotFound(err) {
 			return nil, xerrors.ProfileNotFound
@@ -55,11 +64,16 @@ func (storage *profileStorage) GetByUserAccountID(ctx context.Context, userAccou
 }
 
 func (storage *profileStorage) Get(ctx context.Context, profileID int64) (*models.Profile, error) {
+	logger := logger.FromContext(ctx)
 	query := `SELECT * FROM profile WHERE id=$1;`
 
 	var profile models.Profile
 
+	start := time.Now()
 	err := pgxscan.Get(ctx, storage.db, &profile, query, profileID)
+	logger.Debug("db query",
+		zap.String("query", "profileRepo.Get"),
+		zap.Duration("duration_ms", time.Since(start)))
 	if err != nil {
 		if pgxscan.NotFound(err) {
 			return nil, xerrors.ProfileNotFound
@@ -75,12 +89,17 @@ func (storage *profileStorage) UpdateAvatar(
 	profileID int64,
 	avatarID *int64,
 ) error {
+	logger := logger.FromContext(ctx)
+	start := time.Now()
 	commandTag, err := storage.db.Exec(
 		ctx,
 		`UPDATE profile SET avatar_id = $1, updated_at = NOW() WHERE id = $2`,
 		avatarID,
 		profileID,
 	)
+	logger.Debug("db query",
+		zap.String("query", "profileRepo.UpdateAvatar"),
+		zap.Duration("duration_ms", time.Since(start)))
 	if err != nil {
 		return err
 	}
@@ -93,10 +112,15 @@ func (storage *profileStorage) UpdateAvatar(
 }
 
 func (storage *profileStorage) Save(ctx context.Context, profile models.Profile) (int64, error) {
+	logger := logger.FromContext(ctx)
 	query := `INSERT INTO profile (uid, avatar_id) VALUES ($1, $2) RETURNING id;`
 
+	start := time.Now()
 	row := storage.db.QueryRow(ctx, query, uuid.New(), profile.AvatarID)
 
+	logger.Debug("db query",
+		zap.String("query", "profileRepo.Save"),
+		zap.Duration("duration_ms", time.Since(start)))
 	var profileID int64
 
 	if err := row.Scan(&profileID); err != nil {
@@ -107,9 +131,14 @@ func (storage *profileStorage) Save(ctx context.Context, profile models.Profile)
 }
 
 func (storage *profileStorage) GetAll(ctx context.Context) ([]models.Profile, error) {
+	logger := logger.FromContext(ctx)
 	query := `SELECT * FROM profile`
 
+	start := time.Now()
 	rows, err := storage.db.Query(ctx, query)
+	logger.Debug("db query",
+		zap.String("query", "profileRepo.GetAll"),
+		zap.Duration("duration_ms", time.Since(start)))
 	if err != nil {
 		return nil, err
 	}
@@ -120,60 +149,4 @@ func (storage *profileStorage) GetAll(ctx context.Context) ([]models.Profile, er
 	}
 
 	return profiles, nil
-}
-
-func NewProfileRepo() ProfileRepo {
-	repo := inmemoryProfileRepo{}
-	repo.Profiles = make(map[int64]models.Profile)
-	return &repo
-}
-
-func (r *inmemoryProfileRepo) Get(ctx context.Context, profileID int64) (*models.Profile, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	profile, ok := r.Profiles[profileID]
-	if !ok {
-		return nil, errors.New("Profile not found")
-	}
-	return &profile, nil
-}
-
-func (r *inmemoryProfileRepo) Save(ctx context.Context, profile models.Profile) (int64, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.Profiles[profile.ID] = profile
-	return profile.ID, nil
-}
-
-func (r *inmemoryProfileRepo) GetAll(ctx context.Context) ([]models.Profile, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	profiles := make([]models.Profile, 0, len(r.Profiles))
-	for _, p := range r.Profiles {
-		profiles = append(profiles, p)
-	}
-
-	return profiles, nil
-}
-
-func (r *inmemoryProfileRepo) GetByUserAccountID(ctx context.Context, userAccountID int64) (*models.Profile, error) {
-	return nil, nil
-}
-
-func (r *inmemoryProfileRepo) UpdateAvatar(ctx context.Context, profileID int64, avatarID *int64) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	profile, ok := r.Profiles[profileID]
-	if !ok {
-		return errors.New("Profile not found")
-	}
-
-	profile.AvatarID = avatarID
-	r.Profiles[profileID] = profile
-
-	return nil
 }

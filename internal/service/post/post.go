@@ -36,6 +36,8 @@ type FeedParams struct {
 	Limit  int
 }
 
+//go:generate mockgen -destination=../mocks/post_service_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post PostService
+
 type PostService interface {
 	Get(ctx context.Context, postID int64) (*models.Post, error)
 	getFeed(ctx context.Context, getCursoredPosts func(ctx context.Context, params FeedParams) ([]models.Post, error), rawCursor string, limit int) (FeedResult, error)
@@ -48,8 +50,8 @@ type PostService interface {
 	GetRepostCount(ctx context.Context, postID int64) int
 	GetPublicPopularPosts(ctx context.Context) ([]models.Post, error)
 	GetPopularPosts(ctx context.Context) ([]models.Post, error)
-	AttachMedia(ctx context.Context, postID int64, mediaID []dto.MediaRequestData) mediaErrors
-	ReplaceMedia(ctx context.Context, postID int64, mediaID []dto.MediaRequestData) mediaErrors
+	AttachMedia(ctx context.Context, postID int64, mediaID []dto.MediaRequestData) MediaErrors
+	ReplaceMedia(ctx context.Context, postID int64, mediaID []dto.MediaRequestData) MediaErrors
 	Delete(ctx context.Context, postID int64) error
 	GetByAuthorID(ctx context.Context, authorID int64) ([]models.Post, error)
 	Update(ctx context.Context, post models.Post) error
@@ -73,13 +75,13 @@ func NewPostService(postRepo post.PostRepo,
 	}
 }
 
-type attachmentError struct {
-	err error
-	pos int
+type AttachmentError struct {
+	Err error
+	Pos int
 }
 
-type mediaErrors struct {
-	Errs []attachmentError
+type MediaErrors struct {
+	Errs []AttachmentError
 }
 
 // func (s *postService) Update(ctx context.Context, dto dto.PostUpdateDTO) error {
@@ -103,8 +105,8 @@ func (s *postService) Delete(ctx context.Context, postID int64) error {
 	return s.PostRepo.Delete(ctx, postID)
 }
 
-func (s *postService) AttachMedia(ctx context.Context, postID int64, mediaID []dto.MediaRequestData) mediaErrors {
-	var mediaErrors mediaErrors
+func (s *postService) AttachMedia(ctx context.Context, postID int64, mediaID []dto.MediaRequestData) MediaErrors {
+	var out MediaErrors
 
 	mediaIDs := make([]int64, len(mediaID))
 	for i, media := range mediaID {
@@ -116,21 +118,21 @@ func (s *postService) AttachMedia(ctx context.Context, postID int64, mediaID []d
 		err := s.PostWithMediaRepo.Save(ctx, *postWithMedia)
 		if err != nil {
 			// Определить тип ошибки
-			mediaErrors.Errs = append(mediaErrors.Errs, attachmentError{err: err, pos: i})
+			out.Errs = append(out.Errs, AttachmentError{Err: err, Pos: i})
 		}
 	}
-	return mediaErrors
+	return out
 }
 
-func (s *postService) ReplaceMedia(ctx context.Context, postID int64, mediaID []dto.MediaRequestData) mediaErrors {
+func (s *postService) ReplaceMedia(ctx context.Context, postID int64, mediaID []dto.MediaRequestData) MediaErrors {
 	if err := s.PostWithMediaRepo.DeleteByPostID(ctx, postID); err != nil {
-		return mediaErrors{
-			Errs: []attachmentError{{err: err, pos: -1}},
+		return MediaErrors{
+			Errs: []AttachmentError{{Err: err, Pos: -1}},
 		}
 	}
 
 	if len(mediaID) == 0 {
-		return mediaErrors{}
+		return MediaErrors{}
 	}
 
 	return s.AttachMedia(ctx, postID, mediaID)
