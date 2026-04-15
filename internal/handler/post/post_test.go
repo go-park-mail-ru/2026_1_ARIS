@@ -869,3 +869,286 @@ func TestNewPostHandler(t *testing.T) {
 
 	require.NotNil(t, handler)
 }
+
+func TestPostHandler_DeletePost_Unauthorized(t *testing.T) {
+	handler := NewPostHandler(nil, nil, nil)
+
+	req := httptest.NewRequest("DELETE", "/api/posts/55", nil)
+	req = req.WithContext(logger.WithLogger(req.Context(), zap.NewNop()))
+
+	w := httptest.NewRecorder()
+	handler.DeletePost(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestPostHandler_DeletePost_InvalidID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	handler := NewPostHandler(mockUserSvc, nil, nil)
+
+	mockUserSvc.EXPECT().
+		GetProfileByUserAccountID(gomock.Any(), int64(1)).
+		Return(&models.Profile{ID: 100}, nil)
+
+	req := httptest.NewRequest("DELETE", "/api/posts/bad", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "bad")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(context.WithValue(req.Context(), "user_id", int64(1)))
+	req = req.WithContext(logger.WithLogger(req.Context(), zap.NewNop()))
+
+	w := httptest.NewRecorder()
+	handler.DeletePost(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestPostHandler_DeletePost_NotFound(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	postSvc, postRepo, _ := createTestPostService(ctrl)
+	handler := NewPostHandler(mockUserSvc, postSvc, nil)
+
+	mockUserSvc.EXPECT().
+		GetProfileByUserAccountID(gomock.Any(), int64(1)).
+		Return(&models.Profile{ID: 100}, nil)
+
+	postRepo.EXPECT().
+		Get(gomock.Any(), int64(55)).
+		Return(nil, xerrors.PostNotFound)
+
+	req := httptest.NewRequest("DELETE", "/api/posts/55", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "55")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(context.WithValue(req.Context(), "user_id", int64(1)))
+	req = req.WithContext(logger.WithLogger(req.Context(), zap.NewNop()))
+
+	w := httptest.NewRecorder()
+	handler.DeletePost(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestPostHandler_GetPost_PostNotFound(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	postSvc, postRepo, _ := createTestPostService(ctrl)
+	handler := NewPostHandler(nil, postSvc, nil)
+
+	postRepo.EXPECT().
+		Get(gomock.Any(), int64(77)).
+		Return(nil, xerrors.PostNotFound)
+
+	req := httptest.NewRequest("GET", "/api/posts/77", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "77")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(logger.WithLogger(req.Context(), zap.NewNop()))
+
+	w := httptest.NewRecorder()
+	handler.GetPost(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestPostHandler_GetPost_UserProfileNotFound(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	postSvc, postRepo, _ := createTestPostService(ctrl)
+	handler := NewPostHandler(mockUserSvc, postSvc, nil)
+
+	postRepo.EXPECT().
+		Get(gomock.Any(), int64(77)).
+		Return(&models.Post{ID: 77, AuthorID: 200}, nil)
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByProfileID(gomock.Any(), int64(200)).
+		Return(nil, xerrors.UserProfileNotFound)
+
+	req := httptest.NewRequest("GET", "/api/posts/77", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "77")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(logger.WithLogger(req.Context(), zap.NewNop()))
+
+	w := httptest.NewRecorder()
+	handler.GetPost(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestPostHandler_GetPost_ProfileLookupNotFound(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	postSvc, postRepo, _ := createTestPostService(ctrl)
+	handler := NewPostHandler(mockUserSvc, postSvc, nil)
+
+	postRepo.EXPECT().
+		Get(gomock.Any(), int64(77)).
+		Return(&models.Post{ID: 77, AuthorID: 200}, nil)
+
+	mockUserSvc.EXPECT().
+		GetUserProfileByProfileID(gomock.Any(), int64(200)).
+		Return(&models.UserProfile{
+			FirstName:     "Alice",
+			LastName:      "Smith",
+			ProfileID:     200,
+			UserAccountID: 10,
+		}, nil)
+
+	mockUserSvc.EXPECT().
+		GetProfileByProfileID(gomock.Any(), int64(200)).
+		Return(nil, xerrors.ProfileNotFound)
+
+	req := httptest.NewRequest("GET", "/api/posts/77", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "77")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(logger.WithLogger(req.Context(), zap.NewNop()))
+
+	w := httptest.NewRecorder()
+	handler.GetPost(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestPostHandler_UpdatePost_Unauthorized(t *testing.T) {
+	handler := NewPostHandler(nil, nil, nil)
+
+	req := httptest.NewRequest("PATCH", "/api/posts/5", nil)
+	req = req.WithContext(logger.WithLogger(req.Context(), zap.NewNop()))
+
+	w := httptest.NewRecorder()
+	handler.UpdatePost(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestPostHandler_UpdatePost_InvalidID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	handler := NewPostHandler(mockUserSvc, nil, nil)
+
+	mockUserSvc.EXPECT().
+		GetProfileByUserAccountID(gomock.Any(), int64(1)).
+		Return(&models.Profile{ID: 100}, nil)
+
+	req := httptest.NewRequest("PATCH", "/api/posts/bad", bytes.NewReader([]byte(`{}`)))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "bad")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(context.WithValue(req.Context(), "user_id", int64(1)))
+	req = req.WithContext(logger.WithLogger(req.Context(), zap.NewNop()))
+
+	w := httptest.NewRecorder()
+	handler.UpdatePost(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestPostHandler_UpdatePost_Forbidden(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	postSvc, postRepo, _ := createTestPostService(ctrl)
+	handler := NewPostHandler(mockUserSvc, postSvc, nil)
+
+	mockUserSvc.EXPECT().
+		GetProfileByUserAccountID(gomock.Any(), int64(1)).
+		Return(&models.Profile{ID: 100}, nil)
+
+	postRepo.EXPECT().
+		Get(gomock.Any(), int64(5)).
+		Return(&models.Post{ID: 5, AuthorID: 101}, nil)
+
+	req := httptest.NewRequest("PATCH", "/api/posts/5", bytes.NewReader([]byte(`{}`)))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "5")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(context.WithValue(req.Context(), "user_id", int64(1)))
+	req = req.WithContext(logger.WithLogger(req.Context(), zap.NewNop()))
+
+	w := httptest.NewRecorder()
+	handler.UpdatePost(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestPostHandler_UpdatePost_NoText(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	postSvc, postRepo, _ := createTestPostService(ctrl)
+	handler := NewPostHandler(mockUserSvc, postSvc, nil)
+
+	mockUserSvc.EXPECT().
+		GetProfileByUserAccountID(gomock.Any(), int64(1)).
+		Return(&models.Profile{ID: 100}, nil)
+
+	postRepo.EXPECT().
+		Get(gomock.Any(), int64(5)).
+		Return(&models.Post{ID: 5, AuthorID: 100}, nil)
+
+	req := httptest.NewRequest("PATCH", "/api/posts/5", bytes.NewReader([]byte(`{}`)))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "5")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(context.WithValue(req.Context(), "user_id", int64(1)))
+	req = req.WithContext(logger.WithLogger(req.Context(), zap.NewNop()))
+
+	w := httptest.NewRecorder()
+	handler.UpdatePost(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestPostHandler_UpdatePost_UpdateError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	postSvc, postRepo, _ := createTestPostService(ctrl)
+	handler := NewPostHandler(mockUserSvc, postSvc, nil)
+
+	newText := "Updated text"
+	mockUserSvc.EXPECT().
+		GetProfileByUserAccountID(gomock.Any(), int64(1)).
+		Return(&models.Profile{ID: 100}, nil)
+
+	postRepo.EXPECT().
+		Get(gomock.Any(), int64(5)).
+		Return(&models.Post{ID: 5, AuthorID: 100}, nil)
+
+	postRepo.EXPECT().
+		Update(gomock.Any(), gomock.AssignableToTypeOf(models.Post{})).
+		Return(errors.New("boom"))
+
+	reqBody := PostCreationRequest{Text: &newText}
+	body, _ := json.Marshal(reqBody)
+	req := httptest.NewRequest("PATCH", "/api/posts/5", bytes.NewReader(body))
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "5")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(context.WithValue(req.Context(), "user_id", int64(1)))
+	req = req.WithContext(logger.WithLogger(req.Context(), zap.NewNop()))
+
+	w := httptest.NewRecorder()
+	handler.UpdatePost(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
