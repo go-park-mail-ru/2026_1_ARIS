@@ -31,21 +31,23 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	email1 := "email4441@gmail.com"
 	email2 := "email0002@gmail.com"
-	email3 := "email1113@gmail.com"
-	email4 := "email2224@gmail.com"
-	email5 := "email3335@gmail.com"
-	email6 := "email4446@gmail.com"
-	email7 := "email4447@gmail.com"
-	email8 := "email4448@gmail.com"
+	email3 := "email2224@gmail.com"
+	email4 := "email3335@gmail.com"
+	email5 := "email4446@gmail.com"
+	email6 := "email4447@gmail.com"
+	email7 := "email4448@gmail.com"
+	email8 := "email99@gmail.com"
+	email9 := "email.test@gmail.com"
 
 	phone1 := "+479990101122"
 	phone2 := "+799900211222"
-	phone3 := "+179990301122"
-	phone4 := "+279990401122"
-	phone5 := "+379990501122"
-	phone6 := "+479990601122"
-	phone7 := "+479990701122"
-	phone8 := "+479990901122"
+	phone3 := "+279990401122"
+	phone4 := "+379990501122"
+	phone5 := "+479990601122"
+	phone6 := "+479990701122"
+	phone7 := "+479990901122"
+	phone8 := "+479390901122"
+	phone9 := "+79991234567"
 
 	birthdayDate1, _ := time.Parse("02/01/2006", "24/02/2005")
 	birthdayDate2, _ := time.Parse("02/01/2006", "24/02/2005")
@@ -55,6 +57,7 @@ func MakeMock(mediaRepo media.MediaRepo,
 	birthdayDate6, _ := time.Parse("02/01/2006", "24/02/2005")
 	birthdayDate7, _ := time.Parse("02/01/2006", "24/02/2005")
 	birthdayDate8, _ := time.Parse("02/01/2006", "24/02/2005")
+	birthdayDate9, _ := time.Parse("02/01/2006", "24/02/2005")
 
 	// пользователь без аватарки, чтобы создавать все другие аватарки
 	user1, err := userProfileService.CreateRealUserProfile(context.Background(), &email1, &phone1, "hard password hash", "KomandaARIS", "Команда", "АРИС", birthdayDate1, models.Gender("male"), nil)
@@ -72,17 +75,17 @@ func MakeMock(mediaRepo media.MediaRepo,
 	userAvatar6 := "user avatar 6 description"
 	userAvatar7 := "user avatar 7 description"
 	userAvatar8 := "user avatar 8 description"
+	userAvatar9 := "user avatar 9 description test"
 
 	//avatar1 := models.NewMedia("avatar_1_name", "jpg", uuid.New(), &userAvatar1, "image", "/image-proxy?url=https://forum.stitch.su/uploads/monthly_2017_10/A.png.b16d1fa2bd3bb388f2122a0c87fbcf5f.png", 1)
 	avatar2 := models.NewMedia("avatar_2_name", "jpg", uuid.New(), &userAvatar2, "image", "/image-proxy?url=https://i.ibb.co/C3c6HCjb/pop-User1.png", 1)
-	avatar3 := models.NewMedia("avatar_3_name", "jpg", uuid.New(), &userAvatar3, "image", "/image-proxy?url=https://i.ibb.co/mQvfkNY/pop-User2.png", 1)
-	avatar4 := models.NewMedia("avatar_4_name", "jpg", uuid.New(), &userAvatar4, "image", "/image-proxy?url=https://i.ibb.co/6RS96KC7/pop-User3.png", 1)
-	avatar5 := models.NewMedia("avatar_5_name", "jpg", uuid.New(), &userAvatar5, "image", "/image-proxy?url=https://i.ibb.co/mCpKjmxK/pop-User4.png", 1)
-	avatar6 := models.NewMedia("avatar_6_name", "jpg", uuid.New(), &userAvatar6, "image", "/image-proxy?url=https://i.ibb.co/60HMXYh6/6.jpg", 1)
-	avatar7 := models.NewMedia("avatar_7_name", "jpg", uuid.New(), &userAvatar7, "image", "/image-proxy?url=https://i.ibb.co/s9rN3qD9/7.jpg", 1)
-	avatar8 := models.NewMedia("avatar_8_name", "jpg", uuid.New(), &userAvatar8, "image", "/image-proxy?url=https://sun9-5.userapi.com/s/v1/ig2/uGYEtsdSK4QHpAyiRnb5vCasxGZy7dR-MYECGzReWIivHlfmnfQP2DaVY6_UOJHzPG4yzjnVbty6aWqM8kjydEAS.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640&from=bu&cs=640x0", 1)
-
-	//avatar9 := models.NewMedia("avatar_9_name", "jpg", &userAvatar9, "image", "https://i.ibb.co/s9rN3qD9/7.jpg", 4000, false)
+	avatar3 := models.NewMedia("avatar_3_name", "jpg", uuid.New(), &userAvatar3, "image", "/image-proxy?url=https://i.ibb.co/6RS96KC7/pop-User3.png", 1)
+	avatar4 := models.NewMedia("avatar_4_name", "jpg", uuid.New(), &userAvatar4, "image", "/image-proxy?url=https://i.ibb.co/mCpKjmxK/pop-User4.png", 1)
+	avatar5 := models.NewMedia("avatar_5_name", "jpg", uuid.New(), &userAvatar5, "image", "/image-proxy?url=https://i.ibb.co/60HMXYh6/6.jpg", 1)
+	avatar6 := models.NewMedia("avatar_6_name", "jpg", uuid.New(), &userAvatar6, "image", "/image-proxy?url=https://i.ibb.co/s9rN3qD9/7.jpg", 1)
+	avatar7 := models.NewMedia("avatar_7_name", "jpg", uuid.New(), &userAvatar7, "image", "/image-proxy?url=https://sun9-5.userapi.com/s/v1/ig2/uGYEtsdSK4QHpAyiRnb5vCasxGZy7dR-MYECGzReWIivHlfmnfQP2DaVY6_UOJHzPG4yzjnVbty6aWqM8kjydEAS.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640&from=bu&cs=640x0", 1)
+	avatar8 := models.NewMedia("avatar_8_name", "jpg", uuid.New(), &userAvatar8, "image", "https://i.ibb.co/s9rN3qD9/7.jpg", 1)
+	avatar9 := models.NewMedia("avatar_9_name", "jpg", uuid.New(), &userAvatar9, "image", "https://i.ibb.co/s9rN3qD9/7.jpg", 1)
 
 	// avatar1ID, err := mediaRepo.Save(context.Background(), *avatar1)
 	// if err != nil {
@@ -132,6 +135,12 @@ func MakeMock(mediaRepo media.MediaRepo,
 		return
 	}
 
+	avatar9ID, err := mediaRepo.Save(context.Background(), *avatar9)
+	if err != nil {
+		// logger.Info("faild to save media", zap.Error(err))
+		return
+	}
+
 	// logger.Info("success avatars creation")
 
 	user2, err := userProfileService.CreateRealUserProfile(context.Background(), &email2, &phone2, "hard password hash", "SergeyShulginenko", "Сергей", "Шульгиненко", birthdayDate2, models.Gender("female"), &avatar2ID)
@@ -140,36 +149,30 @@ func MakeMock(mediaRepo media.MediaRepo,
 		return
 	}
 
-	user3, err := userProfileService.CreateRealUserProfile(context.Background(), &email3, &phone3, "hard password hash", "AnnaOparina", "Анна", "Опарина", birthdayDate3, models.Gender("male"), &avatar3ID)
+	user3, err := userProfileService.CreateRealUserProfile(context.Background(), &email3, &phone3, "hard password hash", "IvanKhvostov", "Иван", "Хвостов", birthdayDate3, models.Gender("female"), &avatar3ID)
+	if err != nil {
+		// logger.Info("faild to save user", zap.Error(err))
+		return
+	}
+	user4, err := userProfileService.CreateRealUserProfile(context.Background(), &email4, &phone4, "hard password hash", "RinatBaikov", "Ринат", "Байков", birthdayDate4, models.Gender("male"), &avatar4ID)
 	if err != nil {
 		// logger.Info("faild to save user", zap.Error(err))
 		return
 	}
 
-	user4, err := userProfileService.CreateRealUserProfile(context.Background(), &email4, &phone4, "hard password hash", "IvanKhvostov", "Иван", "Хвостов", birthdayDate4, models.Gender("female"), &avatar4ID)
-	if err != nil {
-		// logger.Info("faild to save user", zap.Error(err))
-		return
-	}
-	user5, err := userProfileService.CreateRealUserProfile(context.Background(), &email5, &phone5, "hard password hash", "RinatBaikov", "Ринат", "Байков", birthdayDate5, models.Gender("male"), &avatar5ID)
+	user5, err := userProfileService.CreateRealUserProfile(context.Background(), &email5, &phone5, "hard password hash", "SofiaSitnichenko", "Софья", "Ситниченко", birthdayDate5, models.Gender("female"), &avatar5ID)
 	if err != nil {
 		// logger.Info("faild to save user", zap.Error(err))
 		return
 	}
 
-	user6, err := userProfileService.CreateRealUserProfile(context.Background(), &email6, &phone6, "hard password hash", "SofiaSitnichenko", "Софья", "Ситниченко", birthdayDate6, models.Gender("female"), &avatar6ID)
+	user6, err := userProfileService.CreateRealUserProfile(context.Background(), &email6, &phone6, "hard password hash", "KonstantinGalanin", "Константин", "Галанин", birthdayDate6, models.Gender("male"), &avatar6ID)
 	if err != nil {
 		// logger.Info("faild to save user", zap.Error(err))
 		return
 	}
 
-	user7, err := userProfileService.CreateRealUserProfile(context.Background(), &email7, &phone7, "hard password hash", "KonstantinGalanin", "Константин", "Галанин", birthdayDate7, models.Gender("male"), &avatar7ID)
-	if err != nil {
-		// logger.Info("faild to save user", zap.Error(err))
-		return
-	}
-
-	user8, err := userProfileService.CreateRealUserProfile(context.Background(), &email8, &phone8, "hard password hash", "DaniilKhasyanov", "Даниил", "Хасьянов", birthdayDate8, models.Gender("female"), &avatar8ID)
+	user7, err := userProfileService.CreateRealUserProfile(context.Background(), &email7, &phone7, "hard password hash", "DaniilKhasyanov", "Даниил", "Хасьянов", birthdayDate7, models.Gender("female"), &avatar7ID)
 	if err != nil {
 		// logger.Info("faild to save user", zap.Error(err))
 		return
@@ -177,7 +180,18 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	// logger.Info("success users creation")
 
-	//user9, _ := userProfileService.CreateRealUserProfile(context.Background(), "email444@gmail.com", "+479990001122", "hard password hash", "VladislavAlyokhin", "Владислав", "Алехин", true, nil, models.Gender(1), &avatar9)
+	user8, err := userProfileService.CreateRealUserProfile(context.Background(), &email8, &phone8, "hard password hash", "VladislavAlyokhin", "Владислав", "Алехин", birthdayDate8, models.Gender("male"), &avatar8ID)
+	if err != nil {
+		return
+	}
+	_ = user8
+
+	testUser, err := userProfileService.CreateRealUserProfile(context.Background(), &email9, &phone9, "$arispass1", "arisuser", "Даниил", "Хасьянов", birthdayDate9, models.Gender("male"), &avatar9ID)
+	if err != nil {
+		// logger.Info("faild to save user", zap.Error(err))
+		return
+	}
+	_ = testUser
 
 	// create medias
 	mediaDesctiption1 := "Media description 1"
