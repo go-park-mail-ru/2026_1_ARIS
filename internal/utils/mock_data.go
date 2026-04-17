@@ -50,14 +50,14 @@ func MakeMock(mediaRepo media.MediaRepo,
 	phone9 := "+79991234567"
 
 	birthdayDate1, _ := time.Parse("02/01/2006", "24/02/2005")
-	birthdayDate2, _ := time.Parse("02/01/2006", "24/02/2005")
+	birthdayDate2, _ := time.Parse("02/01/2006", "15/11/1992")
 	birthdayDate3, _ := time.Parse("02/01/2006", "24/02/2005")
 	birthdayDate4, _ := time.Parse("02/01/2006", "24/02/2005")
-	birthdayDate5, _ := time.Parse("02/01/2006", "24/02/2005")
-	birthdayDate6, _ := time.Parse("02/01/2006", "24/02/2005")
-	birthdayDate7, _ := time.Parse("02/01/2006", "24/02/2005")
-	birthdayDate8, _ := time.Parse("02/01/2006", "24/02/2005")
-	birthdayDate9, _ := time.Parse("02/01/2006", "24/02/2005")
+	birthdayDate5, _ := time.Parse("02/01/2006", "31/07/2002")
+	birthdayDate6, _ := time.Parse("02/01/2006", "11/01/2002")
+	birthdayDate7, _ := time.Parse("02/01/2006", "15/01/2003")
+	birthdayDate8, _ := time.Parse("02/01/2006", "12/08/1997")
+	birthdayDate9, _ := time.Parse("02/01/2006", "11/05/2000")
 
 	// пользователь без аватарки, чтобы создавать все другие аватарки
 	user1, err := userProfileService.CreateRealUserProfile(context.Background(), &email1, &phone1, "hard password hash", "KomandaARIS", "Команда", "АРИС", birthdayDate1, models.Gender("male"), nil)
@@ -143,13 +143,13 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	// logger.Info("success avatars creation")
 
-	user2, err := userProfileService.CreateRealUserProfile(context.Background(), &email2, &phone2, "hard password hash", "SergeyShulginenko", "Сергей", "Шульгиненко", birthdayDate2, models.Gender("female"), &avatar2ID)
+	user2, err := userProfileService.CreateRealUserProfile(context.Background(), &email2, &phone2, "hard password hash", "SergeyShulginenko", "Сергей", "Шульгиненко", birthdayDate2, models.Gender("male"), &avatar2ID)
 	if err != nil {
 		// logger.Info("faild to save user", zap.Error(err))
 		return
 	}
 
-	user3, err := userProfileService.CreateRealUserProfile(context.Background(), &email3, &phone3, "hard password hash", "IvanKhvostov", "Иван", "Хвостов", birthdayDate3, models.Gender("female"), &avatar3ID)
+	user3, err := userProfileService.CreateRealUserProfile(context.Background(), &email3, &phone3, "hard password hash", "IvanKhvostov", "Иван", "Хвостов", birthdayDate3, models.Gender("male"), &avatar3ID)
 	if err != nil {
 		// logger.Info("faild to save user", zap.Error(err))
 		return
@@ -172,7 +172,7 @@ func MakeMock(mediaRepo media.MediaRepo,
 		return
 	}
 
-	user7, err := userProfileService.CreateRealUserProfile(context.Background(), &email7, &phone7, "hard password hash", "DaniilKhasyanov", "Даниил", "Хасьянов", birthdayDate7, models.Gender("female"), &avatar7ID)
+	user7, err := userProfileService.CreateRealUserProfile(context.Background(), &email7, &phone7, "hard password hash", "DaniilKhasyanov", "Даниил", "Хасьянов", birthdayDate7, models.Gender("male"), &avatar7ID)
 	if err != nil {
 		// logger.Info("faild to save user", zap.Error(err))
 		return
@@ -186,7 +186,7 @@ func MakeMock(mediaRepo media.MediaRepo,
 	}
 	_ = user8
 
-	testUser, err := userProfileService.CreateRealUserProfile(context.Background(), &email9, &phone9, "$arispass1", "arisuser", "Даниил", "Хасьянов", birthdayDate9, models.Gender("male"), &avatar9ID)
+	testUser, err := userProfileService.CreateRealUserProfile(context.Background(), &email9, &phone9, "$arispass1", "arisuser", "Василий", "Петров", birthdayDate9, models.Gender("male"), &avatar9ID)
 	if err != nil {
 		// logger.Info("faild to save user", zap.Error(err))
 		return
