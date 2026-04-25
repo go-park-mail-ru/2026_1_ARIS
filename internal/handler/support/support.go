@@ -349,12 +349,7 @@ func (h *SupportHandler) SendTicket(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(SupportResponse{
-		ID:     strconv.FormatInt(ticketID, 10),
-		Login:  ticket.Login,
-		Status: ticketStatusToString(ticket.Status),
-		Media:  mediaResponse,
-	})
+	_ = json.NewEncoder(w).Encode(h.buildSupportTicketResponse(r, ticket))
 }
 
 func (h *SupportHandler) GetMyTickets(w http.ResponseWriter, r *http.Request) {
@@ -541,6 +536,14 @@ func (h *SupportHandler) AssignTicket(w http.ResponseWriter, r *http.Request) {
 	}
 	if role != models.SupportRoleAdmin && agentID != profile.ID {
 		utils.WriteError(w, xerrors.SupportForbidden.Error(), http.StatusForbidden)
+		return
+	}
+	agentRole, ok := h.getCurrentRole(w, r, agentID)
+	if !ok {
+		return
+	}
+	if agentRole != models.SupportRoleAdmin && agentRole != models.SupportRoleSupportL1 && agentRole != models.SupportRoleSupportL2 {
+		utils.WriteError(w, xerrors.InvalidRequest, http.StatusBadRequest)
 		return
 	}
 
@@ -861,7 +864,8 @@ func parseTicketStatusJSON(data []byte) (models.TicketStatus, error) {
 }
 
 func parseTicketStatusString(raw string) (models.TicketStatus, error) {
-	switch strings.TrimSpace(strings.ToLower(raw)) {
+	raw = strings.TrimSpace(raw)
+	switch strings.ToLower(raw) {
 	case "open":
 		return models.TicketStatusOpen, nil
 	case "in_progress":
@@ -901,7 +905,8 @@ func parseTicketCategoryJSON(data []byte) (models.TicketCategory, error) {
 }
 
 func parseTicketCategoryString(raw string) (models.TicketCategory, error) {
-	switch strings.TrimSpace(strings.ToLower(raw)) {
+	raw = strings.TrimSpace(raw)
+	switch strings.ToLower(raw) {
 	case "bug":
 		return models.CategoryBug, nil
 	case "feature_request":

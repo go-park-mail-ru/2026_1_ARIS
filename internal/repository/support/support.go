@@ -337,7 +337,7 @@ func (s *ticketStorage) GetStats(ctx context.Context) (*models.SupportTicketStat
 			COUNT(*) FILTER (WHERE status = 1)::bigint,
 			COUNT(*) FILTER (WHERE status = 2)::bigint,
 			COUNT(*) FILTER (WHERE status = 3)::bigint,
-			AVG(rating) FILTER (WHERE rating IS NOT NULL)
+			(AVG(rating) FILTER (WHERE rating IS NOT NULL))::float8
 		FROM support_ticket`
 
 	start := time.Now()

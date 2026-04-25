@@ -56,6 +56,7 @@ import (
 	postservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
 	sessionservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
 	settingsservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/settings"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/support"
 	supportservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/support"
 	userservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 
@@ -270,6 +271,11 @@ func main() {
 	logger.Info("handlers initialized")
 
 	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo, likeRepo)
+
+	support.MakeProfileAdmin(ctx, ticketService, 1)
+	support.MakeProfileAdmin(ctx, ticketService, 2)
+	support.MakeProfileAdmin(ctx, ticketService, 3)
+	support.MakeProfileAdmin(ctx, ticketService, 4)
 
 	// создаём роутер
 	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, mediaHandler, profileHandler, chatHandler, friendHandler, wsHandler, postHandler, supportHandler, logger)
