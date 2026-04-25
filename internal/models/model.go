@@ -110,6 +110,18 @@ const (
 	TicketPriorityHigh
 )
 
+type SupportRole string
+
+const (
+	SupportRoleAdmin   SupportRole = "admin"
+	SupportRoleSupport SupportRole = "support"
+)
+
+type SupportProfileRole struct {
+	ProfileID int64       `db:"profile_id"`
+	Role      SupportRole `db:"role"`
+}
+
 type SupportTicket struct {
 	ID          int64          `db:"id"`
 	ProfileID   int64          `db:"profile_id"`

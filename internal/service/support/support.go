@@ -9,19 +9,27 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	supportrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/support"
 )
 
 var ErrNilTicket = errors.New("support ticket is nil")
 var ErrInvalidTicketStatus = errors.New("invalid support ticket status")
+var ErrInvalidSupportRole = errors.New("invalid support role")
 
 type TicketService interface {
 	Save(ctx context.Context, ticket *models.SupportTicket) (int64, error)
 	GetByID(ctx context.Context, ticketID, profileID int64) (*models.SupportTicket, error)
+	GetByIDForAdmin(ctx context.Context, ticketID int64) (*models.SupportTicket, error)
 	GetByProfileID(ctx context.Context, profileID int64) ([]models.SupportTicket, error)
+	GetAll(ctx context.Context) ([]models.SupportTicket, error)
 	Update(ctx context.Context, ticketID, profileID int64, upd TicketUpdate) (*models.SupportTicket, error)
 	UpdateStatus(ctx context.Context, ticketID, profileID int64, status models.TicketStatus) (*models.SupportTicket, error)
+	UpdateStatusByAdmin(ctx context.Context, ticketID int64, status models.TicketStatus) (*models.SupportTicket, error)
 	GetStats(ctx context.Context) (*models.SupportTicketStats, error)
+	SetProfileRole(ctx context.Context, profileID int64, role models.SupportRole) error
+	GetProfileRole(ctx context.Context, profileID int64) (*models.SupportProfileRole, error)
+	IsAdmin(ctx context.Context, profileID int64) (bool, error)
 }
 
 type TicketUpdate struct {
@@ -40,6 +48,14 @@ type ticketService struct {
 
 func NewTicketService(ticketRepo supportrepo.TicketRepository) TicketService {
 	return &ticketService{ticketRepo: ticketRepo}
+}
+
+func SetProfileRole(ctx context.Context, ticketService TicketService, profileID int64, role models.SupportRole) error {
+	return ticketService.SetProfileRole(ctx, profileID, role)
+}
+
+func MakeProfileAdmin(ctx context.Context, ticketService TicketService, profileID int64) error {
+	return ticketService.SetProfileRole(ctx, profileID, models.SupportRoleAdmin)
 }
 
 func (s *ticketService) Save(ctx context.Context, ticket *models.SupportTicket) (int64, error) {
@@ -70,10 +86,28 @@ func (s *ticketService) GetByID(ctx context.Context, ticketID, profileID int64) 
 	return ticket, nil
 }
 
+func (s *ticketService) GetByIDForAdmin(ctx context.Context, ticketID int64) (*models.SupportTicket, error) {
+	ticket, err := s.ticketRepo.GetByID(ctx, ticketID)
+	if err != nil {
+		return nil, fmt.Errorf("ticketService.GetByIDForAdmin: %w", err)
+	}
+
+	return ticket, nil
+}
+
 func (s *ticketService) GetByProfileID(ctx context.Context, profileID int64) ([]models.SupportTicket, error) {
 	tickets, err := s.ticketRepo.GetByProfileID(ctx, profileID)
 	if err != nil {
 		return nil, fmt.Errorf("ticketService.GetByProfileID: %w", err)
+	}
+
+	return tickets, nil
+}
+
+func (s *ticketService) GetAll(ctx context.Context) ([]models.SupportTicket, error) {
+	tickets, err := s.ticketRepo.GetAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("ticketService.GetAll: %w", err)
 	}
 
 	return tickets, nil
@@ -127,6 +161,25 @@ func (s *ticketService) UpdateStatus(ctx context.Context, ticketID, profileID in
 	return ticket, nil
 }
 
+func (s *ticketService) UpdateStatusByAdmin(ctx context.Context, ticketID int64, status models.TicketStatus) (*models.SupportTicket, error) {
+	if status < models.TicketStatusOpen || status > models.TicketStatusClosed {
+		return nil, ErrInvalidTicketStatus
+	}
+
+	updatedAt := time.Now()
+	var closedAt *time.Time
+	if status == models.TicketStatusClosed {
+		closedAt = &updatedAt
+	}
+
+	ticket, err := s.ticketRepo.UpdateStatusByID(ctx, ticketID, status, closedAt, updatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("ticketService.UpdateStatusByAdmin: %w", err)
+	}
+
+	return ticket, nil
+}
+
 func (s *ticketService) GetStats(ctx context.Context) (*models.SupportTicketStats, error) {
 	stats, err := s.ticketRepo.GetStats(ctx)
 	if err != nil {
@@ -134,4 +187,37 @@ func (s *ticketService) GetStats(ctx context.Context) (*models.SupportTicketStat
 	}
 
 	return stats, nil
+}
+
+func (s *ticketService) SetProfileRole(ctx context.Context, profileID int64, role models.SupportRole) error {
+	if role != models.SupportRoleAdmin && role != models.SupportRoleSupport {
+		return ErrInvalidSupportRole
+	}
+
+	if err := s.ticketRepo.SetProfileRole(ctx, profileID, role); err != nil {
+		return fmt.Errorf("ticketService.SetProfileRole: %w", err)
+	}
+
+	return nil
+}
+
+func (s *ticketService) GetProfileRole(ctx context.Context, profileID int64) (*models.SupportProfileRole, error) {
+	role, err := s.ticketRepo.GetProfileRole(ctx, profileID)
+	if err != nil {
+		return nil, fmt.Errorf("ticketService.GetProfileRole: %w", err)
+	}
+
+	return role, nil
+}
+
+func (s *ticketService) IsAdmin(ctx context.Context, profileID int64) (bool, error) {
+	role, err := s.ticketRepo.GetProfileRole(ctx, profileID)
+	if err != nil {
+		if errors.Is(err, xerrors.SupportForbidden) {
+			return false, nil
+		}
+		return false, fmt.Errorf("ticketService.IsAdmin: %w", err)
+	}
+
+	return role.Role == models.SupportRoleAdmin, nil
 }

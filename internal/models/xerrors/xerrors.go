@@ -17,6 +17,8 @@ var ErrNothingToUpdate = errors.New("no fields provided for update")
 
 var NoRowsAffected = errors.New("affected on 0 rows")
 
+var SupportForbidden = errors.New("support access forbidden")
+
 var AllreadyExists = errors.New("Resource already exists")
 
 var InternalServerError = errors.New(InternalServerErrorStr)

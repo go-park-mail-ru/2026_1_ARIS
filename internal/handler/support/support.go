@@ -146,6 +146,31 @@ func (h *SupportHandler) getCurrentProfile(w http.ResponseWriter, r *http.Reques
 	return profile, true
 }
 
+func (h *SupportHandler) requireAdmin(w http.ResponseWriter, r *http.Request) (*models.Profile, bool) {
+	log := logger.FromContext(r.Context())
+
+	profile, ok := h.getCurrentProfile(w, r)
+	if !ok {
+		return nil, false
+	}
+
+	isAdmin, err := h.ticketService.IsAdmin(r.Context(), profile.ID)
+	if err != nil {
+		log.Error("failed_to_check_support_admin_role",
+			zap.Int64("profile_id", profile.ID),
+			zap.Error(err),
+		)
+		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
+		return nil, false
+	}
+	if !isAdmin {
+		utils.WriteError(w, xerrors.SupportForbidden.Error(), http.StatusForbidden)
+		return nil, false
+	}
+
+	return profile, true
+}
+
 func (h *SupportHandler) SendTicket(w http.ResponseWriter, r *http.Request) {
 	log := logger.FromContext(r.Context())
 
@@ -302,6 +327,26 @@ func (h *SupportHandler) GetMyTickets(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(buildSupportTicketResponses(tickets))
 }
 
+func (h *SupportHandler) GetAllTickets(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+
+	if _, ok := h.requireAdmin(w, r); !ok {
+		return
+	}
+
+	tickets, err := h.ticketService.GetAll(r.Context())
+	if err != nil {
+		log.Error("failed_to_get_all_support_tickets",
+			zap.Error(err),
+		)
+		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(buildSupportTicketResponses(tickets))
+}
+
 func (h *SupportHandler) GetTicket(w http.ResponseWriter, r *http.Request) {
 	log := logger.FromContext(r.Context())
 
@@ -316,7 +361,22 @@ func (h *SupportHandler) GetTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ticket, err := h.ticketService.GetByID(r.Context(), ticketID, profile.ID)
+	isAdmin, err := h.ticketService.IsAdmin(r.Context(), profile.ID)
+	if err != nil {
+		log.Error("failed_to_check_support_admin_role",
+			zap.Int64("profile_id", profile.ID),
+			zap.Error(err),
+		)
+		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
+		return
+	}
+
+	var ticket *models.SupportTicket
+	if isAdmin {
+		ticket, err = h.ticketService.GetByIDForAdmin(r.Context(), ticketID)
+	} else {
+		ticket, err = h.ticketService.GetByID(r.Context(), ticketID, profile.ID)
+	}
 	if err != nil {
 		if errors.Is(err, xerrors.SupportTicketNotFound) {
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
@@ -405,7 +465,7 @@ func (h *SupportHandler) UpdateTicket(w http.ResponseWriter, r *http.Request) {
 func (h *SupportHandler) UpdateTicketStatus(w http.ResponseWriter, r *http.Request) {
 	log := logger.FromContext(r.Context())
 
-	profile, ok := h.getCurrentProfile(w, r)
+	profile, ok := h.requireAdmin(w, r)
 	if !ok {
 		return
 	}
@@ -432,7 +492,7 @@ func (h *SupportHandler) UpdateTicketStatus(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	ticket, err := h.ticketService.UpdateStatus(r.Context(), ticketID, profile.ID, *request.Status)
+	ticket, err := h.ticketService.UpdateStatusByAdmin(r.Context(), ticketID, *request.Status)
 	if err != nil {
 		if errors.Is(err, xerrors.SupportTicketNotFound) {
 			utils.WriteError(w, err.Error(), http.StatusNotFound)
@@ -457,6 +517,10 @@ func (h *SupportHandler) UpdateTicketStatus(w http.ResponseWriter, r *http.Reque
 
 func (h *SupportHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 	log := logger.FromContext(r.Context())
+
+	if _, ok := h.requireAdmin(w, r); !ok {
+		return
+	}
 
 	stats, err := h.ticketService.GetStats(r.Context())
 	if err != nil {
