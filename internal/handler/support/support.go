@@ -3,6 +3,7 @@ package support
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -26,12 +27,12 @@ type MediaRequestData struct {
 }
 
 type SupportRequest struct {
-	Category    models.TicketCategory `json:"category"`
-	Title       string                `json:"title"`
-	Login       string                `json:"login"`
-	Email       string                `json:"email"`
-	Description string                `json:"description"`
-	Medias      *[]MediaRequestData   `json:"media"`
+	Category    TicketCategoryValue `json:"category"`
+	Title       string              `json:"title"`
+	Login       string              `json:"login"`
+	Email       string              `json:"email"`
+	Description string              `json:"description"`
+	Medias      *[]MediaRequestData `json:"media"`
 }
 
 type SupportHandler struct {
@@ -55,25 +56,25 @@ func NewSupportHandler(sessionService session.SessionService, userService user.U
 }
 
 type SupportResponse struct {
-	ID     int64               `json:"id"`
-	Login  string              `json:"login"`
-	Status models.TicketStatus `json:"status"`
-	Media  []MediaRequestData  `json:"media,omitempty"`
+	ID     string             `json:"id"`
+	Login  string             `json:"login"`
+	Status string             `json:"status"`
+	Media  []MediaRequestData `json:"media,omitempty"`
 }
 
 type SupportTicketResponse struct {
-	ID              int64                 `json:"id"`
+	ID              string                `json:"id"`
 	UID             string                `json:"uid"`
-	ProfileID       int64                 `json:"profileID"`
+	ProfileID       string                `json:"profileID"`
 	Login           string                `json:"login"`
 	Email           string                `json:"email"`
-	Category        models.TicketCategory `json:"category"`
+	Category        string                `json:"category"`
 	Title           string                `json:"title"`
 	Description     string                `json:"description"`
-	Status          models.TicketStatus   `json:"status"`
+	Status          string                `json:"status"`
 	Priority        models.TicketPriority `json:"priority"`
 	Line            int                   `json:"line"`
-	AssignedAgentID *int64                `json:"assignedAgentId"`
+	AssignedAgentID *string               `json:"assignedAgentId"`
 	Rating          *int                  `json:"rating"`
 	Media           []MediaRequestData    `json:"media"`
 	CreatedAt       time.Time             `json:"createdAt"`
@@ -86,13 +87,13 @@ type SupportTicketListResponse struct {
 }
 
 type SupportUpdateRequest struct {
-	Category    *models.TicketCategory `json:"category"`
-	Title       *string                `json:"title"`
-	Description *string                `json:"description"`
+	Category    *TicketCategoryValue `json:"category"`
+	Title       *string              `json:"title"`
+	Description *string              `json:"description"`
 }
 
 type SupportStatusUpdateRequest struct {
-	Status *models.TicketStatus `json:"status"`
+	Status *TicketStatusValue `json:"status"`
 }
 
 type SupportAssignRequest struct {
@@ -111,11 +112,37 @@ type SupportMessageRequest struct {
 	Text string `json:"text"`
 }
 
+type TicketCategoryValue struct {
+	Value models.TicketCategory
+}
+
+func (v *TicketCategoryValue) UnmarshalJSON(data []byte) error {
+	category, err := parseTicketCategoryJSON(data)
+	if err != nil {
+		return err
+	}
+	v.Value = category
+	return nil
+}
+
+type TicketStatusValue struct {
+	Value models.TicketStatus
+}
+
+func (v *TicketStatusValue) UnmarshalJSON(data []byte) error {
+	status, err := parseTicketStatusJSON(data)
+	if err != nil {
+		return err
+	}
+	v.Value = status
+	return nil
+}
+
 type SupportMessageResponse struct {
-	ID         int64              `json:"id"`
-	TicketID   int64              `json:"ticketId"`
+	ID         string             `json:"id"`
+	TicketID   string             `json:"ticketId"`
 	Text       string             `json:"text"`
-	AuthorID   int64              `json:"authorId"`
+	AuthorID   string             `json:"authorId"`
 	AuthorName string             `json:"authorName"`
 	AuthorRole models.SupportRole `json:"authorRole"`
 	CreatedAt  time.Time          `json:"createdAt"`
@@ -132,18 +159,18 @@ func (h *SupportHandler) buildSupportTicketResponse(r *http.Request, ticket *mod
 	}
 
 	return SupportTicketResponse{
-		ID:              ticket.ID,
-		UID:             ticket.Uid.String(),
-		ProfileID:       ticket.ProfileID,
+		ID:              strconv.FormatInt(ticket.ID, 10),
+		UID:             fmt.Sprintf("SUP-%d", ticket.ID),
+		ProfileID:       strconv.FormatInt(ticket.ProfileID, 10),
 		Login:           ticket.Login,
 		Email:           ticket.Email,
-		Category:        ticket.Category,
+		Category:        ticketCategoryToString(ticket.Category),
 		Title:           ticket.Title,
 		Description:     ticket.Description,
-		Status:          ticket.Status,
+		Status:          ticketStatusToString(ticket.Status),
 		Priority:        ticket.Priority,
 		Line:            ticket.Line,
-		AssignedAgentID: ticket.AssignedAgentID,
+		AssignedAgentID: formatOptionalInt64(ticket.AssignedAgentID),
 		Rating:          ticket.Rating,
 		Media:           mediaResponse,
 		CreatedAt:       ticket.CreatedAt,
@@ -171,10 +198,10 @@ func (h *SupportHandler) buildMessageResponse(ctxRequest *http.Request, message 
 	}
 
 	return SupportMessageResponse{
-		ID:         message.ID,
-		TicketID:   message.TicketID,
+		ID:         strconv.FormatInt(message.ID, 10),
+		TicketID:   strconv.FormatInt(message.TicketID, 10),
 		Text:       message.Text,
-		AuthorID:   message.AuthorID,
+		AuthorID:   strconv.FormatInt(message.AuthorID, 10),
 		AuthorName: authorName,
 		AuthorRole: message.AuthorRole,
 		CreatedAt:  message.CreatedAt,
@@ -276,7 +303,7 @@ func (h *SupportHandler) SendTicket(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, xerrors.InvalidRequest, http.StatusBadRequest)
 		return
 	}
-	if request.Category < models.CategoryBug || request.Category > models.CategoryOther {
+	if request.Category.Value < models.CategoryBug || request.Category.Value > models.CategoryOther {
 		utils.WriteError(w, xerrors.InvalidRequest, http.StatusBadRequest)
 		return
 	}
@@ -290,7 +317,7 @@ func (h *SupportHandler) SendTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ticket := models.NewSupportTicket(profile.ID, request.Login, email, request.Category, request.Title, request.Description)
+	ticket := models.NewSupportTicket(profile.ID, request.Login, email, request.Category.Value, request.Title, request.Description)
 	ticketID, err := h.ticketService.Save(r.Context(), ticket)
 	if err != nil {
 		log.Error("failed_to_save_support_ticket", zap.Int64("profile_id", profile.ID), zap.Error(err))
@@ -322,7 +349,12 @@ func (h *SupportHandler) SendTicket(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(SupportResponse{ID: ticketID, Login: ticket.Login, Status: ticket.Status, Media: mediaResponse})
+	_ = json.NewEncoder(w).Encode(SupportResponse{
+		ID:     strconv.FormatInt(ticketID, 10),
+		Login:  ticket.Login,
+		Status: ticketStatusToString(ticket.Status),
+		Media:  mediaResponse,
+	})
 }
 
 func (h *SupportHandler) GetMyTickets(w http.ResponseWriter, r *http.Request) {
@@ -414,7 +446,11 @@ func (h *SupportHandler) UpdateTicket(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	upd := tickets.TicketUpdate{Title: normalizeOptionalString(request.Title), Description: normalizeOptionalString(request.Description), Category: request.Category}
+	upd := tickets.TicketUpdate{Title: normalizeOptionalString(request.Title), Description: normalizeOptionalString(request.Description)}
+	if request.Category != nil {
+		category := request.Category.Value
+		upd.Category = &category
+	}
 	if upd.IsEmpty() {
 		utils.WriteError(w, xerrors.ErrNothingToUpdate.Error(), http.StatusBadRequest)
 		return
@@ -466,7 +502,7 @@ func (h *SupportHandler) UpdateTicketStatus(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	ticket, err := h.ticketService.UpdateStatusByAgent(r.Context(), ticketID, *request.Status)
+	ticket, err := h.ticketService.UpdateStatusByAgent(r.Context(), ticketID, request.Status.Value)
 	if err != nil {
 		if errors.Is(err, tickets.ErrInvalidTicketStatus) {
 			utils.WriteError(w, xerrors.InvalidRequest, http.StatusBadRequest)
@@ -654,6 +690,10 @@ func (h *SupportHandler) SendTicketMessage(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	defer r.Body.Close()
+	if strings.TrimSpace(request.Text) == "" {
+		utils.WriteError(w, xerrors.InvalidRequest, http.StatusBadRequest)
+		return
+	}
 
 	message, err := h.ticketService.SaveMessage(r.Context(), ticket.ID, profile.ID, role, request.Text)
 	if err != nil {
@@ -719,21 +759,19 @@ func parseTicketFilter(w http.ResponseWriter, r *http.Request) (tickets.TicketFi
 	query := r.URL.Query()
 	var filter tickets.TicketFilter
 	if raw := query.Get("status"); raw != "" {
-		value, err := strconv.Atoi(raw)
-		if err != nil || value < int(models.TicketStatusOpen) || value > int(models.TicketStatusClosed) {
+		status, err := parseTicketStatusString(raw)
+		if err != nil {
 			utils.WriteError(w, xerrors.InvalidRequest, http.StatusBadRequest)
 			return filter, false
 		}
-		status := models.TicketStatus(value)
 		filter.Status = &status
 	}
 	if raw := query.Get("category"); raw != "" {
-		value, err := strconv.Atoi(raw)
-		if err != nil || value < int(models.CategoryBug) || value > int(models.CategoryOther) {
+		category, err := parseTicketCategoryString(raw)
+		if err != nil {
 			utils.WriteError(w, xerrors.InvalidRequest, http.StatusBadRequest)
 			return filter, false
 		}
-		category := models.TicketCategory(value)
 		filter.Category = &category
 	}
 	if raw := query.Get("line"); raw != "" {
@@ -745,6 +783,14 @@ func parseTicketFilter(w http.ResponseWriter, r *http.Request) (tickets.TicketFi
 		filter.Line = &value
 	}
 	if raw := query.Get("assignedAgentId"); raw != "" {
+		value, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || value <= 0 {
+			utils.WriteError(w, xerrors.InvalidRequest, http.StatusBadRequest)
+			return filter, false
+		}
+		filter.AssignedAgentID = &value
+	}
+	if raw := query.Get("assigned_agent_id"); raw != "" {
 		value, err := strconv.ParseInt(raw, 10, 64)
 		if err != nil || value <= 0 {
 			utils.WriteError(w, xerrors.InvalidRequest, http.StatusBadRequest)
@@ -795,4 +841,134 @@ func normalizeOptionalString(value *string) *string {
 	}
 	normalized := strings.TrimSpace(*value)
 	return &normalized
+}
+
+func parseTicketStatusJSON(data []byte) (models.TicketStatus, error) {
+	var rawString string
+	if err := json.Unmarshal(data, &rawString); err == nil {
+		return parseTicketStatusString(rawString)
+	}
+
+	var rawInt int
+	if err := json.Unmarshal(data, &rawInt); err == nil {
+		status := models.TicketStatus(rawInt)
+		if isValidTicketStatus(status) {
+			return status, nil
+		}
+	}
+
+	return models.TicketStatusOpen, errors.New("invalid ticket status")
+}
+
+func parseTicketStatusString(raw string) (models.TicketStatus, error) {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case "open":
+		return models.TicketStatusOpen, nil
+	case "in_progress":
+		return models.TicketStatusInProgress, nil
+	case "waiting_user":
+		return models.TicketStatusWaitingUser, nil
+	case "closed":
+		return models.TicketStatusClosed, nil
+	}
+
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return models.TicketStatusOpen, err
+	}
+	status := models.TicketStatus(value)
+	if !isValidTicketStatus(status) {
+		return models.TicketStatusOpen, errors.New("invalid ticket status")
+	}
+	return status, nil
+}
+
+func parseTicketCategoryJSON(data []byte) (models.TicketCategory, error) {
+	var rawString string
+	if err := json.Unmarshal(data, &rawString); err == nil {
+		return parseTicketCategoryString(rawString)
+	}
+
+	var rawInt int
+	if err := json.Unmarshal(data, &rawInt); err == nil {
+		category := models.TicketCategory(rawInt)
+		if isValidTicketCategory(category) {
+			return category, nil
+		}
+	}
+
+	return models.CategoryBug, errors.New("invalid ticket category")
+}
+
+func parseTicketCategoryString(raw string) (models.TicketCategory, error) {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case "bug":
+		return models.CategoryBug, nil
+	case "feature_request":
+		return models.CategoryFeatureRequest, nil
+	case "complaint":
+		return models.CotegoryComplaint, nil
+	case "question":
+		return models.CategoryQuestion, nil
+	case "other":
+		return models.CategoryOther, nil
+	}
+
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return models.CategoryBug, err
+	}
+	category := models.TicketCategory(value)
+	if !isValidTicketCategory(category) {
+		return models.CategoryBug, errors.New("invalid ticket category")
+	}
+	return category, nil
+}
+
+func ticketStatusToString(status models.TicketStatus) string {
+	switch status {
+	case models.TicketStatusOpen:
+		return "open"
+	case models.TicketStatusInProgress:
+		return "in_progress"
+	case models.TicketStatusWaitingUser:
+		return "waiting_user"
+	case models.TicketStatusClosed:
+		return "closed"
+	default:
+		return "open"
+	}
+}
+
+func ticketCategoryToString(category models.TicketCategory) string {
+	switch category {
+	case models.CategoryBug:
+		return "bug"
+	case models.CategoryFeatureRequest:
+		return "feature_request"
+	case models.CotegoryComplaint:
+		return "complaint"
+	case models.CategoryQuestion:
+		return "question"
+	case models.CategoryOther:
+		return "other"
+	default:
+		return "other"
+	}
+}
+
+func isValidTicketStatus(status models.TicketStatus) bool {
+	return status >= models.TicketStatusOpen && status <= models.TicketStatusClosed
+}
+
+func isValidTicketCategory(category models.TicketCategory) bool {
+	return category >= models.CategoryBug && category <= models.CategoryOther
+}
+
+func formatOptionalInt64(value *int64) *string {
+	if value == nil {
+		return nil
+	}
+	formatted := strconv.FormatInt(*value, 10)
+	return &formatted
 }
