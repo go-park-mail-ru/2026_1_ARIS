@@ -245,7 +245,7 @@ func main() {
 	messageSvc := messageservice.NewMessageService(messageRepo)
 	friendshipService := friendshipservice.NewFriendshipService(friendshipRepo)
 	settingsService := settingsservice.NewUserSettingsService(settingsRepo)
-	ticketService := supportservice.NewTicketService(supportTicketRepo)
+	ticketService := supportservice.NewTicketService(supportTicketRepo, mediaRepo)
 
 	logger.Info("services initialized")
 
@@ -257,6 +257,7 @@ func main() {
 
 	userHandler := userhandler.NewUserHandler(userService, mediaService, settingsService)
 	authHandler := authhandler.NewAuthHandler(authService, sessService, userService, mediaService)
+	authHandler.SetSupportService(ticketService)
 	feedHandler := feedhandler.NewFeedHandler(postService, mediaService, userService)
 	mediaHandler := mediahandler.NewMediaHandler(mediaService, sessService, userService)
 	profileHandler := profilehandler.NewProfileHandler(userService, mediaService, sessService)
@@ -264,7 +265,7 @@ func main() {
 	friendHandler := friendshiphandler.NewFriendHandler(sessService, userService, friendshipService)
 	wsHandler := wsHandler.NewWebSocketHandler(hub, chatSvc)
 	postHandler := posthandler.NewPostHandler(userService, postService, mediaService)
-	supportHandler := supporthandler.NewSupportHandler(sessService, userService, ticketService)
+	supportHandler := supporthandler.NewSupportHandler(sessService, userService, ticketService, hub)
 
 	logger.Info("handlers initialized")
 

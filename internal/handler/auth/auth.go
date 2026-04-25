@@ -11,6 +11,7 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/auth"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
+	supportsvc "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/support"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
@@ -58,6 +59,7 @@ type AuthHandler struct {
 	sessionService session.SessionService
 	userService    user.UserService
 	mediaService   media.MediaService
+	supportService supportsvc.TicketService
 }
 
 type LoginResponse struct {
@@ -66,12 +68,17 @@ type LoginResponse struct {
 	FirstName  string `json:"firstName"`
 	LastName   string `json:"lastName"`
 	AvatarLink string `json:"avatarLink,omitempty"`
+	Role       string `json:"role"`
 }
 
 type UserDTO struct {
 	user        models.UserAccount
 	userProfile models.UserProfile
 	profile     models.Profile
+}
+
+func (h *AuthHandler) SetSupportService(supportService supportsvc.TicketService) {
+	h.supportService = supportService
 }
 
 type CommonResponse struct {
@@ -267,6 +274,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: userProfile.CreatedAt.UTC().Format(time.RFC3339Nano),
 		FirstName: html.EscapeString(userProfile.FirstName),
 		LastName:  html.EscapeString(userProfile.LastName),
+		Role:      string(h.getSupportRole(r, userProfile.ProfileID)),
 	}
 
 	log.Info("user_logged_in",
@@ -387,7 +395,19 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		FirstName:  html.EscapeString(userProfile.FirstName),
 		LastName:   html.EscapeString(userProfile.LastName),
 		AvatarLink: avatar,
+		Role:       string(h.getSupportRole(r, userProfile.ProfileID)),
 	})
+}
+
+func (h *AuthHandler) getSupportRole(r *http.Request, profileID int64) models.SupportRole {
+	if h.supportService == nil {
+		return models.SupportRoleUser
+	}
+	role, err := h.supportService.GetProfileRole(r.Context(), profileID)
+	if err != nil {
+		return models.SupportRoleUser
+	}
+	return role
 }
 
 // @Description	Validate register first step

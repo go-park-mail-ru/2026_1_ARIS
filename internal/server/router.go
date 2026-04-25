@@ -91,6 +91,7 @@ func NewRouter(
 		r.Post("/api/chats/{chatID}/messages", chatHandler.SendMessage)
 		r.Put("/api/chats/{chatID}/messages/{messageID}", chatHandler.UpdateMessage)
 		r.Get("/ws/{chatID}", wsHandler.HandleWebSocket)
+		r.Get("/ws/support/{ticketID}", supportHandler.HandleTicketWebSocket)
 	})
 
 	r.Route("/api/friends", func(r chi.Router) {
@@ -134,6 +135,11 @@ func NewRouter(
 			r.Get("/tickets/{ticketID}", supportHandler.GetTicket)
 			r.Patch("/tickets/{ticketID}", supportHandler.UpdateTicket)
 			r.Patch("/tickets/{ticketID}/status", supportHandler.UpdateTicketStatus)
+			r.Get("/tickets/{ticketID}/messages", supportHandler.GetTicketMessages)
+			r.Post("/tickets/{ticketID}/messages", supportHandler.SendTicketMessage)
+			r.Patch("/tickets/{ticketID}/assign", supportHandler.AssignTicket)
+			r.Patch("/tickets/{ticketID}/escalate", supportHandler.EscalateTicket)
+			r.Post("/tickets/{ticketID}/rating", supportHandler.RateTicket)
 		})
 	})
 

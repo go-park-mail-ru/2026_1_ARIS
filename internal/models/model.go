@@ -113,8 +113,10 @@ const (
 type SupportRole string
 
 const (
-	SupportRoleAdmin   SupportRole = "admin"
-	SupportRoleSupport SupportRole = "support"
+	SupportRoleUser      SupportRole = "user"
+	SupportRoleSupportL1 SupportRole = "support_l1"
+	SupportRoleSupportL2 SupportRole = "support_l2"
+	SupportRoleAdmin     SupportRole = "admin"
 )
 
 type SupportProfileRole struct {
@@ -123,18 +125,22 @@ type SupportProfileRole struct {
 }
 
 type SupportTicket struct {
-	ID          int64          `db:"id"`
-	ProfileID   int64          `db:"profile_id"`
-	Login       string         `db:"login"`
-	Email       string         `db:"email"`
-	Category    TicketCategory `db:"category"`
-	Title       string         `db:"title"`
-	Description string         `db:"description"`
-	Status      TicketStatus   `db:"status"`
-	Priority    TicketPriority `db:"priority"`
-	CreatedAt   time.Time      `db:"created_at"`
-	UpdatedAt   time.Time      `db:"updated_at"`
-	ClosedAt    *time.Time     `db:"closed_at"`
+	ID              int64          `db:"id"`
+	Uid             uuid.UUID      `db:"uid"`
+	ProfileID       int64          `db:"profile_id"`
+	Login           string         `db:"login"`
+	Email           string         `db:"email"`
+	Category        TicketCategory `db:"category"`
+	Title           string         `db:"title"`
+	Description     string         `db:"description"`
+	Status          TicketStatus   `db:"status"`
+	Priority        TicketPriority `db:"priority"`
+	Line            int            `db:"line"`
+	AssignedAgentID *int64         `db:"assigned_agent_id"`
+	Rating          *int           `db:"rating"`
+	CreatedAt       time.Time      `db:"created_at"`
+	UpdatedAt       time.Time      `db:"updated_at"`
+	ClosedAt        *time.Time     `db:"closed_at"`
 }
 
 func NewSupportTicket(profileID int64, login, email string, category TicketCategory, title, description string) *SupportTicket {
@@ -142,6 +148,7 @@ func NewSupportTicket(profileID int64, login, email string, category TicketCateg
 
 	return &SupportTicket{
 		ID:          rand.Int64(),
+		Uid:         uuid.New(),
 		ProfileID:   profileID,
 		Login:       login,
 		Email:       email,
@@ -153,6 +160,21 @@ func NewSupportTicket(profileID int64, login, email string, category TicketCateg
 		UpdatedAt:   now,
 		ClosedAt:    nil,
 		Priority:    TicketPriorityLow,
+		Line:        1,
+	}
+}
+
+type TicketWithMedia struct {
+	TicketID int64 `db:"ticket_id"`
+	MediaID  int64 `db:"media_id"`
+	Order    int   `db:"sort_order"`
+}
+
+func NewTicketWithMedia(ticketID, mediaID int64, order int) *TicketWithMedia {
+	return &TicketWithMedia{
+		TicketID: ticketID,
+		MediaID:  mediaID,
+		Order:    order,
 	}
 }
 
@@ -167,22 +189,24 @@ type SupportTicketStatusStats struct {
 }
 
 type SupportTicketStats struct {
-	TotalCount              int64                        `json:"totalCount"`
-	OpenCount               int64                        `json:"openCount"`
-	InProgressCount         int64                        `json:"inProgressCount"`
-	WaitingUserCount        int64                        `json:"waitingUserCount"`
-	ClosedCount             int64                        `json:"closedCount"`
-	AverageCloseTimeSeconds *float64                     `json:"averageCloseTimeSeconds,omitempty"`
-	ByCategory              []SupportTicketCategoryStats `json:"byCategory"`
-	ByStatus                []SupportTicketStatusStats   `json:"byStatus"`
+	TotalCount         int64            `json:"total"`
+	OpenCount          int64            `json:"open"`
+	InProgressCount    int64            `json:"inProgress"`
+	WaitingUserCount   int64            `json:"waitingUser"`
+	ClosedCount        int64            `json:"closed"`
+	ByCategory         map[string]int64 `json:"byCategory"`
+	ByLine             map[string]int64 `json:"byLine"`
+	AverageRating      *float64         `json:"avgRating"`
+	RatingDistribution map[string]int64 `json:"ratingDistribution"`
 }
 
 type SupportTicketMessage struct {
-	ID         int64
-	TicketID   int64
-	SenderID   int64
-	SenderRole string
-	MessageID  int64
+	ID         int64       `db:"id"`
+	TicketID   int64       `db:"ticket_id"`
+	Text       string      `db:"text"`
+	AuthorID   int64       `db:"author_id"`
+	AuthorRole SupportRole `db:"author_role"`
+	CreatedAt  time.Time   `db:"created_at"`
 }
 
 type SupportTicketStatusHistory struct {
