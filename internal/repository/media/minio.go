@@ -47,7 +47,7 @@ func (client *MinioClient) Save(ctx context.Context, bucketName string, reader i
 		return "", err
 	}
 
-	return fmt.Sprintf("http://arisnet.ru/%s/%s",
+	return fmt.Sprintf("https://arisnet.ru/%s/%s",
 		uploadInto.Bucket,
 		uploadInto.Key,
 	), nil
