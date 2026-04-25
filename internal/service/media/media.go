@@ -111,10 +111,13 @@ func GetMimeType(file io.Reader) (string, string, error) {
 }
 
 var allowedByContext = map[string][]string{
-	"post": {"image/"},
+	"post":           {"image/"},
+	"support":        {"image/"},
+	"support_ticket": {"image/"},
+	"ticket":         {"image/"},
+	"screenshot":     {"image/"},
 	//"post_attachment": {},
-	"support": {"image/"},
-	"avatar":  {"image/"},
+	"avatar": {"image/"},
 	//"message": {},
 }
 
