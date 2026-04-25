@@ -128,6 +128,9 @@ func NewRouter(
 		r.Group(func(r chi.Router) {
 			r.Use(mymiddleware.AuthMiddleware(sessSvc))
 			r.Post("/tickets", supportHandler.SendTicket)
+			r.Get("/tickets/my", supportHandler.GetMyTickets)
+			r.Get("/tickets/{ticketID}", supportHandler.GetTicket)
+			r.Patch("/tickets/{ticketID}", supportHandler.UpdateTicket)
 		})
 	})
 
