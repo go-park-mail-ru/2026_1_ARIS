@@ -74,6 +74,10 @@ type SupportUpdateRequest struct {
 	Description *string                `json:"description"`
 }
 
+type SupportStatusUpdateRequest struct {
+	Status *models.TicketStatus `json:"status"`
+}
+
 func buildSupportTicketResponse(ticket *models.SupportTicket) SupportTicketResponse {
 	return SupportTicketResponse{
 		ID:          ticket.ID,
@@ -396,6 +400,75 @@ func (h *SupportHandler) UpdateTicket(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(buildSupportTicketResponse(ticket))
+}
+
+func (h *SupportHandler) UpdateTicketStatus(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+
+	profile, ok := h.getCurrentProfile(w, r)
+	if !ok {
+		return
+	}
+
+	ticketID, err := strconv.ParseInt(chi.URLParam(r, "ticketID"), 10, 64)
+	if err != nil || ticketID <= 0 {
+		utils.WriteError(w, xerrors.InvalidID, http.StatusBadRequest)
+		return
+	}
+
+	var request SupportStatusUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		log.Warn("cannot_update_support_ticket_status_invalid_body",
+			zap.String("path", r.URL.Path),
+			zap.Error(err),
+		)
+		utils.WriteError(w, xerrors.InvalidRequestBody, http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	if request.Status == nil {
+		utils.WriteError(w, xerrors.InvalidRequest, http.StatusBadRequest)
+		return
+	}
+
+	ticket, err := h.ticketService.UpdateStatus(r.Context(), ticketID, profile.ID, *request.Status)
+	if err != nil {
+		if errors.Is(err, xerrors.SupportTicketNotFound) {
+			utils.WriteError(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, tickets.ErrInvalidTicketStatus) {
+			utils.WriteError(w, xerrors.InvalidRequest, http.StatusBadRequest)
+			return
+		}
+		log.Error("failed_to_update_support_ticket_status",
+			zap.Int64("ticket_id", ticketID),
+			zap.Int64("profile_id", profile.ID),
+			zap.Error(err),
+		)
+		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(buildSupportTicketResponse(ticket))
+}
+
+func (h *SupportHandler) GetStats(w http.ResponseWriter, r *http.Request) {
+	log := logger.FromContext(r.Context())
+
+	stats, err := h.ticketService.GetStats(r.Context())
+	if err != nil {
+		log.Error("failed_to_get_support_stats",
+			zap.Error(err),
+		)
+		utils.WriteError(w, xerrors.InternalServerErrorStr, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(stats)
 }
 
 func normalizeOptionalString(value *string) *string {

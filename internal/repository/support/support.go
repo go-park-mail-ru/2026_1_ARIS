@@ -21,6 +21,8 @@ type TicketRepository interface {
 	GetByIDAndProfileID(ctx context.Context, ticketID, profileID int64) (*models.SupportTicket, error)
 	GetByProfileID(ctx context.Context, profileID int64) ([]models.SupportTicket, error)
 	Update(ctx context.Context, ticket *models.SupportTicket) (*models.SupportTicket, error)
+	UpdateStatus(ctx context.Context, ticketID, profileID int64, status models.TicketStatus, closedAt *time.Time, updatedAt time.Time) (*models.SupportTicket, error)
+	GetStats(ctx context.Context) (*models.SupportTicketStats, error)
 }
 
 type ticketStorage struct {
@@ -183,6 +185,141 @@ func (s *ticketStorage) Update(ctx context.Context, ticket *models.SupportTicket
 	}
 
 	return updatedTicket, nil
+}
+
+func (s *ticketStorage) UpdateStatus(
+	ctx context.Context,
+	ticketID,
+	profileID int64,
+	status models.TicketStatus,
+	closedAt *time.Time,
+	updatedAt time.Time,
+) (*models.SupportTicket, error) {
+	log := logger.FromContext(ctx)
+	query := `
+		UPDATE support_ticket
+		SET status = $1,
+			closed_at = $2,
+			updated_at = $3
+		WHERE id = $4 AND profile_id = $5
+		RETURNING id, profile_id, login, email, category, title, description, status, priority, created_at, updated_at, closed_at`
+
+	start := time.Now()
+	row := s.db.QueryRow(ctx, query, int(status), closedAt, updatedAt, ticketID, profileID)
+	if log != nil {
+		log.Debug("db query",
+			zap.String("query", "ticketStorage.UpdateStatus"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
+
+	ticket, err := scanSupportTicket(row)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, xerrors.SupportTicketNotFound
+	}
+	if err != nil {
+		return nil, pgerrors.MapPgError(err)
+	}
+
+	return ticket, nil
+}
+
+func (s *ticketStorage) GetStats(ctx context.Context) (*models.SupportTicketStats, error) {
+	log := logger.FromContext(ctx)
+	query := `
+		SELECT
+			COUNT(*)::bigint,
+			COUNT(*) FILTER (WHERE status = 0)::bigint,
+			COUNT(*) FILTER (WHERE status = 1)::bigint,
+			COUNT(*) FILTER (WHERE status = 2)::bigint,
+			COUNT(*) FILTER (WHERE status = 3)::bigint,
+			AVG(EXTRACT(EPOCH FROM (closed_at - created_at))) FILTER (WHERE closed_at IS NOT NULL)
+		FROM support_ticket`
+
+	start := time.Now()
+	row := s.db.QueryRow(ctx, query)
+	if log != nil {
+		log.Debug("db query",
+			zap.String("query", "ticketStorage.GetStatsTotals"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
+
+	stats := &models.SupportTicketStats{}
+	if err := row.Scan(
+		&stats.TotalCount,
+		&stats.OpenCount,
+		&stats.InProgressCount,
+		&stats.WaitingUserCount,
+		&stats.ClosedCount,
+		&stats.AverageCloseTimeSeconds,
+	); err != nil {
+		return nil, err
+	}
+
+	byCategory, err := s.getStatsByCategory(ctx)
+	if err != nil {
+		return nil, err
+	}
+	stats.ByCategory = byCategory
+
+	byStatus, err := s.getStatsByStatus(ctx)
+	if err != nil {
+		return nil, err
+	}
+	stats.ByStatus = byStatus
+
+	return stats, nil
+}
+
+func (s *ticketStorage) getStatsByCategory(ctx context.Context) ([]models.SupportTicketCategoryStats, error) {
+	log := logger.FromContext(ctx)
+	query := `
+		SELECT category, COUNT(*)::bigint
+		FROM support_ticket
+		GROUP BY category
+		ORDER BY category`
+
+	start := time.Now()
+	rows, err := s.db.Query(ctx, query)
+	if log != nil {
+		log.Debug("db query",
+			zap.String("query", "ticketStorage.GetStatsByCategory"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.SupportTicketCategoryStats, error) {
+		var stat models.SupportTicketCategoryStats
+		err := row.Scan(&stat.Category, &stat.Count)
+		return stat, err
+	})
+}
+
+func (s *ticketStorage) getStatsByStatus(ctx context.Context) ([]models.SupportTicketStatusStats, error) {
+	log := logger.FromContext(ctx)
+	query := `
+		SELECT status, COUNT(*)::bigint
+		FROM support_ticket
+		GROUP BY status
+		ORDER BY status`
+
+	start := time.Now()
+	rows, err := s.db.Query(ctx, query)
+	if log != nil {
+		log.Debug("db query",
+			zap.String("query", "ticketStorage.GetStatsByStatus"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (models.SupportTicketStatusStats, error) {
+		var stat models.SupportTicketStatusStats
+		err := row.Scan(&stat.Status, &stat.Count)
+		return stat, err
+	})
 }
 
 type supportTicketRow interface {

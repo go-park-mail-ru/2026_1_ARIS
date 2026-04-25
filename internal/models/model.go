@@ -144,6 +144,27 @@ func NewSupportTicket(profileID int64, login, email string, category TicketCateg
 	}
 }
 
+type SupportTicketCategoryStats struct {
+	Category TicketCategory `json:"category"`
+	Count    int64          `json:"count"`
+}
+
+type SupportTicketStatusStats struct {
+	Status TicketStatus `json:"status"`
+	Count  int64        `json:"count"`
+}
+
+type SupportTicketStats struct {
+	TotalCount              int64                        `json:"totalCount"`
+	OpenCount               int64                        `json:"openCount"`
+	InProgressCount         int64                        `json:"inProgressCount"`
+	WaitingUserCount        int64                        `json:"waitingUserCount"`
+	ClosedCount             int64                        `json:"closedCount"`
+	AverageCloseTimeSeconds *float64                     `json:"averageCloseTimeSeconds,omitempty"`
+	ByCategory              []SupportTicketCategoryStats `json:"byCategory"`
+	ByStatus                []SupportTicketStatusStats   `json:"byStatus"`
+}
+
 type SupportTicketMessage struct {
 	ID         int64
 	TicketID   int64
