@@ -9,6 +9,7 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/post"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/proxy"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/support"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/websocket"
 	mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
@@ -32,6 +33,7 @@ func NewRouter(
 	friendshipHandler *friend.FriendHandler,
 	wsHandler *websocket.WebSocketHandler,
 	postHandler *post.PostHandler,
+	supportHandler *support.SupportHandler,
 	logger *zap.Logger,
 ) *chi.Mux {
 	r := chi.NewRouter()
@@ -119,6 +121,13 @@ func NewRouter(
 			r.Delete("/{id}", postHandler.DeletePost)
 			r.Get("/{id}", postHandler.GetPost)
 			r.Patch("/{id}", postHandler.UpdatePost)
+		})
+	})
+
+	r.Route("/api/support", func(r chi.Router) {
+		r.Group(func(r chi.Router) {
+			r.Use(mymiddleware.AuthMiddleware(sessSvc))
+			r.Post("/tickets", supportHandler.SendTicket)
 		})
 	})
 

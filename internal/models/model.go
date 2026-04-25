@@ -83,6 +83,84 @@ const (
 	ThemeDark  ThemeSetting = "dark"
 )
 
+type TicketCategory int
+
+const (
+	CategoryBug TicketCategory = iota
+	CategoryFeatureRequest
+	CotegoryComplaint
+	CategoryQuestion
+	CategoryOther
+)
+
+type TicketStatus int
+
+const (
+	TicketStatusOpen TicketStatus = iota
+	TicketStatusInProgress
+	TicketStatusWaitingUser
+	TicketStatusClosed
+)
+
+type TicketPriority int
+
+const (
+	TicketPriorityLow TicketPriority = iota
+	TicketPriorityMedium
+	TicketPriorityHigh
+)
+
+type SupportTicket struct {
+	ID          int64          `db:"id"`
+	ProfileID   int64          `db:"profile_id"`
+	Login       string         `db:"login"`
+	Email       string         `db:"email"`
+	Category    TicketCategory `db:"category"`
+	Title       string         `db:"title"`
+	Description string         `db:"description"`
+	Status      TicketStatus   `db:"status"`
+	Priority    TicketPriority `db:"priority"`
+	CreatedAt   time.Time      `db:"created_at"`
+	UpdatedAt   time.Time      `db:"updated_at"`
+	ClosedAt    *time.Time     `db:"closed_at"`
+}
+
+func NewSupportTicket(profileID int64, login, email string, category TicketCategory, title, description string) *SupportTicket {
+	now := time.Now()
+
+	return &SupportTicket{
+		ID:          rand.Int64(),
+		ProfileID:   profileID,
+		Login:       login,
+		Email:       email,
+		Category:    category,
+		Title:       title,
+		Description: description,
+		Status:      TicketStatusOpen,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+		ClosedAt:    nil,
+		Priority:    TicketPriorityLow,
+	}
+}
+
+type SupportTicketMessage struct {
+	ID         int64
+	TicketID   int64
+	SenderID   int64
+	SenderRole string
+	MessageID  int64
+}
+
+type SupportTicketStatusHistory struct {
+	ID        int64
+	TicketID  int64
+	OldStatus TicketStatus
+	NewStatus TicketStatus
+	ChangedBy int64
+	CreatedAt time.Time
+}
+
 // models structs
 // credentials данные
 type UserAccount struct {

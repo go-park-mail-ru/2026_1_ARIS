@@ -2,8 +2,8 @@
 
 COMPOSE_FILE=./docker-compose.dev.yml
 COMPOSE_ENV_FILE=./.env.compose
-COMPOSE=docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE)
-COMPOSE_LOCAL=docker compose -f ./docker/docker-compose.yml --env-file ./.env
+COMPOSE=docker-compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE)
+COMPOSE_LOCAL=docker-compose -f ./docker/docker-compose.yml --env-file ./.env
 
 # include .env
 
@@ -25,7 +25,7 @@ coverage: clean
 	go tool cover -html=coverage.out
 
 migrate-up: migrate
-	$(MIGRATE) up 5
+	$(MIGRATE) up 6
 
 migrate-down: migrate
 	$(MIGRATE) down
@@ -61,6 +61,9 @@ services-up:
 
 services-stop:
 	$(COMPOSE_LOCAL) stop
+
+services-down:
+	$(COMPOSE_LOCAL) down -v
 
 dev:
 	$(COMPOSE) up --build -d
