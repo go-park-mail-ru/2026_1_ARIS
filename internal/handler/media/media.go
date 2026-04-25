@@ -16,7 +16,7 @@ import (
 
 type MediaHandler struct {
 	mediaService   media.MediaService
-	sessionService session.SessionService
+	sessionService session.SessionService // нигде не используется
 	userService    user.UserService
 }
 

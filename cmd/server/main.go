@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,11 +11,7 @@ import (
 	"time"
 
 	_ "github.com/go-park-mail-ru/2026_1_ARIS/docs"
-	"github.com/minio/minio-go/v7"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/server"
 
@@ -55,16 +50,16 @@ import (
 	settingsservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/settings"
 	userservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/config"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
+	xminio "github.com/go-park-mail-ru/2026_1_ARIS/pkg/minio"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/postgres"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/redis"
+
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/config"
-	connectdb "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/connect_db"
-	connectminio "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/connect_minio"
-	connectredis "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/connect_redis"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/websocket"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
@@ -73,138 +68,56 @@ func main() {
 		log.Println("No .env file found, reading from environment: ", err)
 	}
 
+	ctx := context.Background()
+
 	// Создаём логгер
 
-	logConf := zap.Config{
-		Level:            zap.NewAtomicLevelAt(zap.InfoLevel),
-		Development:      false,
-		Encoding:         "json",
-		OutputPaths:      []string{"stdout"},
-		ErrorOutputPaths: []string{"stderr"},
-		EncoderConfig: zapcore.EncoderConfig{
-			MessageKey:   "message",
-			LevelKey:     "level",
-			TimeKey:      "time",
-			NameKey:      "logger_name",
-			CallerKey:    "caller",
-			FunctionKey:  "function",
-			EncodeLevel:  zapcore.CapitalLevelEncoder,
-			EncodeTime:   zapcore.ISO8601TimeEncoder,
-			EncodeCaller: zapcore.ShortCallerEncoder,
-		},
+	logger, err := logger.New()
+	if err != nil {
+		log.Fatal("fail to create logger: ", err)
 	}
 
-	logger, err := logConf.Build()
-	if err != nil {
-		log.Fatalf("Can't configure logger %s", err)
-	}
-	if logger == nil {
-		log.Fatal("logger is nil")
-	}
 	logger.Info("logger initialized")
 
 	defer func() {
 		if err := logger.Sync(); err != nil {
-			logger.Error("Failed to sync logger", zap.Error(err))
+			logger.Error("fail to sync logger", zap.Error(err))
 		}
 	}()
 
-	//sugar := logger.Sugar()
+	// Создаём конфиг
 
 	envConf, err := config.NewConfig()
 	if err != nil {
-		logger.Fatal("failed to load env variables", zap.Error(err))
+		logger.Fatal("fail to load env variables", zap.Error(err))
 	}
 
-	confStr, err := connectdb.GetConnectURL(envConf)
-	if err != nil {
-		logger.Fatal("failed to get db connection string: ", zap.Error(err))
-	}
+	// Подключаем к БД
 
-	ctx := context.Background()
-
-	db, err := pgxpool.New(ctx, confStr)
+	db, err := postgres.New(ctx, envConf)
 	if err != nil {
-		logger.Fatal("fail to connect to db: ", zap.Error(err))
-	}
-	defer db.Close()
-
-	err = db.Ping(ctx)
-	if err != nil {
-		logger.Fatal("failed db connection check: ", zap.Error(err))
+		logger.Fatal("fail to connect PostgreSQL", zap.Error(err))
 	}
 
 	logger.Info("Successfully connected to PostgreSQL")
 
 	// Подключаем Redis
 
-	redisClient, err := connectredis.InitRedis(ctx, envConf)
+	redisClient, err := redis.InitRedis(ctx, envConf)
 	if err != nil {
-		logger.Fatal("fail to connect to Redis", zap.Error(err))
+		logger.Fatal("fail to connect Redis", zap.Error(err))
 	}
 
 	logger.Info("Successfully connected to Redis")
 
 	// Подключаем MinIO
 
-	// создание MinIO клиента
-	minioClient, err := connectminio.InitMinio(envConf)
+	minioClient, err := xminio.New(ctx, envConf, logger)
 	if err != nil {
-		logger.Fatal("fail to initialize MinIO", zap.Error(err))
-	}
-
-	// Проверка на существование бакета
-	exists, err := minioClient.BucketExists(ctx, envConf.MinioBucketName)
-	if err != nil {
-		logger.Fatal("fail to chech MinIO bucket existition", zap.Error(err))
+		logger.Fatal("fail to connect MinIO", zap.Error(err))
 	}
 
 	logger.Info("Successfully connected to MinIO")
-
-	// Если бакета нет - его нужно создать
-	if !exists {
-		err := minioClient.MakeBucket(ctx, envConf.MinioBucketName, minio.MakeBucketOptions{})
-		if err != nil {
-			logger.Fatal("fail to create MinIO buchet", zap.Error(err))
-		}
-		logger.Info(("MinIO bucket created"))
-	}
-
-	// Устанавливаем политику доступа к файлам
-	policy := map[string]any{
-		"Version": "2012-10-17",
-		"Statement": []any{
-			map[string]any{
-				"Effect": "Allow",
-				"Principal": map[string]string{
-					"AWS": "*",
-				},
-				"Action": []string{
-					"s3:GetBucketLocation",
-					"s3:ListBucket",
-				},
-				"Resource": "arn:aws:s3:::" + envConf.MinioBucketName,
-			},
-			map[string]any{
-				"Effect": "Allow",
-				"Principal": map[string]string{
-					"AWS": "*",
-				},
-				"Action":   "s3:GetObject",
-				"Resource": "arn:aws:s3:::" + envConf.MinioBucketName + "/*",
-			},
-		},
-	}
-
-	rawPolicy, err := json.Marshal(policy)
-	if err != nil {
-		logger.Fatal("fail to marshal MinIO policy", zap.Error(err))
-	}
-
-	err = minioClient.SetBucketPolicy(ctx, envConf.MinioBucketName, string(rawPolicy))
-	if err != nil {
-		logger.Fatal("fail to set MinIO bucket policy", zap.Error(err))
-	}
 
 	client := mediarepo.NewMinioClient(minioClient)
 
@@ -274,8 +187,6 @@ func main() {
 	mainMux.Handle("/ws/", router)
 	mainMux.Handle("/", cop.Handler(router))
 
-	// создаём роутер
-
 	fmt.Println("Swagger is running on http://localhost:8080/swagger/index.html")
 
 	srv := &http.Server{
@@ -306,42 +217,4 @@ func main() {
 
 	fmt.Println("Server stopped")
 	logger.Info("server stopped")
-}
-
-func ensureKnownPassword(ctx context.Context, db *pgxpool.Pool, username string, password string) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return
-	}
-	_, _ = db.Exec(ctx, "UPDATE user_account SET password_hash=$1 WHERE username=$2", string(hash), username)
-}
-
-func ensureKnownTestUser(
-	ctx context.Context,
-	userAccountRepo useraccountrepo.UserAccountRepo,
-	userService userservice.UserService,
-	username string,
-	password string,
-	firstName string,
-	lastName string,
-) {
-	if _, err := userAccountRepo.GetByUsername(ctx, username); err == nil {
-		return
-	}
-	birthdayDate, err := time.Parse("02/01/2006", "24/02/2005")
-	if err != nil {
-		return
-	}
-	_, _ = userService.CreateRealUserProfile(
-		ctx,
-		nil,
-		nil,
-		password,
-		username,
-		firstName,
-		lastName,
-		birthdayDate,
-		models.Gender("male"),
-		nil,
-	)
 }

@@ -68,12 +68,6 @@ type LoginResponse struct {
 	AvatarLink string `json:"avatarLink,omitempty"`
 }
 
-type UserDTO struct {
-	user        models.UserAccount
-	userProfile models.UserProfile
-	profile     models.Profile
-}
-
 type CommonResponse struct {
 	Message string `json:"message"`
 }

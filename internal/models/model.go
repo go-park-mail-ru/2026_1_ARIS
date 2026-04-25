@@ -53,6 +53,8 @@ const (
 	ReactionAngry ReactionType = "😡"
 )
 
+// type Gender int
+
 type Gender string
 
 const (

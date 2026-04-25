@@ -1,9 +1,9 @@
-package connectredis
+package redis
 
 import (
 	"context"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/config"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/config"
 	"github.com/redis/go-redis/v9"
 )
 
