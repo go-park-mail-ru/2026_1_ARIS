@@ -369,6 +369,123 @@ func TestChatHandler_resolveProfileDisplayName_NoService(t *testing.T) {
 	assert.Equal(t, "Пользователь", name)
 }
 
+func TestChatHandler_filterChatsForList(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockChatSvc := mock_service.NewMockChatService(ctrl)
+	mockMsgSvc := mock_service.NewMockMessageService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+
+	handler := &ChatHandler{
+		chatService:    mockChatSvc,
+		messageService: mockMsgSvc,
+		userService:    mockUserSvc,
+	}
+
+	viewerUserID := int64(1)
+	viewerProfileID := int64(10)
+	chats := []models.Chat{
+		{ID: 1},
+		{ID: 2},
+		{ID: 3},
+	}
+
+	mockMsgSvc.EXPECT().GetMessages(gomock.Any(), int64(1), 1, 0).Return([]models.Message{{ID: 1}}, nil)
+	mockMsgSvc.EXPECT().GetMessages(gomock.Any(), int64(2), 1, 0).Return(nil, nil)
+	mockUserSvc.EXPECT().GetUserProfileByUserAccountID(gomock.Any(), viewerUserID).Return(&models.UserProfile{ProfileID: viewerProfileID}, nil)
+	mockChatSvc.EXPECT().GetChatMembers(gomock.Any(), int64(2)).Return([]models.ChatMember{{MemberID: viewerProfileID}, {MemberID: 20}}, nil)
+	mockUserSvc.EXPECT().GetUserAccountByProfileID(gomock.Any(), int64(20)).Return(&models.UserAccount{Username: "sergeyshulginenko"}, nil)
+	mockMsgSvc.EXPECT().GetMessages(gomock.Any(), int64(3), 1, 0).Return(nil, nil)
+	mockUserSvc.EXPECT().GetUserProfileByUserAccountID(gomock.Any(), viewerUserID).Return(nil, errors.New("profile error"))
+
+	filtered := handler.filterChatsForList(context.Background(), chats, viewerUserID)
+	assert.Len(t, filtered, 2)
+	assert.Equal(t, int64(1), filtered[0].ID)
+	assert.Equal(t, int64(2), filtered[1].ID)
+}
+
+func TestChatHandler_mapMessageResponse_WithPointers(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	handler := &ChatHandler{userService: mockUserSvc}
+
+	parentID := int64(7)
+	stickerID := int64(9)
+	text := "hello"
+	msg := models.Message{
+		ID:              1,
+		Uid:             uuid.New(),
+		Text:            &text,
+		AuthorID:        5,
+		ChatID:          3,
+		ParentMessageID: &parentID,
+		StickerID:       &stickerID,
+		IsActive:        true,
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+
+	mockUserSvc.EXPECT().GetUserProfileByProfileID(gomock.Any(), int64(5)).Return(&models.UserProfile{FirstName: "A", LastName: "B"}, nil)
+
+	resp := handler.mapMessageResponse(context.Background(), msg)
+	if assert.NotNil(t, resp.ParentMessageID) {
+		assert.Equal(t, "7", *resp.ParentMessageID)
+	}
+	if assert.NotNil(t, resp.StickerID) {
+		assert.Equal(t, "9", *resp.StickerID)
+	}
+	assert.Equal(t, "A B", resp.AuthorName)
+}
+
+func TestChatHandler_resolveChatTitle_Fallbacks(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockChatSvc := mock_service.NewMockChatService(ctrl)
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	handler := &ChatHandler{
+		chatService: mockChatSvc,
+		userService: mockUserSvc,
+	}
+
+	chatModel := models.Chat{ID: 1, Title: "Fallback", Type: models.PrivateChat}
+
+	mockUserSvc.EXPECT().GetUserProfileByUserAccountID(gomock.Any(), int64(1)).Return(nil, errors.New("profile error"))
+	assert.Equal(t, "Fallback", handler.resolveChatTitle(context.Background(), chatModel, 1))
+
+	mockUserSvc.EXPECT().GetUserProfileByUserAccountID(gomock.Any(), int64(1)).Return(&models.UserProfile{ProfileID: 10}, nil)
+	mockChatSvc.EXPECT().GetChatMembers(gomock.Any(), int64(1)).Return(nil, errors.New("members error"))
+	assert.Equal(t, "Fallback", handler.resolveChatTitle(context.Background(), chatModel, 1))
+}
+
+func TestChatHandler_resolveChatTargetUserAccountID_Branches(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockUserSvc := mock_service.NewMockUserService(ctrl)
+	handler := &ChatHandler{userService: mockUserSvc}
+
+	mockUserSvc.EXPECT().GetUserAccountByProfileID(gomock.Any(), int64(2)).Return(&models.UserAccount{ID: 22}, nil)
+	id, err := handler.resolveChatTargetUserAccountID(context.Background(), 2)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(22), id)
+
+	mockUserSvc.EXPECT().GetUserAccountByProfileID(gomock.Any(), int64(3)).Return(nil, errors.New("not profile"))
+	mockUserSvc.EXPECT().GetUserProfileByUserAccountID(gomock.Any(), int64(3)).Return(&models.UserProfile{ID: 3}, nil)
+	id, err = handler.resolveChatTargetUserAccountID(context.Background(), 3)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(3), id)
+
+	mockUserSvc.EXPECT().GetUserAccountByProfileID(gomock.Any(), int64(4)).Return(nil, errors.New("not profile"))
+	mockUserSvc.EXPECT().GetUserProfileByUserAccountID(gomock.Any(), int64(4)).Return(nil, errors.New("not account"))
+	mockUserSvc.EXPECT().GetUserAccountByProfileID(gomock.Any(), int64(4)).Return(nil, errors.New("still missing"))
+	_, err = handler.resolveChatTargetUserAccountID(context.Background(), 4)
+	assert.Error(t, err)
+}
+
 func TestEnsureGuaranteedDialog_UserAccountRepoNil(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

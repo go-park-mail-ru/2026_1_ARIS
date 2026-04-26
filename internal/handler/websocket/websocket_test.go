@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -74,4 +75,52 @@ func TestHandleWebSocket_InvalidChatID_WithRouter(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	assert.Contains(t, rec.Body.String(), "invalid chatID")
+}
+
+func TestHandleWebSocket_ChatServiceError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockChatSvc := mock_service.NewMockChatService(ctrl)
+	hub := websocket.NewHub()
+	handler := NewWebSocketHandler(hub, mockChatSvc)
+
+	r := chi.NewRouter()
+	r.Get("/ws/{chatID}", handler.HandleWebSocket)
+
+	mockChatSvc.EXPECT().
+		CheckUserInChat(gomock.Any(), int64(15), int64(11)).
+		Return(false, errors.New("boom"))
+
+	req := httptest.NewRequest(http.MethodGet, "/ws/15", nil)
+	req = req.WithContext(context.WithValue(req.Context(), "user_id", int64(11)))
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+func TestHandleWebSocket_Forbidden(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockChatSvc := mock_service.NewMockChatService(ctrl)
+	hub := websocket.NewHub()
+	handler := NewWebSocketHandler(hub, mockChatSvc)
+
+	r := chi.NewRouter()
+	r.Get("/ws/{chatID}", handler.HandleWebSocket)
+
+	mockChatSvc.EXPECT().
+		CheckUserInChat(gomock.Any(), int64(15), int64(11)).
+		Return(false, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/ws/15", nil)
+	req = req.WithContext(context.WithValue(req.Context(), "user_id", int64(11)))
+
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusForbidden, rec.Code)
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -27,6 +28,7 @@ import (
 	mediahandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/media"
 	posthandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/post"
 	profilehandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
+	supporthandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/support"
 	userhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
 	wsHandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/websocket"
 
@@ -42,6 +44,7 @@ import (
 	repostrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/repost"
 	sessionrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/session"
 	settingsrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/settings"
+	supportrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/support"
 	useraccountrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_account"
 	userprofilerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_profile"
 
@@ -53,6 +56,8 @@ import (
 	postservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
 	sessionservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
 	settingsservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/settings"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/support"
+	supportservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/support"
 	userservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
@@ -105,6 +110,9 @@ func main() {
 
 	defer func() {
 		if err := logger.Sync(); err != nil {
+			if errors.Is(err, syscall.EINVAL) {
+				return
+			}
 			logger.Error("Failed to sync logger", zap.Error(err))
 		}
 	}()
@@ -225,6 +233,7 @@ func main() {
 	chatRepo := chatrepo.NewChatStorage(db)
 	chatMemberRepo := chatmemberrepo.NewChatMemberStorage(db)
 	messageRepo := messagerepo.NewMessageStorage(db)
+	supportTicketRepo := supportrepo.NewTicketStorage(db)
 
 	logger.Info("repositories initialized")
 
@@ -237,6 +246,7 @@ func main() {
 	messageSvc := messageservice.NewMessageService(messageRepo)
 	friendshipService := friendshipservice.NewFriendshipService(friendshipRepo)
 	settingsService := settingsservice.NewUserSettingsService(settingsRepo)
+	ticketService := supportservice.NewTicketService(supportTicketRepo, mediaRepo)
 
 	logger.Info("services initialized")
 
@@ -248,6 +258,7 @@ func main() {
 
 	userHandler := userhandler.NewUserHandler(userService, mediaService, settingsService)
 	authHandler := authhandler.NewAuthHandler(authService, sessService, userService, mediaService)
+	authHandler.SetSupportService(ticketService)
 	feedHandler := feedhandler.NewFeedHandler(postService, mediaService, userService)
 	mediaHandler := mediahandler.NewMediaHandler(mediaService, sessService, userService)
 	profileHandler := profilehandler.NewProfileHandler(userService, mediaService, sessService)
@@ -255,13 +266,19 @@ func main() {
 	friendHandler := friendshiphandler.NewFriendHandler(sessService, userService, friendshipService)
 	wsHandler := wsHandler.NewWebSocketHandler(hub, chatSvc)
 	postHandler := posthandler.NewPostHandler(userService, postService, mediaService)
+	supportHandler := supporthandler.NewSupportHandler(sessService, userService, ticketService, hub)
 
 	logger.Info("handlers initialized")
 
 	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo, likeRepo)
 
+	support.MakeProfileAdmin(ctx, ticketService, 1)
+	support.MakeProfileAdmin(ctx, ticketService, 2)
+	support.MakeProfileAdmin(ctx, ticketService, 3)
+	support.MakeProfileAdmin(ctx, ticketService, 4)
+
 	// создаём роутер
-	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, mediaHandler, profileHandler, chatHandler, friendHandler, wsHandler, postHandler, logger)
+	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, mediaHandler, profileHandler, chatHandler, friendHandler, wsHandler, postHandler, supportHandler, logger)
 
 	cop := http.NewCrossOriginProtection()
 	cop.AddTrustedOrigin("http://localhost:3001")
@@ -287,7 +304,7 @@ func main() {
 		fmt.Println("Server is running on http://localhost:8080")
 		logger.Info("server started")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal("fail to server listen")
+			logger.Fatal("fail to server listen", zap.Error(err))
 		}
 	}()
 

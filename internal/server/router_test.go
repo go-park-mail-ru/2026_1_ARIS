@@ -14,6 +14,7 @@ import (
 	mediahandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/media"
 	posthandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/post"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
+	supporthandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/support"
 	userhandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/websocket"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
@@ -35,9 +36,10 @@ func TestNewRouter(t *testing.T) {
 	friendshipHandler := &friend.FriendHandler{}
 	wsHandler := websocket.NewWebSocketHandler(nil, nil) // создаём wsHandler
 	postHandler := posthandler.NewPostHandler(nil, nil, nil)
+	supportHandler := supporthandler.NewSupportHandler(nil, nil, nil)
 	logger := &zap.Logger{}
 
-	router := NewRouter(authHandler, nil, feedHandler, userHandler, mediaHandler, profileHandler, chatHandler, friendshipHandler, wsHandler, postHandler, logger)
+	router := NewRouter(authHandler, nil, feedHandler, userHandler, mediaHandler, profileHandler, chatHandler, friendshipHandler, wsHandler, postHandler, supportHandler, logger)
 
 	assert.NotNil(t, router)
 	assert.IsType(t, &chi.Mux{}, router)
