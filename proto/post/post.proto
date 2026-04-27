@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package aris.post.v1;
+
+option go_package = "github.com/go-park-mail-ru/2026_1_ARIS/proto/post;postpb";
+
+service PostService {
+  rpc GetFeed(GetFeedRequest) returns (FeedResponse);
+  rpc GetPublicFeed(GetFeedRequest) returns (FeedResponse);
+}
+
+message GetFeedRequest {
+  string cursor = 1;
+  int32 limit = 2;
+}
+
+message FeedResponse {
+  repeated FeedPost posts = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+}
+
+message FeedPost {
+  string id = 1;
+  string text = 2;
+  Author author = 3;
+  string created_at = 4;
+  int32 likes = 5;
+  int32 comments = 6;
+  int32 reposts = 7;
+  repeated Media medias = 8;
+}
+
+message Author {
+  string id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string username = 4;
+  string avatar_link = 5;
+}
+
+message Media {
+  string id = 1;
+  string mime_type = 2;
+  string media_link = 3;
+}

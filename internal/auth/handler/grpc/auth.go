@@ -1,64 +1,100 @@
-package authgrpc
+package grpc
 
 import (
 	"context"
+	"errors"
+	"time"
 
-	authservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/auth/service"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/auth/service"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	authpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/auth"
-	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-type GRPCAuthHandler struct {
-	authpb.AuthServiceServer
-	authService    authservice.AuthService
-	sessionService authservice.SessionService
+type Server struct {
+	authpb.UnimplementedAuthServiceServer
+	auth *service.Service
 }
 
-func NewGRPCAuthHandler(authService authservice.AuthService, sessionService authservice.SessionService) *GRPCAuthHandler {
-	return &GRPCAuthHandler{
-		authService:    authService,
-		sessionService: sessionService,
-	}
+func New(auth *service.Service) *Server {
+	return &Server{auth: auth}
 }
 
-func (h *GRPCAuthHandler) Register(ctx context.Context, in *authpb.RegisterRequest) (*authpb.RegisterResponse, error) {
-
-	registerServiceDTO := authservice.RegisterServiceDTO{
-		FirstName: in.FirstName,
-		LastName:  in.LastName,
-		Login:     in.Login,
-		Password:  in.Password1,
-		Birthday:  in.BirthdayDate,
-		Gender:    int(in.Gender),
-	}
-
-	profile, err := h.authService.Register(ctx, registerServiceDTO)
+func (s *Server) Register(ctx context.Context, req *authpb.RegisterRequest) (*authpb.AuthResponse, error) {
+	result, err := s.auth.Register(ctx, service.RegisterInput{
+		FirstName: req.GetFirstName(),
+		LastName:  req.GetLastName(),
+		Login:     req.GetLogin(),
+		Password:  req.GetPassword1(),
+		Birthday:  req.GetBirthday(),
+		Gender:    fromProtoGender(req.GetGender()),
+	})
 	if err != nil {
-		return nil, err
+		return nil, toStatus(err)
 	}
+	return toProtoAuthResponse(result), nil
+}
 
-	return &authpb.RegisterResponse{
-		ProfileId: profile.ID,
+func (s *Server) Login(ctx context.Context, req *authpb.LoginRequest) (*authpb.AuthResponse, error) {
+	result, err := s.auth.Login(ctx, service.LoginInput{Login: req.GetLogin(), Password: req.GetPassword()})
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	return toProtoAuthResponse(result), nil
+}
+
+func (s *Server) ValidateSession(ctx context.Context, req *authpb.ValidateSessionRequest) (*authpb.ValidateSessionResponse, error) {
+	session, err := s.auth.ValidateSession(ctx, req.GetSessionId())
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	return &authpb.ValidateSessionResponse{
+		UserAccountId: session.UserID,
+		ExpiresAt:     session.ExpiredAt.UTC().Format(time.RFC3339Nano),
 	}, nil
 }
 
-func (h *GRPCAuthHandler) Login(ctx context.Context, in *authpb.LoginRequest) (*authpb.LoginResponse, error) {
-	loginServiceDTO := authservice.LoginServiceRequestDTO{
-		Login:    in.Login,
-		Password: in.Password,
+func (s *Server) Logout(ctx context.Context, req *authpb.LogoutRequest) (*authpb.LogoutResponse, error) {
+	if err := s.auth.Logout(ctx, req.GetSessionId()); err != nil {
+		return nil, status.Error(codes.Internal, "logout failed")
 	}
+	return &authpb.LogoutResponse{Ok: true}, nil
+}
 
-	res, err := h.authService.Login(ctx, loginServiceDTO)
-	if err != nil {
-		return nil, err
+func fromProtoGender(value authpb.Gender) models.Gender {
+	if value == authpb.Gender_GENDER_MALE {
+		return models.Male
 	}
+	return models.Female
+}
 
-	return &authpb.LoginResponse{
-		ProfileId: res.ProfileID,
-		SessionId: res.SessionID,
-		ExpiresAt: timestamppb.New(res.ExpiresAt),
-		FirstName: res.FirstName,
-		LastName:  res.LastName,
-		AvatarUrl: res.AvatarLink,
-	}, nil
+func toProtoAuthResponse(result *service.AuthResult) *authpb.AuthResponse {
+	return &authpb.AuthResponse{
+		User: &authpb.AuthUser{
+			UserAccountId: result.User.UserAccountID,
+			ProfileId:     result.User.ProfileID,
+			FirstName:     result.User.FirstName,
+			LastName:      result.User.LastName,
+			AvatarUrl:     result.User.AvatarURL,
+			CreatedAt:     result.User.CreatedAt.UTC().Format(time.RFC3339Nano),
+		},
+		Session: &authpb.Session{
+			Id:        string(result.Session.SessionID),
+			ExpiresAt: result.Session.ExpiredAt.UTC().Format(time.RFC3339Nano),
+		},
+	}
+}
+
+func toStatus(err error) error {
+	switch {
+	case errors.Is(err, service.ErrLoginAlreadyExists):
+		return status.Error(codes.AlreadyExists, "login already exists")
+	case errors.Is(err, service.ErrInvalidCredentials), errors.Is(err, service.ErrSessionNotFound):
+		return status.Error(codes.Unauthenticated, "unauthenticated")
+	case errors.Is(err, service.ErrInvalidInput), errors.Is(err, service.ErrInvalidBirthday), errors.Is(err, service.ErrTooYoung):
+		return status.Error(codes.InvalidArgument, err.Error())
+	default:
+		return status.Error(codes.Internal, "internal error")
+	}
 }

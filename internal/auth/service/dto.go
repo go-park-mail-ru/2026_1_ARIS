@@ -1,29 +1,35 @@
-package authservice
+package service
 
-import "time"
+import (
+	"time"
 
-// request
-type RegisterServiceDTO struct {
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+)
+
+type RegisterInput struct {
 	FirstName string
 	LastName  string
 	Login     string
 	Password  string
 	Birthday  string
-	Gender    int
+	Gender    models.Gender
 }
 
-type LoginServiceRequestDTO struct {
+type LoginInput struct {
 	Login    string
 	Password string
 }
 
-type LoginServiceResultDTO struct {
+type User struct {
 	UserAccountID int64
 	ProfileID     int64
 	FirstName     string
 	LastName      string
-	AvatarLink    string
+	AvatarURL     *string
+	CreatedAt     time.Time
+}
 
-	SessionID string
-	ExpiresAt time.Time
+type AuthResult struct {
+	User    User
+	Session models.Session
 }

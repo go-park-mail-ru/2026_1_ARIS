@@ -6,3 +6,4 @@ aris-server
 .gocache/
 coverage.out
 coverage.out.tmp
+.codex

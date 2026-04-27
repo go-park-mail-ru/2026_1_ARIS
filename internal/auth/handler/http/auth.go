@@ -1,68 +1,164 @@
-package authhandler
+package http
 
 import (
 	"encoding/json"
-	"html"
+	"errors"
 	"net/http"
+	"time"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
-	authpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/auth"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/auth/service"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 )
 
-type AuthHandler struct {
-	authClient authpb.AuthServiceClient
+const sessionCookieName = "session_id"
+
+type Handler struct {
+	auth         *service.Service
+	cookieSecure bool
 }
 
-func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var req LoginRequest
+func New(auth *service.Service, cookieSecure bool) *Handler {
+	return &Handler{auth: auth, cookieSecure: cookieSecure}
+}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteError(w, "invalid request", http.StatusBadRequest)
+func (h *Handler) RegisterRoutes(r chi.Router) {
+	r.Post("/register", h.Register)
+	r.Post("/login", h.Login)
+	r.Post("/logout", h.Logout)
+	r.Get("/me", h.Me)
+}
+
+func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
+	var req registerRequest
+	if !decodeJSON(w, r, &req) {
 		return
 	}
 
-	resp, err := h.authClient.Login(r.Context(), &authpb.LoginRequest{
-		Login:    req.Login,
-		Password: req.Password,
+	result, err := h.auth.Register(r.Context(), service.RegisterInput{
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		Login:     req.Login,
+		Password:  req.Password,
+		Birthday:  req.Birthday,
+		Gender:    parseGender(req.Gender),
 	})
 	if err != nil {
-		st, ok := status.FromError(err)
-		if !ok {
-			utils.WriteError(w, "internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		switch st.Code() {
-		case codes.Unauthenticated:
-			utils.WriteError(w, "invalid credentials", http.StatusUnauthorized)
-		case codes.NotFound:
-			utils.WriteError(w, "user not found", http.StatusNotFound)
-		default:
-			utils.WriteError(w, "internal server error", http.StatusInternalServerError)
-		}
+		writeServiceError(w, err)
 		return
+	}
+
+	h.setSessionCookie(w, result.Session.SessionID, result.Session.ExpiredAt)
+	writeJSON(w, http.StatusCreated, authResponse{User: mapUser(result.User)})
+}
+
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+
+	result, err := h.auth.Login(r.Context(), service.LoginInput{Login: req.Login, Password: req.Password})
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	h.setSessionCookie(w, result.Session.SessionID, result.Session.ExpiredAt)
+	writeJSON(w, http.StatusOK, authResponse{User: mapUser(result.User)})
+}
+
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie(sessionCookieName)
+	if err == nil {
+		_ = h.auth.Logout(r.Context(), cookie.Value)
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     "session_id",
-		Value:    resp.GetSessionId(),
-		Expires:  resp.GetExpiresAt().AsTime(),
+		Name:     sessionCookieName,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
-		Secure:   true,
-		Path:     "/",
+		Secure:   h.cookieSecure,
 	})
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
 
-	loginResponse := LoginResponse{
-		ProfileID:  resp.GetProfileId(),
-		FirstName:  html.EscapeString(resp.GetFirstName()),
-		LastName:   html.EscapeString(resp.GetLastName()),
-		AvatarLink: resp.GetAvatarUrl(),
+func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie(sessionCookieName)
+	if err != nil {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "unauthorized"})
+		return
 	}
 
+	session, err := h.auth.ValidateSession(r.Context(), cookie.Value)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"userAccountId": session.UserID,
+		"expiresAt":     session.ExpiredAt.UTC().Format(time.RFC3339Nano),
+	})
+}
+
+func (h *Handler) setSessionCookie(w http.ResponseWriter, id models.SessionID, expiresAt time.Time) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    string(id),
+		Expires:  expiresAt,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		Secure:   h.cookieSecure,
+		Path:     "/",
+	})
+}
+
+func parseGender(value string) models.Gender {
+	if value == "male" {
+		return models.Male
+	}
+	return models.Female
+}
+
+func mapUser(user service.User) userResponse {
+	return userResponse{
+		ID:            user.ProfileID,
+		UserAccountID: user.UserAccountID,
+		FirstName:     user.FirstName,
+		LastName:      user.LastName,
+		AvatarURL:     user.AvatarURL,
+		CreatedAt:     user.CreatedAt.UTC().Format(time.RFC3339Nano),
+	}
+}
+
+func decodeJSON(w http.ResponseWriter, r *http.Request, out any) bool {
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(out); err != nil {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid JSON body"})
+		return false
+	}
+	return true
+}
+
+func writeServiceError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, service.ErrLoginAlreadyExists):
+		writeJSON(w, http.StatusConflict, errorResponse{Error: "login already exists"})
+	case errors.Is(err, service.ErrInvalidCredentials), errors.Is(err, service.ErrSessionNotFound):
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "unauthorized"})
+	case errors.Is(err, service.ErrInvalidInput), errors.Is(err, service.ErrInvalidBirthday), errors.Is(err, service.ErrTooYoung):
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: err.Error()})
+	default:
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal server error"})
+	}
+}
+
+func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(loginResponse)
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(payload)
 }

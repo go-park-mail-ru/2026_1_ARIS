@@ -1,83 +1,71 @@
 syntax = "proto3";
 
-import "google/protobuf/timestamp.proto";
+package aris.auth.v1;
 
-package auth;
-option go_package = "github.com/go-park-mail-ru/2026_1_ARIS/pkg/api/auth;authpb";
-
-enum Gender {
-    GENDER_UNSPECIFIED = 0;
-    GENDER_MALE = 1;
-    GENDER_FEMALE = 2;
-}
+option go_package = "github.com/go-park-mail-ru/2026_1_ARIS/proto/auth;authpb";
 
 service AuthService {
-    rpc Register(RegisterRequest) returns (RegisterResponse);
-    rpc Login(LoginRequest) returns (LoginResponse);
-    rpc Logout(LogoutRequest) returns (LogoutResponse);
-    rpc Me(MeRequest) returns (MeResponse);
-    rpc RegisterStepOne(RegisterStepOneRequest) returns (RegisterStepOneResponse);
-    rpc ValidateSession(ValidateSessionRequest) returns (ValidateSessionResponse);
+  rpc Register(RegisterRequest) returns (AuthResponse);
+  rpc Login(LoginRequest) returns (AuthResponse);
+  rpc ValidateSession(ValidateSessionRequest) returns (ValidateSessionResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  // rpc GetUserAccount(GetUserAccountRequest) returns (GetUserAccountResponse);
+}
+
+enum Gender {
+  GENDER_UNSPECIFIED = 0;
+  GENDER_MALE = 1;
+  GENDER_FEMALE = 2;
 }
 
 message RegisterRequest {
-    string login = 1;
-    string password1 = 2;
-    string password2 = 3;
-    string first_name = 4;
-    string last_name = 5;
-    Gender gender = 6;
-    string birthday_date = 7;
-}
-
-message RegisterResponse {
-    int64 profile_id = 1;
+  string first_name = 1;
+  string last_name = 2;
+  string login = 3;
+  string password1 = 4;
+  string password2 = 5;
+  string birthday = 6; // YYYY-MM-DD
+  Gender gender = 7;
 }
 
 message LoginRequest {
-    string login = 1;
-    string password = 2;
+  string login = 1;
+  string password = 2;
 }
 
-message LoginResponse {
-    int64 profile_id = 1;
-    string session_id = 2;
-    google.protobuf.Timestamp expires_at = 3;
-    string first_name = 4;
-    string last_name = 5;
-    string avatar_url = 6;
+message AuthUser {
+  int64 user_account_id = 1;
+  int64 user_profile_id = 2;
+  int64 profile_id = 3;
+  string first_name = 4;
+  string last_name = 5;
+  optional string avatar_url = 6;
+  string created_at = 7;
 }
 
-message LogoutRequest {
-    string session_id = 1;
+message Session {
+  string id = 1;
+  string expires_at = 2;
 }
 
-message LogoutResponse {}
-
-message MeRequest {
-    string session_id = 1;
+message AuthResponse {
+  AuthUser user = 1;
+  Session session = 2;
 }
-
-message MeResponse {
-    int64 profile_id = 1;
-    string session_id = 2;
-    string first_name = 3;
-    string last_name = 4;
-    string avatar_url = 5;
-}
-
-message RegisterStepOneRequest {
-    string login = 1;
-    string password1 = 2;
-    string password2 = 3;
-}
-
-message RegisterStepOneResponse {}
 
 message ValidateSessionRequest {
-    string session_id = 1;
+  string session_id = 1;
 }
 
 message ValidateSessionResponse {
-    int64 user_account_id = 1;
+  int64 user_account_id = 1;
+  string expires_at = 2;
+}
+
+message LogoutRequest {
+  string session_id = 1;
+}
+
+message LogoutResponse {
+  bool ok = 1;
 }
