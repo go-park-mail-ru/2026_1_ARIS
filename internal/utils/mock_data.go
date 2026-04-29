@@ -1,9 +1,15 @@
 package utils
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"time"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models" // добавлен импорт
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/comment"
@@ -14,7 +20,10 @@ import (
 	postservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/google/uuid"
+	"github.com/minio/minio-go/v7"
 )
+
+const maxSeedImageSize = 10 << 20
 
 func MakeMock(mediaRepo media.MediaRepo,
 	userProfileService user.UserService,
@@ -24,6 +33,8 @@ func MakeMock(mediaRepo media.MediaRepo,
 	repostRepo repost.RepostRepo,
 	chatRepo chat.ChatRepo, // изменён тип
 	likeRepo like.LikeRepo,
+	s3Repo media.S3Repo,
+	bucketName string,
 
 ) {
 
@@ -73,14 +84,42 @@ func MakeMock(mediaRepo media.MediaRepo,
 	userAvatar7 := "user avatar 7 description"
 	userAvatar8 := "user avatar 8 description"
 
-	//avatar1 := models.NewMedia("avatar_1_name", "jpg", uuid.New(), &userAvatar1, "image", "/image-proxy?url=https://forum.stitch.su/uploads/monthly_2017_10/A.png.b16d1fa2bd3bb388f2122a0c87fbcf5f.png", 1)
-	avatar2 := models.NewMedia("avatar_2_name", "jpg", uuid.New(), &userAvatar2, "image", "/image-proxy?url=https://i.ibb.co/C3c6HCjb/pop-User1.png", 1)
-	avatar3 := models.NewMedia("avatar_3_name", "jpg", uuid.New(), &userAvatar3, "image", "/image-proxy?url=https://i.ibb.co/mQvfkNY/pop-User2.png", 1)
-	avatar4 := models.NewMedia("avatar_4_name", "jpg", uuid.New(), &userAvatar4, "image", "/image-proxy?url=https://i.ibb.co/6RS96KC7/pop-User3.png", 1)
-	avatar5 := models.NewMedia("avatar_5_name", "jpg", uuid.New(), &userAvatar5, "image", "/image-proxy?url=https://i.ibb.co/mCpKjmxK/pop-User4.png", 1)
-	avatar6 := models.NewMedia("avatar_6_name", "jpg", uuid.New(), &userAvatar6, "image", "/image-proxy?url=https://i.ibb.co/60HMXYh6/6.jpg", 1)
-	avatar7 := models.NewMedia("avatar_7_name", "jpg", uuid.New(), &userAvatar7, "image", "/image-proxy?url=https://i.ibb.co/s9rN3qD9/7.jpg", 1)
-	avatar8 := models.NewMedia("avatar_8_name", "jpg", uuid.New(), &userAvatar8, "image", "/image-proxy?url=https://sun9-5.userapi.com/s/v1/ig2/uGYEtsdSK4QHpAyiRnb5vCasxGZy7dR-MYECGzReWIivHlfmnfQP2DaVY6_UOJHzPG4yzjnVbty6aWqM8kjydEAS.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640&from=bu&cs=640x0", 1)
+	//avatar1 := models.NewMedia("avatar_1_name", "jpg", uuid.New(), &userAvatar1, "image", "https://forum.stitch.su/uploads/monthly_2017_10/A.png.b16d1fa2bd3bb388f2122a0c87fbcf5f.png", 1)
+	avatar2, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_2_name", &userAvatar2, "https://i.ibb.co/C3c6HCjb/pop-User1.png", 1)
+	if err != nil {
+		fmt.Println("failed to create avatar media:", err)
+		return
+	}
+	avatar3, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_3_name", &userAvatar3, "https://i.ibb.co/mQvfkNY/pop-User2.png", 1)
+	if err != nil {
+		fmt.Println("failed to create avatar media:", err)
+		return
+	}
+	avatar4, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_4_name", &userAvatar4, "https://i.ibb.co/6RS96KC7/pop-User3.png", 1)
+	if err != nil {
+		fmt.Println("failed to create avatar media:", err)
+		return
+	}
+	avatar5, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_5_name", &userAvatar5, "https://i.ibb.co/mCpKjmxK/pop-User4.png", 1)
+	if err != nil {
+		fmt.Println("failed to create avatar media:", err)
+		return
+	}
+	avatar6, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_6_name", &userAvatar6, "https://i.ibb.co/60HMXYh6/6.jpg", 1)
+	if err != nil {
+		fmt.Println("failed to create avatar media:", err)
+		return
+	}
+	avatar7, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_7_name", &userAvatar7, "https://i.ibb.co/s9rN3qD9/7.jpg", 1)
+	if err != nil {
+		fmt.Println("failed to create avatar media:", err)
+		return
+	}
+	avatar8, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_8_name", &userAvatar8, "https://sun9-5.userapi.com/s/v1/ig2/uGYEtsdSK4QHpAyiRnb5vCasxGZy7dR-MYECGzReWIivHlfmnfQP2DaVY6_UOJHzPG4yzjnVbty6aWqM8kjydEAS.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640&from=bu&cs=640x0", 1)
+	if err != nil {
+		fmt.Println("failed to create avatar media:", err)
+		return
+	}
 
 	//avatar9 := models.NewMedia("avatar_9_name", "jpg", &userAvatar9, "image", "https://i.ibb.co/s9rN3qD9/7.jpg", 4000, false)
 
@@ -879,4 +918,69 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	// logger.Info("success reposts creation")
 
+}
+
+func newSeedMediaFromURL(
+	ctx context.Context,
+	s3Repo media.S3Repo,
+	bucketName string,
+	name string,
+	description *string,
+	sourceURL string,
+	authorID int64,
+) (*models.Media, error) {
+	if s3Repo == nil {
+		return nil, fmt.Errorf("s3 repo is nil")
+	}
+	if bucketName == "" {
+		return nil, fmt.Errorf("minio bucket name is empty")
+	}
+
+	body, mimeType, extension, err := downloadSeedImage(ctx, sourceURL)
+	if err != nil {
+		return nil, err
+	}
+
+	mediaUUID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(sourceURL))
+	link, err := s3Repo.Save(ctx, bucketName, bytes.NewReader(body), mediaUUID, int64(len(body)), extension, minio.PutObjectOptions{
+		ContentType: mimeType,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return models.NewMedia(name, strings.TrimPrefix(extension, "."), mediaUUID, description, mimeType, link, authorID), nil
+}
+
+func downloadSeedImage(ctx context.Context, sourceURL string) ([]byte, string, string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sourceURL, nil)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, "", "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, "", "", fmt.Errorf("download %s: unexpected status %s", sourceURL, resp.Status)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxSeedImageSize+1))
+	if err != nil {
+		return nil, "", "", err
+	}
+	if len(body) > maxSeedImageSize {
+		return nil, "", "", fmt.Errorf("download %s: image is larger than %d bytes", sourceURL, maxSeedImageSize)
+	}
+
+	detected := mimetype.Detect(body)
+	if !strings.HasPrefix(detected.String(), "image/") {
+		return nil, "", "", fmt.Errorf("download %s: unsupported mime type %s", sourceURL, detected.String())
+	}
+
+	return body, detected.String(), detected.Extension(), nil
 }

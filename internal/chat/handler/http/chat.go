@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -84,6 +85,25 @@ func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	limit := parseBoundedInt(r.URL.Query().Get("limit"), 50, 1, 100)
+
+	if rawAfter := r.URL.Query().Get("after"); rawAfter != "" {
+		afterID, ok := parseNonNegativeID(w, rawAfter, "неверный ID сообщения")
+		if !ok {
+			return
+		}
+		messages, err := h.chat.GetMessagesAfter(r.Context(), userID, chatID, afterID, limit)
+		if err != nil {
+			writeServiceError(w, err)
+			return
+		}
+		resp := make([]MessageResponse, 0, len(messages))
+		for _, msg := range messages {
+			resp = append(resp, mapMessage(msg))
+		}
+		writeJSON(w, http.StatusOK, resp)
+		return
+	}
+
 	offset := parseBoundedInt(r.URL.Query().Get("offset"), 0, 0, 1<<30)
 	messages, err := h.chat.GetMessages(r.Context(), userID, chatID, limit, offset)
 	if err != nil {
@@ -157,8 +177,8 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, service.ErrForbidden)
 		return
 	}
-	if err := websocket.ServeWebSocket(h.hub, w, r, strconv.FormatInt(chatID, 10), userID); err != nil {
-		utils.WriteError(w, err.Error(), http.StatusInternalServerError)
+	if err := websocket.ServeWebSocketWithHandler(h.hub, w, r, strconv.FormatInt(chatID, 10), userID, h.handleSocketMessage); err != nil {
+		utils.WriteError(w, err.Error(), http.StatusBadRequest)
 	}
 }
 
@@ -192,6 +212,15 @@ func parseQueryID(w http.ResponseWriter, r *http.Request, name string) (int64, b
 func parsePathID(w http.ResponseWriter, raw string, message string) (int64, bool) {
 	id, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil || id <= 0 {
+		utils.WriteError(w, message, http.StatusBadRequest)
+		return 0, false
+	}
+	return id, true
+}
+
+func parseNonNegativeID(w http.ResponseWriter, raw string, message string) (int64, bool) {
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || id < 0 {
 		utils.WriteError(w, message, http.StatusBadRequest)
 		return 0, false
 	}
@@ -234,6 +263,25 @@ func (h *Handler) broadcast(chatID int64, msg MessageResponse) {
 	}
 	msgBytes, _ := json.Marshal(msg)
 	h.hub.BroadcastToChat(strconv.FormatInt(chatID, 10), msgBytes)
+}
+
+func (h *Handler) handleSocketMessage(ctx context.Context, chatIDRaw string, userID int64, payload []byte) ([]byte, error) {
+	chatID, err := strconv.ParseInt(chatIDRaw, 10, 64)
+	if err != nil || chatID <= 0 {
+		return nil, service.ErrInvalidInput
+	}
+
+	var req textRequest
+	if err := json.Unmarshal(payload, &req); err != nil {
+		return nil, err
+	}
+
+	msg, err := h.chat.SendMessage(ctx, userID, chatID, req.Text)
+	if err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(mapMessage(msg))
 }
 
 func mapChat(chat service.Chat) ChatResponse {

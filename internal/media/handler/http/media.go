@@ -23,9 +23,9 @@ func New(media *service.Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
-	r.Post("/upload", h.SaveFiles)
 	r.Get("/{id}", h.RedirectToFile)
 	r.Get("/{id}/url", h.GetFileURL)
+	r.Post("/upload", h.SaveFiles)
 }
 
 func (h *Handler) SaveFiles(w http.ResponseWriter, r *http.Request) {
@@ -77,6 +77,7 @@ func (h *Handler) SaveFiles(w http.ResponseWriter, r *http.Request) {
 
 	if len(filesErrs) != 0 {
 		writeJSON(w, http.StatusMultiStatus, fileResponse{Files: files, FilesErrors: filesErrs})
+		return
 	}
 
 	if log != nil {

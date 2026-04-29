@@ -31,7 +31,7 @@ services:
       - aris_minio_data:/data
 
   migrate:
-    image: postgres:16-alpine
+    image: golang:alpine
     working_dir: /workspace/arisback
     environment:
       DB_HOST: db
@@ -39,12 +39,54 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
+      SSL_MODE: disable
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - .:/workspace/arisback
-    command: ["sh", "/workspace/arisback/scripts/dev-migrate.sh"]
+      - aris_go_bin:/go/bin
+      - aris_go_pkg:/go/pkg
+      - aris_go_build:/root/.cache/go-build
+    command: >
+      sh -c "
+      apk add --no-cache git ca-certificates postgresql-client &&
+      sh /workspace/arisback/scripts/dev-migrate.sh
+      "
+
+  seed:
+    image: golang:alpine
+    working_dir: /workspace/arisback
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      SSL_MODE: disable
+      POOL_MAX_CONNS: ${POOL_MAX_CONNS}
+      POOL_MAX_CONN_LIFETIME: ${POOL_MAX_CONN_LIFETIME}
+      POOL_MAX_CONN_IDLE_TIME: ${POOL_MAX_CONN_IDLE_TIME}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_USE_SSL: "false"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      minio:
+        condition: service_started
+    volumes:
+      - .:/workspace/arisback
+      - aris_go_pkg:/go/pkg
+      - aris_go_build:/root/.cache/go-build
+    command: >
+      sh -c "
+      apk add --no-cache git &&
+      go mod download &&
+      go run ./cmd/seed
+      "
 
   redis:
     image: redis:latest
@@ -61,6 +103,283 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+
+  auth:
+    profiles: ["microservices"]
+    image: golang:alpine
+    restart: unless-stopped
+    working_dir: /workspace/arisback
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      SSL_MODE: disable
+      POOL_MAX_CONNS: ${POOL_MAX_CONNS}
+      POOL_MAX_CONN_LIFETIME: ${POOL_MAX_CONN_LIFETIME}
+      POOL_MAX_CONN_IDLE_TIME: ${POOL_MAX_CONN_IDLE_TIME}
+      REDIS_DB: ${REDIS_DB}
+      REDIS_USER_PASSWORD: ${REDIS_USER_PASSWORD}
+      REDIS_MAX_RETRIES: ${REDIS_MAX_RETRIES}
+      REDIS_DIAL_TIMEOUT: ${REDIS_DIAL_TIMEOUT}
+      REDIS_TIMEOUT: ${REDIS_TIMEOUT}
+      REDIS_ADDR: redis:6379
+      MEDIA_GRPC_ADDR: media:8003
+      AUTH_GRPC_PORT: ${AUTH_GRPC_PORT}
+      AUTH_HTTP_PORT: ${AUTH_HTTP_PORT}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 ${AUTH_GRPC_PORT} && nc -z 127.0.0.1 ${AUTH_HTTP_PORT}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${AUTH_GRPC_PORT}:${AUTH_GRPC_PORT}"
+      - "127.0.0.1:${AUTH_HTTP_PORT}:${AUTH_HTTP_PORT}"
+    volumes:
+      - .:/workspace/arisback
+      - aris_go_pkg:/go/pkg
+      - aris_go_build:/root/.cache/go-build
+    command: >
+      sh -c "
+      apk add --no-cache git netcat-openbsd &&
+      go mod download &&
+      go run ./cmd/auth
+      "
+
+  media:
+    profiles: ["microservices"]
+    image: golang:alpine
+    restart: unless-stopped
+    working_dir: /workspace/arisback
+    environment:
+      APP_ENDPOINT: ${APP_ENDPOINT}
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      SSL_MODE: disable
+      POOL_MAX_CONNS: ${POOL_MAX_CONNS}
+      POOL_MAX_CONN_LIFETIME: ${POOL_MAX_CONN_LIFETIME}
+      POOL_MAX_CONN_IDLE_TIME: ${POOL_MAX_CONN_IDLE_TIME}
+      MINIO_PORT: "9000"
+      MINIO_ENDPOINT: minio:9000
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_USE_SSL: "false"
+      REDIS_DB: ${REDIS_DB}
+      REDIS_USER_PASSWORD: ${REDIS_USER_PASSWORD}
+      REDIS_MAX_RETRIES: ${REDIS_MAX_RETRIES}
+      REDIS_DIAL_TIMEOUT: ${REDIS_DIAL_TIMEOUT}
+      REDIS_TIMEOUT: ${REDIS_TIMEOUT}
+      REDIS_ADDR: redis:6379
+      USER_GRPC_ADDR: user:8004
+      MEDIA_GRPC_PORT: "8003"
+      MEDIA_HTTP_PORT: "8081"
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8081 && nc -z 127.0.0.1 8003"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:8003:8003"
+      - "127.0.0.1:8081:8081"
+    volumes:
+      - .:/workspace/arisback
+      - aris_go_pkg:/go/pkg
+      - aris_go_build:/root/.cache/go-build
+    command: >
+      sh -c "
+      apk add --no-cache git netcat-openbsd &&
+      go mod download &&
+      go run ./cmd/media
+      "
+
+  user:
+    profiles: ["microservices"]
+    image: golang:alpine
+    restart: unless-stopped
+    working_dir: /workspace/arisback
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      SSL_MODE: disable
+      POOL_MAX_CONNS: ${POOL_MAX_CONNS}
+      POOL_MAX_CONN_LIFETIME: ${POOL_MAX_CONN_LIFETIME}
+      POOL_MAX_CONN_IDLE_TIME: ${POOL_MAX_CONN_IDLE_TIME}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_USE_SSL: "false"
+      REDIS_DB: ${REDIS_DB}
+      REDIS_USER_PASSWORD: ${REDIS_USER_PASSWORD}
+      REDIS_MAX_RETRIES: ${REDIS_MAX_RETRIES}
+      REDIS_DIAL_TIMEOUT: ${REDIS_DIAL_TIMEOUT}
+      REDIS_TIMEOUT: ${REDIS_TIMEOUT}
+      REDIS_ADDR: redis:6379
+      MEDIA_GRPC_ADDR: media:8003
+      USER_GRPC_PORT: "8004"
+      USER_HTTP_PORT: "8082"
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8082 && nc -z 127.0.0.1 8004"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:8004:8004"
+      - "127.0.0.1:8082:8082"
+    volumes:
+      - .:/workspace/arisback
+      - aris_go_pkg:/go/pkg
+      - aris_go_build:/root/.cache/go-build
+    command: >
+      sh -c "
+      apk add --no-cache git netcat-openbsd &&
+      go mod download &&
+      go run ./cmd/user
+      "
+
+  post:
+    profiles: ["microservices"]
+    image: golang:alpine
+    restart: unless-stopped
+    working_dir: /workspace/arisback
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      SSL_MODE: disable
+      POOL_MAX_CONNS: ${POOL_MAX_CONNS}
+      POOL_MAX_CONN_LIFETIME: ${POOL_MAX_CONN_LIFETIME}
+      POOL_MAX_CONN_IDLE_TIME: ${POOL_MAX_CONN_IDLE_TIME}
+      REDIS_DB: ${REDIS_DB}
+      REDIS_USER_PASSWORD: ${REDIS_USER_PASSWORD}
+      REDIS_MAX_RETRIES: ${REDIS_MAX_RETRIES}
+      REDIS_DIAL_TIMEOUT: ${REDIS_DIAL_TIMEOUT}
+      REDIS_TIMEOUT: ${REDIS_TIMEOUT}
+      REDIS_ADDR: redis:6379
+      USER_GRPC_ADDR: user:8004
+      MEDIA_GRPC_ADDR: media:8003
+      POST_GRPC_PORT: "8005"
+      POST_HTTP_PORT: "8083"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8083 && nc -z 127.0.0.1 8005"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:8005:8005"
+      - "127.0.0.1:8083:8083"
+    volumes:
+      - .:/workspace/arisback
+      - aris_go_pkg:/go/pkg
+      - aris_go_build:/root/.cache/go-build
+    command: >
+      sh -c "
+      apk add --no-cache git netcat-openbsd &&
+      go mod download &&
+      go run ./cmd/post
+      "
+
+  chat:
+    profiles: ["microservices"]
+    image: golang:alpine
+    restart: unless-stopped
+    working_dir: /workspace/arisback
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      SSL_MODE: disable
+      POOL_MAX_CONNS: ${POOL_MAX_CONNS}
+      POOL_MAX_CONN_LIFETIME: ${POOL_MAX_CONN_LIFETIME}
+      POOL_MAX_CONN_IDLE_TIME: ${POOL_MAX_CONN_IDLE_TIME}
+      REDIS_DB: ${REDIS_DB}
+      REDIS_USER_PASSWORD: ${REDIS_USER_PASSWORD}
+      REDIS_MAX_RETRIES: ${REDIS_MAX_RETRIES}
+      REDIS_DIAL_TIMEOUT: ${REDIS_DIAL_TIMEOUT}
+      REDIS_TIMEOUT: ${REDIS_TIMEOUT}
+      REDIS_ADDR: redis:6379
+      USER_GRPC_ADDR: user:8004
+      CHAT_GRPC_PORT: "8006"
+      CHAT_HTTP_PORT: "8084"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8084 && nc -z 127.0.0.1 8006"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:8006:8006"
+      - "127.0.0.1:8084:8084"
+    volumes:
+      - .:/workspace/arisback
+      - aris_go_pkg:/go/pkg
+      - aris_go_build:/root/.cache/go-build
+    command: >
+      sh -c "
+      apk add --no-cache git netcat-openbsd &&
+      go mod download &&
+      go run ./cmd/chat
+      "
 
   backend:
     image: golang:alpine
@@ -100,6 +419,8 @@ services:
       minio:
         condition: service_started
       migrate:
+        condition: service_completed_successfully
+      seed:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
@@ -150,6 +471,7 @@ services:
 volumes:
   aris_postgres_data:
   aris_minio_data:
+  aris_go_bin:
   aris_go_pkg:
   aris_go_build:
   aris_frontend_node_modules:

@@ -157,7 +157,12 @@ func (s *Service) GetFileURL(ctx context.Context, mediaID int64) (string, error)
 		return "", err
 	}
 
-	return media.Link, nil
+	app_endpoint := os.Getenv("APP_ENDPOINT")
+	if app_endpoint == "" {
+		app_endpoint = "http://localhost:3001"
+	}
+
+	return fmt.Sprintf("%s%s", app_endpoint, media.Link), nil
 }
 
 func (s *Service) GetFile(ctx context.Context, mediaID int64) (*models.Media, error) {

@@ -43,9 +43,11 @@ func (storage *postWithMediaStorage) GetMediaByPostID(ctx context.Context, postI
 
 	start := time.Now()
 	rows, err := storage.db.Query(ctx, query, postID)
-	logger.Debug("db query",
-		zap.String("query", "PostWithMediaStorage.GetMediaByPostID"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "PostWithMediaStorage.GetMediaByPostID"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	if err != nil {
 		return nil
 	}
@@ -65,9 +67,11 @@ func (storage *postWithMediaStorage) Save(ctx context.Context, postWithMedia mod
 
 	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, postWithMedia.PostID, postWithMedia.MediaID, postWithMedia.Order)
-	logger.Debug("db query",
-		zap.String("query", "PostWithMediaStorage.Save"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "PostWithMediaStorage.Save"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	if err != nil {
 		return err
 	}
@@ -84,8 +88,10 @@ func (storage *postWithMediaStorage) DeleteByPostID(ctx context.Context, postID 
 
 	start := time.Now()
 	_, err := storage.db.Exec(ctx, query, postID)
-	logger.Debug("db query",
-		zap.String("query", "PostWithMediaStorage.DeleteByPostID"),
-		zap.Duration("duration_ms", time.Since(start)))
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "PostWithMediaStorage.DeleteByPostID"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
 	return err
 }

@@ -866,7 +866,7 @@ func TestAuthHandler_Me_Success(t *testing.T) {
 	var response LoginResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
-	assert.Equal(t, strconv.FormatInt(profileID, 10), response.ID)
+	assert.Equal(t, strconv.FormatInt(userID, 10), response.ID)
 	assert.Equal(t, "Ivan", response.FirstName)
 	assert.Equal(t, "Petrov", response.LastName)
 }

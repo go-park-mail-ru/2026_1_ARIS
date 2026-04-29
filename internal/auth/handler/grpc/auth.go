@@ -26,7 +26,8 @@ func (s *Server) Register(ctx context.Context, req *authpb.RegisterRequest) (*au
 		FirstName: req.GetFirstName(),
 		LastName:  req.GetLastName(),
 		Login:     req.GetLogin(),
-		Password:  req.GetPassword1(),
+		Password1: req.GetPassword1(),
+		Password2: req.GetPassword2(),
 		Birthday:  req.GetBirthday(),
 		Gender:    fromProtoGender(req.GetGender()),
 	})

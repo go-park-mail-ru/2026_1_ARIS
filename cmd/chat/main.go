@@ -47,16 +47,24 @@ func main() {
 	if err != nil {
 		log.Fatal("fail to create logger: ", err)
 	}
-	defer func() { _ = logg.Sync() }()
+	logg.Info("logger initialized")
+
+	defer func() {
+		if err := logg.Sync(); err != nil {
+			logg.Error("fail to sync logger", zap.Error(err))
+		}
+	}()
 
 	envConf, err := config.NewConfig()
 	if err != nil {
 		logg.Fatal("fail to load env variables", zap.Error(err))
 	}
+
 	db, err := postgres.New(ctx, envConf)
 	if err != nil {
 		logg.Fatal("fail to connect PostgreSQL", zap.Error(err))
 	}
+
 	redisClient, err := redis.InitRedis(ctx, envConf)
 	if err != nil {
 		logg.Fatal("fail to connect Redis", zap.Error(err))

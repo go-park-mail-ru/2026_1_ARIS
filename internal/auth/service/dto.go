@@ -6,11 +6,18 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 )
 
+type RegisterStepOneInput struct {
+	Login     string
+	Password1 string
+	Password2 string
+}
+
 type RegisterInput struct {
 	FirstName string
 	LastName  string
 	Login     string
-	Password  string
+	Password1 string
+	Password2 string
 	Birthday  string
 	Gender    models.Gender
 }

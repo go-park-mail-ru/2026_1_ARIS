@@ -56,7 +56,6 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/postgres"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/redis"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/websocket"
 
 	"github.com/joho/godotenv"
@@ -76,7 +75,6 @@ func main() {
 	if err != nil {
 		log.Fatal("fail to create logger: ", err)
 	}
-
 	logger.Info("logger initialized")
 
 	defer func() {
@@ -91,6 +89,7 @@ func main() {
 	if err != nil {
 		logger.Fatal("fail to load env variables", zap.Error(err))
 	}
+	logger.Info("Config parsed")
 
 	// Подключаем к БД
 
@@ -98,7 +97,6 @@ func main() {
 	if err != nil {
 		logger.Fatal("fail to connect PostgreSQL", zap.Error(err))
 	}
-
 	logger.Info("Successfully connected to PostgreSQL")
 
 	// Подключаем Redis
@@ -116,10 +114,9 @@ func main() {
 	if err != nil {
 		logger.Fatal("fail to connect MinIO", zap.Error(err))
 	}
-
 	logger.Info("Successfully connected to MinIO")
 
-	client := mediarepo.NewMinioClient(minioClient)
+	S3client := mediarepo.NewMinioClient(minioClient)
 
 	// Инициализация репозиториев
 
@@ -145,7 +142,7 @@ func main() {
 	userService := userservice.NewUserService(userAccountRepo, profileRepo, userProfileRepo)
 	authService := authservice.NewAuthService(userAccountRepo, profileRepo, userProfileRepo)
 	sessService := sessionservice.NewSessionService(sessionRepo)
-	mediaService := mediaservice.NewMediaService(mediaRepo, postWithMediaRepo, client)
+	mediaService := mediaservice.NewMediaService(mediaRepo, postWithMediaRepo, S3client)
 	chatSvc := chatservice.NewChatService(chatRepo, chatMemberRepo, userService)
 	messageSvc := messageservice.NewMessageService(messageRepo)
 	friendshipService := friendshipservice.NewFriendshipService(friendshipRepo)
@@ -170,8 +167,6 @@ func main() {
 	postHandler := posthandler.NewPostHandler(userService, postService, mediaService)
 
 	logger.Info("handlers initialized")
-
-	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo, likeRepo)
 
 	// создаём роутер
 	router := server.NewRouter(authHandler, sessService, feedHandler, userHandler, mediaHandler, profileHandler, chatHandler, friendHandler, wsHandler, postHandler, logger)
@@ -211,6 +206,7 @@ func main() {
 
 	ctxShutdown, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
 	if err := srv.Shutdown(ctxShutdown); err != nil {
 		logger.Fatal("Server forced to shutdown:", zap.Error(err))
 	}

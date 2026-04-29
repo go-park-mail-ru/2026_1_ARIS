@@ -28,6 +28,10 @@ type Service struct {
 	userClient userpb.UserServiceClient
 }
 
+type messagesAfterReader interface {
+	GetByChatIDAfter(ctx context.Context, chatID, afterID int64, limit int) ([]models.Message, error)
+}
+
 func New(store repository.Store, userClient userpb.UserServiceClient) *Service {
 	return &Service{store: store, userClient: userClient}
 }
@@ -155,6 +159,37 @@ func (s *Service) GetMessages(ctx context.Context, userAccountID, chatID int64, 
 		return nil, ErrForbidden
 	}
 	messages, err := s.store.Messages.GetByChatID(ctx, chatID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]Message, 0, len(messages))
+	for _, message := range messages {
+		result = append(result, s.mapMessage(ctx, message))
+	}
+	return result, nil
+}
+
+func (s *Service) GetMessagesAfter(ctx context.Context, userAccountID, chatID, afterID int64, limit int) ([]Message, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	if afterID < 0 {
+		afterID = 0
+	}
+	ok, err := s.CheckUserInChat(ctx, chatID, userAccountID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrForbidden
+	}
+
+	reader, ok := s.store.Messages.(messagesAfterReader)
+	if !ok {
+		return s.GetMessages(ctx, userAccountID, chatID, limit, 0)
+	}
+
+	messages, err := reader.GetByChatIDAfter(ctx, chatID, afterID, limit)
 	if err != nil {
 		return nil, err
 	}

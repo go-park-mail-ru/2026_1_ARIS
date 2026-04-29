@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -23,10 +24,30 @@ func New(auth *service.Service, cookieSecure bool) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
+	r.Post("/register/step-one", h.RegisterStepOne)
 	r.Post("/register", h.Register)
 	r.Post("/login", h.Login)
 	r.Post("/logout", h.Logout)
 	r.Get("/me", h.Me)
+}
+
+func (h *Handler) RegisterStepOne(w http.ResponseWriter, r *http.Request) {
+	var req registerStepOneRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+
+	err := h.auth.RegisterStepOne(r.Context(), service.RegisterStepOneInput{
+		Login:     req.Login,
+		Password1: req.Password1,
+		Password2: req.Password2,
+	})
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +60,8 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		Login:     req.Login,
-		Password:  req.Password,
+		Password1: req.Password1,
+		Password2: req.Password2,
 		Birthday:  req.Birthday,
 		Gender:    parseGender(req.Gender),
 	})
@@ -49,7 +71,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.setSessionCookie(w, result.Session.SessionID, result.Session.ExpiredAt)
-	writeJSON(w, http.StatusCreated, authResponse{User: mapUser(result.User)})
+	writeJSON(w, http.StatusCreated, mapUser(result.User))
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +87,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.setSessionCookie(w, result.Session.SessionID, result.Session.ExpiredAt)
-	writeJSON(w, http.StatusOK, authResponse{User: mapUser(result.User)})
+	writeJSON(w, http.StatusOK, mapUser(result.User))
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
@@ -93,15 +115,17 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.auth.ValidateSession(r.Context(), cookie.Value)
+	user, err := h.auth.GetMe(r.Context(), cookie.Value)
 	if err != nil {
 		writeServiceError(w, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"userAccountId": session.UserID,
-		"expiresAt":     session.ExpiredAt.UTC().Format(time.RFC3339Nano),
+	writeJSON(w, http.StatusOK, meResponse{
+		ID:         strconv.FormatInt(user.UserAccountID, 10),
+		FirstName:  user.FirstName,
+		LastName:   user.LastName,
+		AvatarLink: user.AvatarURL,
 	})
 }
 
@@ -117,8 +141,8 @@ func (h *Handler) setSessionCookie(w http.ResponseWriter, id models.SessionID, e
 	})
 }
 
-func parseGender(value string) models.Gender {
-	if value == "male" {
+func parseGender(value int) models.Gender {
+	if value == 1 {
 		return models.Male
 	}
 	return models.Female

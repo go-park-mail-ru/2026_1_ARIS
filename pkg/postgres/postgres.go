@@ -25,7 +25,6 @@ func New(ctx context.Context, envConf config.EnvConfig) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("fail to connect to db: %w", err)
 	}
-	defer db.Close()
 
 	err = db.Ping(ctx)
 	if err != nil {

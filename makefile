@@ -1,13 +1,25 @@
-.PHONY: test coverage clean dev down reset-db logs migrate backend-shell frontend-shell mocks
+.PHONY: test coverage clean dev down reset-db logs migrate backend-shell frontend-shell mocks microservices microservices-up microservices-stop microservices-down microservices-reset auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop logs-auth logs-media logs-user logs-post logs-chat
 
 COMPOSE_FILE=./docker-compose.dev.yml
 COMPOSE_ENV_FILE=./.env.compose
 COMPOSE=docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE)
 COMPOSE_LOCAL=docker compose -f ./docker/docker-compose.yml --env-file ./.env
+MICROSERVICE_SERVICES=auth media user post chat
+MICROSERVICE_INFRA=db redis minio
+MICROSERVICE_INIT=migrate
+MICROSERVICE_ALL=$(MICROSERVICE_SERVICES) $(MICROSERVICE_INFRA)
 
 # include .env
 
-MIGRATE=migrate -source "file://./db/migrations" -database "postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=${SSL_MODE}"
+DB_HOST ?= 127.0.0.1
+DB_PORT ?= 5431
+DB_USER ?= kokinside
+DB_PASSWORD ?= password1
+DB_NAME ?= ARIS-DB
+SSL_MODE ?= disable
+MIGRATIONS_PATH ?= file://./db/migrations
+DATABASE_URL ?= postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(SSL_MODE)
+MIGRATE=migrate -source "$(MIGRATIONS_PATH)" -database "$(DATABASE_URL)"
 
 test:
 	go test -v ./...
@@ -24,16 +36,16 @@ coverage: clean
 	go test -coverprofile=coverage.out -coverpkg=./internal/... ./...
 	go tool cover -html=coverage.out
 
-migrate-up: migrate
-	$(MIGRATE) up 5
+migrate-up:
+	$(MIGRATE) up
 
-migrate-down: migrate
+migrate-down:
 	$(MIGRATE) down
 
-migrate-version: migrate
+migrate-version:
 	${MIGRATE} version
 
-migrate-force-down: migrate
+migrate-force-down:
 	${MIGRATE} force 1
 
 migrate:
@@ -61,6 +73,66 @@ services-up:
 
 services-stop:
 	$(COMPOSE_LOCAL) stop
+
+microservices: microservices-up
+
+microservices-up:
+	$(COMPOSE) --profile microservices up --build -d $(MICROSERVICE_SERVICES)
+
+microservices-stop:
+	$(COMPOSE) stop $(MICROSERVICE_ALL)
+
+microservices-down:
+	$(COMPOSE) stop $(MICROSERVICE_ALL)
+	$(COMPOSE) rm -f $(MICROSERVICE_ALL) $(MICROSERVICE_INIT)
+
+microservices-reset:
+	$(COMPOSE) --profile microservices down -v
+
+auth-up:
+	$(COMPOSE) up --build -d auth
+
+auth-stop:
+	$(COMPOSE) stop auth
+
+media-up:
+	$(COMPOSE) up --build -d media
+
+media-stop:
+	$(COMPOSE) stop media
+
+user-up:
+	$(COMPOSE) up --build -d user
+
+user-stop:
+	$(COMPOSE) stop user
+
+post-up:
+	$(COMPOSE) up --build -d post
+
+post-stop:
+	$(COMPOSE) stop post
+
+chat-up:
+	$(COMPOSE) up --build -d chat
+
+chat-stop:
+	$(COMPOSE) stop chat
+
+logs-auth:
+	$(COMPOSE) logs -f auth
+
+logs-media:
+	$(COMPOSE) logs -f media
+
+logs-user:
+	$(COMPOSE) logs -f user
+
+logs-post:
+	$(COMPOSE) logs -f post
+
+logs-chat:
+	$(COMPOSE) logs -f chat
 
 dev:
 	$(COMPOSE) up --build -d

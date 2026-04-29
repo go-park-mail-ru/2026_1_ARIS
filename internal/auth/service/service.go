@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/auth/repository"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
+	mediapb "github.com/go-park-mail-ru/2026_1_ARIS/proto/media"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -24,17 +25,32 @@ var (
 )
 
 type Service struct {
-	store repository.Store
-	now   func() time.Time
+	store       repository.Store
+	mediaClient mediapb.MediaServiceClient
+	now         func() time.Time
 }
 
-func New(store repository.Store) *Service {
-	return &Service{store: store, now: time.Now}
+func New(store repository.Store, mediaClients ...mediapb.MediaServiceClient) *Service {
+	var mediaClient mediapb.MediaServiceClient
+	if len(mediaClients) > 0 {
+		mediaClient = mediaClients[0]
+	}
+
+	return &Service{store: store, mediaClient: mediaClient, now: time.Now}
+}
+
+func (s *Service) RegisterStepOne(ctx context.Context, in RegisterStepOneInput) error {
+	login := normalizeLogin(in.Login)
+
+	if _, err := s.store.Accounts.GetByUsername(ctx, login); err == nil {
+		return ErrLoginAlreadyExists
+	}
+	return nil
 }
 
 func (s *Service) Register(ctx context.Context, in RegisterInput) (*AuthResult, error) {
 	login := normalizeLogin(in.Login)
-	if in.FirstName == "" || in.LastName == "" || login == "" || in.Password == "" {
+	if in.FirstName == "" || in.LastName == "" || login == "" || in.Password1 == "" {
 		return nil, ErrInvalidInput
 	}
 
@@ -42,7 +58,7 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (*AuthResult, 
 		return nil, ErrLoginAlreadyExists
 	}
 
-	birthday, err := time.Parse("2006-01-02", in.Birthday)
+	birthday, err := time.Parse("02/01/2006", in.Birthday)
 	if err != nil {
 		return nil, ErrInvalidBirthday
 	}
@@ -50,7 +66,7 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (*AuthResult, 
 		return nil, ErrTooYoung
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(in.Password1), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
@@ -104,6 +120,15 @@ func (s *Service) ValidateSession(ctx context.Context, sessionID string) (*model
 	return session, nil
 }
 
+func (s *Service) GetMe(ctx context.Context, sessionID string) (*User, error) {
+	session, err := s.ValidateSession(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.userByAccountID(ctx, session.UserID)
+}
+
 func (s *Service) Logout(ctx context.Context, sessionID string) error {
 	if strings.TrimSpace(sessionID) == "" {
 		return nil
@@ -112,11 +137,6 @@ func (s *Service) Logout(ctx context.Context, sessionID string) error {
 }
 
 func (s *Service) issueAuthResult(ctx context.Context, accountID int64) (*AuthResult, error) {
-	userProfile, err := s.store.UserProfiles.GetByUserAccountID(ctx, accountID)
-	if err != nil {
-		return nil, err
-	}
-
 	session := models.Session{
 		SessionID: models.SessionID(uuid.NewString()),
 		UserID:    accountID,
@@ -127,16 +147,53 @@ func (s *Service) issueAuthResult(ctx context.Context, accountID int64) (*AuthRe
 		return nil, err
 	}
 
+	user, err := s.userByAccountID(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+
 	return &AuthResult{
-		User: User{
-			UserAccountID: accountID,
-			ProfileID:     userProfile.ProfileID,
-			FirstName:     userProfile.FirstName,
-			LastName:      userProfile.LastName,
-			CreatedAt:     userProfile.CreatedAt,
-		},
+		User:    *user,
 		Session: session,
 	}, nil
+}
+
+func (s *Service) userByAccountID(ctx context.Context, accountID int64) (*User, error) {
+	userProfile, err := s.store.UserProfiles.GetByUserAccountID(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	profile, err := s.store.Profiles.GetByUserAccountID(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &User{
+		UserAccountID: accountID,
+		ProfileID:     userProfile.ProfileID,
+		FirstName:     userProfile.FirstName,
+		LastName:      userProfile.LastName,
+		AvatarURL:     s.avatarURL(ctx, profile.AvatarID),
+		CreatedAt:     userProfile.CreatedAt,
+	}, nil
+}
+
+func (s *Service) avatarURL(ctx context.Context, avatarID *int64) *string {
+	if avatarID == nil || *avatarID <= 0 || s.mediaClient == nil {
+		return nil
+	}
+
+	callCtx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+
+	resp, err := s.mediaClient.GetMediaURL(callCtx, &mediapb.GetMediaURLRequest{MediaId: *avatarID})
+	if err != nil || resp == nil || strings.TrimSpace(resp.GetUrl()) == "" {
+		return nil
+	}
+
+	url := resp.GetUrl()
+	return &url
 }
 
 func normalizeLogin(value string) string {
