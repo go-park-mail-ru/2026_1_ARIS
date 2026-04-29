@@ -11,6 +11,7 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	useraccount "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_account"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/chat"
+	mediaservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/message"
 	userservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
@@ -21,6 +22,7 @@ type ChatHandler struct {
 	chatService     chat.ChatService
 	messageService  message.MessageService
 	userAccountRepo useraccount.UserAccountRepo
+	mediaService    mediaservice.MediaService
 	userService     userservice.UserService
 	hub             *websocket.Hub
 }
@@ -29,6 +31,7 @@ func NewChatHandler(
 	chatService chat.ChatService,
 	messageService message.MessageService,
 	userAccountRepo useraccount.UserAccountRepo,
+	mediaService mediaservice.MediaService,
 	userService userservice.UserService,
 	hub *websocket.Hub,
 ) *ChatHandler {
@@ -36,20 +39,22 @@ func NewChatHandler(
 		chatService:     chatService,
 		messageService:  messageService,
 		userAccountRepo: userAccountRepo,
+		mediaService:    mediaService,
 		userService:     userService,
 		hub:             hub,
 	}
 }
 
 type ChatResponse struct {
-	ID        string `json:"id"`
-	Uid       string `json:"uid"`
-	Title     string `json:"title"`
-	AvatarID  *int64 `json:"avatarId,omitempty"`
-	Type      string `json:"type"`
-	IsActive  bool   `json:"isActive"`
-	CreatedAt string `json:"createdAt"`
-	UpdatedAt string `json:"updatedAt"`
+	ID         string `json:"id"`
+	Uid        string `json:"uid"`
+	Title      string `json:"title"`
+	AvatarID   *int64 `json:"avatarId,omitempty"`
+	AvatarLink string `json:"avatarLink,omitempty"`
+	Type       string `json:"type"`
+	IsActive   bool   `json:"isActive"`
+	CreatedAt  string `json:"createdAt"`
+	UpdatedAt  string `json:"updatedAt"`
 }
 
 type MessageResponse struct {
@@ -327,15 +332,18 @@ func (h *ChatHandler) mapChatsResponse(ctx context.Context, chats []models.Chat,
 
 func (h *ChatHandler) mapChatResponse(ctx context.Context, chat models.Chat, viewerUserID int64) ChatResponse {
 	title := h.resolveChatTitle(ctx, chat, viewerUserID)
+	avatarID := h.resolveChatAvatarID(ctx, chat, viewerUserID)
+	avatarLink := h.resolveChatAvatarLink(ctx, avatarID)
 	return ChatResponse{
-		ID:        strconv.FormatInt(chat.ID, 10),
-		Uid:       chat.Uid.String(),
-		Title:     title,
-		AvatarID:  chat.AvatarID,
-		Type:      string(chat.Type),
-		IsActive:  chat.IsActive,
-		CreatedAt: chat.CreatedAt.Format(time.RFC3339Nano),
-		UpdatedAt: chat.UpdatedAt.Format(time.RFC3339Nano),
+		ID:         strconv.FormatInt(chat.ID, 10),
+		Uid:        chat.Uid.String(),
+		Title:      title,
+		AvatarID:   avatarID,
+		AvatarLink: avatarLink,
+		Type:       string(chat.Type),
+		IsActive:   chat.IsActive,
+		CreatedAt:  chat.CreatedAt.Format(time.RFC3339Nano),
+		UpdatedAt:  chat.UpdatedAt.Format(time.RFC3339Nano),
 	}
 }
 
@@ -419,26 +427,63 @@ func (h *ChatHandler) isSergeySupportChat(ctx context.Context, chat models.Chat,
 }
 
 func (h *ChatHandler) resolveChatTitle(ctx context.Context, chat models.Chat, viewerUserID int64) string {
-	if chat.Type != models.PrivateChat || h.chatService == nil {
+	otherMemberID, ok := h.resolvePrivateChatCompanionProfileID(ctx, chat, viewerUserID)
+	if !ok {
 		return chat.Title
+	}
+
+	return h.resolveProfileDisplayName(ctx, otherMemberID)
+}
+
+func (h *ChatHandler) resolveChatAvatarID(ctx context.Context, chat models.Chat, viewerUserID int64) *int64 {
+	otherMemberID, ok := h.resolvePrivateChatCompanionProfileID(ctx, chat, viewerUserID)
+	if !ok || h.userService == nil {
+		return chat.AvatarID
+	}
+
+	profile, err := h.userService.GetProfileByProfileID(ctx, otherMemberID)
+	if err != nil || profile == nil || profile.AvatarID == nil {
+		return chat.AvatarID
+	}
+
+	return profile.AvatarID
+}
+
+func (h *ChatHandler) resolveChatAvatarLink(ctx context.Context, avatarID *int64) string {
+	if avatarID == nil || h.mediaService == nil {
+		return ""
+	}
+
+	avatar, err := h.mediaService.GetAvatarByID(ctx, avatarID)
+	if err != nil || avatar == nil {
+		return ""
+	}
+
+	return avatar.Link
+}
+
+func (h *ChatHandler) resolvePrivateChatCompanionProfileID(ctx context.Context, chat models.Chat, viewerUserID int64) (int64, bool) {
+	if chat.Type != models.PrivateChat || h.chatService == nil {
+		return 0, false
 	}
 
 	viewerProfileID, err := h.getViewerProfileID(ctx, viewerUserID)
 	if err != nil {
-		return chat.Title
+		return 0, false
 	}
 
 	members, err := h.chatService.GetChatMembers(ctx, chat.ID)
 	if err != nil {
-		return chat.Title
+		return 0, false
 	}
+
 	for _, member := range members {
-		if member.MemberID == viewerProfileID {
-			continue
+		if member.MemberID != viewerProfileID {
+			return member.MemberID, true
 		}
-		return h.resolveProfileDisplayName(ctx, member.MemberID)
 	}
-	return chat.Title
+
+	return 0, false
 }
 
 func (h *ChatHandler) getViewerProfileID(ctx context.Context, userID int64) (int64, error) {

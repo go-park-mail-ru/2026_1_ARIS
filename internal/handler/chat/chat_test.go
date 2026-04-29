@@ -30,12 +30,13 @@ func TestChatHandler_GetChats_Success(t *testing.T) {
 
 	mockChatSvc := mock_service.NewMockChatService(ctrl)
 	mockMsgSvc := mock_service.NewMockMessageService(ctrl)
+	mockMediaSvc := mock_service.NewMockMediaService(ctrl)
 	mockUserAccountRepo := mock_repo.NewMockUserAccountRepo(ctrl)
 	mockUserSvc := mock_service.NewMockUserService(ctrl)
 	hub := websocket.NewHub()
 	go hub.Run()
 
-	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, mockUserSvc, hub)
+	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, mockMediaSvc, mockUserSvc, hub)
 
 	userID := int64(1)
 	profileID := int64(100)
@@ -68,6 +69,13 @@ func TestChatHandler_GetChats_Success(t *testing.T) {
 			{MemberID: profileID},
 			{MemberID: 200},
 		}, nil).AnyTimes()
+	avatarID := int64(777)
+	mockUserSvc.EXPECT().
+		GetProfileByProfileID(gomock.Any(), int64(200)).
+		Return(&models.Profile{AvatarID: &avatarID}, nil).AnyTimes()
+	mockMediaSvc.EXPECT().
+		GetAvatarByID(gomock.Any(), &avatarID).
+		Return(&models.Media{Link: "http://avatar.example/777.png"}, nil).AnyTimes()
 	mockUserSvc.EXPECT().
 		GetUserProfileByProfileID(gomock.Any(), int64(200)).
 		Return(&models.UserProfile{FirstName: "John", LastName: "Doe"}, nil).AnyTimes()
@@ -86,13 +94,17 @@ func TestChatHandler_GetChats_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, response, 1)
 	assert.Equal(t, "10", response[0].ID)
+	if assert.NotNil(t, response[0].AvatarID) {
+		assert.Equal(t, avatarID, *response[0].AvatarID)
+	}
+	assert.Equal(t, "http://avatar.example/777.png", response[0].AvatarLink)
 }
 
 func TestChatHandler_GetChats_Unauthorized(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	handler := NewChatHandler(nil, nil, nil, nil, nil)
+	handler := NewChatHandler(nil, nil, nil, nil, nil, nil)
 
 	req := httptest.NewRequest("GET", "/api/chats", nil)
 	w := httptest.NewRecorder()
@@ -106,7 +118,7 @@ func TestChatHandler_GetChats_ServiceError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockChatSvc := mock_service.NewMockChatService(ctrl)
-	handler := NewChatHandler(mockChatSvc, nil, nil, nil, nil)
+	handler := NewChatHandler(mockChatSvc, nil, nil, nil, nil, nil)
 
 	userID := int64(1)
 	mockChatSvc.EXPECT().
@@ -128,8 +140,9 @@ func TestChatHandler_CreateChat_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockChatSvc := mock_service.NewMockChatService(ctrl)
+	mockMediaSvc := mock_service.NewMockMediaService(ctrl)
 	mockUserSvc := mock_service.NewMockUserService(ctrl)
-	handler := NewChatHandler(mockChatSvc, nil, nil, mockUserSvc, nil)
+	handler := NewChatHandler(mockChatSvc, nil, nil, mockMediaSvc, mockUserSvc, nil)
 
 	userID := int64(1)
 	otherUserID := int64(2)
@@ -170,6 +183,13 @@ func TestChatHandler_CreateChat_Success(t *testing.T) {
 			{MemberID: 100},
 			{MemberID: 200},
 		}, nil).AnyTimes()
+	avatarID := int64(555)
+	mockUserSvc.EXPECT().
+		GetProfileByProfileID(gomock.Any(), int64(200)).
+		Return(&models.Profile{AvatarID: &avatarID}, nil).AnyTimes()
+	mockMediaSvc.EXPECT().
+		GetAvatarByID(gomock.Any(), &avatarID).
+		Return(&models.Media{Link: "http://avatar.example/555.png"}, nil).AnyTimes()
 	mockUserSvc.EXPECT().
 		GetUserProfileByProfileID(gomock.Any(), int64(200)).
 		Return(&models.UserProfile{FirstName: "Alice", LastName: "Smith"}, nil).AnyTimes()
@@ -187,10 +207,14 @@ func TestChatHandler_CreateChat_Success(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	assert.NoError(t, err)
 	assert.Equal(t, "20", resp.ID)
+	if assert.NotNil(t, resp.AvatarID) {
+		assert.Equal(t, avatarID, *resp.AvatarID)
+	}
+	assert.Equal(t, "http://avatar.example/555.png", resp.AvatarLink)
 }
 
 func TestChatHandler_CreateChat_Unauthorized(t *testing.T) {
-	handler := NewChatHandler(nil, nil, nil, nil, nil)
+	handler := NewChatHandler(nil, nil, nil, nil, nil, nil)
 	req := httptest.NewRequest("POST", "/api/chats", nil)
 	w := httptest.NewRecorder()
 	handler.CreateChat(w, req)
@@ -205,7 +229,7 @@ func TestChatHandler_GetMessages_Success(t *testing.T) {
 	mockMsgSvc := mock_service.NewMockMessageService(ctrl)
 	mockUserSvc := mock_service.NewMockUserService(ctrl)
 
-	handler := NewChatHandler(mockChatSvc, mockMsgSvc, nil, mockUserSvc, nil)
+	handler := NewChatHandler(mockChatSvc, mockMsgSvc, nil, nil, mockUserSvc, nil)
 
 	userID := int64(1)
 	chatID := int64(5)
@@ -267,7 +291,7 @@ func TestChatHandler_SendMessage_Success(t *testing.T) {
 	hub := websocket.NewHub()
 	go hub.Run()
 
-	handler := NewChatHandler(mockChatSvc, mockMsgSvc, nil, mockUserSvc, hub)
+	handler := NewChatHandler(mockChatSvc, mockMsgSvc, nil, nil, mockUserSvc, hub)
 
 	userID := int64(1)
 	profileID := int64(100)
@@ -415,7 +439,7 @@ func TestEnsureGuaranteedDialog_FindsSergey(t *testing.T) {
 	hub := websocket.NewHub()
 	go hub.Run()
 
-	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, mockUserSvc, hub)
+	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, nil, mockUserSvc, hub)
 
 	ctx := context.Background()
 	userID := int64(123)
@@ -444,7 +468,7 @@ func TestEnsureGuaranteedDialog_FindsSecondTarget(t *testing.T) {
 	hub := websocket.NewHub()
 	go hub.Run()
 
-	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, mockUserSvc, hub)
+	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, nil, mockUserSvc, hub)
 
 	ctx := context.Background()
 	userID := int64(123)
@@ -477,7 +501,7 @@ func TestEnsureGuaranteedDialog_TargetUserIsSelf(t *testing.T) {
 	hub := websocket.NewHub()
 	go hub.Run()
 
-	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, mockUserSvc, hub)
+	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, nil, mockUserSvc, hub)
 
 	ctx := context.Background()
 	userID := int64(123)
@@ -514,7 +538,7 @@ func TestEnsureGuaranteedDialog_ListUsersError(t *testing.T) {
 	hub := websocket.NewHub()
 	go hub.Run()
 
-	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, mockUserSvc, hub)
+	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, nil, mockUserSvc, hub)
 
 	ctx := context.Background()
 	userID := int64(123)
@@ -542,7 +566,7 @@ func TestEnsureGuaranteedDialog_FirstFromList(t *testing.T) {
 	hub := websocket.NewHub()
 	go hub.Run()
 
-	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, mockUserSvc, hub)
+	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, nil, mockUserSvc, hub)
 
 	ctx := context.Background()
 	userID := int64(123)
@@ -579,7 +603,7 @@ func TestEnsureGuaranteedDialog_NoOtherUsers(t *testing.T) {
 	hub := websocket.NewHub()
 	go hub.Run()
 
-	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, mockUserSvc, hub)
+	handler := NewChatHandler(mockChatSvc, mockMsgSvc, mockUserAccountRepo, nil, mockUserSvc, hub)
 
 	ctx := context.Background()
 	userID := int64(123)

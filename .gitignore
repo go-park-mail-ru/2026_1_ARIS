@@ -1,6 +1,7 @@
 .env
 .env.compose
 docker/.env
+/config/
 aris-server
 .DS_Store
 .gocache/

@@ -31,7 +31,7 @@ func TestNewRouter(t *testing.T) {
 	userHandler := &userhandler.UserHandler{}
 	mediaHandler := &mediahandler.MediaHandler{}
 	profileHandler := profile.NewProfileHandler(nil, nil, nil)
-	chatHandler := chat.NewChatHandler(nil, nil, nil, nil, nil) // добавили hub = nil
+	chatHandler := chat.NewChatHandler(nil, nil, nil, nil, nil, nil) // добавили hub = nil
 	friendshipHandler := &friend.FriendHandler{}
 	wsHandler := websocket.NewWebSocketHandler(nil, nil) // создаём wsHandler
 	postHandler := posthandler.NewPostHandler(nil, nil, nil)

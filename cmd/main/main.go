@@ -161,7 +161,7 @@ func main() {
 	feedHandler := feedhandler.NewFeedHandler(postService, mediaService, userService)
 	mediaHandler := mediahandler.NewMediaHandler(mediaService, sessService, userService)
 	profileHandler := profilehandler.NewProfileHandler(userService, mediaService, sessService)
-	chatHandler := chathandler.NewChatHandler(chatSvc, messageSvc, userAccountRepo, userService, hub)
+	chatHandler := chathandler.NewChatHandler(chatSvc, messageSvc, userAccountRepo, mediaService, userService, hub)
 	friendHandler := friendshiphandler.NewFriendHandler(sessService, userService, friendshipService)
 	wsHandler := wsHandler.NewWebSocketHandler(hub, chatSvc)
 	postHandler := posthandler.NewPostHandler(userService, postService, mediaService)
