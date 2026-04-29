@@ -78,7 +78,7 @@ services-stop:
 microservices: microservices-up
 
 microservices-up:
-	$(COMPOSE) --profile microservices up --build -d $(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE)
+	$(COMPOSE) --profile microservices up --build -d $(MICROSERVICE_SERVICES)
 
 microservices-stop:
 	$(COMPOSE) stop $(MICROSERVICE_ALL)
