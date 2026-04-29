@@ -1,4 +1,4 @@
-.PHONY: test coverage clean dev down reset-db logs migrate backend-shell frontend-shell mocks microservices microservices-up microservices-stop microservices-down microservices-reset auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update logs-auth logs-media logs-user logs-post logs-chat logs-nginx
+.PHONY: test coverage clean dev down reset-db logs migrate backend-shell frontend-shell mocks microservices microservices-up microservices-stop microservices-down microservices-reset server-up server-stop server-logs server-nginx-install server-nginx-test server-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update logs-auth logs-media logs-user logs-post logs-chat logs-nginx
 
 COMPOSE_FILE=./docker-compose.dev.yml
 COMPOSE_ENV_FILE=./.env.compose
@@ -9,6 +9,9 @@ MICROSERVICE_INFRA=db redis minio
 MICROSERVICE_EDGE=nginx
 MICROSERVICE_INIT=migrate
 MICROSERVICE_ALL=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE) $(MICROSERVICE_INFRA)
+NGINX_SITE_NAME ?= arisnet.ru
+NGINX_SITES_AVAILABLE ?= /etc/nginx/sites-available
+NGINX_SITES_ENABLED ?= /etc/nginx/sites-enabled
 
 # include .env
 
@@ -89,6 +92,26 @@ microservices-down:
 
 microservices-reset:
 	$(COMPOSE) --profile microservices down -v
+
+server-up: microservices-up
+
+server-stop: microservices-stop
+
+server-logs:
+	$(COMPOSE) logs -f $(MICROSERVICE_SERVICES)
+
+server-nginx-install:
+	sudo mkdir -p $(NGINX_SITES_AVAILABLE) $(NGINX_SITES_ENABLED)
+	sudo install -m 0644 ./config/nginx.server.conf $(NGINX_SITES_AVAILABLE)/$(NGINX_SITE_NAME)
+	sudo ln -sfn $(NGINX_SITES_AVAILABLE)/$(NGINX_SITE_NAME) $(NGINX_SITES_ENABLED)/$(NGINX_SITE_NAME)
+	sudo nginx -t
+
+server-nginx-test:
+	sudo nginx -t
+
+server-nginx-reload:
+	sudo nginx -t
+	sudo systemctl reload nginx
 
 auth-up:
 	$(COMPOSE) up --build -d auth

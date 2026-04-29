@@ -56,3 +56,30 @@ make reset-db
 ```bash
 make logs
 ```
+
+### Запуск на сервере
+
+На сервере nginx и Node запускаются без контейнеров. Go-микросервисы, Postgres,
+Redis и MinIO поднимаются из `arisback` через Docker Compose.
+
+1. Скопируйте `.env.compose.example` в `.env.compose` и замените пароли.
+2. Проверьте, что `APP_ENDPOINT=https://arisnet.ru`.
+3. Поднимите инфраструктуру и Go-микросервисы:
+
+```bash
+make microservices-up
+```
+
+Команда стартует `auth`, `media`, `user`, `post`, `chat`; их зависимости
+`db`, `redis`, `minio`, `migrate`, `seed` Docker Compose поднимет автоматически.
+Порты инфраструктуры и микросервисов проброшены только на `127.0.0.1`.
+
+Host nginx ставится отдельно:
+
+```bash
+make server-nginx-install
+make server-nginx-reload
+```
+
+`config/nginx.server.conf` ожидает frontend Node на `127.0.0.1:3001`,
+микросервисы на `127.0.0.1:8081-8085` и MinIO на `127.0.0.1:9000`.
