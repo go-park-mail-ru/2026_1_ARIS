@@ -6,6 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-func GenerateMediaName(mediaUUID uuid.UUID, mediaSize int64, extension string) string {
-	return fmt.Sprintf("%s-%d%s", mediaUUID.String(), mediaSize, extension)
+func GenerateMediaName(mediaUUID uuid.UUID, _ int64, extension string) string {
+	return fmt.Sprintf("%s%s", mediaUUID.String(), extension)
 }

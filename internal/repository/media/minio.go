@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
@@ -47,7 +48,19 @@ func (client *MinioClient) Save(ctx context.Context, bucketName string, reader i
 		return "", err
 	}
 
-	return fmt.Sprintf("https://arisnet.ru/%s/%s",
+	scheme := os.Getenv("MINIO_PUBLIC_SCHEME")
+	if scheme == "" {
+		scheme = "https"
+	}
+
+	host := os.Getenv("MINIO_PUBLIC_HOST")
+	if host == "" {
+		host = "arisnet.ru"
+	}
+
+	return fmt.Sprintf("%s://%s/%s/%s",
+		scheme,
+		host,
 		uploadInto.Bucket,
 		uploadInto.Key,
 	), nil
