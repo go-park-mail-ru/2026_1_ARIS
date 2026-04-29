@@ -381,6 +381,33 @@ services:
       go run ./cmd/chat
       "
 
+  nginx:
+    profiles: ["microservices"]
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      auth:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+      post:
+        condition: service_healthy
+      chat:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${NGINX_PORT:-8080}:8080"
+    volumes:
+      - ./config/nginx.container.conf:/etc/nginx/nginx.conf:ro
+
   backend:
     image: golang:alpine
     restart: unless-stopped

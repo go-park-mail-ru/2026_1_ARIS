@@ -1,4 +1,4 @@
-.PHONY: test coverage clean dev down reset-db logs migrate backend-shell frontend-shell mocks microservices microservices-up microservices-stop microservices-down microservices-reset auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop logs-auth logs-media logs-user logs-post logs-chat
+.PHONY: test coverage clean dev down reset-db logs migrate backend-shell frontend-shell mocks microservices microservices-up microservices-stop microservices-down microservices-reset auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update logs-auth logs-media logs-user logs-post logs-chat logs-nginx
 
 COMPOSE_FILE=./docker-compose.dev.yml
 COMPOSE_ENV_FILE=./.env.compose
@@ -6,8 +6,9 @@ COMPOSE=docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE)
 COMPOSE_LOCAL=docker compose -f ./docker/docker-compose.yml --env-file ./.env
 MICROSERVICE_SERVICES=auth media user post chat
 MICROSERVICE_INFRA=db redis minio
+MICROSERVICE_EDGE=nginx
 MICROSERVICE_INIT=migrate
-MICROSERVICE_ALL=$(MICROSERVICE_SERVICES) $(MICROSERVICE_INFRA)
+MICROSERVICE_ALL=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE) $(MICROSERVICE_INFRA)
 
 # include .env
 
@@ -77,7 +78,7 @@ services-stop:
 microservices: microservices-up
 
 microservices-up:
-	$(COMPOSE) --profile microservices up --build -d $(MICROSERVICE_SERVICES)
+	$(COMPOSE) --profile microservices up --build -d $(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE)
 
 microservices-stop:
 	$(COMPOSE) stop $(MICROSERVICE_ALL)
@@ -119,6 +120,24 @@ chat-up:
 chat-stop:
 	$(COMPOSE) stop chat
 
+nginx-up:
+	$(COMPOSE) --profile microservices up -d nginx
+
+nginx-stop:
+	$(COMPOSE) stop nginx
+
+nginx-test:
+	$(COMPOSE) exec -T nginx nginx -t
+
+nginx-reload:
+	$(COMPOSE) exec -T nginx nginx -t
+	$(COMPOSE) exec -T nginx nginx -s reload
+
+nginx-update:
+	$(COMPOSE) --profile microservices up -d nginx
+	$(COMPOSE) exec -T nginx nginx -t
+	$(COMPOSE) exec -T nginx nginx -s reload
+
 logs-auth:
 	$(COMPOSE) logs -f auth
 
@@ -133,6 +152,9 @@ logs-post:
 
 logs-chat:
 	$(COMPOSE) logs -f chat
+
+logs-nginx:
+	$(COMPOSE) logs -f nginx
 
 dev:
 	$(COMPOSE) up --build -d
