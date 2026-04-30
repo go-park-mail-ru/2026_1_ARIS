@@ -9,7 +9,6 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/post"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/profile"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/proxy"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/support"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/websocket"
 	mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
@@ -33,7 +32,6 @@ func NewRouter(
 	friendshipHandler *friend.FriendHandler,
 	wsHandler *websocket.WebSocketHandler,
 	postHandler *post.PostHandler,
-	supportHandler *support.SupportHandler,
 	logger *zap.Logger,
 ) *chi.Mux {
 	r := chi.NewRouter()
@@ -91,7 +89,6 @@ func NewRouter(
 		r.Post("/api/chats/{chatID}/messages", chatHandler.SendMessage)
 		r.Put("/api/chats/{chatID}/messages/{messageID}", chatHandler.UpdateMessage)
 		r.Get("/ws/{chatID}", wsHandler.HandleWebSocket)
-		r.Get("/ws/support/{ticketID}", supportHandler.HandleTicketWebSocket)
 	})
 
 	r.Route("/api/friends", func(r chi.Router) {
@@ -122,24 +119,6 @@ func NewRouter(
 			r.Delete("/{id}", postHandler.DeletePost)
 			r.Get("/{id}", postHandler.GetPost)
 			r.Patch("/{id}", postHandler.UpdatePost)
-		})
-	})
-
-	r.Route("/api/support", func(r chi.Router) {
-		r.Group(func(r chi.Router) {
-			r.Use(mymiddleware.AuthMiddleware(sessSvc))
-			r.Post("/tickets", supportHandler.SendTicket)
-			r.Get("/tickets", supportHandler.GetAllTickets)
-			r.Get("/tickets/my", supportHandler.GetMyTickets)
-			r.Get("/stats", supportHandler.GetStats)
-			r.Get("/tickets/{ticketID}", supportHandler.GetTicket)
-			r.Patch("/tickets/{ticketID}", supportHandler.UpdateTicket)
-			r.Patch("/tickets/{ticketID}/status", supportHandler.UpdateTicketStatus)
-			r.Get("/tickets/{ticketID}/messages", supportHandler.GetTicketMessages)
-			r.Post("/tickets/{ticketID}/messages", supportHandler.SendTicketMessage)
-			r.Patch("/tickets/{ticketID}/assign", supportHandler.AssignTicket)
-			r.Patch("/tickets/{ticketID}/escalate", supportHandler.EscalateTicket)
-			r.Post("/tickets/{ticketID}/rating", supportHandler.RateTicket)
 		})
 	})
 

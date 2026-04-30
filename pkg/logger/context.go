@@ -15,7 +15,7 @@ func WithLogger(ctx context.Context, log *zap.Logger) context.Context {
 func FromContext(ctx context.Context) *zap.Logger {
 	log, ok := ctx.Value(ctxKey{}).(*zap.Logger)
 	if !ok || log == nil {
-		return zap.NewNop()
+		return nil
 	}
 	return log
 }

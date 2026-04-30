@@ -4,8 +4,8 @@ package media
 
 import (
 	"context"
-	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
@@ -37,18 +37,19 @@ func (client *MinioClient) Save(ctx context.Context, bucketName string, reader i
 	start := time.Now()
 	uploadInto, err := client.client.PutObject(ctx, bucketName, objectName, reader, size, opts)
 	if logger != nil {
-		logger.Debug("db query",
-			zap.String("query", "GetUserByID"),
+		logger.Debug("minio put object",
+			zap.String("bucket", bucketName),
+			zap.String("object", objectName),
 			zap.Duration("duration_ms", time.Since(start)),
 		)
 	}
 	if err != nil {
-		fmt.Println(err)
 		return "", err
 	}
 
-	return fmt.Sprintf("https://arisnet.ru/%s/%s",
-		uploadInto.Bucket,
-		uploadInto.Key,
-	), nil
+	return objectPublicPath(uploadInto.Bucket, uploadInto.Key), nil
+}
+
+func objectPublicPath(bucketName, objectName string) string {
+	return "/" + strings.Trim(bucketName, "/") + "/" + strings.TrimLeft(objectName, "/")
 }

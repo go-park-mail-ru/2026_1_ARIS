@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package aris.support.v1;
+
+option go_package = "github.com/go-park-mail-ru/2026_1_ARIS/proto/support;supportpb";
+
+service SupportService {
+  rpc GetProfileRole(GetProfileRoleRequest) returns (GetProfileRoleResponse);
+}
+
+message GetProfileRoleRequest {
+  int64 profile_id = 1;
+}
+
+message GetProfileRoleResponse {
+  string role = 1;
+}

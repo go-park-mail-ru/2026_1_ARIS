@@ -9,7 +9,7 @@ services:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_DB=${DB_NAME}
     ports:
-      - ${DB_PORT}:5432
+      - 127.0.0.1:${DB_PORT}:5432
 
   ARISNET-MINIO:
     image: minio/minio:latest
@@ -17,32 +17,14 @@ services:
     command: server /data --console-address ":9001"
     hostname: 127.0.0.1
     ports:
-      - "9000:9000"   # S3 API
-      - "9001:9001"   # Web-консоль
+      - "127.0.0.1:9000:9000"   # S3 API
+      - "127.0.0.1:9001:9001"   # Web-консоль
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
       - minio_data:/data
-
-  redis:
-    image: redis:latest
-    restart: unless-stopped
-    container_name: ${REDIS_CONTAINER_NAME}
-    command: ["redis-server", "--requirepass", "${REDIS_USER_PASSWORD}"]
-    environment:
-      REDIS_PASSWORD: ${REDIS_USER_PASSWORD}
-    ports:
-      - "${REDIS_PUBLIC_PORT}:6379"
-    volumes:
-      - aris_redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_USER_PASSWORD}", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
       
 volumes:
   postgres_data:
   minio_data:
-  aris_redis_data:

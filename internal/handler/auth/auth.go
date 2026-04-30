@@ -11,7 +11,6 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/auth"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/media"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
-	supportsvc "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/support"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
@@ -59,7 +58,6 @@ type AuthHandler struct {
 	sessionService session.SessionService
 	userService    user.UserService
 	mediaService   media.MediaService
-	supportService supportsvc.TicketService
 }
 
 type LoginResponse struct {
@@ -67,30 +65,7 @@ type LoginResponse struct {
 	CreatedAt  string `json:"createdAt"`
 	FirstName  string `json:"firstName"`
 	LastName   string `json:"lastName"`
-	Login      string `json:"login"`
-	Email      string `json:"email"`
 	AvatarLink string `json:"avatarLink,omitempty"`
-	Role       string `json:"role"`
-}
-
-type RegisterResponse struct {
-	ID        int64  `json:"id"`
-	CreatedAt string `json:"createdAt"`
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
-	Login     string `json:"login"`
-	Email     string `json:"email"`
-	Role      string `json:"role"`
-}
-
-type UserDTO struct {
-	user        models.UserAccount
-	userProfile models.UserProfile
-	profile     models.Profile
-}
-
-func (h *AuthHandler) SetSupportService(supportService supportsvc.TicketService) {
-	h.supportService = supportService
 }
 
 type CommonResponse struct {
@@ -217,7 +192,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	log.Info("user registered", zap.Int64("profile_id", profile.ID), zap.Int64("userAccount_id", userAccount.ID))
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(h.buildRegisterResponse(r, userProfile, userAccount))
+	json.NewEncoder(w).Encode(profile)
 }
 
 // @Description	User login
@@ -281,15 +256,22 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 	})
 
+	loginResponse := LoginResponse{
+		ID:        strconv.FormatInt(userProfile.ID, 10),
+		CreatedAt: userProfile.CreatedAt.UTC().Format(time.RFC3339Nano),
+		FirstName: html.EscapeString(userProfile.FirstName),
+		LastName:  html.EscapeString(userProfile.LastName),
+	}
+
 	log.Info("user_logged_in",
 		zap.Int64("userAccount_id", userAccount.ID),
 		zap.String("login", req.Login),
-		zap.Int64("profile_id", userProfile.ProfileID),
+		zap.Int64("profile_id", userProfile.ID),
 	)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(h.buildLoginResponse(r, userProfile, userAccount, ""))
+	json.NewEncoder(w).Encode(loginResponse)
 }
 
 // @Description	User logout
@@ -386,18 +368,6 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 			avatar = media.Link
 		}
 	}
-	var userAccount *models.UserAccount
-	if h.supportService != nil {
-		userAccount, err = h.userService.GetUserAccountByProfileID(r.Context(), userProfile.ProfileID)
-		if err != nil {
-			log.Warn("user_account_not_found",
-				zap.Int64("profile_id", userProfile.ProfileID),
-				zap.Error(err),
-			)
-			utils.WriteError(w, ErrUserNotFound, http.StatusNotFound)
-			return
-		}
-	}
 
 	log.Info("me_request_success",
 		zap.Int64("userAccount_id", userID),
@@ -406,55 +376,12 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(h.buildLoginResponse(r, userProfile, userAccount, avatar))
-}
-
-func (h *AuthHandler) buildLoginResponse(r *http.Request, userProfile *models.UserProfile, userAccount *models.UserAccount, avatar string) LoginResponse {
-	email := ""
-	login := ""
-	if userAccount != nil {
-		login = userAccount.Username
-	}
-	if userAccount != nil && userAccount.Email != nil {
-		email = *userAccount.Email
-	}
-	return LoginResponse{
-		ID:         strconv.FormatInt(userProfile.ProfileID, 10),
-		CreatedAt:  userProfile.CreatedAt.UTC().Format(time.RFC3339Nano),
+	json.NewEncoder(w).Encode(LoginResponse{
+		ID:         strconv.FormatInt(userID, 10),
 		FirstName:  html.EscapeString(userProfile.FirstName),
 		LastName:   html.EscapeString(userProfile.LastName),
-		Login:      html.EscapeString(login),
-		Email:      email,
 		AvatarLink: avatar,
-		Role:       string(h.getSupportRole(r, userProfile.ProfileID)),
-	}
-}
-
-func (h *AuthHandler) buildRegisterResponse(r *http.Request, userProfile *models.UserProfile, userAccount *models.UserAccount) RegisterResponse {
-	email := ""
-	if userAccount.Email != nil {
-		email = *userAccount.Email
-	}
-	return RegisterResponse{
-		ID:        userProfile.ProfileID,
-		CreatedAt: userProfile.CreatedAt.UTC().Format(time.RFC3339Nano),
-		FirstName: html.EscapeString(userProfile.FirstName),
-		LastName:  html.EscapeString(userProfile.LastName),
-		Login:     html.EscapeString(userAccount.Username),
-		Email:     email,
-		Role:      string(h.getSupportRole(r, userProfile.ProfileID)),
-	}
-}
-
-func (h *AuthHandler) getSupportRole(r *http.Request, profileID int64) models.SupportRole {
-	if h.supportService == nil {
-		return models.SupportRoleUser
-	}
-	role, err := h.supportService.GetProfileRole(r.Context(), profileID)
-	if err != nil {
-		return models.SupportRoleUser
-	}
-	return role
+	})
 }
 
 // @Description	Validate register first step

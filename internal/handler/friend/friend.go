@@ -19,7 +19,7 @@ import (
 )
 
 type FriendHandler struct {
-	sessionService    session.SessionService
+	sessionService    session.SessionService // нигде не используется
 	userService       user.UserService
 	friendshipService friend.FriendshipService
 }

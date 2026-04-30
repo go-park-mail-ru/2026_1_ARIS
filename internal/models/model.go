@@ -53,6 +53,8 @@ const (
 	ReactionAngry ReactionType = "😡"
 )
 
+// type Gender int
+
 type Gender string
 
 const (
@@ -178,16 +180,6 @@ func NewTicketWithMedia(ticketID, mediaID int64, order int) *TicketWithMedia {
 	}
 }
 
-type SupportTicketCategoryStats struct {
-	Category TicketCategory `json:"category"`
-	Count    int64          `json:"count"`
-}
-
-type SupportTicketStatusStats struct {
-	Status TicketStatus `json:"status"`
-	Count  int64        `json:"count"`
-}
-
 type SupportTicketStats struct {
 	TotalCount         int64            `json:"total"`
 	OpenCount          int64            `json:"open"`
@@ -207,15 +199,6 @@ type SupportTicketMessage struct {
 	AuthorID   int64       `db:"author_id"`
 	AuthorRole SupportRole `db:"author_role"`
 	CreatedAt  time.Time   `db:"created_at"`
-}
-
-type SupportTicketStatusHistory struct {
-	ID        int64
-	TicketID  int64
-	OldStatus TicketStatus
-	NewStatus TicketStatus
-	ChangedBy int64
-	CreatedAt time.Time
 }
 
 // models structs

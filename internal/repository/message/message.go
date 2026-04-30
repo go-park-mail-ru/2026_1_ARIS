@@ -124,6 +124,35 @@ func (s *messageStorage) GetByChatID(ctx context.Context, chatID int64, limit, o
 	return messages, nil
 }
 
+func (s *messageStorage) GetByChatIDAfter(ctx context.Context, chatID, afterID int64, limit int) ([]models.Message, error) {
+	logger := logger.FromContext(ctx)
+	query := `SELECT id, uid, message_text, parent_message_id, chat_id, author_id, sticker_id, is_active, created_at, updated_at
+		FROM message
+		WHERE chat_id=$1 AND id>$2 AND is_active=true
+		ORDER BY id ASC
+		LIMIT $3`
+	var messages []models.Message
+	start := time.Now()
+	err := pgxscan.Select(ctx, s.db, &messages, query, chatID, afterID, limit)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "getMessagesByChatIDAfter"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+
+	for i := range messages {
+		if messages[i].Text != nil {
+			text := html.EscapeString(*messages[i].Text)
+			*messages[i].Text = text
+		}
+	}
+
+	return messages, nil
+}
+
 func (s *messageStorage) Delete(ctx context.Context, id int64) error {
 	logger := logger.FromContext(ctx)
 	query := `UPDATE message SET is_active=false WHERE id=$1`

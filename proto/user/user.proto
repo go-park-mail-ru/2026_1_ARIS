@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package aris.user.v1;
+
+option go_package = "github.com/go-park-mail-ru/2026_1_ARIS/proto/user;userpb";
+
+service UserService {
+    rpc GetProfileByUserAccount(GetProfileByUserAccountRequest) returns (GetProfileByUserAccountResponse);
+    rpc GetUserProfileByUserAccount(GetUserProfileByUserAccountRequest) returns (GetUserProfileByUserAccountResponse);
+    rpc GetProfileSummary(GetProfileSummaryRequest) returns (GetProfileSummaryResponse);
+}
+
+message GetProfileByUserAccountRequest {
+    int64 user_account_id = 1;
+}
+
+message GetProfileByUserAccountResponse {
+    int64 profile_id = 1;
+}
+
+message GetUserProfileByUserAccountRequest {
+    int64 user_account_id = 1;
+}
+
+message GetUserProfileByUserAccountResponse {
+    int64 user_profile_id = 1;
+}
+
+message GetProfileSummaryRequest {
+    int64 profile_id = 1;
+}
+
+message GetProfileSummaryResponse {
+    int64 profile_id = 1;
+    int64 user_account_id = 2;
+    string first_name = 3;
+    string last_name = 4;
+    string username = 5;
+    optional int64 avatar_id = 6;
+}

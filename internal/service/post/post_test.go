@@ -10,7 +10,6 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	repomocks "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/mocks"
-	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/cursor"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -115,7 +114,7 @@ func TestPostServiceFeeds(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	postRepo := repomocks.NewMockPostRepo(ctrl)
-	svc := NewPostService(postRepo, repomocks.NewMockPostWithMediaRepo(ctrl), repomocks.NewMockProfileRepo(ctrl), repomocks.NewMockCommentRepo(ctrl), repomocks.NewMockRepostRepo(ctrl), repomocks.NewMockLikeRepo(ctrl)).(*postService)
+	svc := NewPostService(postRepo, repomocks.NewMockPostWithMediaRepo(ctrl), repomocks.NewMockProfileRepo(ctrl), repomocks.NewMockCommentRepo(ctrl), repomocks.NewMockRepostRepo(ctrl), repomocks.NewMockLikeRepo(ctrl))
 
 	_, err := svc.GetFeed(context.Background(), "not-valid-base64!!!", 10)
 	require.Error(t, err)
@@ -150,87 +149,4 @@ func TestPostServiceFeeds(t *testing.T) {
 	pubPop, err := svc.GetPublicPopularPosts(context.Background())
 	require.NoError(t, err)
 	require.Nil(t, pubPop)
-}
-
-func TestPostServiceGetCursoredPostsBranches(t *testing.T) {
-	t.Parallel()
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	postRepo := repomocks.NewMockPostRepo(ctrl)
-	svc := NewPostService(postRepo, repomocks.NewMockPostWithMediaRepo(ctrl), repomocks.NewMockProfileRepo(ctrl), repomocks.NewMockCommentRepo(ctrl), repomocks.NewMockRepostRepo(ctrl), repomocks.NewMockLikeRepo(ctrl)).(*postService)
-
-	now := time.Now()
-	posts := []models.Post{
-		{ID: 1, Uid: uuid.New(), IsPublicDemo: false, CreatedAt: now.Add(-3 * time.Hour)},
-		{ID: 2, Uid: uuid.New(), IsPublicDemo: true, CreatedAt: now.Add(-2 * time.Hour)},
-		{ID: 3, Uid: uuid.New(), IsPublicDemo: false, CreatedAt: now.Add(-1 * time.Hour)},
-	}
-
-	postRepo.EXPECT().GetAll(gomock.Any()).Return(posts, nil)
-	got, err := svc.getCursoredPosts(context.Background(), FeedParams{Limit: 10})
-	require.NoError(t, err)
-	require.Len(t, got, 2)
-
-	cursorAfterFirst := FeedParams{
-		Limit: 1,
-		Cursor: &cursor.Cursor{
-			CreatedAt: now.Add(-3 * time.Hour),
-			ID:        uuid.New(),
-		},
-	}
-	postRepo.EXPECT().GetAll(gomock.Any()).Return(posts, nil)
-	got, err = svc.getCursoredPosts(context.Background(), cursorAfterFirst)
-	require.NoError(t, err)
-	require.NotEmpty(t, got)
-
-	postRepo.EXPECT().GetAll(gomock.Any()).Return(posts, nil)
-	_, err = svc.getCursoredPosts(context.Background(), FeedParams{
-		Limit: 1,
-		Cursor: &cursor.Cursor{
-			CreatedAt: now.Add(10 * time.Hour),
-			ID:        uuid.New(),
-		},
-	})
-	require.Error(t, err)
-}
-
-func TestPostServiceGetCursoredPublicPostsBranches(t *testing.T) {
-	t.Parallel()
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	postRepo := repomocks.NewMockPostRepo(ctrl)
-	svc := NewPostService(postRepo, repomocks.NewMockPostWithMediaRepo(ctrl), repomocks.NewMockProfileRepo(ctrl), repomocks.NewMockCommentRepo(ctrl), repomocks.NewMockRepostRepo(ctrl), repomocks.NewMockLikeRepo(ctrl)).(*postService)
-
-	now := time.Now()
-	publicPosts := []models.Post{
-		{ID: 1, Uid: uuid.New(), IsPublicDemo: true, CreatedAt: now.Add(-3 * time.Hour)},
-		{ID: 2, Uid: uuid.New(), IsPublicDemo: false, CreatedAt: now.Add(-2 * time.Hour)},
-		{ID: 3, Uid: uuid.New(), IsPublicDemo: true, CreatedAt: now.Add(-1 * time.Hour)},
-	}
-
-	postRepo.EXPECT().GetAll(gomock.Any()).Return(publicPosts, nil)
-	got, err := svc.getCursoredPublicPosts(context.Background(), FeedParams{Limit: 10})
-	require.NoError(t, err)
-	require.Len(t, got, 2)
-
-	postRepo.EXPECT().GetAll(gomock.Any()).Return(publicPosts, nil)
-	got, err = svc.getCursoredPublicPosts(context.Background(), FeedParams{
-		Limit: 1,
-		Cursor: &cursor.Cursor{
-			CreatedAt: now.Add(-3 * time.Hour),
-			ID:        uuid.New(),
-		},
-	})
-	require.NoError(t, err)
-	require.NotEmpty(t, got)
-
-	postRepo.EXPECT().GetAll(gomock.Any()).Return(publicPosts, nil)
-	_, err = svc.getCursoredPublicPosts(context.Background(), FeedParams{
-		Limit: 1,
-		Cursor: &cursor.Cursor{
-			CreatedAt: now.Add(10 * time.Hour),
-			ID:        uuid.New(),
-		},
-	})
-	require.Error(t, err)
 }
