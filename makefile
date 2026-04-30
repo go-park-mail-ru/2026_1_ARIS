@@ -1,19 +1,21 @@
-.PHONY: test coverage clean dev down reset-db logs migrate backend-shell frontend-shell mocks microservices microservices-up microservices-stop microservices-down microservices-reset server-up server-stop server-logs server-nginx-install server-nginx-test server-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update logs-auth logs-media logs-user logs-post logs-chat logs-nginx
+.PHONY: test coverage clean dev down reset-db logs migrate backend-shell frontend-shell mocks microservices microservices-up microservices-stop microservices-down microservices-reset server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update logs-auth logs-media logs-user logs-post logs-chat logs-support logs-nginx
 
 COMPOSE_FILE=./docker-compose.dev.yml
 COMPOSE_ENV_FILE=./.env.compose
 COMPOSE=docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE)
+COMPOSE_SERVER_FILE=./docker-compose.server.yml
+COMPOSE_SERVER_ENV_FILE=./.env.server
+COMPOSE_SERVER=docker compose --env-file $(COMPOSE_SERVER_ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_SERVER_FILE)
 COMPOSE_LOCAL=docker compose -f ./docker/docker-compose.yml --env-file ./.env
-MICROSERVICE_SERVICES=auth media user post chat
+MICROSERVICE_SERVICES=auth media user post chat support
 MICROSERVICE_INFRA=db redis minio
 MICROSERVICE_EDGE=nginx
 MICROSERVICE_INIT=migrate
 MICROSERVICE_ALL=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE) $(MICROSERVICE_INFRA)
+MICROSERVICE_RUNTIME=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE)
 NGINX_SITE_NAME ?= arisnet.ru
 NGINX_SITES_AVAILABLE ?= /etc/nginx/sites-available
 NGINX_SITES_ENABLED ?= /etc/nginx/sites-enabled
-
-# include .env
 
 DB_HOST ?= 127.0.0.1
 DB_PORT ?= 5431
@@ -80,8 +82,14 @@ services-stop:
 
 microservices: microservices-up
 
+local-up: microservices-up
+local-stop: microservices-stop
+local-down: microservices-down
+local-reset: microservices-reset
+
 microservices-up:
 	$(COMPOSE) --profile microservices up --build -d $(MICROSERVICE_SERVICES)
+	$(COMPOSE) --profile microservices up --build -d $(MICROSERVICE_EDGE)
 
 microservices-stop:
 	$(COMPOSE) stop $(MICROSERVICE_ALL)
@@ -93,12 +101,39 @@ microservices-down:
 microservices-reset:
 	$(COMPOSE) --profile microservices down -v
 
-server-up: microservices-up
+server-up:
+	$(COMPOSE_SERVER) --profile microservices up --build -d $(MICROSERVICE_RUNTIME)
 
-server-stop: microservices-stop
+server-stop:
+	$(COMPOSE_SERVER) stop $(MICROSERVICE_ALL)
+
+server-down:
+	$(COMPOSE_SERVER) stop $(MICROSERVICE_ALL)
+	$(COMPOSE_SERVER) rm -f $(MICROSERVICE_ALL) $(MICROSERVICE_INIT)
+
+server-reset:
+	$(COMPOSE_SERVER) --profile microservices down -v
 
 server-logs:
-	$(COMPOSE) logs -f $(MICROSERVICE_SERVICES)
+	$(COMPOSE_SERVER) logs -f $(MICROSERVICE_RUNTIME)
+
+server-nginx-up:
+	$(COMPOSE_SERVER) --profile microservices up -d nginx
+
+server-nginx-stop:
+	$(COMPOSE_SERVER) stop nginx
+
+server-nginx-test:
+	$(COMPOSE_SERVER) exec -T nginx nginx -t
+
+server-nginx-reload:
+	$(COMPOSE_SERVER) exec -T nginx nginx -t
+	$(COMPOSE_SERVER) exec -T nginx nginx -s reload
+
+server-nginx-update:
+	$(COMPOSE_SERVER) --profile microservices up -d nginx
+	$(COMPOSE_SERVER) exec -T nginx nginx -t
+	$(COMPOSE_SERVER) exec -T nginx nginx -s reload
 
 server-nginx-install:
 	sudo mkdir -p $(NGINX_SITES_AVAILABLE) $(NGINX_SITES_ENABLED)
@@ -106,10 +141,10 @@ server-nginx-install:
 	sudo ln -sfn $(NGINX_SITES_AVAILABLE)/$(NGINX_SITE_NAME) $(NGINX_SITES_ENABLED)/$(NGINX_SITE_NAME)
 	sudo nginx -t
 
-server-nginx-test:
+server-host-nginx-test:
 	sudo nginx -t
 
-server-nginx-reload:
+server-host-nginx-reload:
 	sudo nginx -t
 	sudo systemctl reload nginx
 
@@ -143,6 +178,12 @@ chat-up:
 chat-stop:
 	$(COMPOSE) stop chat
 
+support-up:
+	$(COMPOSE) up --build -d support
+
+support-stop:
+	$(COMPOSE) stop support
+
 nginx-up:
 	$(COMPOSE) --profile microservices up -d nginx
 
@@ -175,6 +216,9 @@ logs-post:
 
 logs-chat:
 	$(COMPOSE) logs -f chat
+
+logs-support:
+	$(COMPOSE) logs -f support
 
 logs-nginx:
 	$(COMPOSE) logs -f nginx

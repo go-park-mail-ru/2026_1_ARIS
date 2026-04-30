@@ -127,6 +127,7 @@ services:
       REDIS_TIMEOUT: ${REDIS_TIMEOUT}
       REDIS_ADDR: redis:6379
       MEDIA_GRPC_ADDR: media:8003
+      SUPPORT_GRPC_ADDR: support:${SUPPORT_GRPC_PORT}
       AUTH_GRPC_PORT: ${AUTH_GRPC_PORT}
       AUTH_HTTP_PORT: ${AUTH_HTTP_PORT}
     depends_on:
@@ -137,6 +138,8 @@ services:
       seed:
         condition: service_completed_successfully
       redis:
+        condition: service_healthy
+      support:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 ${AUTH_GRPC_PORT} && nc -z 127.0.0.1 ${AUTH_HTTP_PORT}"]
@@ -382,10 +385,66 @@ services:
       go run ./cmd/chat
       "
 
+  support:
+    profiles: ["microservices"]
+    image: golang:alpine
+    restart: unless-stopped
+    working_dir: /workspace/arisback
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      SSL_MODE: disable
+      POOL_MAX_CONNS: ${POOL_MAX_CONNS}
+      POOL_MAX_CONN_LIFETIME: ${POOL_MAX_CONN_LIFETIME}
+      POOL_MAX_CONN_IDLE_TIME: ${POOL_MAX_CONN_IDLE_TIME}
+      REDIS_DB: ${REDIS_DB}
+      REDIS_USER_PASSWORD: ${REDIS_USER_PASSWORD}
+      REDIS_MAX_RETRIES: ${REDIS_MAX_RETRIES}
+      REDIS_DIAL_TIMEOUT: ${REDIS_DIAL_TIMEOUT}
+      REDIS_TIMEOUT: ${REDIS_TIMEOUT}
+      REDIS_ADDR: redis:6379
+      MEDIA_GRPC_ADDR: media:8003
+      SUPPORT_GRPC_PORT: ${SUPPORT_GRPC_PORT}
+      SUPPORT_HTTP_PORT: ${SUPPORT_HTTP_PORT}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 ${SUPPORT_HTTP_PORT} && nc -z 127.0.0.1 ${SUPPORT_GRPC_PORT}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${SUPPORT_GRPC_PORT}:${SUPPORT_GRPC_PORT}"
+      - "127.0.0.1:${SUPPORT_HTTP_PORT}:${SUPPORT_HTTP_PORT}"
+    volumes:
+      - .:/workspace/arisback
+      - aris_go_pkg:/go/pkg
+      - aris_go_build:/root/.cache/go-build
+    command: >
+      sh -c "
+      apk add --no-cache git netcat-openbsd &&
+      go mod download &&
+      go run ./cmd/support
+      "
+
   nginx:
     profiles: ["microservices"]
     image: nginx:1.27-alpine
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       auth:
         condition: service_healthy
@@ -396,6 +455,8 @@ services:
       post:
         condition: service_healthy
       chat:
+        condition: service_healthy
+      support:
         condition: service_healthy
       minio:
         condition: service_started

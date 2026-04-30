@@ -159,7 +159,7 @@ func (s *Service) GetFileURL(ctx context.Context, mediaID int64) (string, error)
 
 	app_endpoint := os.Getenv("APP_ENDPOINT")
 	if app_endpoint == "" {
-		app_endpoint = "http://localhost:3001"
+		app_endpoint = "http://localhost:8080"
 	}
 
 	return fmt.Sprintf("%s%s", app_endpoint, media.Link), nil
@@ -190,8 +190,9 @@ func detectMimeType(file io.Reader) (string, string, error) {
 }
 
 var allowedByContext = map[string][]string{
-	"avatar": {"image/"},
-	"post":   {"image/"},
+	"avatar":  {"image/"},
+	"post":    {"image/"},
+	"support": {"image/"},
 }
 
 func isAllowed(mimeType string, fileFor string) bool {

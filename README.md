@@ -57,29 +57,30 @@ make reset-db
 make logs
 ```
 
-### Запуск на сервере
+### Запуск микросервисов на сервере
 
-На сервере nginx и Node запускаются без контейнеров. Go-микросервисы, Postgres,
-Redis и MinIO поднимаются из `arisback` через Docker Compose.
+На сервере frontend запускается через systemd на хосте. Go-микросервисы, Postgres,
+Redis, MinIO и nginx поднимаются из `arisback` через Docker Compose.
 
-1. Скопируйте `.env.compose.example` в `.env.compose` и замените пароли.
+1. Скопируйте `.env.server.example` в `.env.server` и замените пароли.
 2. Проверьте, что `APP_ENDPOINT=https://arisnet.ru`.
-3. Поднимите инфраструктуру и Go-микросервисы:
+3. Поднимите инфраструктуру, Go-микросервисы и контейнерный nginx:
 
 ```bash
-make microservices-up
+make server-up
 ```
 
-Команда стартует `auth`, `media`, `user`, `post`, `chat`; их зависимости
-`db`, `redis`, `minio`, `migrate`, `seed` Docker Compose поднимет автоматически.
-Порты инфраструктуры и микросервисов проброшены только на `127.0.0.1`.
+Команда стартует `auth`, `media`, `user`, `post`, `chat`, `support`; их зависимости
+`db`, `redis`, `minio`, `migrate`, `seed` Docker Compose поднимет автоматически. Серверный
+nginx использует `config/nginx.container.server.conf`, слушает `80/443`, проксирует
+frontend на `host.docker.internal:3001` и читает сертификаты из `/etc/letsencrypt`.
 
-Host nginx ставится отдельно:
+Проверка и reload контейнерного nginx:
 
 ```bash
-make server-nginx-install
+make server-nginx-test
 make server-nginx-reload
 ```
 
-`config/nginx.server.conf` ожидает frontend Node на `127.0.0.1:3001`,
-микросервисы на `127.0.0.1:8081-8085` и MinIO на `127.0.0.1:9000`.
+Если нужен nginx на хосте вместо контейнера, используйте `config/nginx.server.conf` и цели
+`server-nginx-install`, `server-host-nginx-test`, `server-host-nginx-reload`.

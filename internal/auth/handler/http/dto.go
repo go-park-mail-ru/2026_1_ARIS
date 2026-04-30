@@ -26,7 +26,11 @@ type userResponse struct {
 	UserAccountID int64   `json:"userAccountId"`
 	FirstName     string  `json:"firstName"`
 	LastName      string  `json:"lastName"`
+	Login         string  `json:"login"`
+	Email         string  `json:"email"`
+	Role          string  `json:"role"`
 	AvatarURL     *string `json:"avatarUrl,omitempty"`
+	AvatarLink    *string `json:"avatarLink,omitempty"`
 	CreatedAt     string  `json:"createdAt"`
 }
 
@@ -34,6 +38,9 @@ type meResponse struct {
 	ID         string  `json:"id"`
 	FirstName  string  `json:"firstName"`
 	LastName   string  `json:"lastName"`
+	Login      string  `json:"login"`
+	Email      string  `json:"email"`
+	Role       string  `json:"role"`
 	AvatarLink *string `json:"avatarLink,omitempty"`
 }
 

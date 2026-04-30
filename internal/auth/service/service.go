@@ -159,6 +159,11 @@ func (s *Service) issueAuthResult(ctx context.Context, accountID int64) (*AuthRe
 }
 
 func (s *Service) userByAccountID(ctx context.Context, accountID int64) (*User, error) {
+	account, err := s.store.Accounts.Get(ctx, accountID)
+	if err != nil {
+		return nil, err
+	}
+
 	userProfile, err := s.store.UserProfiles.GetByUserAccountID(ctx, accountID)
 	if err != nil {
 		return nil, err
@@ -172,6 +177,8 @@ func (s *Service) userByAccountID(ctx context.Context, accountID int64) (*User, 
 	return &User{
 		UserAccountID: accountID,
 		ProfileID:     userProfile.ProfileID,
+		Login:         account.Username,
+		Email:         account.Email,
 		FirstName:     userProfile.FirstName,
 		LastName:      userProfile.LastName,
 		AvatarURL:     s.avatarURL(ctx, profile.AvatarID),

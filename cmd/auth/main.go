@@ -23,6 +23,7 @@ import (
 	authHandler "github.com/go-park-mail-ru/2026_1_ARIS/internal/auth/handler/grpc"
 	authRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/auth/repository"
 	authService "github.com/go-park-mail-ru/2026_1_ARIS/internal/auth/service"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	authpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/auth"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/config"
@@ -36,7 +37,20 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	mediapb "github.com/go-park-mail-ru/2026_1_ARIS/proto/media"
+	supportpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/support"
 )
+
+type supportRoleProvider struct {
+	client supportpb.SupportServiceClient
+}
+
+func (p supportRoleProvider) GetProfileRole(ctx context.Context, profileID int64) (models.SupportRole, error) {
+	resp, err := p.client.GetProfileRole(ctx, &supportpb.GetProfileRoleRequest{ProfileId: profileID})
+	if err != nil {
+		return models.SupportRoleUser, err
+	}
+	return models.SupportRole(resp.GetRole()), nil
+}
 
 func main() {
 	err := godotenv.Load()
@@ -95,6 +109,12 @@ func main() {
 	}
 	defer mediaConn.Close()
 
+	supportConn, err := grpc.NewClient(envString("SUPPORT_GRPC_ADDR", "localhost:8007"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		logger.Fatal("failed to connect support grpc", zap.Error(err))
+	}
+	defer supportConn.Close()
+
 	authServise := authService.New(authRepo, mediapb.NewMediaServiceClient(mediaConn))
 
 	GRPCAuthHandler := authHandler.New(authServise)
@@ -114,7 +134,7 @@ func main() {
 		}
 	}()
 
-	httpHandler := authHTTP.New(authServise, false)
+	httpHandler := authHTTP.New(authServise, false, supportRoleProvider{client: supportpb.NewSupportServiceClient(supportConn)})
 	router := chi.NewRouter()
 	router.Use(middleware.Recoverer)
 	router.Route("/api/auth", func(r chi.Router) {

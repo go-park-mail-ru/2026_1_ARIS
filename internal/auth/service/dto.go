@@ -30,6 +30,8 @@ type LoginInput struct {
 type User struct {
 	UserAccountID int64
 	ProfileID     int64
+	Login         string
+	Email         *string
 	FirstName     string
 	LastName      string
 	AvatarURL     *string
