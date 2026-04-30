@@ -10,3 +10,4 @@ coverage.out
 coverage.out.tmp
 .codex
 auth
+config/nginx.local.conf
