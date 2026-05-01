@@ -7,8 +7,9 @@ import (
 )
 
 type PostCreationRequest struct {
-	Media *[]dto.MediaRequestData `json:"media"`
-	Text  *string                 `json:"text"`
+	Media           *[]dto.MediaRequestData `json:"media"`
+	Text            *string                 `json:"text"`
+	AuthorProfileID *int64                  `json:"authorProfileId,omitempty"`
 }
 
 type PostCreationResponse struct {
@@ -21,6 +22,8 @@ type PostCreationResponse struct {
 	LastName      string                 `json:"lastName"`
 	UserAccountID int64                  `json:"userAccountID"`
 	AvatarURL     *string                `json:"avatarURL"`
+	Likes         int                    `json:"likes"`
+	IsLiked       bool                   `json:"isLiked"`
 }
 
 type PostListItemResponse struct {
@@ -31,6 +34,8 @@ type PostListItemResponse struct {
 	MediaURL  []string               `json:"mediaURL"`
 	CreatedAt time.Time              `json:"createdAt"`
 	UpdatedAt *time.Time             `json:"updatedAt,omitempty"`
+	Likes     int                    `json:"likes"`
+	IsLiked   bool                   `json:"isLiked"`
 }
 
 type FeedResponse struct {

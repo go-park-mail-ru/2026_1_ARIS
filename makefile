@@ -1,4 +1,4 @@
-.PHONY: test coverage clean dev down reset-db logs migrate backend-shell frontend-shell mocks microservices microservices-up microservices-stop microservices-down microservices-reset server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update logs-auth logs-media logs-user logs-post logs-chat logs-support logs-nginx
+.PHONY: test coverage clean dev down reset-db logs migrate backend-shell frontend-shell mocks microservices microservices-up microservices-stop microservices-down microservices-reset server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop community-up community-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update logs-auth logs-media logs-user logs-post logs-chat logs-support logs-community logs-nginx
 
 COMPOSE_FILE=./docker-compose.dev.yml
 COMPOSE_ENV_FILE=./.env.compose
@@ -7,7 +7,7 @@ COMPOSE_SERVER_FILE=./docker-compose.server.yml
 COMPOSE_SERVER_ENV_FILE=./.env.server
 COMPOSE_SERVER=docker compose --env-file $(COMPOSE_SERVER_ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_SERVER_FILE)
 COMPOSE_LOCAL=docker compose -f ./docker/docker-compose.yml --env-file ./.env
-MICROSERVICE_SERVICES=auth media user post chat support
+MICROSERVICE_SERVICES=auth media user post chat support community
 MICROSERVICE_INFRA=db redis minio
 MICROSERVICE_EDGE=nginx
 MICROSERVICE_INIT=migrate
@@ -88,8 +88,7 @@ local-down: microservices-down
 local-reset: microservices-reset
 
 microservices-up:
-	$(COMPOSE) --profile microservices up --build -d $(MICROSERVICE_SERVICES)
-	$(COMPOSE) --profile microservices up --build -d $(MICROSERVICE_EDGE)
+	$(COMPOSE) --profile microservices up --build -d $(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE)
 
 microservices-stop:
 	$(COMPOSE) stop $(MICROSERVICE_ALL)
@@ -184,6 +183,12 @@ support-up:
 support-stop:
 	$(COMPOSE) stop support
 
+community-up:
+	$(COMPOSE) up --build -d community
+
+community-stop:
+	$(COMPOSE) stop community
+
 nginx-up:
 	$(COMPOSE) --profile microservices up -d nginx
 
@@ -219,6 +224,9 @@ logs-chat:
 
 logs-support:
 	$(COMPOSE) logs -f support
+
+logs-community:
+	$(COMPOSE) logs -f community
 
 logs-nginx:
 	$(COMPOSE) logs -f nginx

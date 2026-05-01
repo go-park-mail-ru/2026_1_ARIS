@@ -37,8 +37,9 @@ type Service struct {
 }
 
 type CreateInput struct {
-	Text  *string
-	Media []dto.MediaRequestData
+	Text            *string
+	Media           []dto.MediaRequestData
+	AuthorProfileID *int64
 }
 
 type UpdateInput = CreateInput
@@ -68,6 +69,8 @@ type PostDetails struct {
 	UpdatedAt time.Time
 	Author    Author
 	Media     []Media
+	Likes     int
+	IsLiked   bool
 }
 
 type FeedPost struct {
@@ -103,8 +106,12 @@ func (s *Service) CreatePost(ctx context.Context, userAccountID int64, input Cre
 	if err != nil {
 		return nil, err
 	}
+	authorID, err := s.resolvePostAuthor(ctx, profileID, input.AuthorProfileID)
+	if err != nil {
+		return nil, err
+	}
 
-	post := models.NewPost(input.Text, profileID, false, true)
+	post := models.NewPost(input.Text, authorID, false, true)
 	postID, err := s.store.Posts.Save(ctx, *post)
 	if err != nil {
 		return nil, err
@@ -114,7 +121,7 @@ func (s *Service) CreatePost(ctx context.Context, userAccountID int64, input Cre
 		return nil, err
 	}
 
-	return s.GetPost(ctx, postID)
+	return s.GetPostForViewer(ctx, postID, userAccountID)
 }
 
 func (s *Service) GetMyPosts(ctx context.Context, userAccountID int64) ([]PostDetails, error) {
@@ -142,7 +149,7 @@ func (s *Service) GetProfilePosts(ctx context.Context, profileID int64) ([]PostD
 
 	result := make([]PostDetails, 0, len(posts))
 	for _, post := range posts {
-		details, err := s.buildPostDetails(ctx, post)
+		details, err := s.buildPostDetails(ctx, post, 0)
 		if err == nil {
 			result = append(result, *details)
 		}
@@ -160,7 +167,24 @@ func (s *Service) GetPost(ctx context.Context, postID int64) (*PostDetails, erro
 		return nil, normalizePostError(err)
 	}
 
-	return s.buildPostDetails(ctx, *post)
+	return s.buildPostDetails(ctx, *post, 0)
+}
+
+func (s *Service) GetPostForViewer(ctx context.Context, postID, userAccountID int64) (*PostDetails, error) {
+	if postID <= 0 || userAccountID <= 0 {
+		return nil, ErrInvalidInput
+	}
+
+	viewerProfileID, err := s.profileIDByUserAccount(ctx, userAccountID)
+	if err != nil {
+		return nil, err
+	}
+	post, err := s.store.Posts.Get(ctx, postID)
+	if err != nil {
+		return nil, normalizePostError(err)
+	}
+
+	return s.buildPostDetails(ctx, *post, viewerProfileID)
 }
 
 func (s *Service) UpdatePost(ctx context.Context, userAccountID int64, postID int64, input UpdateInput) (*PostDetails, error) {
@@ -180,7 +204,7 @@ func (s *Service) UpdatePost(ctx context.Context, userAccountID int64, postID in
 	if err != nil {
 		return nil, normalizePostError(err)
 	}
-	if post.AuthorID != profileID {
+	if !s.canActOnPost(ctx, post.AuthorID, profileID) {
 		return nil, ErrForbidden
 	}
 
@@ -201,7 +225,7 @@ func (s *Service) UpdatePost(ctx context.Context, userAccountID int64, postID in
 		}
 	}
 
-	return s.GetPost(ctx, postID)
+	return s.GetPostForViewer(ctx, postID, userAccountID)
 }
 
 func (s *Service) DeletePost(ctx context.Context, userAccountID int64, postID int64) error {
@@ -218,11 +242,57 @@ func (s *Service) DeletePost(ctx context.Context, userAccountID int64, postID in
 	if err != nil {
 		return normalizePostError(err)
 	}
-	if post.AuthorID != profileID {
+	if !s.canActOnPost(ctx, post.AuthorID, profileID) {
 		return ErrForbidden
 	}
 
 	return normalizePostError(s.store.Posts.Delete(ctx, postID))
+}
+
+func (s *Service) LikePost(ctx context.Context, userAccountID, postID int64) (*PostDetails, error) {
+	if userAccountID <= 0 || postID <= 0 {
+		return nil, ErrInvalidInput
+	}
+	profileID, err := s.profileIDByUserAccount(ctx, userAccountID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.store.Posts.Get(ctx, postID); err != nil {
+		return nil, normalizePostError(err)
+	}
+	existing, err := s.store.Likes.GetPostLikeByAuthor(ctx, postID, profileID)
+	if err == nil {
+		if !existing.IsActive {
+			if err := s.store.Likes.SetActive(ctx, existing.ID, true); err != nil {
+				return nil, err
+			}
+		}
+		return s.GetPostForViewer(ctx, postID, userAccountID)
+	}
+	if _, err := s.store.Likes.Save(ctx, *models.NewLikeToPost(postID, profileID)); err != nil {
+		return nil, err
+	}
+	return s.GetPostForViewer(ctx, postID, userAccountID)
+}
+
+func (s *Service) UnlikePost(ctx context.Context, userAccountID, postID int64) (*PostDetails, error) {
+	if userAccountID <= 0 || postID <= 0 {
+		return nil, ErrInvalidInput
+	}
+	profileID, err := s.profileIDByUserAccount(ctx, userAccountID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.store.Posts.Get(ctx, postID); err != nil {
+		return nil, normalizePostError(err)
+	}
+	existing, err := s.store.Likes.GetPostLikeByAuthor(ctx, postID, profileID)
+	if err == nil && existing.IsActive {
+		if err := s.store.Likes.SetActive(ctx, existing.ID, false); err != nil {
+			return nil, err
+		}
+	}
+	return s.GetPostForViewer(ctx, postID, userAccountID)
 }
 
 func (s *Service) GetFeed(ctx context.Context, rawCursor string, limit int) (FeedResult, error) {
@@ -309,7 +379,7 @@ func (s *Service) getFeed(ctx context.Context, rawCursor string, limit int, publ
 	return FeedResult{Posts: result, Cursor: nextCursor, HasMore: hasMore}, nil
 }
 
-func (s *Service) buildPostDetails(ctx context.Context, post models.Post) (*PostDetails, error) {
+func (s *Service) buildPostDetails(ctx context.Context, post models.Post, viewerProfileID int64) (*PostDetails, error) {
 	author, err := s.author(ctx, post.AuthorID)
 	if err != nil {
 		return nil, err
@@ -324,6 +394,8 @@ func (s *Service) buildPostDetails(ctx context.Context, post models.Post) (*Post
 		UpdatedAt: post.UpdatedAt,
 		Author:    author,
 		Media:     s.postMedia(ctx, post.ID),
+		Likes:     s.store.Likes.GetLikeCountOnPost(ctx, post.ID),
+		IsLiked:   viewerProfileID > 0 && s.store.Likes.HasActivePostLike(ctx, post.ID, viewerProfileID),
 	}, nil
 }
 
@@ -357,6 +429,12 @@ func (s *Service) author(ctx context.Context, profileID int64) (Author, error) {
 
 	resp, err := s.userClient.GetProfileSummary(ctx, &userpb.GetProfileSummaryRequest{ProfileId: profileID})
 	if err != nil {
+		if s.store.Communities != nil {
+			community, communityErr := s.store.Communities.GetByProfileID(ctx, profileID)
+			if communityErr == nil {
+				return Author{ID: profileID, FirstName: community.Title, Username: community.Username}, nil
+			}
+		}
 		return Author{}, err
 	}
 
@@ -371,6 +449,45 @@ func (s *Service) author(ctx context.Context, profileID int64) (Author, error) {
 		author.AvatarURL = s.mediaURL(ctx, resp.GetAvatarId())
 	}
 	return author, nil
+}
+
+func (s *Service) resolvePostAuthor(ctx context.Context, actorProfileID int64, requestedAuthorID *int64) (int64, error) {
+	if requestedAuthorID == nil || *requestedAuthorID == actorProfileID {
+		return actorProfileID, nil
+	}
+	if *requestedAuthorID <= 0 {
+		return 0, ErrInvalidInput
+	}
+	if s.canPostAsCommunity(ctx, *requestedAuthorID, actorProfileID) {
+		return *requestedAuthorID, nil
+	}
+	return 0, ErrForbidden
+}
+
+func (s *Service) canActOnPost(ctx context.Context, authorProfileID, actorProfileID int64) bool {
+	if authorProfileID == actorProfileID {
+		return true
+	}
+	return s.canPostAsCommunity(ctx, authorProfileID, actorProfileID)
+}
+
+func (s *Service) canPostAsCommunity(ctx context.Context, communityProfileID, actorProfileID int64) bool {
+	if s.store.Communities == nil {
+		return false
+	}
+	community, err := s.store.Communities.GetByProfileID(ctx, communityProfileID)
+	if err != nil {
+		return false
+	}
+	member, err := s.store.Communities.GetMember(ctx, community.ID, actorProfileID)
+	if err != nil || member == nil || !member.IsActive {
+		return false
+	}
+	role := member.Role
+	if role == models.Moderator {
+		role = models.Manager
+	}
+	return role == models.Owner || role == models.Admin || role == models.Manager
 }
 
 func (s *Service) postMedia(ctx context.Context, postID int64) []Media {
@@ -392,7 +509,20 @@ func (s *Service) media(ctx context.Context, mediaID int64) *Media {
 	if err != nil || resp == nil {
 		return nil
 	}
-	return &Media{ID: resp.GetMediaId(), UID: resp.GetUid(), MimeType: resp.GetMimeType(), URL: resp.GetUrl()}
+
+	var URL string
+
+	if !strings.HasPrefix(resp.GetUrl(), "http") {
+		mediaURL, err := s.mediaClient.GetMediaURL(ctx, &mediapb.GetMediaURLRequest{MediaId: resp.GetMediaId()})
+		if err != nil {
+			return nil
+		}
+		URL = mediaURL.GetUrl()
+	} else {
+		URL = resp.Url
+	}
+
+	return &Media{ID: resp.GetMediaId(), UID: resp.GetUid(), MimeType: resp.GetMimeType(), URL: URL}
 }
 
 func (s *Service) mediaURL(ctx context.Context, mediaID int64) *string {

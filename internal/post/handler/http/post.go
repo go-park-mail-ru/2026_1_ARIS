@@ -45,6 +45,8 @@ func (h *Handler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler)
 		r.Delete("/{id}", h.DeletePost)
 		r.Get("/{id}", h.GetPost)
 		r.Patch("/{id}", h.UpdatePost)
+		r.Post("/{id}/likes", h.LikePost)
+		r.Delete("/{id}/likes", h.UnlikePost)
 	})
 }
 
@@ -173,7 +175,50 @@ func (h *Handler) GetPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	post, err := h.post.GetPost(r.Context(), postID)
+	userAccountID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+
+	post, err := h.post.GetPostForViewer(r.Context(), postID, userAccountID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, mapPostDetails(post))
+}
+
+func (h *Handler) LikePost(w http.ResponseWriter, r *http.Request) {
+	userAccountID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	postID, ok := parseID(w, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
+
+	post, err := h.post.LikePost(r.Context(), userAccountID, postID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, mapPostDetails(post))
+}
+
+func (h *Handler) UnlikePost(w http.ResponseWriter, r *http.Request) {
+	userAccountID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	postID, ok := parseID(w, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
+
+	post, err := h.post.UnlikePost(r.Context(), userAccountID, postID)
 	if err != nil {
 		writeServiceError(w, err)
 		return
@@ -263,7 +308,7 @@ func createInput(req PostCreationRequest) service.CreateInput {
 	if req.Media != nil {
 		media = *req.Media
 	}
-	return service.CreateInput{Text: req.Text, Media: media}
+	return service.CreateInput{Text: req.Text, Media: media, AuthorProfileID: req.AuthorProfileID}
 }
 
 func mapPostDetails(post *service.PostDetails) PostCreationResponse {
@@ -275,6 +320,8 @@ func mapPostDetails(post *service.PostDetails) PostCreationResponse {
 		LastName:      html.EscapeString(post.Author.LastName),
 		UserAccountID: post.Author.UserAccountID,
 		AvatarURL:     post.Author.AvatarURL,
+		Likes:         post.Likes,
+		IsLiked:       post.IsLiked,
 	}
 
 	for _, media := range post.Media {
@@ -293,6 +340,8 @@ func mapPostList(posts []service.PostDetails) []PostListItemResponse {
 			ProfileID: post.AuthorID,
 			Text:      "",
 			CreatedAt: post.CreatedAt,
+			Likes:     post.Likes,
+			IsLiked:   post.IsLiked,
 		}
 		if post.Text != nil {
 			item.Text = html.EscapeString(*post.Text)
