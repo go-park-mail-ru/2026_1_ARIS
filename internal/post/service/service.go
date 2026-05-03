@@ -154,6 +154,9 @@ func (s *Service) GetProfilePosts(ctx context.Context, profileID int64) ([]PostD
 
 	result := make([]PostDetails, 0, len(posts))
 	for _, post := range posts {
+		if post.CommunityID != nil {
+			continue
+		}
 		details, err := s.buildPostDetails(ctx, post, 0)
 		if err == nil {
 			result = append(result, *details)
