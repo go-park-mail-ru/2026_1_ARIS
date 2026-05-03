@@ -24,7 +24,7 @@ type FeedResponse struct {
 }
 
 type postFeedDTO struct {
-	Id        uuid.UUID      `json:"id"`
+	Id        int64          `json:"id"`
 	Text      string         `json:"text"`
 	Author    authorFeedDTO  `json:"author"`
 	CreatedAt time.Time      `json:"createdAt"`
@@ -183,7 +183,7 @@ func (h *FeedHandler) GetFeed(w http.ResponseWriter, r *http.Request) {
 		}
 
 		posts = append(posts, postFeedDTO{
-			Id:        post.Uid,
+			Id:        post.ID,
 			Text:      html.EscapeString(postText),
 			Author:    author,
 			CreatedAt: post.CreatedAt,
@@ -379,7 +379,7 @@ func (h *FeedHandler) GetPublicFeed(w http.ResponseWriter, r *http.Request) {
 		}
 
 		posts = append(posts, postFeedDTO{
-			Id:        post.Uid,
+			Id:        post.ID,
 			Text:      html.EscapeString(postText),
 			Author:    author,
 			CreatedAt: post.CreatedAt,
