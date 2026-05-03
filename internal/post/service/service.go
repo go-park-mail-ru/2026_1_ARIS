@@ -162,17 +162,23 @@ func (s *Service) GetProfilePosts(ctx context.Context, profileID int64) ([]PostD
 	return result, nil
 }
 
-func (s *Service) GetCommunityPosts(ctx context.Context, communityID int64) ([]PostDetails, error) {
+func (s *Service) GetCommunityPosts(ctx context.Context, communityID int64, viewerUserAccountID int64) ([]PostDetails, error) {
 	if communityID <= 0 {
 		return nil, ErrInvalidInput
 	}
+
+	viewerProfileID, err := s.profileIDByUserAccount(ctx, viewerUserAccountID)
+	if err != nil {
+		return nil, err
+	}
+
 	posts, err := s.store.Posts.GetByCommunityID(ctx, communityID)
 	if err != nil {
 		return nil, err
 	}
 	result := make([]PostDetails, 0, len(posts))
 	for _, post := range posts {
-		details, err := s.buildPostDetails(ctx, post, 0)
+		details, err := s.buildPostDetails(ctx, post, viewerProfileID)
 		if err == nil {
 			result = append(result, *details)
 		}
@@ -481,7 +487,12 @@ func (s *Service) author(ctx context.Context, profileID int64) (Author, error) {
 		if s.store.Communities != nil {
 			community, communityErr := s.store.Communities.GetByProfileID(ctx, profileID)
 			if communityErr == nil {
-				return Author{ID: profileID, FirstName: community.Title, Username: community.Username}, nil
+				author := Author{ID: profileID, FirstName: community.Title, Username: community.Username}
+				avatarID, avatarErr := s.store.Communities.GetAvatarID(ctx, profileID)
+				if avatarErr == nil && avatarID != nil {
+					author.AvatarURL = s.mediaURL(ctx, *avatarID)
+				}
+				return author, nil
 			}
 		}
 		return Author{}, err

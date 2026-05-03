@@ -14,18 +14,14 @@ type PostCreationRequest struct {
 }
 
 type PostCreationResponse struct {
-	ID            int64                  `json:"id"`
-	ProfileID     int64                  `json:"profileID"`
-	CommunityID   *int64                 `json:"communityId,omitempty"`
-	Media         []dto.MediaRequestData `json:"media"`
-	MediaURL      []string               `json:"mediaURL"`
-	Text          *string                `json:"text"`
-	FirstName     string                 `json:"firstName"`
-	LastName      string                 `json:"lastName"`
-	UserAccountID int64                  `json:"userAccountID"`
-	AvatarURL     *string                `json:"avatarURL,omitempty"`
-	Likes         int                    `json:"likes"`
-	IsLiked       bool                   `json:"isLiked"`
+	ID          int64                  `json:"id"`
+	ProfileID   int64                  `json:"profileID"`
+	CommunityID *int64                 `json:"communityId,omitempty"`
+	Media       []dto.MediaRequestData `json:"media"`
+	Text        *string                `json:"text"`
+	Author      postAuthorDTO          `json:"author"`
+	Likes       int                    `json:"likes"`
+	IsLiked     bool                   `json:"isLiked"`
 }
 
 type PostListItemResponse struct {
@@ -33,12 +29,21 @@ type PostListItemResponse struct {
 	ProfileID   int64                  `json:"profileID"`
 	CommunityID *int64                 `json:"communityId,omitempty"`
 	Text        string                 `json:"text"`
+	Author      postAuthorDTO          `json:"author"`
 	Media       []dto.MediaRequestData `json:"media"`
-	MediaURL    []string               `json:"mediaURL"`
 	CreatedAt   time.Time              `json:"createdAt"`
 	UpdatedAt   *time.Time             `json:"updatedAt,omitempty"`
 	Likes       int                    `json:"likes"`
 	IsLiked     bool                   `json:"isLiked"`
+}
+
+type postAuthorDTO struct {
+	ProfileID     int64   `json:"profileID"`
+	FirstName     string  `json:"firstName"`
+	LastName      string  `json:"lastName"`
+	Username      string  `json:"username"`
+	UserAccountID int64   `json:"userAccountID"`
+	AvatarURL     *string `json:"avatarURL,omitempty"`
 }
 
 type FeedResponse struct {
