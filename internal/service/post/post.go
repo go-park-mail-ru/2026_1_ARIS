@@ -245,7 +245,7 @@ func (s *postService) getCursoredPosts(ctx context.Context, params FeedParams) (
 	feedSlice := make([]models.Post, 0, len(allPosts))
 
 	for _, p := range allPosts {
-		if p.IsPublicDemo {
+		if p.IsPublicDemo || p.CommunityID != nil {
 			continue
 		}
 		feedSlice = append(feedSlice, p)
@@ -292,7 +292,7 @@ func (s *postService) getCursoredPublicPosts(ctx context.Context, params FeedPar
 	}
 
 	for _, p := range allPosts {
-		if p.IsPublicDemo {
+		if p.IsPublicDemo && p.CommunityID == nil {
 			feedSlice = append(feedSlice, p)
 		}
 	}
