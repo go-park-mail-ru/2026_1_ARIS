@@ -132,6 +132,8 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		Username:     req.Username,
 		AvatarID:     req.AvatarID,
 		CoverMediaID: req.CoverMediaID,
+		RemoveAvatar: req.RemoveAvatar,
+		RemoveCover:  req.RemoveCover,
 	})
 	if err != nil {
 		writeServiceError(w, err)

@@ -22,6 +22,8 @@ type updateCommunityRequest struct {
 	Username     *string               `json:"username,omitempty"`
 	AvatarID     *int64                `json:"avatarId,omitempty"`
 	CoverMediaID *int64                `json:"coverId,omitempty"`
+	RemoveAvatar *bool                 `json:"removeAvatar,omitempty"`
+	RemoveCover  *bool                 `json:"removeCover,omitempty"`
 }
 
 type updateMemberRoleRequest struct {
