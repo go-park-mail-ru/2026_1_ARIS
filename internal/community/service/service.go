@@ -47,6 +47,8 @@ type UpdateInput struct {
 	Username     *string
 	AvatarID     *int64
 	CoverMediaID *int64
+	RemoveAvatar *bool
+	RemoveCover  *bool
 }
 
 type Permissions struct {
@@ -179,7 +181,7 @@ func (s *Service) Update(ctx context.Context, userAccountID, communityID int64, 
 		return nil, ErrForbidden
 	}
 
-	if input.Title == nil && input.Bio == nil && input.Type == nil && input.Username == nil && input.AvatarID == nil && input.CoverMediaID == nil {
+	if input.Title == nil && input.Bio == nil && input.Type == nil && input.Username == nil && input.AvatarID == nil && input.CoverMediaID == nil && input.RemoveAvatar == nil && input.RemoveCover == nil {
 		return nil, ErrNothingToUpdate
 	}
 	next := *current
@@ -206,7 +208,9 @@ func (s *Service) Update(ctx context.Context, userAccountID, communityID int64, 
 		}
 		next.Username = username
 	}
-	if input.CoverMediaID != nil {
+	if input.RemoveCover != nil && *input.RemoveCover {
+		next.CoverMediaID = nil
+	} else if input.CoverMediaID != nil {
 		if *input.CoverMediaID <= 0 {
 			return nil, ErrInvalidInput
 		}
@@ -216,7 +220,11 @@ func (s *Service) Update(ctx context.Context, userAccountID, communityID int64, 
 	if err != nil {
 		return nil, err
 	}
-	if input.AvatarID != nil {
+	if input.RemoveAvatar != nil && *input.RemoveAvatar {
+		if err := s.store.Communities.UpdateAvatar(ctx, updated.ProfileID, nil); err != nil {
+			return nil, err
+		}
+	} else if input.AvatarID != nil {
 		if *input.AvatarID <= 0 {
 			return nil, ErrInvalidInput
 		}
