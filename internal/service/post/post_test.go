@@ -15,6 +15,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func ptrInt64(value int64) *int64 {
+	return &value
+}
+
 func TestPostServiceCRUDAndCounts(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -128,20 +132,26 @@ func TestPostServiceFeeds(t *testing.T) {
 		{ID: 1, Uid: uuid.New(), IsPublicDemo: false, CreatedAt: now.Add(-3 * time.Hour)},
 		{ID: 2, Uid: uuid.New(), IsPublicDemo: false, CreatedAt: now.Add(-2 * time.Hour)},
 		{ID: 3, Uid: uuid.New(), IsPublicDemo: false, CreatedAt: now.Add(-1 * time.Hour)},
+		{ID: 4, Uid: uuid.New(), CommunityID: ptrInt64(1), IsPublicDemo: false, CreatedAt: now},
 	}
 	postRepo.EXPECT().GetAll(gomock.Any()).Return(posts, nil)
 	res, err := svc.GetFeed(context.Background(), "", 2)
 	require.NoError(t, err)
 	require.True(t, res.HasMore)
 	require.Len(t, res.Posts, 2)
+	require.NotEqual(t, int64(4), res.Posts[0].ID)
+	require.NotEqual(t, int64(4), res.Posts[1].ID)
 
 	demoPosts := []models.Post{
 		{ID: 1, Uid: uuid.New(), IsPublicDemo: true, CreatedAt: now},
+		{ID: 2, Uid: uuid.New(), CommunityID: ptrInt64(1), IsPublicDemo: true, CreatedAt: now.Add(time.Minute)},
 	}
 	postRepo.EXPECT().GetAll(gomock.Any()).Return(demoPosts, nil)
 	pub, err := svc.GetPublicFeed(context.Background(), "", 5)
 	require.NoError(t, err)
 	require.False(t, pub.HasMore)
+	require.Len(t, pub.Posts, 1)
+	require.Equal(t, int64(1), pub.Posts[0].ID)
 
 	pop, err := svc.GetPopularPosts(context.Background())
 	require.NoError(t, err)
