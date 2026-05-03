@@ -248,17 +248,20 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 
 func mapProfile(profile *service.ProfileDetails) GetProfileMeResponse {
 	resp := GetProfileMeResponse{
-		FirstName:  html.EscapeString(profile.FirstName),
-		LastName:   html.EscapeString(profile.LastName),
-		Bio:        escapePtr(profile.Bio),
-		ImageLink:  profile.ImageLink,
-		Gender:     profile.Gender,
-		NativeTown: escapePtr(profile.NativeTown),
-		Phone:      profile.Phone,
-		Email:      profile.Email,
-		Town:       escapePtr(profile.Town),
-		Interests:  escapePtr(profile.Interests),
-		FavMusic:   escapePtr(profile.FavMusic),
+		ProfileID:     profile.ProfileID,
+		UserAccountID: profile.UserAccountID,
+		Username:      html.EscapeString(profile.Username),
+		FirstName:     html.EscapeString(profile.FirstName),
+		LastName:      html.EscapeString(profile.LastName),
+		Bio:           escapePtr(profile.Bio),
+		ImageLink:     profile.ImageLink,
+		Gender:        profile.Gender,
+		NativeTown:    escapePtr(profile.NativeTown),
+		Phone:         profile.Phone,
+		Email:         profile.Email,
+		Town:          escapePtr(profile.Town),
+		Interests:     escapePtr(profile.Interests),
+		FavMusic:      escapePtr(profile.FavMusic),
 	}
 
 	if !profile.BirthdayDate.IsZero() {

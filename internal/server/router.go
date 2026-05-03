@@ -42,7 +42,7 @@ func NewRouter(
 	r.Use(middleware.Recoverer)
 	r.Use(mymiddleware.XSSMiddlewares()...)
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3001", "http://arisnet.ru", "https://arisnet.ru"},
+		AllowedOrigins:   []string{"http://localhost:3001", "http://arisnet.ru", "https://arisnet.ru", "https://arisnet.online"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
 		AllowCredentials: true,

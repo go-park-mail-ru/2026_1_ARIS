@@ -176,6 +176,7 @@ func main() {
 	cop.AddTrustedOrigin("https://localhost:3001")
 	cop.AddTrustedOrigin("http://arisnet.ru")
 	cop.AddTrustedOrigin("https://arisnet.ru")
+	cop.AddTrustedOrigin("https://arisnet.online")
 
 	mainMux := http.NewServeMux()
 

@@ -64,6 +64,35 @@ func (mr *MockLikeRepoMockRecorder) GetLikeCountOnPost(arg0, arg1 interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLikeCountOnPost", reflect.TypeOf((*MockLikeRepo)(nil).GetLikeCountOnPost), arg0, arg1)
 }
 
+// GetPostLikeByAuthor mocks base method.
+func (m *MockLikeRepo) GetPostLikeByAuthor(arg0 context.Context, arg1, arg2 int64) (*models.Like, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPostLikeByAuthor", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*models.Like)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPostLikeByAuthor indicates an expected call of GetPostLikeByAuthor.
+func (mr *MockLikeRepoMockRecorder) GetPostLikeByAuthor(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPostLikeByAuthor", reflect.TypeOf((*MockLikeRepo)(nil).GetPostLikeByAuthor), arg0, arg1, arg2)
+}
+
+// HasActivePostLike mocks base method.
+func (m *MockLikeRepo) HasActivePostLike(arg0 context.Context, arg1, arg2 int64) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HasActivePostLike", arg0, arg1, arg2)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// HasActivePostLike indicates an expected call of HasActivePostLike.
+func (mr *MockLikeRepoMockRecorder) HasActivePostLike(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasActivePostLike", reflect.TypeOf((*MockLikeRepo)(nil).HasActivePostLike), arg0, arg1, arg2)
+}
+
 // Save mocks base method.
 func (m *MockLikeRepo) Save(arg0 context.Context, arg1 models.Like) (int64, error) {
 	m.ctrl.T.Helper()
@@ -77,4 +106,18 @@ func (m *MockLikeRepo) Save(arg0 context.Context, arg1 models.Like) (int64, erro
 func (mr *MockLikeRepoMockRecorder) Save(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockLikeRepo)(nil).Save), arg0, arg1)
+}
+
+// SetActive mocks base method.
+func (m *MockLikeRepo) SetActive(arg0 context.Context, arg1 int64, arg2 bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetActive", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetActive indicates an expected call of SetActive.
+func (mr *MockLikeRepoMockRecorder) SetActive(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetActive", reflect.TypeOf((*MockLikeRepo)(nil).SetActive), arg0, arg1, arg2)
 }

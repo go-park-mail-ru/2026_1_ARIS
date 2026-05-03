@@ -7,30 +7,43 @@ import (
 )
 
 type PostCreationRequest struct {
-	Media *[]dto.MediaRequestData `json:"media"`
-	Text  *string                 `json:"text"`
+	Media           *[]dto.MediaRequestData `json:"media"`
+	Text            *string                 `json:"text"`
+	AuthorProfileID *int64                  `json:"authorProfileId,omitempty"`
+	CommunityID     *int64                  `json:"communityId,omitempty"`
 }
 
 type PostCreationResponse struct {
-	ID            int64                  `json:"id"`
-	ProfileID     int64                  `json:"profileID"`
-	Media         []dto.MediaRequestData `json:"media"`
-	MediaURL      []string               `json:"mediaURL"`
-	Text          *string                `json:"text"`
-	FirstName     string                 `json:"firstName"`
-	LastName      string                 `json:"lastName"`
-	UserAccountID int64                  `json:"userAccountID"`
-	AvatarURL     *string                `json:"avatarURL"`
+	ID          int64                  `json:"id"`
+	ProfileID   int64                  `json:"profileID"`
+	CommunityID *int64                 `json:"communityId,omitempty"`
+	Media       []dto.MediaRequestData `json:"media"`
+	Text        *string                `json:"text"`
+	Author      postAuthorDTO          `json:"author"`
+	Likes       int                    `json:"likes"`
+	IsLiked     bool                   `json:"isLiked"`
 }
 
 type PostListItemResponse struct {
-	ID        int64                  `json:"id"`
-	ProfileID int64                  `json:"profileID"`
-	Text      string                 `json:"text"`
-	Media     []dto.MediaRequestData `json:"media"`
-	MediaURL  []string               `json:"mediaURL"`
-	CreatedAt time.Time              `json:"createdAt"`
-	UpdatedAt *time.Time             `json:"updatedAt,omitempty"`
+	ID          int64                  `json:"id"`
+	ProfileID   int64                  `json:"profileID"`
+	CommunityID *int64                 `json:"communityId,omitempty"`
+	Text        string                 `json:"text"`
+	Author      postAuthorDTO          `json:"author"`
+	Media       []dto.MediaRequestData `json:"media"`
+	CreatedAt   time.Time              `json:"createdAt"`
+	UpdatedAt   *time.Time             `json:"updatedAt,omitempty"`
+	Likes       int                    `json:"likes"`
+	IsLiked     bool                   `json:"isLiked"`
+}
+
+type postAuthorDTO struct {
+	ProfileID     int64   `json:"profileID"`
+	FirstName     string  `json:"firstName"`
+	LastName      string  `json:"lastName"`
+	Username      string  `json:"username"`
+	UserAccountID int64   `json:"userAccountID"`
+	AvatarURL     *string `json:"avatarURL,omitempty"`
 }
 
 type FeedResponse struct {

@@ -116,7 +116,7 @@ func TestPostStorageSave(t *testing.T) {
 
 	rows := pgxmock.NewRows([]string{"id"}).AddRow(int64(42))
 	mockPool.ExpectQuery("INSERT INTO post").
-		WithArgs(pgxmock.AnyArg(), post.Text, post.AuthorID, post.IsPublicDemo, post.AllowComments).
+		WithArgs(pgxmock.AnyArg(), post.Text, post.AuthorID, post.CommunityID, post.IsPublicDemo, post.AllowComments).
 		WillReturnRows(rows)
 
 	mockLogger := zap.NewNop()
@@ -133,14 +133,14 @@ func TestPostStorageReadMethods(t *testing.T) {
 
 	now := time.Now()
 	text := "txt"
-	cols := []string{"id", "uid", "post_text", "author_id", "is_public_demo", "allow_comments", "is_active", "created_at", "updated_at"}
+	cols := []string{"id", "uid", "post_text", "author_id", "community_id", "is_public_demo", "allow_comments", "is_active", "created_at", "updated_at"}
 
 	t.Run("Get", func(t *testing.T) {
 		t.Parallel()
 		mockPool, _ := pgxmock.NewPool()
 		defer mockPool.Close()
 		repo := NewPostStorage(mockPool)
-		rows := pgxmock.NewRows(cols).AddRow(int64(5), uuid.New(), &text, int64(2), true, true, true, now, now)
+		rows := pgxmock.NewRows(cols).AddRow(int64(5), uuid.New(), &text, int64(2), nil, true, true, true, now, now)
 		mockPool.ExpectQuery("SELECT \\* FROM post WHERE id=\\$1").WithArgs(int64(5)).WillReturnRows(rows)
 
 		mockLogger := zap.NewNop()
@@ -172,7 +172,7 @@ func TestPostStorageReadMethods(t *testing.T) {
 		mockPool, _ := pgxmock.NewPool()
 		defer mockPool.Close()
 		repo := NewPostStorage(mockPool)
-		rows := pgxmock.NewRows(cols).AddRow(int64(1), uuid.New(), &text, int64(2), true, true, true, now, now)
+		rows := pgxmock.NewRows(cols).AddRow(int64(1), uuid.New(), &text, int64(2), nil, true, true, true, now, now)
 		mockPool.ExpectQuery("SELECT \\* FROM post").WillReturnRows(rows)
 		mockLogger := zap.NewNop()
 		ctx := logger.WithLogger(context.Background(), mockLogger)
@@ -187,7 +187,7 @@ func TestPostStorageReadMethods(t *testing.T) {
 		mockPool, _ := pgxmock.NewPool()
 		defer mockPool.Close()
 		repo := NewPostStorage(mockPool)
-		rows := pgxmock.NewRows(cols).AddRow(int64(1), uuid.New(), &text, int64(2), true, true, true, now, now)
+		rows := pgxmock.NewRows(cols).AddRow(int64(1), uuid.New(), &text, int64(2), nil, true, true, true, now, now)
 		mockPool.ExpectQuery("SELECT \\* FROM post ORDER BY id LIMIT \\$1 OFFSET \\$2").WithArgs(10, 0).WillReturnRows(rows)
 
 		mockLogger := zap.NewNop()
@@ -203,7 +203,7 @@ func TestPostStorageReadMethods(t *testing.T) {
 		mockPool, _ := pgxmock.NewPool()
 		defer mockPool.Close()
 		repo := NewPostStorage(mockPool)
-		rows := pgxmock.NewRows(cols).AddRow(int64(3), uuid.New(), &text, int64(77), true, true, true, now, now)
+		rows := pgxmock.NewRows(cols).AddRow(int64(3), uuid.New(), &text, int64(77), nil, true, true, true, now, now)
 		mockPool.ExpectQuery("SELECT \\* FROM post WHERE author_id=\\$1 ORDER BY created_at DESC").WithArgs(int64(77)).WillReturnRows(rows)
 
 		mockLogger := zap.NewNop()
@@ -212,6 +212,24 @@ func TestPostStorageReadMethods(t *testing.T) {
 		got, err := repo.GetByAuthorID(ctx, 77)
 		require.NoError(t, err)
 		require.Len(t, got, 1)
+	})
+
+	t.Run("GetByCommunityID", func(t *testing.T) {
+		t.Parallel()
+		mockPool, _ := pgxmock.NewPool()
+		defer mockPool.Close()
+		repo := NewPostStorage(mockPool)
+		communityID := int64(55)
+		rows := pgxmock.NewRows(cols).AddRow(int64(4), uuid.New(), &text, int64(77), &communityID, true, true, true, now, now)
+		mockPool.ExpectQuery("SELECT \\* FROM post WHERE community_id=\\$1 ORDER BY created_at DESC").WithArgs(communityID).WillReturnRows(rows)
+
+		mockLogger := zap.NewNop()
+		ctx := logger.WithLogger(context.Background(), mockLogger)
+
+		got, err := repo.GetByCommunityID(ctx, communityID)
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+		require.Equal(t, &communityID, got[0].CommunityID)
 	})
 
 	t.Run("List query error", func(t *testing.T) {

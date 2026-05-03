@@ -41,11 +41,50 @@ func (h *Handler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler)
 		}
 		r.Get("/me", h.GetMyPosts)
 		r.Get("/profile/{profileID}", h.GetProfilePosts)
+		r.Get("/community/{communityID}", h.GetCommunityPosts)
+		r.Get("/community/{communityID}/official", h.GetCommunityOfficialPosts)
 		r.Post("/upload", h.CreatePost)
 		r.Delete("/{id}", h.DeletePost)
 		r.Get("/{id}", h.GetPost)
 		r.Patch("/{id}", h.UpdatePost)
+		r.Post("/{id}/likes", h.LikePost)
+		r.Delete("/{id}/likes", h.UnlikePost)
 	})
+}
+
+func (h *Handler) GetCommunityPosts(w http.ResponseWriter, r *http.Request) {
+	userAccountID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+
+	communityID, ok := parseID(w, chi.URLParam(r, "communityID"))
+	if !ok {
+		return
+	}
+
+	posts, err := h.post.GetCommunityPosts(r.Context(), communityID, userAccountID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, mapPostList(posts))
+}
+
+func (h *Handler) GetCommunityOfficialPosts(w http.ResponseWriter, r *http.Request) {
+	communityID, ok := parseID(w, chi.URLParam(r, "communityID"))
+	if !ok {
+		return
+	}
+
+	posts, err := h.post.GetCommunityOfficialPosts(r.Context(), communityID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, mapPostList(posts))
 }
 
 func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
@@ -173,7 +212,50 @@ func (h *Handler) GetPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	post, err := h.post.GetPost(r.Context(), postID)
+	userAccountID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+
+	post, err := h.post.GetPostForViewer(r.Context(), postID, userAccountID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, mapPostDetails(post))
+}
+
+func (h *Handler) LikePost(w http.ResponseWriter, r *http.Request) {
+	userAccountID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	postID, ok := parseID(w, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
+
+	post, err := h.post.LikePost(r.Context(), userAccountID, postID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, mapPostDetails(post))
+}
+
+func (h *Handler) UnlikePost(w http.ResponseWriter, r *http.Request) {
+	userAccountID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	postID, ok := parseID(w, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
+
+	post, err := h.post.UnlikePost(r.Context(), userAccountID, postID)
 	if err != nil {
 		writeServiceError(w, err)
 		return
@@ -243,7 +325,7 @@ func writeServiceError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, service.ErrInvalidInput), errors.Is(err, service.ErrPostContentRequired):
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: err.Error()})
-	case errors.Is(err, service.ErrPostNotFound), errors.Is(err, service.ErrProfileNotFound):
+	case errors.Is(err, service.ErrPostNotFound), errors.Is(err, service.ErrProfileNotFound), errors.Is(err, service.ErrCommunityNotFound):
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: err.Error()})
 	case errors.Is(err, service.ErrForbidden):
 		writeJSON(w, http.StatusForbidden, errorResponse{Error: err.Error()})
@@ -263,23 +345,22 @@ func createInput(req PostCreationRequest) service.CreateInput {
 	if req.Media != nil {
 		media = *req.Media
 	}
-	return service.CreateInput{Text: req.Text, Media: media}
+	return service.CreateInput{Text: req.Text, Media: media, AuthorProfileID: req.AuthorProfileID, CommunityID: req.CommunityID}
 }
 
 func mapPostDetails(post *service.PostDetails) PostCreationResponse {
 	resp := PostCreationResponse{
-		ID:            post.ID,
-		ProfileID:     post.Author.ID,
-		Text:          escapeTextPtr(post.Text),
-		FirstName:     html.EscapeString(post.Author.FirstName),
-		LastName:      html.EscapeString(post.Author.LastName),
-		UserAccountID: post.Author.UserAccountID,
-		AvatarURL:     post.Author.AvatarURL,
+		ID:          post.ID,
+		ProfileID:   post.Author.ID,
+		CommunityID: post.CommunityID,
+		Text:        escapeTextPtr(post.Text),
+		Author:      mapPostAuthor(post.Author),
+		Likes:       post.Likes,
+		IsLiked:     post.IsLiked,
 	}
 
 	for _, media := range post.Media {
 		resp.Media = append(resp.Media, dto.MediaRequestData{MediaID: media.ID, MediaURL: media.URL})
-		resp.MediaURL = append(resp.MediaURL, media.URL)
 	}
 
 	return resp
@@ -289,10 +370,14 @@ func mapPostList(posts []service.PostDetails) []PostListItemResponse {
 	result := make([]PostListItemResponse, 0, len(posts))
 	for _, post := range posts {
 		item := PostListItemResponse{
-			ID:        post.ID,
-			ProfileID: post.AuthorID,
-			Text:      "",
-			CreatedAt: post.CreatedAt,
+			ID:          post.ID,
+			ProfileID:   post.AuthorID,
+			CommunityID: post.CommunityID,
+			Text:        "",
+			Author:      mapPostAuthor(post.Author),
+			CreatedAt:   post.CreatedAt,
+			Likes:       post.Likes,
+			IsLiked:     post.IsLiked,
 		}
 		if post.Text != nil {
 			item.Text = html.EscapeString(*post.Text)
@@ -303,11 +388,21 @@ func mapPostList(posts []service.PostDetails) []PostListItemResponse {
 		}
 		for _, media := range post.Media {
 			item.Media = append(item.Media, dto.MediaRequestData{MediaID: media.ID, MediaURL: media.URL})
-			item.MediaURL = append(item.MediaURL, media.URL)
 		}
 		result = append(result, item)
 	}
 	return result
+}
+
+func mapPostAuthor(author service.Author) postAuthorDTO {
+	return postAuthorDTO{
+		ProfileID:     author.ID,
+		FirstName:     html.EscapeString(author.FirstName),
+		LastName:      html.EscapeString(author.LastName),
+		Username:      html.EscapeString(author.Username),
+		UserAccountID: author.UserAccountID,
+		AvatarURL:     author.AvatarURL,
+	}
 }
 
 func mapFeed(feed service.FeedResult) FeedResponse {

@@ -13,20 +13,23 @@ type WorkResponse struct {
 }
 
 type GetProfileMeResponse struct {
-	FirstName    string              `json:"firstName,omitempty"`
-	LastName     string              `json:"lastName,omitempty"`
-	Bio          *string             `json:"bio,omitempty"`
-	ImageLink    *string             `json:"imageLink,omitempty"`
-	Gender       models.Gender       `json:"gender,omitempty"`
-	BirthdayDate string              `json:"birthday,omitempty"`
-	NativeTown   *string             `json:"nativeTown,omitempty"`
-	Phone        *string             `json:"phone,omitempty"`
-	Email        *string             `json:"email,omitempty"`
-	Town         *string             `json:"town,omitempty"`
-	Education    []EducationResponse `json:"education,omitempty"`
-	Work         []WorkResponse      `json:"work,omitempty"`
-	Interests    *string             `json:"interests,omitempty"`
-	FavMusic     *string             `json:"favMusic,omitempty"`
+	ProfileID     int64               `json:"profileId"`
+	UserAccountID int64               `json:"userAccountId"`
+	Username      string              `json:"username,omitempty"`
+	FirstName     string              `json:"firstName,omitempty"`
+	LastName      string              `json:"lastName,omitempty"`
+	Bio           *string             `json:"bio,omitempty"`
+	ImageLink     *string             `json:"imageLink,omitempty"`
+	Gender        models.Gender       `json:"gender,omitempty"`
+	BirthdayDate  string              `json:"birthday,omitempty"`
+	NativeTown    *string             `json:"nativeTown,omitempty"`
+	Phone         *string             `json:"phone,omitempty"`
+	Email         *string             `json:"email,omitempty"`
+	Town          *string             `json:"town,omitempty"`
+	Education     []EducationResponse `json:"education,omitempty"`
+	Work          []WorkResponse      `json:"work,omitempty"`
+	Interests     *string             `json:"interests,omitempty"`
+	FavMusic      *string             `json:"favMusic,omitempty"`
 }
 
 type latestEventDTO struct {
