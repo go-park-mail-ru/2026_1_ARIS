@@ -413,7 +413,7 @@ func mapFeed(feed service.FeedResult) FeedResponse {
 			medias = append(medias, mediaFeedDTO{Id: media.UID, MimeType: media.MimeType, Link: media.URL})
 		}
 		posts = append(posts, postFeedDTO{
-			Id:        post.ID.String(),
+			Id:        post.ID, //.String(),
 			Text:      post.Text,
 			Author:    authorFeedDTO{Id: strconv.FormatInt(post.Author.ID, 10), FirstName: post.Author.FirstName, LastName: post.Author.LastName, Username: post.Author.Username, AvatarLink: derefString(post.Author.AvatarURL)},
 			CreatedAt: post.CreatedAt,

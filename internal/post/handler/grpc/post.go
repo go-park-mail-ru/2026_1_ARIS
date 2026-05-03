@@ -46,7 +46,7 @@ func toProtoFeed(feed service.FeedResult) *postpb.FeedResponse {
 			})
 		}
 		posts = append(posts, &postpb.FeedPost{
-			Id:   post.ID.String(),
+			Id:   strconv.Itoa(int(post.ID)),
 			Text: post.Text,
 			Author: &postpb.Author{
 				Id:         strconv.FormatInt(post.Author.ID, 10),

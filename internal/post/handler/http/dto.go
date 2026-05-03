@@ -53,7 +53,7 @@ type FeedResponse struct {
 }
 
 type postFeedDTO struct {
-	Id        string         `json:"id"`
+	Id        int64          `json:"id"`
 	Text      string         `json:"text"`
 	Author    authorFeedDTO  `json:"author"`
 	CreatedAt time.Time      `json:"createdAt"`

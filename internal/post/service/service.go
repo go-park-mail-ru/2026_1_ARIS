@@ -78,7 +78,7 @@ type PostDetails struct {
 }
 
 type FeedPost struct {
-	ID        uuid.UUID
+	ID        int64 //uuid.UUID
 	Text      string
 	Author    Author
 	CreatedAt time.Time
@@ -469,7 +469,7 @@ func (s *Service) buildFeedPost(ctx context.Context, post models.Post) (FeedPost
 	}
 
 	return FeedPost{
-		ID:        post.Uid,
+		ID:        post.ID,
 		Text:      text,
 		Author:    author,
 		CreatedAt: post.CreatedAt,
