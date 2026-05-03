@@ -84,6 +84,7 @@ microservices: microservices-up
 
 local-up: microservices-up
 local-stop: microservices-stop
+local-restart: microservices-restart
 local-down: microservices-down
 local-reset: microservices-reset
 
@@ -92,6 +93,9 @@ microservices-up:
 
 microservices-stop:
 	$(COMPOSE) stop $(MICROSERVICE_ALL)
+
+microservices-restart:
+	$(COMPOSE) --profile microservices restart $(MICROSERVICE_RUNTIME)
 
 microservices-down:
 	$(COMPOSE) stop $(MICROSERVICE_ALL)
@@ -105,6 +109,9 @@ server-up:
 
 server-stop:
 	$(COMPOSE_SERVER) stop $(MICROSERVICE_ALL)
+
+server-restart:
+	$(COMPOSE_SERVER) --profile microservices restart $(MICROSERVICE_RUNTIME)
 
 server-down:
 	$(COMPOSE_SERVER) stop $(MICROSERVICE_ALL)
@@ -275,7 +282,15 @@ backend-shell:
 
 frontend-shell:
 	$(COMPOSE) exec frontend sh
-	
+
+proto-generate:
+	protoc -I . \
+		--go_out=. \
+		--go_opt=paths=source_relative \
+		--go-grpc_out=. \
+		--go-grpc_opt=paths=source_relative \
+		proto/auth/auth.proto proto/chat/chat.proto proto/media/media.proto proto/post/post.proto proto/support/support.proto proto/user/user.proto
+
 coverage-excluding-mocks: clean
 	go test ./... -coverprofile=coverage.out.tmp -coverpkg=./internal/...
 	cat coverage.out.tmp | grep -v -E "(mock|generated|pb\.go|mocks|_test\.go)" > coverage.out
