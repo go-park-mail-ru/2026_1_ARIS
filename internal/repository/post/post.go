@@ -23,6 +23,7 @@ type PostRepo interface {
 	Update(ctx context.Context, post models.Post) error
 
 	GetByAuthorID(ctx context.Context, authorID int64) ([]models.Post, error)
+	GetByCommunityID(ctx context.Context, communityID int64) ([]models.Post, error)
 	List(ctx context.Context, offset, limit int) ([]models.Post, error)
 	Get(ctx context.Context, id int64) (*models.Post, error)
 	GetAll(ctx context.Context) ([]models.Post, error)
@@ -47,10 +48,10 @@ func NewPostStorage(db postDB) PostRepo {
 
 func (storage *postStorage) Save(ctx context.Context, post models.Post) (int64, error) {
 	logger := logger.FromContext(ctx)
-	query := `INSERT INTO post (uid, post_text, author_id, is_public_demo, allow_comments) VALUES ($1, $2, $3, $4, $5) RETURNING id`
+	query := `INSERT INTO post (uid, post_text, author_id, community_id, is_public_demo, allow_comments) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
 
 	start := time.Now()
-	row := storage.db.QueryRow(ctx, query, uuid.New(), post.Text, post.AuthorID, post.IsPublicDemo, post.AllowComments)
+	row := storage.db.QueryRow(ctx, query, uuid.New(), post.Text, post.AuthorID, post.CommunityID, post.IsPublicDemo, post.AllowComments)
 	if logger != nil {
 		logger.Debug("db query",
 			zap.String("query", "PostStorage.Save"),
@@ -168,6 +169,29 @@ func (storage *postStorage) GetByAuthorID(ctx context.Context, authorID int64) (
 	if logger != nil {
 		logger.Debug("db query",
 			zap.String("query", "PostStorage.GetByAuthorID"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	posts, err := pgx.CollectRows(rows, pgx.RowToStructByName[models.Post])
+	if err != nil {
+		return nil, err
+	}
+
+	return posts, nil
+}
+
+func (storage *postStorage) GetByCommunityID(ctx context.Context, communityID int64) ([]models.Post, error) {
+	logger := logger.FromContext(ctx)
+	query := `SELECT * FROM post WHERE community_id=$1 ORDER BY created_at DESC`
+
+	start := time.Now()
+	rows, err := storage.db.Query(ctx, query, communityID)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "PostStorage.GetByCommunityID"),
 			zap.Duration("duration_ms", time.Since(start)))
 	}
 	if err != nil {

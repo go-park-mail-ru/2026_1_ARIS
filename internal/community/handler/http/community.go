@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"html"
 	"net/http"
 	"strconv"
@@ -29,6 +30,11 @@ func (h *Handler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler)
 		r.Get("/communities", h.List)
 		r.Get("/communities/{id}", h.Get)
 		r.Get("/communities/by-profile/{profileID}", h.GetByProfileID)
+		r.Get("/communities/{id}/members", h.ListMembers)
+		r.Post("/communities/{id}/join", h.Join)
+		r.Post("/communities/{id}/leave", h.Leave)
+		r.Delete("/communities/{id}/members/{profileID}", h.RemoveMember)
+		r.Patch("/communities/{id}/members/{profileID}/role", h.ChangeMemberRole)
 		r.Post("/communities", h.Create)
 		r.Patch("/communities/{id}", h.Update)
 		r.Delete("/communities/{id}", h.Delete)
@@ -46,12 +52,14 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, xerrors.InvalidRequestBody, http.StatusBadRequest)
 		return
 	}
+	fmt.Println("COMMUNITY CREATION REQUEST", req)
 	details, err := h.community.Create(r.Context(), userAccountID, service.CreateInput{
-		Title:    req.Title,
-		Bio:      req.Bio,
-		Type:     req.Type,
-		Username: req.Username,
-		AvatarID: req.AvatarID,
+		Title:        req.Title,
+		Bio:          req.Bio,
+		Type:         req.Type,
+		Username:     req.Username,
+		AvatarID:     req.AvatarID,
+		CoverMediaID: req.CoverMediaID,
 	})
 	if err != nil {
 		writeServiceError(w, err)
@@ -118,11 +126,12 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	details, err := h.community.Update(r.Context(), userAccountID, communityID, service.UpdateInput{
-		Title:    req.Title,
-		Bio:      req.Bio,
-		Type:     req.Type,
-		Username: req.Username,
-		AvatarID: req.AvatarID,
+		Title:        req.Title,
+		Bio:          req.Bio,
+		Type:         req.Type,
+		Username:     req.Username,
+		AvatarID:     req.AvatarID,
+		CoverMediaID: req.CoverMediaID,
 	})
 	if err != nil {
 		writeServiceError(w, err)
@@ -147,32 +156,154 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *Handler) ListMembers(w http.ResponseWriter, r *http.Request) {
+	communityID, ok := parseID(w, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
+	viewer := optionalUserID(r)
+	includeBlocked := parseBoolQuery(r, "includeBlocked")
+	members, err := h.community.ListMembers(r.Context(), communityID, viewer, includeBlocked)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	items := make([]communityMemberResponse, 0, len(members))
+	for _, member := range members {
+		items = append(items, mapMember(member))
+	}
+	writeJSON(w, http.StatusOK, communityMembersResponse{Items: items})
+}
+
+func (h *Handler) Join(w http.ResponseWriter, r *http.Request) {
+	userAccountID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	communityID, ok := parseID(w, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
+	member, err := h.community.Join(r.Context(), userAccountID, communityID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, mapMember(*member))
+}
+
+func (h *Handler) Leave(w http.ResponseWriter, r *http.Request) {
+	userAccountID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	communityID, ok := parseID(w, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
+	if err := h.community.Leave(r.Context(), userAccountID, communityID); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) RemoveMember(w http.ResponseWriter, r *http.Request) {
+	userAccountID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	communityID, ok := parseID(w, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
+	memberProfileID, ok := parseID(w, chi.URLParam(r, "profileID"))
+	if !ok {
+		return
+	}
+	if err := h.community.RemoveMember(r.Context(), userAccountID, communityID, memberProfileID); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) ChangeMemberRole(w http.ResponseWriter, r *http.Request) {
+	userAccountID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	communityID, ok := parseID(w, chi.URLParam(r, "id"))
+	if !ok {
+		return
+	}
+	memberProfileID, ok := parseID(w, chi.URLParam(r, "profileID"))
+	if !ok {
+		return
+	}
+	var req updateMemberRoleRequest
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteError(w, xerrors.InvalidRequestBody, http.StatusBadRequest)
+		return
+	}
+	member, err := h.community.ChangeMemberRole(r.Context(), userAccountID, communityID, memberProfileID, req.Role)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, mapMember(*member))
+}
+
 func mapDetails(details *service.Details) communityDetailsResponse {
 	community := details.Community
 	return communityDetailsResponse{
 		Community: communityResponse{
-			ID:        community.ID,
-			UID:       community.Uid.String(),
-			ProfileID: community.ProfileID,
-			Username:  html.EscapeString(community.Username),
-			Title:     html.EscapeString(community.Title),
-			Bio:       escapePtr(community.Bio),
-			Type:      community.Type,
-			AvatarID:  details.AvatarID,
-			AvatarURL: details.AvatarURL,
-			IsActive:  community.IsActive,
-			CreatedAt: community.CreatedAt,
-			UpdatedAt: community.UpdatedAt,
+			ID:           community.ID,
+			UID:          community.Uid.String(),
+			ProfileID:    community.ProfileID,
+			Username:     html.EscapeString(community.Username),
+			Title:        html.EscapeString(community.Title),
+			Bio:          escapePtr(community.Bio),
+			Type:         community.Type,
+			AvatarID:     details.AvatarID,
+			AvatarURL:    details.AvatarURL,
+			CoverMediaID: community.CoverMediaID,
+			CoverURL:     details.CoverURL,
+			IsActive:     community.IsActive,
+			CreatedAt:    community.CreatedAt,
+			UpdatedAt:    community.UpdatedAt,
 		},
 		Membership: membershipResponse{
 			IsMember: details.Membership.IsMember,
 			Role:     details.Membership.Role,
+			Blocked:  details.Membership.Blocked,
 		},
 		Permissions: permissionsResponse{
-			CanEdit:   details.Permission.CanEdit,
-			CanDelete: details.Permission.CanDelete,
-			CanPost:   details.Permission.CanPost,
+			CanEditCommunity:   details.Permission.CanEditCommunity,
+			CanDeleteCommunity: details.Permission.CanDeleteCommunity,
+			CanPost:            details.Permission.CanPost,
+			CanPostAsCommunity: details.Permission.CanPostAsCommunity,
+			CanPostAsMember:    details.Permission.CanPostAsMember,
+			CanManageMembers:   details.Permission.CanManageMembers,
+			CanChangeRoles:     details.Permission.CanChangeRoles,
 		},
+	}
+}
+
+func mapMember(member service.MemberDetails) communityMemberResponse {
+	return communityMemberResponse{
+		ProfileID:     member.ProfileID,
+		UserAccountID: member.UserAccountID,
+		FirstName:     html.EscapeString(member.FirstName),
+		LastName:      html.EscapeString(member.LastName),
+		Username:      html.EscapeString(member.Username),
+		AvatarID:      member.AvatarID,
+		AvatarURL:     member.AvatarURL,
+		Role:          member.Role,
+		Blocked:       member.Blocked,
+		IsSelf:        member.IsSelf,
+		JoinedAt:      member.JoinedAt,
 	}
 }
 
@@ -214,13 +345,18 @@ func parseIntQuery(r *http.Request, name string, fallback int) int {
 	return value
 }
 
+func parseBoolQuery(r *http.Request, name string) bool {
+	value, err := strconv.ParseBool(r.URL.Query().Get(name))
+	return err == nil && value
+}
+
 func writeServiceError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, service.ErrInvalidInput), errors.Is(err, service.ErrNothingToUpdate):
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: err.Error()})
 	case errors.Is(err, service.ErrAlreadyExists):
 		writeJSON(w, http.StatusConflict, errorResponse{Error: err.Error()})
-	case errors.Is(err, service.ErrCommunityNotFound), errors.Is(err, service.ErrProfileNotFound):
+	case errors.Is(err, service.ErrCommunityNotFound), errors.Is(err, service.ErrCommunityMemberNotFound), errors.Is(err, service.ErrProfileNotFound):
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: err.Error()})
 	case errors.Is(err, service.ErrForbidden):
 		writeJSON(w, http.StatusForbidden, errorResponse{Error: err.Error()})

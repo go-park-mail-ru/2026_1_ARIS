@@ -10,32 +10,35 @@ type PostCreationRequest struct {
 	Media           *[]dto.MediaRequestData `json:"media"`
 	Text            *string                 `json:"text"`
 	AuthorProfileID *int64                  `json:"authorProfileId,omitempty"`
+	CommunityID     *int64                  `json:"communityId,omitempty"`
 }
 
 type PostCreationResponse struct {
 	ID            int64                  `json:"id"`
 	ProfileID     int64                  `json:"profileID"`
+	CommunityID   *int64                 `json:"communityId,omitempty"`
 	Media         []dto.MediaRequestData `json:"media"`
 	MediaURL      []string               `json:"mediaURL"`
 	Text          *string                `json:"text"`
 	FirstName     string                 `json:"firstName"`
 	LastName      string                 `json:"lastName"`
 	UserAccountID int64                  `json:"userAccountID"`
-	AvatarURL     *string                `json:"avatarURL"`
+	AvatarURL     *string                `json:"avatarURL,omitempty"`
 	Likes         int                    `json:"likes"`
 	IsLiked       bool                   `json:"isLiked"`
 }
 
 type PostListItemResponse struct {
-	ID        int64                  `json:"id"`
-	ProfileID int64                  `json:"profileID"`
-	Text      string                 `json:"text"`
-	Media     []dto.MediaRequestData `json:"media"`
-	MediaURL  []string               `json:"mediaURL"`
-	CreatedAt time.Time              `json:"createdAt"`
-	UpdatedAt *time.Time             `json:"updatedAt,omitempty"`
-	Likes     int                    `json:"likes"`
-	IsLiked   bool                   `json:"isLiked"`
+	ID          int64                  `json:"id"`
+	ProfileID   int64                  `json:"profileID"`
+	CommunityID *int64                 `json:"communityId,omitempty"`
+	Text        string                 `json:"text"`
+	Media       []dto.MediaRequestData `json:"media"`
+	MediaURL    []string               `json:"mediaURL"`
+	CreatedAt   time.Time              `json:"createdAt"`
+	UpdatedAt   *time.Time             `json:"updatedAt,omitempty"`
+	Likes       int                    `json:"likes"`
+	IsLiked     bool                   `json:"isLiked"`
 }
 
 type FeedResponse struct {

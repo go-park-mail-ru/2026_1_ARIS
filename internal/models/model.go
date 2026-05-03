@@ -32,9 +32,9 @@ type CommunityMemberRole string
 const (
 	Owner     CommunityMemberRole = "owner"
 	Admin     CommunityMemberRole = "admin"
-	Manager   CommunityMemberRole = "manager"
 	Moderator CommunityMemberRole = "moderator"
 	Member    CommunityMemberRole = "member"
+	Blocked   CommunityMemberRole = "blocked"
 )
 
 type FriendshipStatus string
@@ -337,6 +337,7 @@ type Post struct {
 	Uid           uuid.UUID `db:"uid"`
 	Text          *string   `db:"post_text,omitempty"`
 	AuthorID      int64     `db:"author_id"` // to Profile
+	CommunityID   *int64    `db:"community_id"`
 	IsPublicDemo  bool      `db:"is_public_demo"`
 	AllowComments bool      `db:"allow_comments"`
 	IsActive      bool      `db:"is_active"`
@@ -441,16 +442,17 @@ type MessageWithMedia struct {
 }
 
 type Community struct {
-	ID        int64         `db:"id" json:"id"`
-	Uid       uuid.UUID     `db:"uid" json:"uid"`
-	Title     string        `db:"title" json:"title"`
-	Bio       *string       `db:"bio" json:"bio,omitempty"`
-	Type      CommunityType `db:"community_type" json:"type"`
-	ProfileID int64         `db:"profile_id" json:"profileId"` // Abstract-Profile
-	Username  string        `db:"username" json:"username"`
-	IsActive  bool          `db:"is_active" json:"isActive"`
-	CreatedAt time.Time     `db:"created_at" json:"createdAt"`
-	UpdatedAt time.Time     `db:"updated_at" json:"updatedAt"`
+	ID           int64         `db:"id" json:"id"`
+	Uid          uuid.UUID     `db:"uid" json:"uid"`
+	Title        string        `db:"title" json:"title"`
+	Bio          *string       `db:"bio" json:"bio,omitempty"`
+	Type         CommunityType `db:"community_type" json:"type"`
+	ProfileID    int64         `db:"profile_id" json:"profileId"` // Abstract-Profile
+	Username     string        `db:"username" json:"username"`
+	CoverMediaID *int64        `db:"cover_media_id" json:"coverId,omitempty"`
+	IsActive     bool          `db:"is_active" json:"isActive"`
+	CreatedAt    time.Time     `db:"created_at" json:"createdAt"`
+	UpdatedAt    time.Time     `db:"updated_at" json:"updatedAt"`
 }
 
 // CommunityMember - represents a member in a community

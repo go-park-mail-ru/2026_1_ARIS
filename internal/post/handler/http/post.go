@@ -41,6 +41,8 @@ func (h *Handler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler)
 		}
 		r.Get("/me", h.GetMyPosts)
 		r.Get("/profile/{profileID}", h.GetProfilePosts)
+		r.Get("/community/{communityID}", h.GetCommunityPosts)
+		r.Get("/community/{communityID}/official", h.GetCommunityOfficialPosts)
 		r.Post("/upload", h.CreatePost)
 		r.Delete("/{id}", h.DeletePost)
 		r.Get("/{id}", h.GetPost)
@@ -48,6 +50,36 @@ func (h *Handler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler)
 		r.Post("/{id}/likes", h.LikePost)
 		r.Delete("/{id}/likes", h.UnlikePost)
 	})
+}
+
+func (h *Handler) GetCommunityPosts(w http.ResponseWriter, r *http.Request) {
+	communityID, ok := parseID(w, chi.URLParam(r, "communityID"))
+	if !ok {
+		return
+	}
+
+	posts, err := h.post.GetCommunityPosts(r.Context(), communityID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, mapPostList(posts))
+}
+
+func (h *Handler) GetCommunityOfficialPosts(w http.ResponseWriter, r *http.Request) {
+	communityID, ok := parseID(w, chi.URLParam(r, "communityID"))
+	if !ok {
+		return
+	}
+
+	posts, err := h.post.GetCommunityOfficialPosts(r.Context(), communityID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, mapPostList(posts))
 }
 
 func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
@@ -288,7 +320,7 @@ func writeServiceError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, service.ErrInvalidInput), errors.Is(err, service.ErrPostContentRequired):
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: err.Error()})
-	case errors.Is(err, service.ErrPostNotFound), errors.Is(err, service.ErrProfileNotFound):
+	case errors.Is(err, service.ErrPostNotFound), errors.Is(err, service.ErrProfileNotFound), errors.Is(err, service.ErrCommunityNotFound):
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: err.Error()})
 	case errors.Is(err, service.ErrForbidden):
 		writeJSON(w, http.StatusForbidden, errorResponse{Error: err.Error()})
@@ -308,13 +340,14 @@ func createInput(req PostCreationRequest) service.CreateInput {
 	if req.Media != nil {
 		media = *req.Media
 	}
-	return service.CreateInput{Text: req.Text, Media: media, AuthorProfileID: req.AuthorProfileID}
+	return service.CreateInput{Text: req.Text, Media: media, AuthorProfileID: req.AuthorProfileID, CommunityID: req.CommunityID}
 }
 
 func mapPostDetails(post *service.PostDetails) PostCreationResponse {
 	resp := PostCreationResponse{
 		ID:            post.ID,
 		ProfileID:     post.Author.ID,
+		CommunityID:   post.CommunityID,
 		Text:          escapeTextPtr(post.Text),
 		FirstName:     html.EscapeString(post.Author.FirstName),
 		LastName:      html.EscapeString(post.Author.LastName),
@@ -336,12 +369,13 @@ func mapPostList(posts []service.PostDetails) []PostListItemResponse {
 	result := make([]PostListItemResponse, 0, len(posts))
 	for _, post := range posts {
 		item := PostListItemResponse{
-			ID:        post.ID,
-			ProfileID: post.AuthorID,
-			Text:      "",
-			CreatedAt: post.CreatedAt,
-			Likes:     post.Likes,
-			IsLiked:   post.IsLiked,
+			ID:          post.ID,
+			ProfileID:   post.AuthorID,
+			CommunityID: post.CommunityID,
+			Text:        "",
+			CreatedAt:   post.CreatedAt,
+			Likes:       post.Likes,
+			IsLiked:     post.IsLiked,
 		}
 		if post.Text != nil {
 			item.Text = html.EscapeString(*post.Text)

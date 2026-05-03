@@ -13,6 +13,7 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/post/repository"
+	legacycommunity "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/community"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/cursor"
 	mediapb "github.com/go-park-mail-ru/2026_1_ARIS/proto/media"
 	userpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/user"
@@ -26,6 +27,7 @@ var (
 	ErrPostContentRequired  = errors.New(xerrors.PostContentRequired)
 	ErrPostNotFound         = xerrors.PostNotFound
 	ErrProfileNotFound      = xerrors.ProfileNotFound
+	ErrCommunityNotFound    = legacycommunity.ErrCommunityNotFound
 	ErrForbidden            = errors.New("denied")
 	ErrMediaAttachmentError = errors.New("can't attach media")
 )
@@ -40,6 +42,7 @@ type CreateInput struct {
 	Text            *string
 	Media           []dto.MediaRequestData
 	AuthorProfileID *int64
+	CommunityID     *int64
 }
 
 type UpdateInput = CreateInput
@@ -61,16 +64,17 @@ type Media struct {
 }
 
 type PostDetails struct {
-	ID        int64
-	UID       uuid.UUID
-	AuthorID  int64
-	Text      *string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Author    Author
-	Media     []Media
-	Likes     int
-	IsLiked   bool
+	ID          int64
+	UID         uuid.UUID
+	AuthorID    int64
+	CommunityID *int64
+	Text        *string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Author      Author
+	Media       []Media
+	Likes       int
+	IsLiked     bool
 }
 
 type FeedPost struct {
@@ -106,12 +110,13 @@ func (s *Service) CreatePost(ctx context.Context, userAccountID int64, input Cre
 	if err != nil {
 		return nil, err
 	}
-	authorID, err := s.resolvePostAuthor(ctx, profileID, input.AuthorProfileID)
+	authorID, communityID, err := s.resolvePostTarget(ctx, profileID, input.AuthorProfileID, input.CommunityID)
 	if err != nil {
 		return nil, err
 	}
 
 	post := models.NewPost(input.Text, authorID, false, true)
+	post.CommunityID = communityID
 	postID, err := s.store.Posts.Save(ctx, *post)
 	if err != nil {
 		return nil, err
@@ -149,6 +154,49 @@ func (s *Service) GetProfilePosts(ctx context.Context, profileID int64) ([]PostD
 
 	result := make([]PostDetails, 0, len(posts))
 	for _, post := range posts {
+		details, err := s.buildPostDetails(ctx, post, 0)
+		if err == nil {
+			result = append(result, *details)
+		}
+	}
+	return result, nil
+}
+
+func (s *Service) GetCommunityPosts(ctx context.Context, communityID int64) ([]PostDetails, error) {
+	if communityID <= 0 {
+		return nil, ErrInvalidInput
+	}
+	posts, err := s.store.Posts.GetByCommunityID(ctx, communityID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]PostDetails, 0, len(posts))
+	for _, post := range posts {
+		details, err := s.buildPostDetails(ctx, post, 0)
+		if err == nil {
+			result = append(result, *details)
+		}
+	}
+	return result, nil
+}
+
+func (s *Service) GetCommunityOfficialPosts(ctx context.Context, communityID int64) ([]PostDetails, error) {
+	if communityID <= 0 {
+		return nil, ErrInvalidInput
+	}
+	community, err := s.store.Communities.Get(ctx, communityID)
+	if err != nil {
+		return nil, err
+	}
+	posts, err := s.store.Posts.GetByCommunityID(ctx, communityID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]PostDetails, 0, len(posts))
+	for _, post := range posts {
+		if post.AuthorID != community.ProfileID {
+			continue
+		}
 		details, err := s.buildPostDetails(ctx, post, 0)
 		if err == nil {
 			result = append(result, *details)
@@ -204,7 +252,7 @@ func (s *Service) UpdatePost(ctx context.Context, userAccountID int64, postID in
 	if err != nil {
 		return nil, normalizePostError(err)
 	}
-	if !s.canActOnPost(ctx, post.AuthorID, profileID) {
+	if !s.canEditPost(ctx, *post, profileID) {
 		return nil, ErrForbidden
 	}
 
@@ -242,7 +290,7 @@ func (s *Service) DeletePost(ctx context.Context, userAccountID int64, postID in
 	if err != nil {
 		return normalizePostError(err)
 	}
-	if !s.canActOnPost(ctx, post.AuthorID, profileID) {
+	if !s.canDeletePost(ctx, *post, profileID) {
 		return ErrForbidden
 	}
 
@@ -386,16 +434,17 @@ func (s *Service) buildPostDetails(ctx context.Context, post models.Post, viewer
 	}
 
 	return &PostDetails{
-		ID:        post.ID,
-		UID:       post.Uid,
-		AuthorID:  post.AuthorID,
-		Text:      post.Text,
-		CreatedAt: post.CreatedAt,
-		UpdatedAt: post.UpdatedAt,
-		Author:    author,
-		Media:     s.postMedia(ctx, post.ID),
-		Likes:     s.store.Likes.GetLikeCountOnPost(ctx, post.ID),
-		IsLiked:   viewerProfileID > 0 && s.store.Likes.HasActivePostLike(ctx, post.ID, viewerProfileID),
+		ID:          post.ID,
+		UID:         post.Uid,
+		AuthorID:    post.AuthorID,
+		CommunityID: post.CommunityID,
+		Text:        post.Text,
+		CreatedAt:   post.CreatedAt,
+		UpdatedAt:   post.UpdatedAt,
+		Author:      author,
+		Media:       s.postMedia(ctx, post.ID),
+		Likes:       s.store.Likes.GetLikeCountOnPost(ctx, post.ID),
+		IsLiked:     viewerProfileID > 0 && s.store.Likes.HasActivePostLike(ctx, post.ID, viewerProfileID),
 	}, nil
 }
 
@@ -451,24 +500,77 @@ func (s *Service) author(ctx context.Context, profileID int64) (Author, error) {
 	return author, nil
 }
 
-func (s *Service) resolvePostAuthor(ctx context.Context, actorProfileID int64, requestedAuthorID *int64) (int64, error) {
+func (s *Service) resolvePostTarget(ctx context.Context, actorProfileID int64, requestedAuthorID, requestedCommunityID *int64) (int64, *int64, error) {
+	if requestedCommunityID != nil {
+		if *requestedCommunityID <= 0 || s.store.Communities == nil {
+			return 0, nil, ErrInvalidInput
+		}
+		community, err := s.store.Communities.Get(ctx, *requestedCommunityID)
+		if err != nil {
+			return 0, nil, ErrForbidden
+		}
+		if requestedAuthorID == nil || *requestedAuthorID == actorProfileID {
+			if !s.canPostAsMember(ctx, community.ID, actorProfileID) {
+				return 0, nil, ErrForbidden
+			}
+			return actorProfileID, &community.ID, nil
+		}
+		if *requestedAuthorID == community.ProfileID && s.canPostAsCommunity(ctx, community.ProfileID, actorProfileID) {
+			return community.ProfileID, &community.ID, nil
+		}
+		return 0, nil, ErrForbidden
+	}
 	if requestedAuthorID == nil || *requestedAuthorID == actorProfileID {
-		return actorProfileID, nil
+		return actorProfileID, nil, nil
 	}
 	if *requestedAuthorID <= 0 {
-		return 0, ErrInvalidInput
+		return 0, nil, ErrInvalidInput
 	}
-	if s.canPostAsCommunity(ctx, *requestedAuthorID, actorProfileID) {
-		return *requestedAuthorID, nil
+	if s.store.Communities != nil {
+		community, err := s.store.Communities.GetByProfileID(ctx, *requestedAuthorID)
+		if err == nil && s.canPostAsCommunity(ctx, *requestedAuthorID, actorProfileID) {
+			return *requestedAuthorID, &community.ID, nil
+		}
 	}
-	return 0, ErrForbidden
+	return 0, nil, ErrForbidden
 }
 
-func (s *Service) canActOnPost(ctx context.Context, authorProfileID, actorProfileID int64) bool {
-	if authorProfileID == actorProfileID {
+func (s *Service) canEditPost(ctx context.Context, post models.Post, actorProfileID int64) bool {
+	if post.AuthorID == actorProfileID {
 		return true
 	}
-	return s.canPostAsCommunity(ctx, authorProfileID, actorProfileID)
+	if post.CommunityID == nil || s.store.Communities == nil {
+		return false
+	}
+	community, err := s.store.Communities.Get(ctx, *post.CommunityID)
+	if err != nil || community.ProfileID != post.AuthorID {
+		return false
+	}
+	member, err := s.store.Communities.GetMember(ctx, community.ID, actorProfileID)
+	if err != nil || member == nil || !member.IsActive {
+		return false
+	}
+	role := normalizeCommunityRole(member.Role)
+	return role == models.Owner
+}
+
+func (s *Service) canDeletePost(ctx context.Context, post models.Post, actorProfileID int64) bool {
+	if post.AuthorID == actorProfileID {
+		return true
+	}
+	if post.CommunityID == nil || s.store.Communities == nil {
+		return false
+	}
+	community, err := s.store.Communities.Get(ctx, *post.CommunityID)
+	if err != nil {
+		return false
+	}
+	member, err := s.store.Communities.GetMember(ctx, community.ID, actorProfileID)
+	if err != nil || member == nil || !member.IsActive {
+		return false
+	}
+	role := normalizeCommunityRole(member.Role)
+	return role == models.Owner || role == models.Admin || role == models.Moderator
 }
 
 func (s *Service) canPostAsCommunity(ctx context.Context, communityProfileID, actorProfileID int64) bool {
@@ -483,11 +585,27 @@ func (s *Service) canPostAsCommunity(ctx context.Context, communityProfileID, ac
 	if err != nil || member == nil || !member.IsActive {
 		return false
 	}
-	role := member.Role
-	if role == models.Moderator {
-		role = models.Manager
+	role := normalizeCommunityRole(member.Role)
+	return role == models.Owner || role == models.Admin || role == models.Moderator
+}
+
+func (s *Service) canPostAsMember(ctx context.Context, communityID, actorProfileID int64) bool {
+	if s.store.Communities == nil {
+		return false
 	}
-	return role == models.Owner || role == models.Admin || role == models.Manager
+	member, err := s.store.Communities.GetMember(ctx, communityID, actorProfileID)
+	if err != nil || member == nil || !member.IsActive {
+		return false
+	}
+	role := normalizeCommunityRole(member.Role)
+	return role == models.Owner || role == models.Admin || role == models.Moderator || role == models.Member
+}
+
+func normalizeCommunityRole(role models.CommunityMemberRole) models.CommunityMemberRole {
+	if role == models.CommunityMemberRole("manager") {
+		return models.Moderator
+	}
+	return role
 }
 
 func (s *Service) postMedia(ctx context.Context, postID int64) []Media {

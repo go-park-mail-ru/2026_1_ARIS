@@ -30,7 +30,9 @@ type CommunityRepo interface {
 	GetAvatarID(ctx context.Context, communityProfileID int64) (*int64, error)
 	Delete(ctx context.Context, communityID int64) error
 	GetMember(ctx context.Context, communityID, profileID int64) (*models.CommunityMember, error)
+	ListMembers(ctx context.Context, communityID int64, includeBlocked bool) ([]models.CommunityMember, error)
 	UpsertMemberRole(ctx context.Context, communityID, profileID int64, role models.CommunityMemberRole) (*models.CommunityMember, error)
+	DeactivateMember(ctx context.Context, communityID, profileID int64) error
 }
 
 type communityStorage struct {
@@ -63,10 +65,10 @@ func (storage *communityStorage) Create(ctx context.Context, community models.Co
 
 	var created models.Community
 	query := `
-		INSERT INTO community (uid, title, bio, community_type, profile_id, username)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, uid, title, bio, community_type, profile_id, username, is_active, created_at, updated_at`
-	if err := pgxscan.Get(ctx, tx, &created, query, uuid.New(), community.Title, community.Bio, community.Type, profileID, community.Username); err != nil {
+		INSERT INTO community (uid, title, bio, community_type, profile_id, username, cover_media_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id, uid, title, bio, community_type, profile_id, username, cover_media_id, is_active, created_at, updated_at`
+	if err := pgxscan.Get(ctx, tx, &created, query, uuid.New(), community.Title, community.Bio, community.Type, profileID, community.Username, community.CoverMediaID); err != nil {
 		return nil, pgerrors.MapPgError(err)
 	}
 
@@ -122,11 +124,11 @@ func (storage *communityStorage) List(ctx context.Context, limit, offset int) ([
 func (storage *communityStorage) Update(ctx context.Context, community models.Community) (*models.Community, error) {
 	query := `
 		UPDATE community
-		SET title=$1, bio=$2, community_type=$3, username=$4, updated_at=NOW()
-		WHERE id=$5 AND is_active=TRUE
-		RETURNING id, uid, title, bio, community_type, profile_id, username, is_active, created_at, updated_at`
+		SET title=$1, bio=$2, community_type=$3, username=$4, cover_media_id=$5, updated_at=NOW()
+		WHERE id=$6 AND is_active=TRUE
+		RETURNING id, uid, title, bio, community_type, profile_id, username, cover_media_id, is_active, created_at, updated_at`
 	var updated models.Community
-	if err := pgxscan.Get(ctx, storage.db, &updated, query, community.Title, community.Bio, community.Type, community.Username, community.ID); err != nil {
+	if err := pgxscan.Get(ctx, storage.db, &updated, query, community.Title, community.Bio, community.Type, community.Username, community.CoverMediaID, community.ID); err != nil {
 		return nil, normalizeCommunityError(pgerrors.MapPgError(err))
 	}
 	return &updated, nil
@@ -190,6 +192,26 @@ func (storage *communityStorage) GetMember(ctx context.Context, communityID, pro
 	return &member, nil
 }
 
+func (storage *communityStorage) ListMembers(ctx context.Context, communityID int64, includeBlocked bool) ([]models.CommunityMember, error) {
+	query := `SELECT * FROM community_member WHERE community_id=$1 AND is_active=TRUE`
+	args := []any{communityID}
+	if !includeBlocked {
+		query += ` AND community_role <> $2`
+		args = append(args, models.Blocked)
+	}
+	query += ` ORDER BY joined_at ASC, id ASC`
+
+	start := time.Now()
+	rows, err := storage.db.Query(ctx, query, args...)
+	logDuration(ctx, "communityRepo.ListMembers", start)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return pgx.CollectRows(rows, pgx.RowToStructByName[models.CommunityMember])
+}
+
 func (storage *communityStorage) UpsertMemberRole(ctx context.Context, communityID, profileID int64, role models.CommunityMemberRole) (*models.CommunityMember, error) {
 	query := `
 		INSERT INTO community_member (uid, profile_id, community_id, community_role, is_active, leave_at)
@@ -207,9 +229,26 @@ func (storage *communityStorage) UpsertMemberRole(ctx context.Context, community
 	return &member, nil
 }
 
+func (storage *communityStorage) DeactivateMember(ctx context.Context, communityID, profileID int64) error {
+	query := `
+		UPDATE community_member
+		SET is_active=FALSE, leave_at=NOW(), updated_at=NOW()
+		WHERE community_id=$1 AND profile_id=$2 AND is_active=TRUE`
+	start := time.Now()
+	tag, err := storage.db.Exec(ctx, query, communityID, profileID)
+	logDuration(ctx, "communityRepo.DeactivateMember", start)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrCommunityMemberNotFound
+	}
+	return nil
+}
+
 func communitySelect() string {
 	return `
-		SELECT c.id, c.uid, c.title, c.bio, c.community_type, c.profile_id, c.username,
+		SELECT c.id, c.uid, c.title, c.bio, c.community_type, c.profile_id, c.username, c.cover_media_id,
 		       c.is_active, c.created_at, c.updated_at
 		FROM community c`
 }
