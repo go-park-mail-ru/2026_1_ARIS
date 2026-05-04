@@ -1,0 +1,45 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy backend via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_DEPLOY_HOST }}
+          username: ${{ secrets.STAGING_DEPLOY_USER }}
+          key: ${{ secrets.STAGING_DEPLOY_SSH_KEY }}
+          script: |
+            set -euo pipefail
+
+            cd ${{ secrets.STAGING_DEPLOY_PATH }}
+            git fetch origin
+            git reset --hard origin/dev
+
+            sed -i 's/arisnet.ru/arisnet.online/g; s/www.arisnet.online//g' config/nginx.container.server.conf
+            sed -i 's/location = \/health/location = \/nginx-health/g' config/nginx.container.server.conf
+            sed -i '70i\
+                    location = /nginx-health {\
+                        access_log off;\
+                        return 200 "ok\\n";\
+                    }\
+            ' config/nginx.container.server.conf
+            sed -i 's#http://127.0.0.1/health#http://127.0.0.1/nginx-health#g' docker-compose.server.yml
+
+            docker compose --env-file ./.env.server \
+              -f ./docker-compose.dev.yml \
+              -f ./docker-compose.server.yml \
+              --profile microservices \
+              up --build --force-recreate -d \
+              auth media user post chat support community search nginx
+
+            sleep 15
+            docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-nginx-1 .*healthy'
+            curl --fail --silent --show-error https://arisnet.online/api/public/feed?limit=1 >/dev/null
