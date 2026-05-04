@@ -16,6 +16,7 @@ esac
 server_name="${NGINX_SERVER_NAME:-$default_server_name}"
 cert_name="${NGINX_CERT_NAME:-$default_cert_name}"
 health_path="${NGINX_HEALTH_PATH:-/nginx-health}"
+frontend_upstream="${FRONTEND_UPSTREAM:-host.docker.internal:3001}"
 
 if [ ! -f "$template" ]; then
   echo "nginx template not found: $template" >&2
@@ -34,4 +35,5 @@ sed \
   -e "s|\${NGINX_SERVER_NAME}|$server_name|g" \
   -e "s|\${NGINX_CERT_NAME}|$cert_name|g" \
   -e "s|\${NGINX_HEALTH_PATH}|$health_path|g" \
+  -e "s|\${FRONTEND_UPSTREAM}|$frontend_upstream|g" \
   "$template" > "$output"

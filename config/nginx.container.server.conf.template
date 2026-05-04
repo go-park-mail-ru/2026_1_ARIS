@@ -49,7 +49,7 @@ http {
     }
 
     upstream frontend_service {
-        server host.docker.internal:3001;
+        server ${FRONTEND_UPSTREAM};
         keepalive 32;
     }
 
