@@ -23,15 +23,10 @@ jobs:
             git fetch origin
             git reset --hard origin/dev
 
-            sed -i 's/arisnet.ru/arisnet.online/g; s/www.arisnet.online//g' config/nginx.container.server.conf
-            sed -i 's/location = \/health/location = \/nginx-health/g' config/nginx.container.server.conf
-            sed -i '70i\
-                    location = /nginx-health {\
-                        access_log off;\
-                        return 200 "ok\\n";\
-                    }\
-            ' config/nginx.container.server.conf
-            sed -i 's#http://127.0.0.1/health#http://127.0.0.1/nginx-health#g' docker-compose.server.yml
+            set -a
+            . ./.env.server
+            set +a
+            sh scripts/render-nginx-server-conf.sh
 
             docker compose --env-file ./.env.server \
               -f ./docker-compose.dev.yml \
