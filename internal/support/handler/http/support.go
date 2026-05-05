@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,8 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/session"
 	tickets "github.com/go-park-mail-ru/2026_1_ARIS/internal/support/service"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/websocket"
@@ -20,14 +20,20 @@ import (
 	"go.uber.org/zap"
 )
 
+type UserService interface {
+	GetProfileByUserAccountID(ctx context.Context, userAccountID int64) (*models.Profile, error)
+	GetUserAccountByProfileID(ctx context.Context, profileID int64) (*models.UserAccount, error)
+	GetUserProfileByProfileID(ctx context.Context, profileID int64) (*models.UserProfile, error)
+}
+
 type SupportHandler struct {
 	sessionService session.SessionService
-	userService    user.UserService
+	userService    UserService
 	ticketService  tickets.TicketService
 	hub            *websocket.Hub
 }
 
-func NewSupportHandler(sessionService session.SessionService, userService user.UserService, ticketService tickets.TicketService, hubs ...*websocket.Hub) *SupportHandler {
+func NewSupportHandler(sessionService session.SessionService, userService UserService, ticketService tickets.TicketService, hubs ...*websocket.Hub) *SupportHandler {
 	var hub *websocket.Hub
 	if len(hubs) > 0 {
 		hub = hubs[0]

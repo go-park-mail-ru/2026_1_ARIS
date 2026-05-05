@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/user/service"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"

@@ -21,7 +21,7 @@ import (
 	settingsRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/settings"
 	accountRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_account"
 	userProfileRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_profile"
-	sessionService "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
+	sessionService "github.com/go-park-mail-ru/2026_1_ARIS/internal/session"
 	userGRPC "github.com/go-park-mail-ru/2026_1_ARIS/internal/user/handler/grpc"
 	userHTTP "github.com/go-park-mail-ru/2026_1_ARIS/internal/user/handler/http"
 	userRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/user/repository"

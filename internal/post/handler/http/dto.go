@@ -3,7 +3,7 @@ package http
 import (
 	"time"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/dto"
 )
 
 type PostCreationRequest struct {

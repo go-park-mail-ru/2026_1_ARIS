@@ -23,7 +23,7 @@ import (
 	chatMemberRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat_member"
 	messageRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/message"
 	sessionRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/session"
-	sessionService "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
+	sessionService "github.com/go-park-mail-ru/2026_1_ARIS/internal/session"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/websocket"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/config"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"

@@ -8,7 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	dto "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
+	dto "github.com/go-park-mail-ru/2026_1_ARIS/internal/dto"
 	models "github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	gomock "github.com/golang/mock/gomock"
 	uuid "github.com/google/uuid"

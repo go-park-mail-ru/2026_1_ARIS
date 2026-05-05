@@ -21,7 +21,7 @@ import (
 	mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
 	legacyMediaRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
 	sessionRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/session"
-	sessionService "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
+	sessionService "github.com/go-park-mail-ru/2026_1_ARIS/internal/session"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/config"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	xminio "github.com/go-park-mail-ru/2026_1_ARIS/pkg/minio"

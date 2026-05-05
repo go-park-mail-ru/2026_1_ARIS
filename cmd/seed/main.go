@@ -16,8 +16,6 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/repost"
 	useraccount "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_account"
 	userprofile "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_profile"
-	postservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
-	userservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/config"
 	xminio "github.com/go-park-mail-ru/2026_1_ARIS/pkg/minio"
@@ -58,10 +56,20 @@ func main() {
 	postWithMediaRepo := post.NewPostWithMediaStorage(db)
 	chatRepo := chat.NewChatStorage(db)
 
-	postService := postservice.NewPostService(postRepo, postWithMediaRepo, profileRepo, commentRepo, repostRepo, likeRepo)
-	userService := userservice.NewUserService(userAccountRepo, profileRepo, userProfileRepo)
-
-	utils.MakeMock(mediaRepo, userService, postService, postWithMediaRepo, commentRepo, repostRepo, chatRepo, likeRepo, media.NewMinioClient(minioClient), envConf.MinioBucketName)
+	utils.MakeMock(
+		mediaRepo,
+		userAccountRepo,
+		profileRepo,
+		userProfileRepo,
+		postRepo,
+		postWithMediaRepo,
+		commentRepo,
+		repostRepo,
+		chatRepo,
+		likeRepo,
+		media.NewMinioClient(minioClient),
+		envConf.MinioBucketName,
+	)
 
 	log.Println("seed data completed")
 }

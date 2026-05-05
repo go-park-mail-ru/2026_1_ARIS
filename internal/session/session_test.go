@@ -17,12 +17,11 @@ func TestSessionService_Create_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := mocks.NewMockSessionRepo(ctrl)
-	service := NewSessionService(mockRepo)
+	service := New(mockRepo)
 
 	ctx := context.Background()
 	userID := int64(42)
 
-	// Ожидаем вызов Save с любым контекстом и сессией
 	mockRepo.EXPECT().
 		Save(gomock.Any(), gomock.AssignableToTypeOf(models.Session{})).
 		Return(nil).
@@ -43,13 +42,12 @@ func TestSessionService_Create_InvalidUserID(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := mocks.NewMockSessionRepo(ctrl)
-	service := NewSessionService(mockRepo)
+	service := New(mockRepo)
 
 	ctx := context.Background()
 	invalidUserIDs := []int64{0, -1, -100}
 
 	for _, uid := range invalidUserIDs {
-		// Ожидаем, что Save НЕ будет вызван (0 раз)
 		mockRepo.EXPECT().Save(gomock.Any(), gomock.Any()).Times(0)
 
 		session, err := service.Create(ctx, uid)
@@ -65,7 +63,7 @@ func TestSessionService_Create_RepoError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := mocks.NewMockSessionRepo(ctrl)
-	service := NewSessionService(mockRepo)
+	service := New(mockRepo)
 
 	ctx := context.Background()
 	userID := int64(42)
@@ -88,7 +86,7 @@ func TestSessionService_Get_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := mocks.NewMockSessionRepo(ctrl)
-	service := NewSessionService(mockRepo)
+	service := New(mockRepo)
 
 	ctx := context.Background()
 	sessionID := models.SessionID("test-session-id")
@@ -115,7 +113,7 @@ func TestSessionService_Get_NotFound(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := mocks.NewMockSessionRepo(ctrl)
-	service := NewSessionService(mockRepo)
+	service := New(mockRepo)
 
 	ctx := context.Background()
 	sessionID := models.SessionID("non-existent")
@@ -138,7 +136,7 @@ func TestSessionService_Delete_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := mocks.NewMockSessionRepo(ctrl)
-	service := NewSessionService(mockRepo)
+	service := New(mockRepo)
 
 	ctx := context.Background()
 	sessionID := models.SessionID("test-session-id")
@@ -157,7 +155,7 @@ func TestSessionService_Delete_RepoError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := mocks.NewMockSessionRepo(ctrl)
-	service := NewSessionService(mockRepo)
+	service := New(mockRepo)
 
 	ctx := context.Background()
 	sessionID := models.SessionID("test-session-id")

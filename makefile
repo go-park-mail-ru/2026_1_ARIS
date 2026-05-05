@@ -1,4 +1,4 @@
-.PHONY: test coverage clean dev down reset-db logs migrate backend-shell frontend-shell mocks microservices microservices-up microservices-stop microservices-down microservices-reset server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop community-up community-stop search-up search-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update logs-auth logs-media logs-user logs-post logs-chat logs-support logs-community logs-search logs-nginx
+.PHONY: test coverage clean dev down reset-db logs migrate mocks microservices microservices-up microservices-stop microservices-down microservices-reset server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop community-up community-stop search-up search-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update logs-auth logs-media logs-user logs-post logs-chat logs-support logs-community logs-search logs-nginx
 
 COMPOSE_FILE=./docker-compose.dev.yml
 COMPOSE_ENV_FILE=./.env.compose
@@ -56,10 +56,6 @@ migrate-force-down:
 
 migrate:
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
-
-# обновить конфигурацию сваггера
-swagger:
-	swag init -g main.go --dir ./cmd/server,./internal/handler/auth,./internal/handler/feed,./internal/handler/profile,./internal/handler/friend,./internal/handler/user,./internal/handler/proxy,./internal/handler/dto,./internal/service/dto,./internal/models --output docs
 
 # будет подтянут postgres:16
 db-up:
@@ -240,26 +236,18 @@ logs-search:
 logs-nginx:
 	$(COMPOSE) logs -f nginx
 
-dev:
-	$(COMPOSE) up --build -d
-	sh ./scripts/dev-ready.sh $(COMPOSE_ENV_FILE)
+dev: local-up
 
-down:
-	$(COMPOSE) down
+down: local-down
 
-stop:
-	$(COMPOSE) stop
+stop: local-stop
 
 reset-db:
-	$(COMPOSE) down -v
-	$(COMPOSE) up --build -d
-	sh ./scripts/dev-ready.sh $(COMPOSE_ENV_FILE)
+	$(MAKE) microservices-reset
+	$(MAKE) microservices-up
 
 logs:
-	$(COMPOSE) logs -f
-
-logs-backend:
-	$(COMPOSE) logs -f backend
+	$(COMPOSE) logs -f $(MICROSERVICE_RUNTIME)
 
 logs-redis:
 	$(COMPOSE) logs -f redis
@@ -269,12 +257,6 @@ logs-db:
 
 logs-migrate:
 	$(COMPOSE) logs -f migrate
-
-backend-shell:
-	$(COMPOSE) exec backend sh
-
-frontend-shell:
-	$(COMPOSE) exec frontend sh
 	
 coverage-excluding-mocks: clean
 	go test ./... -coverprofile=coverage.out.tmp -coverpkg=./internal/...

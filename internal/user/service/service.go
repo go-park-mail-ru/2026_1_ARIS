@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/user/repository"
@@ -43,6 +43,10 @@ func (s *Service) GetProfileByUserAccount(ctx context.Context, userAccountID int
 	return s.store.Profiles.GetByUserAccountID(ctx, userAccountID)
 }
 
+func (s *Service) GetProfileByUserAccountID(ctx context.Context, userAccountID int64) (*models.Profile, error) {
+	return s.GetProfileByUserAccount(ctx, userAccountID)
+}
+
 func (s *Service) GetUserProfileByUserAccount(ctx context.Context, userAccountID int64) (*models.UserProfile, error) {
 	if userAccountID <= 0 {
 		return nil, ErrInvalidInput
@@ -53,6 +57,26 @@ func (s *Service) GetUserProfileByUserAccount(ctx context.Context, userAccountID
 		return nil, normalizeUserProfileError(err)
 	}
 	return userProfile, nil
+}
+
+func (s *Service) GetUserProfileByProfileID(ctx context.Context, profileID int64) (*models.UserProfile, error) {
+	if profileID <= 0 {
+		return nil, ErrInvalidInput
+	}
+
+	userProfile, err := s.store.UserProfiles.GetByProfileID(ctx, profileID)
+	if err != nil {
+		return nil, normalizeUserProfileError(err)
+	}
+	return userProfile, nil
+}
+
+func (s *Service) GetUserAccountByProfileID(ctx context.Context, profileID int64) (*models.UserAccount, error) {
+	if profileID <= 0 {
+		return nil, ErrInvalidInput
+	}
+
+	return s.accountByProfileID(ctx, profileID)
 }
 
 func (s *Service) GetProfileMe(ctx context.Context, userAccountID int64) (*ProfileDetails, error) {

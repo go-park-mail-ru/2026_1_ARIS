@@ -1,37 +1,40 @@
 package session
 
-//go:generate mockgen -destination=./../mocks/session_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session SessionService
 import (
 	"context"
 	"errors"
 	"time"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/session"
+	sessionrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/session"
 	"github.com/google/uuid"
 )
 
-type SessionService interface {
+type Service interface {
 	Create(ctx context.Context, userID int64) (*models.Session, error)
 	Get(ctx context.Context, sessionID models.SessionID) (*models.Session, error)
 	Delete(ctx context.Context, sessionID models.SessionID) error
 }
 
-type sessionService struct {
-	repo session.SessionRepo
+type SessionService = Service
+
+type service struct {
+	repo sessionrepo.SessionRepo
 }
 
-func NewSessionService(repo session.SessionRepo) SessionService {
-	return &sessionService{
-		repo: repo,
-	}
+func New(repo sessionrepo.SessionRepo) Service {
+	return &service{repo: repo}
 }
 
-func (s *sessionService) Delete(ctx context.Context, sessionID models.SessionID) error {
+func NewSessionService(repo sessionrepo.SessionRepo) Service {
+	return New(repo)
+}
+
+func (s *service) Delete(ctx context.Context, sessionID models.SessionID) error {
 	return s.repo.Delete(ctx, sessionID)
 }
 
-func (s *sessionService) validateSession(userID int64) error {
+func (s *service) validateSession(userID int64) error {
 	if userID <= 0 {
 		return errors.New("invalid user id")
 	}
@@ -40,7 +43,7 @@ func (s *sessionService) validateSession(userID int64) error {
 
 const sessionTTL = 24 * time.Hour
 
-func (s *sessionService) Create(ctx context.Context, userID int64) (*models.Session, error) {
+func (s *service) Create(ctx context.Context, userID int64) (*models.Session, error) {
 	if err := s.validateSession(userID); err != nil {
 		return nil, err
 	}
@@ -59,6 +62,6 @@ func (s *sessionService) Create(ctx context.Context, userID int64) (*models.Sess
 	return &sess, nil
 }
 
-func (s *sessionService) Get(ctx context.Context, sessionID models.SessionID) (*models.Session, error) {
+func (s *service) Get(ctx context.Context, sessionID models.SessionID) (*models.Session, error) {
 	return s.repo.GetByID(ctx, sessionID)
 }

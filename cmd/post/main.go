@@ -25,7 +25,7 @@ import (
 	legacyPostRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/post"
 	repostRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/repost"
 	sessionRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/session"
-	sessionService "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
+	sessionService "github.com/go-park-mail-ru/2026_1_ARIS/internal/session"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/config"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/postgres"

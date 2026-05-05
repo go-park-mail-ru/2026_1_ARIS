@@ -15,17 +15,20 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
+	friendrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/friend"
 	mediarepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
 	profilerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/profile"
 	sessionrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/session"
+	settingsrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/settings"
 	useraccountrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_account"
 	userprofilerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_profile"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
-	userservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/session"
 	supportgrpc "github.com/go-park-mail-ru/2026_1_ARIS/internal/support/handler/grpc"
 	supporthttp "github.com/go-park-mail-ru/2026_1_ARIS/internal/support/handler/http"
 	supportrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/support/repository"
 	supportservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/support/service"
+	userrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/user/repository"
+	userservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/user/service"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/websocket"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/config"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
@@ -76,11 +79,14 @@ func main() {
 	}
 	defer mediaConn.Close()
 
-	userSvc := userservice.NewUserService(
+	userStore := userrepo.NewStore(
 		useraccountrepo.NewUserAccountStorage(db),
 		profilerepo.NewProfileStorage(db),
 		userprofilerepo.NewUserProfileStorage(db),
+		settingsrepo.NewUserSettingsStorage(db),
+		friendrepo.NewFriendshipStorage(db),
 	)
+	userSvc := userservice.New(userStore, mediapb.NewMediaServiceClient(mediaConn))
 	ticketSvc := supportservice.NewTicketService(
 		supportrepo.NewTicketStorage(db),
 		mediarepo.NewMediaStorage(db),

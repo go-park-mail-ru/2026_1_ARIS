@@ -25,25 +25,23 @@
 
 ### Локальный запуск
 
-Единое локальное окружение для backend, frontend, Postgres и MinIO запускается из `arisback`.
+Локальное окружение с Go-микросервисами, Postgres, Redis, MinIO и nginx запускается из `arisback`.
 
 1. Скопируйте `.env.compose.example` в `.env.compose`
-2. Убедитесь, что рядом с `arisback` лежит папка `arisfront`
-3. Запустите:
+2. Запустите:
 
 ```bash
-make dev
+make local-up
 ```
-
-После готовности появится сообщение со ссылками на frontend, backend, MinIO и Postgres.
 
 Что поднимется автоматически:
 
 - Postgres
+- Redis
 - MinIO
-- миграции backend
-- backend на `http://localhost:8080`
-- frontend на `http://localhost:3001`
+- миграции и seed-данные
+- Go-микросервисы `auth`, `media`, `user`, `post`, `chat`, `support`, `community`, `search`
+- nginx-gateway на `http://localhost:8080`
 
 Полный сброс локальной базы:
 

@@ -573,98 +573,10 @@ services:
     volumes:
       - ./config/nginx.container.conf:/etc/nginx/nginx.conf:ro
 
-  backend:
-    image: golang:alpine
-    restart: unless-stopped
-    working_dir: /workspace/arisback
-    environment:
-      DB_HOST: db
-      DB_PORT: "5432"
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
-      SSL_MODE: disable
-      POOL_MAX_CONNS: ${POOL_MAX_CONNS}
-      POOL_MAX_CONN_LIFETIME: ${POOL_MAX_CONN_LIFETIME}
-      POOL_MAX_CONN_IDLE_TIME: ${POOL_MAX_CONN_IDLE_TIME}
-      MINIO_PORT: "9000"
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
-      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      MINIO_HOST: ${MINIO_HOST}
-      MINIO_USE_SSL: "false"
-
-      REDIS_CONTAINER_NAME: ${REDIS_CONTAINER_NAME}
-      REDIS_DB: ${REDIS_DB}
-      REDIS_USER_PASSWORD: ${REDIS_USER_PASSWORD}
-      REDIS_PORT: ${REDIS_PORT}
-      REDIS_HOST: ${REDIS_HOST}
-      REDIS_PUBLIC_PORT: ${REDIS_PUBLIC_PORT}
-      REDIS_MAX_RETRIES: ${REDIS_MAX_RETRIES}
-      REDIS_DIAL_TIMEOUT: ${REDIS_DIAL_TIMEOUT}
-      REDIS_TIMEOUT: ${REDIS_TIMEOUT}
-      REDIS_ADDR: ${REDIS_ADDR}
-    depends_on:
-      db:
-        condition: service_healthy
-      minio:
-        condition: service_started
-      migrate:
-        condition: service_completed_successfully
-      seed:
-        condition: service_completed_successfully
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 8080"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    ports:
-      - "127.0.0.1:${BACKEND_PORT}:8080"
-    volumes:
-      - .:/workspace/arisback
-      - aris_go_pkg:/go/pkg
-      - aris_go_build:/root/.cache/go-build
-    command: >
-      sh -c "
-      apk add --no-cache git netcat-openbsd &&
-      go mod download &&
-      go run ./cmd/main/main.go
-      "
-
-  frontend:
-    image: node:22-alpine
-    restart: unless-stopped
-    working_dir: /workspace/arisfront
-    environment:
-      BACKEND_URL: http://backend:8080
-      CHOKIDAR_USEPOLLING: "true"
-    depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 3001"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    ports:
-      - "127.0.0.1:${FRONTEND_PORT}:3001"
-    volumes:
-      - ../arisfront:/workspace/arisfront
-      - aris_frontend_node_modules:/workspace/arisfront/node_modules
-    command: >
-      sh -lc "
-      npm ci &&
-      npm run dev -- --host 0.0.0.0 --port 3001
-      "
-
 volumes:
   aris_postgres_data:
   aris_minio_data:
   aris_go_bin:
   aris_go_pkg:
   aris_go_build:
-  aris_frontend_node_modules:
   aris_redis_data:
