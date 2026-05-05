@@ -1,4 +1,10 @@
 services:
+  grafana:
+    environment:
+      GF_SERVER_DOMAIN: ${APP_DOMAIN:-arisnet.ru}
+      GF_SERVER_ROOT_URL: ${APP_ENDPOINT:-https://arisnet.ru}/metrics/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+
   nginx:
     ports: !override
       - "80:80"
