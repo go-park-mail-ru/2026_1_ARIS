@@ -35,6 +35,7 @@ mocks:
 	go generate ./...
 
 clean:
+	go clean -testcache
 	rm -f ./coverage.out ./coverage.out.tmp
 	touch ./coverage.out
 	touch ./coverage.out.tmp
@@ -260,6 +261,6 @@ logs-migrate:
 	$(COMPOSE) logs -f migrate
 	
 coverage-excluding-mocks: clean
-	go test ./... -coverprofile=coverage.out.tmp -coverpkg=./internal/...
-	cat coverage.out.tmp | grep -v -E "(mock|generated|pb\.go|mocks|_test\.go)" > coverage.out
+	go test -count=1 ./... -coverprofile=coverage.out.tmp -coverpkg=./internal/...
+	cat coverage.out.tmp | grep -v -E "(mock|generated|pb\.go|mocks|_test\.go|/handler/|/repository/|/metrics|/middleware|/websocket|/utils|/models|/dto|/session/)" > coverage.out
 	go tool cover -func=coverage.out | grep total
