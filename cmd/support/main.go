@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	appmetrics "github.com/go-park-mail-ru/2026_1_ARIS/internal/metrics"
 	mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
 	friendrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/friend"
 	mediarepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
@@ -115,8 +116,10 @@ func main() {
 	router := chi.NewRouter()
 	router.Use(mymiddleware.RequestIDMiddleware(logg))
 	router.Use(mymiddleware.AccessLogMiddleware(logg))
+	router.Use(appmetrics.Middleware("support"))
 	router.Use(middleware.Recoverer)
 	router.Use(mymiddleware.XSSMiddlewares()...)
+	router.Handle("/metrics", appmetrics.Handler())
 	router.Route("/api/support", func(r chi.Router) {
 		r.Use(mymiddleware.AuthMiddleware(sessions))
 		httpHandler.RegisterRoutes(r)

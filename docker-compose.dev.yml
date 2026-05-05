@@ -538,6 +538,70 @@ services:
       go run ./cmd/search
       "
 
+  prometheus:
+    profiles: ["microservices"]
+    image: prom/prometheus:v2.55.1
+    restart: unless-stopped
+    depends_on:
+      auth:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+      post:
+        condition: service_healthy
+      chat:
+        condition: service_healthy
+      support:
+        condition: service_healthy
+      community:
+        condition: service_healthy
+      search:
+        condition: service_healthy
+      node-exporter:
+        condition: service_started
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - aris_prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+
+  grafana:
+    profiles: ["microservices"]
+    image: grafana/grafana:11.3.0
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_started
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - aris_grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+  node-exporter:
+    profiles: ["microservices"]
+    image: prom/node-exporter:v1.8.2
+    restart: unless-stopped
+    pid: host
+    command:
+      - "--path.rootfs=/host"
+    ports:
+      - "127.0.0.1:${NODE_EXPORTER_PORT:-9100}:9100"
+    volumes:
+      - /:/host:ro,rslave
+
   nginx:
     profiles: ["microservices"]
     image: nginx:1.27-alpine
@@ -580,3 +644,5 @@ volumes:
   aris_go_pkg:
   aris_go_build:
   aris_redis_data:
+  aris_prometheus_data:
+  aris_grafana_data:

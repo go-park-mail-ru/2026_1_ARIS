@@ -15,6 +15,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	authHTTP "github.com/go-park-mail-ru/2026_1_ARIS/internal/auth/handler/http"
+	appmetrics "github.com/go-park-mail-ru/2026_1_ARIS/internal/metrics"
+	mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
 	profileRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/profile"
 	sessionRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/session"
 	userAccountRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_account"
@@ -135,7 +137,11 @@ func main() {
 
 	httpHandler := authHTTP.New(authServise, false, supportRoleProvider{client: supportpb.NewSupportServiceClient(supportConn)})
 	router := chi.NewRouter()
+	router.Use(mymiddleware.RequestIDMiddleware(logger))
+	router.Use(mymiddleware.AccessLogMiddleware(logger))
+	router.Use(appmetrics.Middleware("auth"))
 	router.Use(middleware.Recoverer)
+	router.Handle("/metrics", appmetrics.Handler())
 	router.Route("/api/auth", func(r chi.Router) {
 		httpHandler.RegisterRoutes(r)
 	})

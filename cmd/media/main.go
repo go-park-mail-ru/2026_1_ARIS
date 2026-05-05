@@ -18,6 +18,7 @@ import (
 	mediaHTTP "github.com/go-park-mail-ru/2026_1_ARIS/internal/media/handler/http"
 	mediaRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/media/repository"
 	mediaService "github.com/go-park-mail-ru/2026_1_ARIS/internal/media/service"
+	appmetrics "github.com/go-park-mail-ru/2026_1_ARIS/internal/metrics"
 	mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
 	legacyMediaRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
 	sessionRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/session"
@@ -107,7 +108,9 @@ func main() {
 	router := chi.NewRouter()
 	router.Use(mymiddleware.RequestIDMiddleware(logg))
 	router.Use(mymiddleware.AccessLogMiddleware(logg))
+	router.Use(appmetrics.Middleware("media"))
 	router.Use(middleware.Recoverer)
+	router.Handle("/metrics", appmetrics.Handler())
 	router.Route("/api/media", func(r chi.Router) {
 		r.Get("/{id}", httpHandler.RedirectToFile)
 		r.Get("/{id}/url", httpHandler.GetFileURL)

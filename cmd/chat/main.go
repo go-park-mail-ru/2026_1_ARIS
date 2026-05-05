@@ -18,6 +18,7 @@ import (
 	chatHTTP "github.com/go-park-mail-ru/2026_1_ARIS/internal/chat/handler/http"
 	chatRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/chat/repository"
 	chatService "github.com/go-park-mail-ru/2026_1_ARIS/internal/chat/service"
+	appmetrics "github.com/go-park-mail-ru/2026_1_ARIS/internal/metrics"
 	mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
 	legacyChatRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
 	chatMemberRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat_member"
@@ -105,7 +106,9 @@ func main() {
 	router := chi.NewRouter()
 	router.Use(mymiddleware.RequestIDMiddleware(logg))
 	router.Use(mymiddleware.AccessLogMiddleware(logg))
+	router.Use(appmetrics.Middleware("chat"))
 	router.Use(middleware.Recoverer)
+	router.Handle("/metrics", appmetrics.Handler())
 	router.Route("/api", func(r chi.Router) {
 		httpHandler.RegisterRoutes(r, mymiddleware.AuthMiddleware(sessions))
 	})

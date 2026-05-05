@@ -16,6 +16,7 @@ import (
 	communityHTTP "github.com/go-park-mail-ru/2026_1_ARIS/internal/community/handler/http"
 	communityRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/community/repository"
 	communityService "github.com/go-park-mail-ru/2026_1_ARIS/internal/community/service"
+	appmetrics "github.com/go-park-mail-ru/2026_1_ARIS/internal/metrics"
 	mymiddleware "github.com/go-park-mail-ru/2026_1_ARIS/internal/middleware"
 	legacyCommunityRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/community"
 	sessionRepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/session"
@@ -76,7 +77,9 @@ func main() {
 	router := chi.NewRouter()
 	router.Use(mymiddleware.RequestIDMiddleware(logg))
 	router.Use(mymiddleware.AccessLogMiddleware(logg))
+	router.Use(appmetrics.Middleware("community"))
 	router.Use(middleware.Recoverer)
+	router.Handle("/metrics", appmetrics.Handler())
 	router.Route("/api", func(r chi.Router) {
 		httpHandler.RegisterRoutes(r, mymiddleware.AuthMiddleware(sessions))
 	})

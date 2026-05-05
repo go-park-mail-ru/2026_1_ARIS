@@ -42,6 +42,9 @@ make local-up
 - миграции и seed-данные
 - Go-микросервисы `auth`, `media`, `user`, `post`, `chat`, `support`, `community`, `search`
 - nginx-gateway на `http://localhost:8080`
+- Prometheus на `http://localhost:9090`
+- Grafana на `http://localhost:3000` с дашбордом `ARIS Service and Machine Metrics`
+- node-exporter для метрик CPU, памяти и диска машины
 
 Полный сброс локальной базы:
 

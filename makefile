@@ -10,9 +10,10 @@ COMPOSE_LOCAL=docker compose -f ./docker/docker-compose.yml --env-file ./.env
 MICROSERVICE_SERVICES=auth media user post chat support community search
 MICROSERVICE_INFRA=db redis minio
 MICROSERVICE_EDGE=nginx
+MICROSERVICE_MONITORING=prometheus grafana node-exporter
 MICROSERVICE_INIT=migrate
-MICROSERVICE_ALL=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE) $(MICROSERVICE_INFRA)
-MICROSERVICE_RUNTIME=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE)
+MICROSERVICE_ALL=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE) $(MICROSERVICE_MONITORING) $(MICROSERVICE_INFRA)
+MICROSERVICE_RUNTIME=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE) $(MICROSERVICE_MONITORING)
 NGINX_SITE_NAME ?= arisnet.ru
 NGINX_SITES_AVAILABLE ?= /etc/nginx/sites-available
 NGINX_SITES_ENABLED ?= /etc/nginx/sites-enabled
@@ -84,7 +85,7 @@ local-down: microservices-down
 local-reset: microservices-reset
 
 microservices-up:
-	$(COMPOSE) --profile microservices up --build -d $(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE)
+	$(COMPOSE) --profile microservices up --build -d $(MICROSERVICE_RUNTIME)
 
 microservices-stop:
 	$(COMPOSE) stop $(MICROSERVICE_ALL)
