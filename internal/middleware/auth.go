@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/session"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/session"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"go.uber.org/zap"
 )

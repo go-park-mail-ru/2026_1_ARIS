@@ -1,29 +1,83 @@
 package utils
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"time"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models" // добавлен импорт
+	"github.com/gabriel-vasile/mimetype"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/chat"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/comment"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/like"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
 	postrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/post"
+	profilerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/profile"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/repost"
-	postservice "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/post"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/service/user"
+	useraccountrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_account"
+	userprofilerepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_profile"
 	"github.com/google/uuid"
+	"github.com/minio/minio-go/v7"
+	"golang.org/x/crypto/bcrypt"
 )
 
+const maxSeedImageSize = 10 << 20
+
+func createRealUserProfile(
+	ctx context.Context,
+	userAccountRepo useraccountrepo.UserAccountRepo,
+	profileRepo profilerepo.ProfileRepo,
+	userProfileRepo userprofilerepo.UserProfileRepo,
+	email, phone *string,
+	password, username, firstName, lastName string,
+	birthdayDate time.Time,
+	gender models.Gender,
+	avatarID *int64,
+) (*models.Profile, error) {
+	username = strings.ToLower(strings.TrimSpace(username))
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("hash seed password: %w", err)
+	}
+
+	userAccount := models.NewUserAccount(username, email, phone, string(hashedPassword))
+	profile := models.NewProfile(avatarID)
+
+	userAccountID, err := userAccountRepo.Save(ctx, *userAccount)
+	if err != nil {
+		return nil, err
+	}
+
+	profileID, err := profileRepo.Save(ctx, *profile)
+	if err != nil {
+		return nil, err
+	}
+
+	userProfile := models.NewUserProfile(userAccountID, profileID, firstName, lastName, nil, birthdayDate, gender)
+	if _, err := userProfileRepo.Save(ctx, *userProfile); err != nil {
+		return nil, err
+	}
+
+	return profileRepo.Get(ctx, profileID)
+}
+
 func MakeMock(mediaRepo media.MediaRepo,
-	userProfileService user.UserService,
-	postService postservice.PostService,
+	userAccountRepo useraccountrepo.UserAccountRepo,
+	profileRepo profilerepo.ProfileRepo,
+	userProfileRepo userprofilerepo.UserProfileRepo,
+	postRepo postrepo.PostRepo,
 	postWithMediaRepo postrepo.PostWithMediaRepo,
 	commentRepo comment.CommentRepo,
 	repostRepo repost.RepostRepo,
 	chatRepo chat.ChatRepo, // изменён тип
 	likeRepo like.LikeRepo,
+	s3Repo media.S3Repo,
+	bucketName string,
 
 ) {
 
@@ -57,7 +111,7 @@ func MakeMock(mediaRepo media.MediaRepo,
 	birthdayDate8, _ := time.Parse("02/01/2006", "24/02/2005")
 
 	// пользователь без аватарки, чтобы создавать все другие аватарки
-	user1, err := userProfileService.CreateRealUserProfile(context.Background(), &email1, &phone1, "hard password hash", "KomandaARIS", "Команда", "АРИС", birthdayDate1, models.Gender("male"), nil)
+	user1, err := createRealUserProfile(context.Background(), userAccountRepo, profileRepo, userProfileRepo, &email1, &phone1, "hard password hash", "KomandaARIS", "Команда", "АРИС", birthdayDate1, models.Gender("male"), nil)
 	if err != nil {
 		// logger.Info("faild to save user", zap.Error(err))
 		return
@@ -73,14 +127,42 @@ func MakeMock(mediaRepo media.MediaRepo,
 	userAvatar7 := "user avatar 7 description"
 	userAvatar8 := "user avatar 8 description"
 
-	//avatar1 := models.NewMedia("avatar_1_name", "jpg", uuid.New(), &userAvatar1, "image", "/image-proxy?url=https://forum.stitch.su/uploads/monthly_2017_10/A.png.b16d1fa2bd3bb388f2122a0c87fbcf5f.png", 1)
-	avatar2 := models.NewMedia("avatar_2_name", "jpg", uuid.New(), &userAvatar2, "image", "/image-proxy?url=https://i.ibb.co/C3c6HCjb/pop-User1.png", 1)
-	avatar3 := models.NewMedia("avatar_3_name", "jpg", uuid.New(), &userAvatar3, "image", "/image-proxy?url=https://i.ibb.co/mQvfkNY/pop-User2.png", 1)
-	avatar4 := models.NewMedia("avatar_4_name", "jpg", uuid.New(), &userAvatar4, "image", "/image-proxy?url=https://i.ibb.co/6RS96KC7/pop-User3.png", 1)
-	avatar5 := models.NewMedia("avatar_5_name", "jpg", uuid.New(), &userAvatar5, "image", "/image-proxy?url=https://i.ibb.co/mCpKjmxK/pop-User4.png", 1)
-	avatar6 := models.NewMedia("avatar_6_name", "jpg", uuid.New(), &userAvatar6, "image", "/image-proxy?url=https://i.ibb.co/60HMXYh6/6.jpg", 1)
-	avatar7 := models.NewMedia("avatar_7_name", "jpg", uuid.New(), &userAvatar7, "image", "/image-proxy?url=https://i.ibb.co/s9rN3qD9/7.jpg", 1)
-	avatar8 := models.NewMedia("avatar_8_name", "jpg", uuid.New(), &userAvatar8, "image", "/image-proxy?url=https://sun9-5.userapi.com/s/v1/ig2/uGYEtsdSK4QHpAyiRnb5vCasxGZy7dR-MYECGzReWIivHlfmnfQP2DaVY6_UOJHzPG4yzjnVbty6aWqM8kjydEAS.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640&from=bu&cs=640x0", 1)
+	//avatar1 := models.NewMedia("avatar_1_name", "jpg", uuid.New(), &userAvatar1, "image", "https://forum.stitch.su/uploads/monthly_2017_10/A.png.b16d1fa2bd3bb388f2122a0c87fbcf5f.png", 1)
+	avatar2, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_2_name", &userAvatar2, "https://i.ibb.co/C3c6HCjb/pop-User1.png", 1)
+	if err != nil {
+		fmt.Println("failed to create avatar media:", err)
+		return
+	}
+	avatar3, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_3_name", &userAvatar3, "https://i.ibb.co/mQvfkNY/pop-User2.png", 1)
+	if err != nil {
+		fmt.Println("failed to create avatar media:", err)
+		return
+	}
+	avatar4, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_4_name", &userAvatar4, "https://i.ibb.co/6RS96KC7/pop-User3.png", 1)
+	if err != nil {
+		fmt.Println("failed to create avatar media:", err)
+		return
+	}
+	avatar5, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_5_name", &userAvatar5, "https://i.ibb.co/mCpKjmxK/pop-User4.png", 1)
+	if err != nil {
+		fmt.Println("failed to create avatar media:", err)
+		return
+	}
+	avatar6, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_6_name", &userAvatar6, "https://i.ibb.co/60HMXYh6/6.jpg", 1)
+	if err != nil {
+		fmt.Println("failed to create avatar media:", err)
+		return
+	}
+	avatar7, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_7_name", &userAvatar7, "https://i.ibb.co/s9rN3qD9/7.jpg", 1)
+	if err != nil {
+		fmt.Println("failed to create avatar media:", err)
+		return
+	}
+	avatar8, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_8_name", &userAvatar8, "https://sun9-5.userapi.com/s/v1/ig2/uGYEtsdSK4QHpAyiRnb5vCasxGZy7dR-MYECGzReWIivHlfmnfQP2DaVY6_UOJHzPG4yzjnVbty6aWqM8kjydEAS.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640&from=bu&cs=640x0", 1)
+	if err != nil {
+		fmt.Println("failed to create avatar media:", err)
+		return
+	}
 
 	//avatar9 := models.NewMedia("avatar_9_name", "jpg", &userAvatar9, "image", "https://i.ibb.co/s9rN3qD9/7.jpg", 4000, false)
 
@@ -134,42 +216,42 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	// logger.Info("success avatars creation")
 
-	user2, err := userProfileService.CreateRealUserProfile(context.Background(), &email2, &phone2, "hard password hash", "SergeyShulginenko", "Сергей", "Шульгиненко", birthdayDate2, models.Gender("female"), &avatar2ID)
+	user2, err := createRealUserProfile(context.Background(), userAccountRepo, profileRepo, userProfileRepo, &email2, &phone2, "hard password hash", "SergeyShulginenko", "Сергей", "Шульгиненко", birthdayDate2, models.Gender("female"), &avatar2ID)
 	if err != nil {
 		// logger.Info("faild to save user", zap.Error(err))
 		return
 	}
 
-	user3, err := userProfileService.CreateRealUserProfile(context.Background(), &email3, &phone3, "hard password hash", "AnnaOparina", "Анна", "Опарина", birthdayDate3, models.Gender("male"), &avatar3ID)
+	user3, err := createRealUserProfile(context.Background(), userAccountRepo, profileRepo, userProfileRepo, &email3, &phone3, "hard password hash", "AnnaOparina", "Анна", "Опарина", birthdayDate3, models.Gender("male"), &avatar3ID)
 	if err != nil {
 		// logger.Info("faild to save user", zap.Error(err))
 		return
 	}
 
-	user4, err := userProfileService.CreateRealUserProfile(context.Background(), &email4, &phone4, "hard password hash", "IvanKhvostov", "Иван", "Хвостов", birthdayDate4, models.Gender("female"), &avatar4ID)
+	user4, err := createRealUserProfile(context.Background(), userAccountRepo, profileRepo, userProfileRepo, &email4, &phone4, "hard password hash", "IvanKhvostov", "Иван", "Хвостов", birthdayDate4, models.Gender("female"), &avatar4ID)
 	if err != nil {
 		// logger.Info("faild to save user", zap.Error(err))
 		return
 	}
-	user5, err := userProfileService.CreateRealUserProfile(context.Background(), &email5, &phone5, "hard password hash", "RinatBaikov", "Ринат", "Байков", birthdayDate5, models.Gender("male"), &avatar5ID)
-	if err != nil {
-		// logger.Info("faild to save user", zap.Error(err))
-		return
-	}
-
-	user6, err := userProfileService.CreateRealUserProfile(context.Background(), &email6, &phone6, "hard password hash", "SofiaSitnichenko", "Софья", "Ситниченко", birthdayDate6, models.Gender("female"), &avatar6ID)
+	user5, err := createRealUserProfile(context.Background(), userAccountRepo, profileRepo, userProfileRepo, &email5, &phone5, "hard password hash", "RinatBaikov", "Ринат", "Байков", birthdayDate5, models.Gender("male"), &avatar5ID)
 	if err != nil {
 		// logger.Info("faild to save user", zap.Error(err))
 		return
 	}
 
-	user7, err := userProfileService.CreateRealUserProfile(context.Background(), &email7, &phone7, "hard password hash", "KonstantinGalanin", "Константин", "Галанин", birthdayDate7, models.Gender("male"), &avatar7ID)
+	user6, err := createRealUserProfile(context.Background(), userAccountRepo, profileRepo, userProfileRepo, &email6, &phone6, "hard password hash", "SofiaSitnichenko", "Софья", "Ситниченко", birthdayDate6, models.Gender("female"), &avatar6ID)
 	if err != nil {
 		// logger.Info("faild to save user", zap.Error(err))
 		return
 	}
 
-	user8, err := userProfileService.CreateRealUserProfile(context.Background(), &email8, &phone8, "hard password hash", "DaniilKhasyanov", "Даниил", "Хасьянов", birthdayDate8, models.Gender("female"), &avatar8ID)
+	user7, err := createRealUserProfile(context.Background(), userAccountRepo, profileRepo, userProfileRepo, &email7, &phone7, "hard password hash", "KonstantinGalanin", "Константин", "Галанин", birthdayDate7, models.Gender("male"), &avatar7ID)
+	if err != nil {
+		// logger.Info("faild to save user", zap.Error(err))
+		return
+	}
+
+	user8, err := createRealUserProfile(context.Background(), userAccountRepo, profileRepo, userProfileRepo, &email8, &phone8, "hard password hash", "DaniilKhasyanov", "Даниил", "Хасьянов", birthdayDate8, models.Gender("female"), &avatar8ID)
 	if err != nil {
 		// logger.Info("faild to save user", zap.Error(err))
 		return
@@ -177,7 +259,7 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	// logger.Info("success users creation")
 
-	//user9, _ := userProfileService.CreateRealUserProfile(context.Background(), "email444@gmail.com", "+479990001122", "hard password hash", "VladislavAlyokhin", "Владислав", "Алехин", true, nil, models.Gender(1), &avatar9)
+	//user9, _ := createRealUserProfile(context.Background(), userAccountRepo, profileRepo, userProfileRepo, "email444@gmail.com", "+479990001122", "hard password hash", "VladislavAlyokhin", "Владислав", "Алехин", true, nil, models.Gender(1), &avatar9)
 
 	// create medias
 	mediaDesctiption1 := "Media description 1"
@@ -492,49 +574,49 @@ func MakeMock(mediaRepo media.MediaRepo,
 	post8.CreatedAt = now.Add(-48 * time.Hour)
 	post8.UpdatedAt = post8.CreatedAt
 
-	post1ID, err := postService.Save(context.Background(), *post1)
+	post1ID, err := postRepo.Save(context.Background(), *post1)
 	if err != nil {
 		// logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
-	post2ID, err := postService.Save(context.Background(), *post2)
+	post2ID, err := postRepo.Save(context.Background(), *post2)
 	if err != nil {
 		// logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
-	post3ID, err := postService.Save(context.Background(), *post3)
+	post3ID, err := postRepo.Save(context.Background(), *post3)
 	if err != nil {
 		// logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
-	post4ID, err := postService.Save(context.Background(), *post4)
+	post4ID, err := postRepo.Save(context.Background(), *post4)
 	if err != nil {
 		// logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
-	post5ID, err := postService.Save(context.Background(), *post5)
+	post5ID, err := postRepo.Save(context.Background(), *post5)
 	if err != nil {
 		// logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
-	post6ID, err := postService.Save(context.Background(), *post6)
+	post6ID, err := postRepo.Save(context.Background(), *post6)
 	if err != nil {
 		// logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
-	post7ID, err := postService.Save(context.Background(), *post7)
+	post7ID, err := postRepo.Save(context.Background(), *post7)
 	if err != nil {
 		// logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
-	post8ID, err := postService.Save(context.Background(), *post8)
+	post8ID, err := postRepo.Save(context.Background(), *post8)
 	if err != nil {
 		// logger.Info("faild saving", zap.Error(err))
 		return
@@ -879,4 +961,69 @@ func MakeMock(mediaRepo media.MediaRepo,
 
 	// logger.Info("success reposts creation")
 
+}
+
+func newSeedMediaFromURL(
+	ctx context.Context,
+	s3Repo media.S3Repo,
+	bucketName string,
+	name string,
+	description *string,
+	sourceURL string,
+	authorID int64,
+) (*models.Media, error) {
+	if s3Repo == nil {
+		return nil, fmt.Errorf("s3 repo is nil")
+	}
+	if bucketName == "" {
+		return nil, fmt.Errorf("minio bucket name is empty")
+	}
+
+	body, mimeType, extension, err := downloadSeedImage(ctx, sourceURL)
+	if err != nil {
+		return nil, err
+	}
+
+	mediaUUID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(sourceURL))
+	link, err := s3Repo.Save(ctx, bucketName, bytes.NewReader(body), mediaUUID, int64(len(body)), extension, minio.PutObjectOptions{
+		ContentType: mimeType,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return models.NewMedia(name, strings.TrimPrefix(extension, "."), mediaUUID, description, mimeType, link, authorID), nil
+}
+
+func downloadSeedImage(ctx context.Context, sourceURL string) ([]byte, string, string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sourceURL, nil)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, "", "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, "", "", fmt.Errorf("download %s: unexpected status %s", sourceURL, resp.Status)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxSeedImageSize+1))
+	if err != nil {
+		return nil, "", "", err
+	}
+	if len(body) > maxSeedImageSize {
+		return nil, "", "", fmt.Errorf("download %s: image is larger than %d bytes", sourceURL, maxSeedImageSize)
+	}
+
+	detected := mimetype.Detect(body)
+	if !strings.HasPrefix(detected.String(), "image/") {
+		return nil, "", "", fmt.Errorf("download %s: unsupported mime type %s", sourceURL, detected.String())
+	}
+
+	return body, detected.String(), detected.Extension(), nil
 }

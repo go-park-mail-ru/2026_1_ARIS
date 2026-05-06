@@ -225,3 +225,22 @@ func TestNewRepost(t *testing.T) {
 	assert.Equal(t, chatID, repost.ChatID)
 	assert.Equal(t, postID, repost.PostID)
 }
+
+func TestNewSupportTicket(t *testing.T) {
+	ticket := NewSupportTicket(10, "neo", "neo@example.test", CategoryBug, "Bug", "Description")
+
+	assert.NotZero(t, ticket.ID)
+	assert.NotEqual(t, uuid.Nil, ticket.Uid)
+	assert.Equal(t, int64(10), ticket.ProfileID)
+	assert.Equal(t, "neo", ticket.Login)
+	assert.Equal(t, "neo@example.test", ticket.Email)
+	assert.Equal(t, CategoryBug, ticket.Category)
+	assert.Equal(t, "Bug", ticket.Title)
+	assert.Equal(t, "Description", ticket.Description)
+	assert.Equal(t, TicketStatusOpen, ticket.Status)
+	assert.Equal(t, TicketPriorityLow, ticket.Priority)
+	assert.Equal(t, 1, ticket.Line)
+	assert.Nil(t, ticket.ClosedAt)
+	assert.False(t, ticket.CreatedAt.IsZero())
+	assert.False(t, ticket.UpdatedAt.IsZero())
+}

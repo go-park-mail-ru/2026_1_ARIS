@@ -10,11 +10,14 @@ var SessionNotFound = errors.New("session not found")
 var FriendshipNotFound = errors.New("friendship not found")
 var MediaNotFound = errors.New("media not found")
 var PostNotFound = errors.New("post not found")
+var SupportTicketNotFound = errors.New("support ticket not found")
 var ErrUserSettingsNotFound = errors.New("user settings not found")
 
 var ErrNothingToUpdate = errors.New("no fields provided for update")
 
 var NoRowsAffected = errors.New("affected on 0 rows")
+
+var SupportForbidden = errors.New("support access forbidden")
 
 var AllreadyExists = errors.New("Resource already exists")
 

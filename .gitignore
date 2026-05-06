@@ -1,8 +1,12 @@
 .env
 .env.compose
+.env.server
 docker/.env
 aris-server
 .DS_Store
 .gocache/
+.tmp/
 coverage.out
 coverage.out.tmp
+.codex
+config/nginx.local.conf

@@ -94,6 +94,21 @@ func (mr *MockPostRepoMockRecorder) GetByAuthorID(arg0, arg1 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByAuthorID", reflect.TypeOf((*MockPostRepo)(nil).GetByAuthorID), arg0, arg1)
 }
 
+// GetByCommunityID mocks base method.
+func (m *MockPostRepo) GetByCommunityID(arg0 context.Context, arg1 int64) ([]models.Post, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByCommunityID", arg0, arg1)
+	ret0, _ := ret[0].([]models.Post)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByCommunityID indicates an expected call of GetByCommunityID.
+func (mr *MockPostRepoMockRecorder) GetByCommunityID(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByCommunityID", reflect.TypeOf((*MockPostRepo)(nil).GetByCommunityID), arg0, arg1)
+}
+
 // List mocks base method.
 func (m *MockPostRepo) List(arg0 context.Context, arg1, arg2 int) ([]models.Post, error) {
 	m.ctrl.T.Helper()

@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package aris.media.v1;
+
+option go_package = "github.com/go-park-mail-ru/2026_1_ARIS/proto/media;mediapb";
+
+service MediaService {
+  rpc GetMediaURL(GetMediaURLRequest) returns (GetMediaURLResponse);
+  rpc GetMedia(GetMediaRequest) returns (GetMediaResponse);
+}
+
+message GetMediaURLRequest {
+  int64 media_id = 1;
+}
+
+message GetMediaURLResponse {
+  string url = 1;
+}
+
+message GetMediaRequest {
+  int64 media_id = 1;
+}
+
+message GetMediaResponse {
+  int64 media_id = 1;
+  string uid = 2;
+  string mime_type = 3;
+  string url = 4;
+}

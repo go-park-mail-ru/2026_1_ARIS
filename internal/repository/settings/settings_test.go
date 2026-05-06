@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	hdto "github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
+	hdto "github.com/go-park-mail-ru/2026_1_ARIS/internal/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"

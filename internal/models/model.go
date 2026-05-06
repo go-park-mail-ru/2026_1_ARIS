@@ -30,10 +30,11 @@ const (
 type CommunityMemberRole string
 
 const (
-	Owner   CommunityMemberRole = "owner"
-	Admin   CommunityMemberRole = "admin"
-	Manager CommunityMemberRole = "manager"
-	Member  CommunityMemberRole = "member"
+	Owner     CommunityMemberRole = "owner"
+	Admin     CommunityMemberRole = "admin"
+	Moderator CommunityMemberRole = "moderator"
+	Member    CommunityMemberRole = "member"
+	Blocked   CommunityMemberRole = "blocked"
 )
 
 type FriendshipStatus string
@@ -52,6 +53,8 @@ const (
 	ReactionSad   ReactionType = "😢"
 	ReactionAngry ReactionType = "😡"
 )
+
+// type Gender int
 
 type Gender string
 
@@ -82,6 +85,122 @@ const (
 	ThemeLight ThemeSetting = "light"
 	ThemeDark  ThemeSetting = "dark"
 )
+
+type TicketCategory int
+
+const (
+	CategoryBug TicketCategory = iota
+	CategoryFeatureRequest
+	CotegoryComplaint
+	CategoryQuestion
+	CategoryOther
+)
+
+type TicketStatus int
+
+const (
+	TicketStatusOpen TicketStatus = iota
+	TicketStatusInProgress
+	TicketStatusWaitingUser
+	TicketStatusClosed
+)
+
+type TicketPriority int
+
+const (
+	TicketPriorityLow TicketPriority = iota
+	TicketPriorityMedium
+	TicketPriorityHigh
+)
+
+type SupportRole string
+
+const (
+	SupportRoleUser      SupportRole = "user"
+	SupportRoleSupportL1 SupportRole = "support_l1"
+	SupportRoleSupportL2 SupportRole = "support_l2"
+	SupportRoleAdmin     SupportRole = "admin"
+)
+
+type SupportProfileRole struct {
+	ProfileID int64       `db:"profile_id"`
+	Role      SupportRole `db:"role"`
+}
+
+type SupportTicket struct {
+	ID              int64          `db:"id"`
+	Uid             uuid.UUID      `db:"uid"`
+	ProfileID       int64          `db:"profile_id"`
+	Login           string         `db:"login"`
+	Email           string         `db:"email"`
+	Category        TicketCategory `db:"category"`
+	Title           string         `db:"title"`
+	Description     string         `db:"description"`
+	Status          TicketStatus   `db:"status"`
+	Priority        TicketPriority `db:"priority"`
+	Line            int            `db:"line"`
+	AssignedAgentID *int64         `db:"assigned_agent_id"`
+	Rating          *int           `db:"rating"`
+	CreatedAt       time.Time      `db:"created_at"`
+	UpdatedAt       time.Time      `db:"updated_at"`
+	ClosedAt        *time.Time     `db:"closed_at"`
+}
+
+func NewSupportTicket(profileID int64, login, email string, category TicketCategory, title, description string) *SupportTicket {
+	now := time.Now()
+
+	return &SupportTicket{
+		ID:          rand.Int64(),
+		Uid:         uuid.New(),
+		ProfileID:   profileID,
+		Login:       login,
+		Email:       email,
+		Category:    category,
+		Title:       title,
+		Description: description,
+		Status:      TicketStatusOpen,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+		ClosedAt:    nil,
+		Priority:    TicketPriorityLow,
+		Line:        1,
+	}
+}
+
+type TicketWithMedia struct {
+	TicketID int64 `db:"ticket_id"`
+	MediaID  int64 `db:"media_id"`
+	Order    int   `db:"sort_order"`
+}
+
+func NewTicketWithMedia(ticketID, mediaID int64, order int) *TicketWithMedia {
+	return &TicketWithMedia{
+		TicketID: ticketID,
+		MediaID:  mediaID,
+		Order:    order,
+	}
+}
+
+type SupportTicketStats struct {
+	TotalCount         int64            `json:"total"`
+	OpenCount          int64            `json:"open"`
+	InProgressCount    int64            `json:"inProgress"`
+	WaitingUserCount   int64            `json:"waitingUser"`
+	ClosedCount        int64            `json:"closed"`
+	ByCategory         map[string]int64 `json:"byCategory"`
+	ByLine             map[string]int64 `json:"byLine"`
+	AverageRating      *float64         `json:"avgRating"`
+	RatingDistribution map[string]int64 `json:"ratingDistribution"`
+}
+
+type SupportTicketMessage struct {
+	ID         int64       `db:"id"`
+	TicketID   int64       `db:"ticket_id"`
+	Text       string      `db:"text"`
+	AuthorID   int64       `db:"author_id"`
+	AuthorRole SupportRole `db:"author_role"`
+	CreatedAt  time.Time   `db:"created_at"`
+}
 
 // models structs
 // credentials данные
@@ -218,6 +337,7 @@ type Post struct {
 	Uid           uuid.UUID `db:"uid"`
 	Text          *string   `db:"post_text,omitempty"`
 	AuthorID      int64     `db:"author_id"` // to Profile
+	CommunityID   *int64    `db:"community_id"`
 	IsPublicDemo  bool      `db:"is_public_demo"`
 	AllowComments bool      `db:"allow_comments"`
 	IsActive      bool      `db:"is_active"`
@@ -322,29 +442,31 @@ type MessageWithMedia struct {
 }
 
 type Community struct {
-	ID        int64         `json:"id"`
-	Uid       uuid.UUID     `json:"uid"`
-	Title     string        `json:"title"`
-	Bio       *string       `json:"bio,omitempty"`
-	Type      CommunityType `json:"type"`
-	ProfileID int64         `json:"profileId"` // Abstract-Profile
-	IsActive  bool          `json:"isActive"`
-	CreatedAt time.Time     `json:"createdAt"`
-	UpdatedAt time.Time     `json:"updatedAt"`
+	ID           int64         `db:"id" json:"id"`
+	Uid          uuid.UUID     `db:"uid" json:"uid"`
+	Title        string        `db:"title" json:"title"`
+	Bio          *string       `db:"bio" json:"bio,omitempty"`
+	Type         CommunityType `db:"community_type" json:"type"`
+	ProfileID    int64         `db:"profile_id" json:"profileId"` // Abstract-Profile
+	Username     string        `db:"username" json:"username"`
+	CoverMediaID *int64        `db:"cover_media_id" json:"coverId,omitempty"`
+	IsActive     bool          `db:"is_active" json:"isActive"`
+	CreatedAt    time.Time     `db:"created_at" json:"createdAt"`
+	UpdatedAt    time.Time     `db:"updated_at" json:"updatedAt"`
 }
 
 // CommunityMember - represents a member in a community
 type CommunityMember struct {
-	ID          int64               `json:"id"`
-	Uid         uuid.UUID           `json:"uid"`
-	CommunityID int64               `json:"community"`
-	MemberID    int64               `json:"member"`
-	Role        CommunityMemberRole `json:"role"`
-	JoinedAt    time.Time           `json:"joinedAt"`
-	LeaveAt     *time.Time          `json:"leaveAt,omitempty"`
-	IsActive    bool                `json:"isActive"`
-	CreatedAt   time.Time           `json:"createdAt"`
-	UpdatedAt   time.Time           `json:"updatedAt"`
+	ID          int64               `db:"id" json:"id"`
+	Uid         uuid.UUID           `db:"uid" json:"uid"`
+	CommunityID int64               `db:"community_id" json:"community"`
+	MemberID    int64               `db:"profile_id" json:"member"`
+	Role        CommunityMemberRole `db:"community_role" json:"role"`
+	JoinedAt    time.Time           `db:"joined_at" json:"joinedAt"`
+	LeaveAt     *time.Time          `db:"leave_at" json:"leaveAt,omitempty"`
+	IsActive    bool                `db:"is_active" json:"isActive"`
+	CreatedAt   time.Time           `db:"created_at" json:"createdAt"`
+	UpdatedAt   time.Time           `db:"updated_at" json:"updatedAt"`
 }
 
 type Comment struct {

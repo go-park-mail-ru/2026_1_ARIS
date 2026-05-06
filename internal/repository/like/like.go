@@ -4,6 +4,7 @@ package like
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
@@ -11,6 +12,7 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 )
 
@@ -23,11 +25,15 @@ type LikeRepo interface {
 	Get(ctx context.Context, likeID int64) (*models.Like, error)
 	Save(ctx context.Context, like models.Like) (int64, error)
 	GetLikeCountOnPost(ctx context.Context, postID int64) int
+	GetPostLikeByAuthor(ctx context.Context, postID, authorID int64) (*models.Like, error)
+	SetActive(ctx context.Context, likeID int64, active bool) error
+	HasActivePostLike(ctx context.Context, postID, authorID int64) bool
 }
 
 type likeDB interface {
 	Query(context.Context, string, ...any) (pgx.Rows, error)
 	QueryRow(context.Context, string, ...any) pgx.Row
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
 }
 
 func NewLikeStorage(db likeDB) LikeRepo {
@@ -88,5 +94,66 @@ func (storage *likeStorage) Get(ctx context.Context, likeID int64) (*models.Like
 }
 
 func (storage *likeStorage) GetLikeCountOnPost(ctx context.Context, postID int64) int {
-	return 0
+	logger := logger.FromContext(ctx)
+	query := `SELECT COUNT(*) FROM like_record WHERE post_id=$1 AND is_active=TRUE`
+
+	start := time.Now()
+	row := storage.db.QueryRow(ctx, query, postID)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "LikeStorage.GetLikeCountOnPost"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
+
+	var count int64
+	if err := row.Scan(&count); err != nil {
+		return 0
+	}
+	return int(count)
+}
+
+func (storage *likeStorage) GetPostLikeByAuthor(ctx context.Context, postID, authorID int64) (*models.Like, error) {
+	logger := logger.FromContext(ctx)
+	query := `SELECT * FROM like_record WHERE post_id=$1 AND author_id=$2`
+
+	var like models.Like
+	start := time.Now()
+	err := pgxscan.Get(ctx, storage.db, &like, query, postID, authorID)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "LikeStorage.GetPostLikeByAuthor"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &like, nil
+}
+
+func (storage *likeStorage) SetActive(ctx context.Context, likeID int64, active bool) error {
+	logger := logger.FromContext(ctx)
+	query := `UPDATE like_record SET is_active=$1, updated_at=NOW() WHERE id=$2`
+
+	start := time.Now()
+	tag, err := storage.db.Exec(ctx, query, active, likeID)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "LikeStorage.SetActive"),
+			zap.Duration("duration_ms", time.Since(start)),
+		)
+	}
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return errors.New("like not found")
+	}
+	return nil
+}
+
+func (storage *likeStorage) HasActivePostLike(ctx context.Context, postID, authorID int64) bool {
+	like, err := storage.GetPostLikeByAuthor(ctx, postID, authorID)
+	return err == nil && like.IsActive
 }

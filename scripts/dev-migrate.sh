@@ -7,39 +7,45 @@ DB_PORT="${DB_PORT:-5432}"
 DB_USER="${DB_USER:?DB_USER is required}"
 DB_PASSWORD="${DB_PASSWORD:?DB_PASSWORD is required}"
 DB_NAME="${DB_NAME:?DB_NAME is required}"
+SSL_MODE="${SSL_MODE:-disable}"
+MIGRATIONS_PATH="${MIGRATIONS_PATH:-file://./db/migrations}"
+DATABASE_URL="${DATABASE_URL:-postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=${SSL_MODE}}"
 
 export PGPASSWORD="$DB_PASSWORD"
+export PATH="$(go env GOPATH)/bin:$PATH"
 
 echo "Waiting for PostgreSQL at ${DB_HOST}:${DB_PORT}..."
 until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1; do
   sleep 1
 done
 
-user_account_exists="$(
-  psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -tAc \
-    "SELECT EXISTS (
-      SELECT 1
-      FROM information_schema.tables
-      WHERE table_schema = 'public' AND table_name = 'user_account'
-    );"
-)"
-
-if [ "$user_account_exists" = "t" ]; then
-  echo "Database already initialized, skipping bootstrap."
-  exit 0
+if ! command -v migrate >/dev/null 2>&1; then
+  echo "Installing golang-migrate..."
+  go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 fi
 
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
-  -f ./db/migrations/000001_create_enums.up.sql
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
-  -f ./db/migrations/000002_create_functions.up.sql
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
-  -f ./db/migrations/000003_create_tables.up.sql
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
-  -f ./db/migrations/000004_create_triggers.up.sql
-psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
-  -f ./db/migrations/000005_create_index.up.sql
-# psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
-#   -f ./db/migrations/000006_fill_db.up.sql
+echo "Applying database migrations..."
+set +e
+migration_output="$(migrate -source "$MIGRATIONS_PATH" -database "$DATABASE_URL" up 2>&1)"
+migration_status=$?
+set -e
 
-echo "Development bootstrap completed."
+if [ "$migration_status" -ne 0 ]; then
+  case "$migration_output" in
+    *"no change"*)
+      echo "$migration_output"
+      echo "No new database migrations."
+      exit 0
+      ;;
+    *)
+      echo "$migration_output" >&2
+      exit "$migration_status"
+      ;;
+  esac
+fi
+
+if [ -n "$migration_output" ]; then
+  echo "$migration_output"
+fi
+
+echo "Database migrations completed."
