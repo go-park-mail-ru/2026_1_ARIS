@@ -1,4 +1,13 @@
 services:
+  prometheus:
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.external-url=${APP_ENDPOINT:-https://arisnet.ru}/prometheus/"
+      - "--web.route-prefix=/"
+
   grafana:
     environment:
       GF_SERVER_DOMAIN: ${APP_DOMAIN:-arisnet.ru}
