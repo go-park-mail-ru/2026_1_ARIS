@@ -262,5 +262,5 @@ logs-migrate:
 	
 coverage-excluding-mocks: clean
 	go test -count=1 ./... -coverprofile=coverage.out.tmp -coverpkg=./internal/...
-	cat coverage.out.tmp | grep -v -E "(mock|generated|pb\.go|mocks|_test\.go|/handler/|/repository/|/metrics|/middleware|/websocket|/utils|/models|/dto|/session/)" > coverage.out
+	cat coverage.out.tmp | grep -v -E "(/mock/|/mocks/|_mock\.go)" > coverage.out
 	go tool cover -func=coverage.out | grep total
