@@ -4,10 +4,46 @@ services:
     container_name: ARISNET-DB
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ../db/init:/docker-entrypoint-initdb.d:ro
     environment:
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_DB=${DB_NAME}
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:-${DB_PASSWORD}}
+      POSTGRES_USER: ${DB_ADMIN_USER:-${DB_USER}}
+      POSTGRES_DB: ${DB_NAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_MIGRATOR_USER: ${DB_MIGRATOR_USER:-aris_migrator}
+      DB_MIGRATOR_PASSWORD: ${DB_MIGRATOR_PASSWORD:-${DB_PASSWORD}}
+      DB_MONITOR_USER: ${DB_MONITOR_USER:-aris_monitor}
+      DB_MONITOR_PASSWORD: ${DB_MONITOR_PASSWORD:-${DB_PASSWORD}}
+      DB_AUTH_USER: ${DB_AUTH_USER:-aris_auth}
+      DB_AUTH_PASSWORD: ${DB_AUTH_PASSWORD:-${DB_PASSWORD}}
+      DB_MEDIA_USER: ${DB_MEDIA_USER:-aris_media}
+      DB_MEDIA_PASSWORD: ${DB_MEDIA_PASSWORD:-${DB_PASSWORD}}
+      DB_USER_SERVICE_USER: ${DB_USER_SERVICE_USER:-aris_user}
+      DB_USER_SERVICE_PASSWORD: ${DB_USER_SERVICE_PASSWORD:-${DB_PASSWORD}}
+      DB_POST_USER: ${DB_POST_USER:-aris_post}
+      DB_POST_PASSWORD: ${DB_POST_PASSWORD:-${DB_PASSWORD}}
+      DB_CHAT_USER: ${DB_CHAT_USER:-aris_chat}
+      DB_CHAT_PASSWORD: ${DB_CHAT_PASSWORD:-${DB_PASSWORD}}
+      DB_SUPPORT_USER: ${DB_SUPPORT_USER:-aris_support}
+      DB_SUPPORT_PASSWORD: ${DB_SUPPORT_PASSWORD:-${DB_PASSWORD}}
+      DB_COMMUNITY_USER: ${DB_COMMUNITY_USER:-aris_community}
+      DB_COMMUNITY_PASSWORD: ${DB_COMMUNITY_PASSWORD:-${DB_PASSWORD}}
+      DB_SEARCH_USER: ${DB_SEARCH_USER:-aris_search}
+      DB_SEARCH_PASSWORD: ${DB_SEARCH_PASSWORD:-${DB_PASSWORD}}
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - pg_stat_statements.track=all
+      - -c
+      - track_io_timing=on
+      - -c
+      - log_min_duration_statement=500
+      - -c
+      - log_lock_waits=on
+      - -c
+      - deadlock_timeout=1s
     ports:
       - 127.0.0.1:${DB_PORT}:5432
 
