@@ -8,11 +8,12 @@ endpoint_host="$(
   printf '%s' "${APP_ENDPOINT:-}" \
     | sed -E 's#^[a-zA-Z][a-zA-Z0-9+.-]*://##; s#/.*$##; s#:.*$##'
 )"
-default_cert_name="${endpoint_host:-${NGINX_SITE_NAME:-arisnet.ru}}"
+default_cert_name="${endpoint_host:-${APP_DOMAIN:-${NGINX_SITE_NAME:-arisnet.ru}}}"
 case "$default_cert_name" in
   arisnet.ru) default_server_name="arisnet.ru www.arisnet.ru" ;;
   *) default_server_name="$default_cert_name" ;;
 esac
+
 server_name="${NGINX_SERVER_NAME:-$default_server_name}"
 cert_name="${NGINX_CERT_NAME:-$default_cert_name}"
 health_path="${NGINX_HEALTH_PATH:-/nginx-health}"

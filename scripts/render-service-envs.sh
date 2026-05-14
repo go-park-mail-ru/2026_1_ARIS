@@ -1,0 +1,183 @@
+#!/usr/bin/env sh
+set -eu
+
+: "${DB_USER:?DB_USER is required}"
+: "${DB_PASSWORD:?DB_PASSWORD is required}"
+: "${DB_NAME:?DB_NAME is required}"
+: "${MINIO_BUCKET_NAME:?MINIO_BUCKET_NAME is required}"
+: "${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}"
+: "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}"
+
+SSL_MODE="${SSL_MODE:-disable}"
+POOL_MAX_CONNS="${POOL_MAX_CONNS:-10}"
+POOL_MAX_CONN_LIFETIME="${POOL_MAX_CONN_LIFETIME:-1h}"
+POOL_MAX_CONN_IDLE_TIME="${POOL_MAX_CONN_IDLE_TIME:-30m}"
+REDIS_DB="${REDIS_DB:-0}"
+REDIS_MAX_RETRIES="${REDIS_MAX_RETRIES:-3}"
+REDIS_DIAL_TIMEOUT="${REDIS_DIAL_TIMEOUT:-3s}"
+REDIS_TIMEOUT="${REDIS_TIMEOUT:-3s}"
+MINIO_USE_SSL="${MINIO_USE_SSL:-false}"
+APP_ENDPOINT="${APP_ENDPOINT:-http://localhost:${NGINX_PORT:-8080}}"
+case "$APP_ENDPOINT" in
+  ""|http://localhost:*|http://127.0.0.1:*|http://host.docker.internal:*)
+    REDIS_USER_PASSWORD="${REDIS_USER_PASSWORD:-local-redis-password}"
+    ;;
+  *)
+    : "${REDIS_USER_PASSWORD:?REDIS_USER_PASSWORD is required}"
+    ;;
+esac
+
+write_env() {
+  file="$1"
+  shift
+
+  mkdir -p "$(dirname "$file")"
+  umask 077
+  : > "$file"
+
+  while [ "$#" -gt 0 ]; do
+    key="$1"
+    value="$2"
+    shift 2
+
+    if [ "$key" = "" ]; then
+      printf '\n' >> "$file"
+    else
+      printf '%s=%s\n' "$key" "$value" >> "$file"
+    fi
+  done
+}
+
+write_env services/auth/.env \
+  AUTH_GRPC_PORT "${AUTH_GRPC_PORT:-8002}" \
+  AUTH_HTTP_PORT "${AUTH_HTTP_PORT:-8085}" \
+  "" "" \
+  LOGGER_LEVEL "${LOGGER_LEVEL:-info}" \
+  "" "" \
+  REDIS_ADDR redis:6379 \
+  REDIS_HOST redis \
+  REDIS_PORT 6379 \
+  REDIS_DB "$REDIS_DB" \
+  REDIS_USER_PASSWORD "$REDIS_USER_PASSWORD" \
+  REDIS_MAX_RETRIES "$REDIS_MAX_RETRIES" \
+  REDIS_DIAL_TIMEOUT "$REDIS_DIAL_TIMEOUT" \
+  REDIS_TIMEOUT "$REDIS_TIMEOUT" \
+  "" "" \
+  USER_GRPC_ADDR user:8004 \
+  MEDIA_GRPC_ADDR media:8003 \
+  SUPPORT_GRPC_ADDR support:8007
+
+write_env services/media/.env \
+  APP_ENDPOINT "$APP_ENDPOINT" \
+  MEDIA_GRPC_PORT 8003 \
+  MEDIA_HTTP_PORT 8081 \
+  "" "" \
+  DB_HOST db \
+  DB_PORT 5432 \
+  DB_USER "$DB_USER" \
+  DB_PASSWORD "$DB_PASSWORD" \
+  DB_NAME "$DB_NAME" \
+  SSL_MODE "$SSL_MODE" \
+  POOL_MAX_CONNS "$POOL_MAX_CONNS" \
+  POOL_MAX_CONN_LIFETIME "$POOL_MAX_CONN_LIFETIME" \
+  POOL_MAX_CONN_IDLE_TIME "$POOL_MAX_CONN_IDLE_TIME" \
+  "" "" \
+  MINIO_HOST minio \
+  MINIO_PORT 9000 \
+  MINIO_BUCKET_NAME "$MINIO_BUCKET_NAME" \
+  MINIO_ROOT_USER "$MINIO_ROOT_USER" \
+  MINIO_ROOT_PASSWORD "$MINIO_ROOT_PASSWORD" \
+  MINIO_USE_SSL "$MINIO_USE_SSL" \
+  "" "" \
+  USER_GRPC_ADDR user:8004 \
+  AUTH_GRPC_ADDR auth:8002
+
+write_env services/user/.env \
+  USER_GRPC_PORT 8004 \
+  USER_HTTP_PORT 8082 \
+  AUTH_GRPC_ADDR auth:8002 \
+  MEDIA_GRPC_ADDR media:8003 \
+  "" "" \
+  DB_HOST db \
+  DB_PORT 5432 \
+  DB_USER "$DB_USER" \
+  DB_PASSWORD "$DB_PASSWORD" \
+  DB_NAME "$DB_NAME" \
+  SSL_MODE "$SSL_MODE" \
+  POOL_MAX_CONNS "$POOL_MAX_CONNS" \
+  POOL_MAX_CONN_LIFETIME "$POOL_MAX_CONN_LIFETIME" \
+  POOL_MAX_CONN_IDLE_TIME "$POOL_MAX_CONN_IDLE_TIME"
+
+write_env services/post/.env \
+  POST_GRPC_PORT 8005 \
+  POST_HTTP_PORT 8083 \
+  "" "" \
+  DB_HOST db \
+  DB_PORT 5432 \
+  DB_USER "$DB_USER" \
+  DB_PASSWORD "$DB_PASSWORD" \
+  DB_NAME "$DB_NAME" \
+  SSL_MODE "$SSL_MODE" \
+  POOL_MAX_CONNS "$POOL_MAX_CONNS" \
+  POOL_MAX_CONN_LIFETIME "$POOL_MAX_CONN_LIFETIME" \
+  POOL_MAX_CONN_IDLE_TIME "$POOL_MAX_CONN_IDLE_TIME" \
+  "" "" \
+  USER_GRPC_ADDR user:8004 \
+  MEDIA_GRPC_ADDR media:8003 \
+  AUTH_GRPC_ADDR auth:8002 \
+  COMMUNITY_GRPC_ADDR community:8009
+
+write_env services/chat/.env \
+  CHAT_GRPC_PORT 8006 \
+  CHAT_HTTP_PORT 8084 \
+  "" "" \
+  DB_HOST db \
+  DB_PORT 5432 \
+  DB_USER "$DB_USER" \
+  DB_PASSWORD "$DB_PASSWORD" \
+  DB_NAME "$DB_NAME" \
+  SSL_MODE "$SSL_MODE" \
+  POOL_MAX_CONNS "$POOL_MAX_CONNS" \
+  POOL_MAX_CONN_LIFETIME "$POOL_MAX_CONN_LIFETIME" \
+  POOL_MAX_CONN_IDLE_TIME "$POOL_MAX_CONN_IDLE_TIME" \
+  "" "" \
+  USER_GRPC_ADDR user:8004 \
+  AUTH_GRPC_ADDR auth:8002
+
+write_env services/support/.env \
+  SUPPORT_GRPC_PORT "${SUPPORT_GRPC_PORT:-8007}" \
+  "" "" \
+  DB_HOST db \
+  DB_PORT 5432 \
+  DB_USER "$DB_USER" \
+  DB_PASSWORD "$DB_PASSWORD" \
+  DB_NAME "$DB_NAME" \
+  SSL_MODE "$SSL_MODE" \
+  POOL_MAX_CONNS "$POOL_MAX_CONNS" \
+  POOL_MAX_CONN_LIFETIME "$POOL_MAX_CONN_LIFETIME" \
+  POOL_MAX_CONN_IDLE_TIME "$POOL_MAX_CONN_IDLE_TIME"
+
+write_env services/community/.env \
+  COMMUNITY_GRPC_PORT 8009 \
+  COMMUNITY_HTTP_PORT 8087 \
+  "" "" \
+  DB_HOST db \
+  DB_PORT 5432 \
+  DB_USER "$DB_USER" \
+  DB_PASSWORD "$DB_PASSWORD" \
+  DB_NAME "$DB_NAME" \
+  SSL_MODE "$SSL_MODE" \
+  POOL_MAX_CONNS "$POOL_MAX_CONNS" \
+  POOL_MAX_CONN_LIFETIME "$POOL_MAX_CONN_LIFETIME" \
+  POOL_MAX_CONN_IDLE_TIME "$POOL_MAX_CONN_IDLE_TIME" \
+  "" "" \
+  USER_GRPC_ADDR user:8004 \
+  MEDIA_GRPC_ADDR media:8003 \
+  AUTH_GRPC_ADDR auth:8002
+
+write_env services/search/.env \
+  SEARCH_HTTP_PORT 8088 \
+  "" "" \
+  USER_GRPC_ADDR user:8004 \
+  COMMUNITY_GRPC_ADDR community:8009 \
+  MEDIA_GRPC_ADDR media:8003

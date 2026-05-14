@@ -1,9 +1,9 @@
-name: Deploy Staging
+name: Deploy Production
 
 on:
   push:
     branches:
-      - dev
+      - main
 
 jobs:
   deploy:
@@ -13,13 +13,13 @@ jobs:
       - name: Deploy backend via SSH
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.STAGING_DEPLOY_HOST }}
-          username: ${{ secrets.STAGING_DEPLOY_USER }}
-          key: ${{ secrets.STAGING_DEPLOY_SSH_KEY }}
+          host: ${{ secrets.PROD_DEPLOY_HOST }}
+          username: ${{ secrets.PROD_DEPLOY_USER }}
+          key: ${{ secrets.PROD_DEPLOY_SSH_KEY }}
           script: |
             set -euo pipefail
 
-            cd ${{ secrets.STAGING_DEPLOY_PATH }}
+            cd ${{ secrets.PROD_DEPLOY_PATH }}
             git fetch origin
-            git reset --hard origin/dev
+            git reset --hard origin/main
             sh scripts/deploy-remote.sh

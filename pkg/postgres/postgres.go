@@ -10,16 +10,22 @@ import (
 )
 
 func getConnectURL() (string, error) {
-	return fmt.Sprintf("host=%s port=%s user=%s password=%s database=%s pool_max_conns=%s pool_max_conn_lifetime=%s pool_max_conn_idle_time=%s sslmode=%s",
+	password := os.Getenv("DB_PASSWORD")
+	passwordPart := ""
+	if password != "" {
+		passwordPart = " password=" + password
+	}
+
+	return fmt.Sprintf("host=%s port=%s user=%s%s database=%s pool_max_conns=%s pool_max_conn_lifetime=%s pool_max_conn_idle_time=%s sslmode=%s",
 			utils.EnvString("DB_HOST", "db"),
 			utils.EnvString("DB_PORT", "5432"),
 			os.Getenv("DB_USER"),
-			os.Getenv("DB_PASSWORD"),
+			passwordPart,
 			utils.EnvString("DB_NAME", "ARIS-DB"),
 			utils.EnvString("POOL_MAX_CONNS", "10"),
 			utils.EnvString("POOL_MAX_CONN_LIFETIME", "1h"),
 			utils.EnvString("POOL_MAX_CONN_IDLE_TIME", "30m"),
-			os.Getenv("SSL_MODE")),
+			utils.EnvString("SSL_MODE", "disable")),
 		nil
 }
 
