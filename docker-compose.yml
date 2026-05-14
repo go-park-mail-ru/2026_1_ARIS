@@ -274,13 +274,14 @@ services:
       seed:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 8007"]
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8007 && nc -z 127.0.0.1 8086"]
       start_period: 3m
       interval: 5s
       timeout: 5s
       retries: 20
     ports:
       - "127.0.0.1:8007:8007"
+      - "127.0.0.1:8086:8086"
 
   community:
     profiles: ["microservices"]

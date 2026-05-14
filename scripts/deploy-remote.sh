@@ -53,6 +53,18 @@ require_not_5xx() {
   esac
 }
 
+require_status() {
+  path="$1"
+  expected="$2"
+  code="$(curl --output /dev/null --silent --show-error --max-time 15 --write-out '%{http_code}' "$BASE_URL$path")"
+  if [ "$code" = "$expected" ]; then
+    echo "[PASS] $path -> $code"
+  else
+    echo "[FAIL] $path -> $code, expected $expected" >&2
+    exit 1
+  fi
+}
+
 require_2xx '/'
 require_2xx '/health'
 curl --fail --silent --show-error "$BASE_URL/health" | grep '"status":"ok"'
@@ -77,6 +89,7 @@ require_not_5xx '/api/chats'
 require_not_5xx '/api/chats/'
 require_not_5xx '/api/support'
 require_not_5xx '/api/support/'
+require_status '/api/support/tickets/my' 401
 require_not_5xx '/api/communities'
 require_not_5xx '/api/communities/'
 require_not_5xx '/api/search?q=test'
