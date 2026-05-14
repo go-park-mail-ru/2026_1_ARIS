@@ -29,7 +29,7 @@ jobs:
             sh scripts/render-nginx-server-conf.sh
 
             docker compose --env-file ./.env.server \
-              -f ./docker-compose.dev.yml \
+              -f ./docker-compose.yml \
               -f ./docker-compose.server.yml \
               --profile microservices \
               up --build --force-recreate -d \
