@@ -17,7 +17,7 @@ docker compose --env-file ./.env.server \
   -f ./docker-compose.server.yml \
   --profile microservices \
   up --build --force-recreate -d \
-  auth media user post chat support community search nginx
+  auth media user post chat support community search prometheus grafana node-exporter nginx
 
 sleep 15
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-auth-1 .*healthy'
@@ -28,6 +28,9 @@ docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-media-1 .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-support-1 .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-community-1 .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-search-1 .*healthy'
+docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-prometheus-1 .*Up'
+docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-grafana-1 .*Up'
+docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-node-exporter-1 .*Up'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-nginx-1 .*healthy'
 
 BASE_URL="$APP_ENDPOINT"
@@ -53,6 +56,8 @@ require_not_5xx() {
 require_2xx '/'
 require_2xx '/health'
 curl --fail --silent --show-error "$BASE_URL/health" | grep '"status":"ok"'
+require_2xx '/metrics/api/health'
+require_2xx '/prometheus/-/healthy'
 require_2xx '/api/public/feed?limit=1'
 require_not_5xx '/api/auth'
 require_not_5xx '/api/auth/'
