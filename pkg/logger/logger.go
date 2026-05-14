@@ -7,9 +7,14 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func New() (*zap.Logger, error) {
+func New(level string) (*zap.Logger, error) {
+	logLevel, err := zap.ParseAtomicLevel(level)
+	if err != nil {
+		logLevel = zap.NewAtomicLevelAt(zapcore.InfoLevel)
+	}
+
 	logConf := zap.Config{
-		Level:            zap.NewAtomicLevelAt(zap.InfoLevel),
+		Level:            logLevel,
 		Development:      false,
 		Encoding:         "json",
 		OutputPaths:      []string{"stdout"},

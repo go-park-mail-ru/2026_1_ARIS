@@ -4,24 +4,28 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/config"
+	"github.com/go-park-mail-ru/2026_1_ARIS/utils"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"go.uber.org/zap"
 )
 
-// InitMinio подключается к Minio и создает бакет, если не существует
-// Бакет - это контейнер для хранения объектов в Minio. Он представляет собой пространство имен, в котором можно хранить и организовывать файлы и папки.
-func InitMinio(conf config.EnvConfig) (*minio.Client, error) {
+func initMinio() (*minio.Client, error) {
 	m := &minio.Client{}
 
 	// Подключение к Minio с использованием имени пользователя и пароля
-	client, err := minio.New(conf.MinioEndpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(conf.MinioRootUser, conf.MinioRootPassword, ""),
-		Secure: conf.MinioUseSSL,
-	})
+	client, err := minio.New(
+		fmt.Sprintf("%s:%s",
+			utils.EnvString("MINIO_HOST", "minio"),
+			utils.EnvString("MINIO_PORT", "9000")),
+		&minio.Options{
+			Creds:  credentials.NewStaticV4(os.Getenv("MINIO_ROOT_USER"), os.Getenv("MINIO_ROOT_PASSWORD"), ""),
+			Secure: utils.EnvBool("MINIO_USE_SSL", false),
+		})
+
 	if err != nil {
 		return nil, err
 	}
@@ -36,15 +40,17 @@ func GenerateMediaName(mediaUUID uuid.UUID, mediaSize int64, extension string) s
 	return fmt.Sprintf("%s-%d%s", mediaUUID.String(), mediaSize, extension)
 }
 
-func New(ctx context.Context, envConf config.EnvConfig, logger *zap.Logger) (*minio.Client, error) {
+// InitMinio подключается к Minio и создает бакет, если не существует
+// Бакет - это контейнер для хранения объектов в Minio. Он представляет собой пространство имен, в котором можно хранить и организовывать файлы и папки.
+func New(ctx context.Context, logger *zap.Logger) (*minio.Client, error) {
 	// создание MinIO клиента
-	minioClient, err := InitMinio(envConf)
+	minioClient, err := initMinio()
 	if err != nil {
 		return nil, fmt.Errorf("fail to initialize MinIO: %w", err)
 	}
 
 	// Проверка на существование бакета
-	exists, err := minioClient.BucketExists(ctx, envConf.MinioBucketName)
+	exists, err := minioClient.BucketExists(ctx, utils.EnvString("MINIO_BUCKET_NAME", "media"))
 	if err != nil {
 		return nil, fmt.Errorf("fail to chech MinIO bucket existition: %w", err)
 	}
@@ -53,7 +59,7 @@ func New(ctx context.Context, envConf config.EnvConfig, logger *zap.Logger) (*mi
 
 	// Если бакета нет - его нужно создать
 	if !exists {
-		err := minioClient.MakeBucket(ctx, envConf.MinioBucketName, minio.MakeBucketOptions{})
+		err := minioClient.MakeBucket(ctx, utils.EnvString("MINIO_BUCKET_NAME", "media"), minio.MakeBucketOptions{})
 		if err != nil {
 			return nil, fmt.Errorf("fail to create MinIO buchet: %w", err)
 		}
@@ -73,7 +79,7 @@ func New(ctx context.Context, envConf config.EnvConfig, logger *zap.Logger) (*mi
 					"s3:GetBucketLocation",
 					"s3:ListBucket",
 				},
-				"Resource": "arn:aws:s3:::" + envConf.MinioBucketName,
+				"Resource": "arn:aws:s3:::" + utils.EnvString("MINIO_BUCKET_NAME", "media"),
 			},
 			map[string]any{
 				"Effect": "Allow",
@@ -81,7 +87,7 @@ func New(ctx context.Context, envConf config.EnvConfig, logger *zap.Logger) (*mi
 					"AWS": "*",
 				},
 				"Action":   "s3:GetObject",
-				"Resource": "arn:aws:s3:::" + envConf.MinioBucketName + "/*",
+				"Resource": "arn:aws:s3:::" + utils.EnvString("MINIO_BUCKET_NAME", "media") + "/*",
 			},
 		},
 	}
@@ -91,7 +97,7 @@ func New(ctx context.Context, envConf config.EnvConfig, logger *zap.Logger) (*mi
 		return nil, fmt.Errorf("fail to marshal MinIO policy: %w", err)
 	}
 
-	err = minioClient.SetBucketPolicy(ctx, envConf.MinioBucketName, string(rawPolicy))
+	err = minioClient.SetBucketPolicy(ctx, utils.EnvString("MINIO_BUCKET_NAME", "media"), string(rawPolicy))
 	if err != nil {
 		return nil, fmt.Errorf("fail to set MinIO bucket policy: %w", err)
 	}

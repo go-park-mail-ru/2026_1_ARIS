@@ -1,19 +1,25 @@
 package redis
 
 import (
-	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/config"
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/go-park-mail-ru/2026_1_ARIS/utils"
 	"github.com/redis/go-redis/v9"
 )
 
-func GetRedisConnection(conf config.EnvConfig) *redis.Options {
+func getRedisOpts() *redis.Options {
+	dialTimeout, _ := time.ParseDuration(utils.EnvString("REDIS_DIAL_TIMEOUT", "3s"))
+	timeout, _ := time.ParseDuration(utils.EnvString("REDIS_TIMEOUT", "3s"))
+
 	return &redis.Options{
-		Addr: conf.RedisAddr,
-		//Username:     conf.RedisUsername,
-		Password:     conf.RedisPassword,
-		DB:           conf.RedisDB,
-		MaxRetries:   conf.RedisMaxRetries,
-		DialTimeout:  conf.RedisDialTimeout,
-		ReadTimeout:  conf.RedisTimeout,
-		WriteTimeout: conf.RedisTimeout,
+		Addr:         fmt.Sprintf("%s:%s", utils.EnvString("REDIS_HOST", "redis"), utils.EnvString("REDIS_PORT", "6379")),
+		Password:     os.Getenv("REDIS_USER_PASSWORD"),
+		DB:           utils.EnvInt("REDIS_DB", 0),
+		MaxRetries:   utils.EnvInt("REDIS_MAX_RETRIES", 3),
+		DialTimeout:  dialTimeout,
+		ReadTimeout:  timeout,
+		WriteTimeout: timeout,
 	}
 }

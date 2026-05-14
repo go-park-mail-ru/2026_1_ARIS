@@ -3,7 +3,6 @@ module github.com/go-park-mail-ru/2026_1_ARIS
 go 1.25.6
 
 require (
-	github.com/caarlos0/env/v11 v11.4.0
 	github.com/gabriel-vasile/mimetype v1.4.13
 	github.com/georgysavva/scany/v2 v2.1.4
 	github.com/go-chi/chi/v5 v5.2.5

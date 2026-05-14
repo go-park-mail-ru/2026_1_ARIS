@@ -25,5 +25,5 @@ services:
       timeout: 5s
       retries: 20
     volumes:
-      - ./config/nginx.container.server.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/config/nginx.container.server.conf:/etc/nginx/nginx.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro

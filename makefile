@@ -1,19 +1,20 @@
-.PHONY: test coverage clean dev down reset-db logs migrate mocks microservices microservices-up microservices-stop microservices-down microservices-reset server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop community-up community-stop search-up search-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update logs-auth logs-media logs-user logs-post logs-chat logs-support logs-community logs-search logs-nginx
+.PHONY: test coverage clean dev down reset-db logs migrate mocks microservices microservices-up microservices-rebuild microservices-monitoring-up microservices-full-up microservices-stop microservices-down microservices-reset local-up local-rebuild local-monitoring-up local-full-up local-stop local-down local-reset server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop community-up community-stop search-up search-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update logs-auth logs-media logs-user logs-post logs-chat logs-support logs-community logs-search logs-nginx
 
-COMPOSE_FILE=./docker-compose.dev.yml
-COMPOSE_ENV_FILE=./.env.compose
-COMPOSE=docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE)
+COMPOSE_FILE=./docker-compose.yml
+COMPOSE_ENV_FILE=./.env
+COMPOSE_PARALLEL_LIMIT ?= 2
+COMPOSE=COMPOSE_PARALLEL_LIMIT=$(COMPOSE_PARALLEL_LIMIT) docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE)
 COMPOSE_SERVER_FILE=./docker-compose.server.yml
 COMPOSE_SERVER_ENV_FILE=./.env.server
 COMPOSE_SERVER=docker compose --env-file $(COMPOSE_SERVER_ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_SERVER_FILE)
-COMPOSE_LOCAL=docker compose -f ./docker/docker-compose.yml --env-file ./.env
 MICROSERVICE_SERVICES=auth media user post chat support community search
 MICROSERVICE_INFRA=db redis minio
 MICROSERVICE_EDGE=nginx
 MICROSERVICE_MONITORING=prometheus grafana node-exporter
 MICROSERVICE_INIT=migrate
 MICROSERVICE_ALL=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE) $(MICROSERVICE_MONITORING) $(MICROSERVICE_INFRA)
-MICROSERVICE_RUNTIME=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE) $(MICROSERVICE_MONITORING)
+MICROSERVICE_RUNTIME=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE)
+MICROSERVICE_RUNTIME_FULL=$(MICROSERVICE_RUNTIME) $(MICROSERVICE_MONITORING)
 NGINX_SITE_NAME ?= arisnet.ru
 NGINX_SITES_AVAILABLE ?= /etc/nginx/sites-available
 NGINX_SITES_ENABLED ?= /etc/nginx/sites-enabled
@@ -59,34 +60,27 @@ migrate-force-down:
 migrate:
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
-# будет подтянут postgres:16
-db-up:
-	$(COMPOSE_LOCAL) up -d ARISNET-DB
-
-db-stop:
-	$(COMPOSE_LOCAL) stop ARISNET-DB
-
-s3-up:
-	$(COMPOSE_LOCAL) up -d ARISNET-MINIO
-
-s3-stop:
-	$(COMPOSE_LOCAL) stop ARISNET-MINIO
-
-services-up:
-	$(COMPOSE_LOCAL) up -d
-
-services-stop:
-	$(COMPOSE_LOCAL) stop
-
 microservices: microservices-up
 
 local-up: microservices-up
+local-rebuild: microservices-rebuild
+local-monitoring-up: microservices-monitoring-up
+local-full-up: microservices-full-up
 local-stop: microservices-stop
 local-down: microservices-down
 local-reset: microservices-reset
 
 microservices-up:
+	$(COMPOSE) --profile microservices up -d $(MICROSERVICE_RUNTIME)
+
+microservices-rebuild:
 	$(COMPOSE) --profile microservices up --build -d $(MICROSERVICE_RUNTIME)
+
+microservices-monitoring-up:
+	$(COMPOSE) --profile microservices up -d $(MICROSERVICE_MONITORING)
+
+microservices-full-up:
+	$(COMPOSE) --profile microservices up -d $(MICROSERVICE_RUNTIME_FULL)
 
 microservices-stop:
 	$(COMPOSE) stop $(MICROSERVICE_ALL)
@@ -134,7 +128,7 @@ server-nginx-update:
 
 server-nginx-install:
 	sudo mkdir -p $(NGINX_SITES_AVAILABLE) $(NGINX_SITES_ENABLED)
-	sudo install -m 0644 ./config/nginx.server.conf $(NGINX_SITES_AVAILABLE)/$(NGINX_SITE_NAME)
+	sudo install -m 0644 ./nginx/config/nginx.server.conf $(NGINX_SITES_AVAILABLE)/$(NGINX_SITE_NAME)
 	sudo ln -sfn $(NGINX_SITES_AVAILABLE)/$(NGINX_SITE_NAME) $(NGINX_SITES_ENABLED)/$(NGINX_SITE_NAME)
 	sudo nginx -t
 
@@ -238,11 +232,11 @@ logs-search:
 logs-nginx:
 	$(COMPOSE) logs -f nginx
 
-dev: local-up
+dev: server-up
 
-down: local-down
+down: server-down
 
-stop: local-stop
+stop: server-stop
 
 reset-db:
 	$(MAKE) microservices-reset

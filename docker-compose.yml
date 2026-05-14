@@ -1,0 +1,447 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "127.0.0.1:${DB_PORT}:5432"
+    volumes:
+      - aris_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+    ports:
+      - "127.0.0.1:${MINIO_PORT}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT}:9001"
+    volumes:
+      - aris_minio_data:/data
+
+  migrate:
+    image: golang:alpine
+    working_dir: /workspace/arisback
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      SSL_MODE: disable
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/workspace/arisback
+      - aris_go_bin:/go/bin
+      - aris_go_pkg:/go/pkg
+      - aris_go_build:/root/.cache/go-build
+    command: >
+      sh -c "
+      apk add --no-cache git ca-certificates postgresql-client &&
+      sh /workspace/arisback/scripts/dev-migrate.sh
+      "
+
+  seed:
+    image: golang:alpine
+    working_dir: /workspace/arisback
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      SSL_MODE: disable
+      POOL_MAX_CONNS: ${POOL_MAX_CONNS}
+      POOL_MAX_CONN_LIFETIME: ${POOL_MAX_CONN_LIFETIME}
+      POOL_MAX_CONN_IDLE_TIME: ${POOL_MAX_CONN_IDLE_TIME}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_USE_SSL: "false"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      minio:
+        condition: service_started
+    volumes:
+      - .:/workspace/arisback
+      - aris_go_pkg:/go/pkg
+      - aris_go_build:/root/.cache/go-build
+    command: >
+      sh -c "
+      apk add --no-cache git &&
+      go mod download &&
+      go run ./tools/seed/cmd
+      "
+
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+    container_name: ${REDIS_CONTAINER_NAME}
+    command: ["redis-server", "--requirepass", "${REDIS_USER_PASSWORD}", "--appendonly", "yes"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_USER_PASSWORD}
+    ports:
+      - "127.0.0.1:${REDIS_PUBLIC_PORT}:6379"
+    volumes:
+      - aris_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_USER_PASSWORD}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  auth:
+    profiles: ["microservices"]
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/auth/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+      support:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8002 && nc -z 127.0.0.1 8085"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:8002:8002"
+      - "127.0.0.1:8085:8085"
+
+  media:
+    profiles: ["microservices"]
+    build:
+      context: .
+      dockerfile: services/media/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/media/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8081 && nc -z 127.0.0.1 8003"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:8003:8003"
+      - "127.0.0.1:8081:8081"
+
+  user:
+    profiles: ["microservices"]
+    build:
+      context: .
+      dockerfile: services/user/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/user/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      media:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8004 && nc -z 127.0.0.1 8082"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:8004:8004"
+      - "127.0.0.1:8082:8082"
+
+  post:
+    profiles: ["microservices"]
+    build:
+      context: .
+      dockerfile: services/post/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/post/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      auth:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+      community:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8005 && nc -z 127.0.0.1 8083"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:8005:8005"
+      - "127.0.0.1:8083:8083"
+
+  chat:
+    profiles: ["microservices"]
+    build:
+      context: .
+      dockerfile: services/chat/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/chat/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      auth:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8084 && nc -z 127.0.0.1 8006"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:8006:8006"
+      - "127.0.0.1:8084:8084"
+
+  support:
+    profiles: ["microservices"]
+    build:
+      context: .
+      dockerfile: services/support/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/support/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8007"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:8007:8007"
+
+  community:
+    profiles: ["microservices"]
+    build:
+      context: .
+      dockerfile: services/community/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/community/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      auth:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8009 && nc -z 127.0.0.1 8087"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:8009:8009"
+      - "127.0.0.1:8087:8087"
+
+  search:
+    profiles: ["microservices"]
+    build:
+      context: .
+      dockerfile: services/search/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/search/.env
+    depends_on:
+      user:
+        condition: service_healthy
+      community:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8088"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:8088:8088"
+
+  prometheus:
+    profiles: ["microservices"]
+    image: prom/prometheus:v2.55.1
+    restart: unless-stopped
+    depends_on:
+      auth:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+      post:
+        condition: service_healthy
+      chat:
+        condition: service_healthy
+      support:
+        condition: service_healthy
+      community:
+        condition: service_healthy
+      search:
+        condition: service_healthy
+      node-exporter:
+        condition: service_started
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - aris_prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+
+  grafana:
+    profiles: ["microservices"]
+    image: grafana/grafana:11.3.0
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_started
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - aris_grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+  node-exporter:
+    profiles: ["microservices"]
+    image: prom/node-exporter:v1.8.2
+    restart: unless-stopped
+    pid: host
+    command:
+      - "--path.rootfs=/host"
+    ports:
+      - "127.0.0.1:${NODE_EXPORTER_PORT:-9100}:9100"
+    volumes:
+      - /:/host:ro,rslave
+
+  nginx:
+    profiles: ["microservices"]
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      auth:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+      post:
+        condition: service_healthy
+      chat:
+        condition: service_healthy
+      support:
+        condition: service_healthy
+      community:
+        condition: service_healthy
+      search:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${NGINX_PORT:-8080}:8080"
+    volumes:
+      - ./nginx/config/nginx.container.conf:/etc/nginx/nginx.conf:ro
+
+volumes:
+  aris_postgres_data:
+  aris_minio_data:
+  aris_go_bin:
+  aris_go_pkg:
+  aris_go_build:
+  aris_redis_data:
+  aris_prometheus_data:
+  aris_grafana_data:
