@@ -1,0 +1,25 @@
+name: Deploy Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy backend via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_DEPLOY_HOST }}
+          username: ${{ secrets.PROD_DEPLOY_USER }}
+          key: ${{ secrets.PROD_DEPLOY_SSH_KEY }}
+          script: |
+            set -euo pipefail
+
+            cd ${{ secrets.PROD_DEPLOY_PATH }}
+            git fetch origin
+            git reset --hard origin/main
+            sh scripts/deploy-remote.sh

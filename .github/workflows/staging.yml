@@ -1,0 +1,25 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy backend via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_DEPLOY_HOST }}
+          username: ${{ secrets.STAGING_DEPLOY_USER }}
+          key: ${{ secrets.STAGING_DEPLOY_SSH_KEY }}
+          script: |
+            set -euo pipefail
+
+            cd ${{ secrets.STAGING_DEPLOY_PATH }}
+            git fetch origin
+            git reset --hard origin/dev
+            sh scripts/deploy-remote.sh
