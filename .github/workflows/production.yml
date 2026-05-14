@@ -16,6 +16,7 @@ jobs:
           host: ${{ secrets.PROD_DEPLOY_HOST }}
           username: ${{ secrets.PROD_DEPLOY_USER }}
           key: ${{ secrets.PROD_DEPLOY_SSH_KEY }}
+          command_timeout: 30m
           script: |
             set -euo pipefail
 

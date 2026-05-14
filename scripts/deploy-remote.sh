@@ -7,6 +7,8 @@ set +a
 
 : "${APP_ENDPOINT:?APP_ENDPOINT is required}"
 
+export COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-2}"
+
 sh scripts/render-service-envs.sh
 sh scripts/render-nginx-server-conf.sh
 
