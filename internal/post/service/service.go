@@ -381,6 +381,9 @@ func (s *Service) getFeed(ctx context.Context, rawCursor string, limit int, publ
 
 	posts := make([]models.Post, 0, len(allPosts))
 	for _, post := range allPosts {
+		if post.CommunityID != nil {
+			continue
+		}
 		if publicOnly != post.IsPublicDemo {
 			continue
 		}

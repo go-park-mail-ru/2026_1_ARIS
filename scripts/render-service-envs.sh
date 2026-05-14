@@ -7,7 +7,6 @@ set -eu
 : "${MINIO_BUCKET_NAME:?MINIO_BUCKET_NAME is required}"
 : "${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}"
 : "${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}"
-: "${REDIS_USER_PASSWORD:?REDIS_USER_PASSWORD is required}"
 
 SSL_MODE="${SSL_MODE:-disable}"
 POOL_MAX_CONNS="${POOL_MAX_CONNS:-10}"
@@ -19,6 +18,14 @@ REDIS_DIAL_TIMEOUT="${REDIS_DIAL_TIMEOUT:-3s}"
 REDIS_TIMEOUT="${REDIS_TIMEOUT:-3s}"
 MINIO_USE_SSL="${MINIO_USE_SSL:-false}"
 APP_ENDPOINT="${APP_ENDPOINT:-http://localhost:${NGINX_PORT:-8080}}"
+case "$APP_ENDPOINT" in
+  ""|http://localhost:*|http://127.0.0.1:*|http://host.docker.internal:*)
+    REDIS_USER_PASSWORD="${REDIS_USER_PASSWORD:-local-redis-password}"
+    ;;
+  *)
+    : "${REDIS_USER_PASSWORD:?REDIS_USER_PASSWORD is required}"
+    ;;
+esac
 
 write_env() {
   file="$1"
