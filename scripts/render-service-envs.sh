@@ -146,6 +146,7 @@ write_env services/chat/.env \
 
 write_env services/support/.env \
   SUPPORT_GRPC_PORT "${SUPPORT_GRPC_PORT:-8007}" \
+  SUPPORT_HTTP_PORT "${SUPPORT_HTTP_PORT:-8086}" \
   "" "" \
   DB_HOST db \
   DB_PORT 5432 \
@@ -155,7 +156,11 @@ write_env services/support/.env \
   SSL_MODE "$SSL_MODE" \
   POOL_MAX_CONNS "$POOL_MAX_CONNS" \
   POOL_MAX_CONN_LIFETIME "$POOL_MAX_CONN_LIFETIME" \
-  POOL_MAX_CONN_IDLE_TIME "$POOL_MAX_CONN_IDLE_TIME"
+  POOL_MAX_CONN_IDLE_TIME "$POOL_MAX_CONN_IDLE_TIME" \
+  "" "" \
+  AUTH_GRPC_ADDR auth:8002 \
+  USER_GRPC_ADDR user:8004 \
+  MEDIA_GRPC_ADDR media:8003
 
 write_env services/community/.env \
   COMMUNITY_GRPC_PORT 8009 \
