@@ -1,4 +1,20 @@
 services:
+  prometheus:
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.external-url=${APP_ENDPOINT:-https://arisnet.ru}/prometheus/"
+      - "--web.route-prefix=/"
+
+  grafana:
+    environment:
+      GF_SERVER_DOMAIN: ${APP_DOMAIN:-arisnet.ru}
+      GF_SERVER_ROOT_URL: ${APP_ENDPOINT:-https://arisnet.ru}/metrics/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_SECURITY_CSRF_TRUSTED_ORIGINS: ${APP_ENDPOINT:-https://arisnet.ru}
+
   nginx:
     ports: !override
       - "80:80"
@@ -9,11 +25,5 @@ services:
       timeout: 5s
       retries: 20
     volumes:
-      - ./config/nginx.container.server.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/config/nginx.container.server.conf:/etc/nginx/nginx.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
-
-  backend:
-    profiles: ["local-monolith"]
-
-  frontend:
-    profiles: ["local-frontend"]

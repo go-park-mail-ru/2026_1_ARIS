@@ -3,12 +3,11 @@ package redis
 import (
 	"context"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/config"
 	"github.com/redis/go-redis/v9"
 )
 
-func InitRedis(ctx context.Context, conf config.EnvConfig) (*redis.Client, error) {
-	opt := GetRedisConnection(conf)
+func InitRedis(ctx context.Context) (*redis.Client, error) {
+	opt := getRedisOpts()
 
 	client := redis.NewClient(opt)
 

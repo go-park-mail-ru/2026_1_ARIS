@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
+	servicedto "github.com/go-park-mail-ru/2026_1_ARIS/internal/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
-	servicedto "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/dto"
 )
 
 var (

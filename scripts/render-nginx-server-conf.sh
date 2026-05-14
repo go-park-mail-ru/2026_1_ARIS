@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 set -eu
 
-template="${1:-config/nginx.container.server.conf.template}"
-output="${2:-config/nginx.container.server.conf}"
+template="${1:-nginx/config/nginx.container.server.conf.template}"
+output="${2:-nginx/config/nginx.container.server.conf}"
 
 endpoint_host="$(
   printf '%s' "${APP_ENDPOINT:-}" \

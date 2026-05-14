@@ -1,18 +1,20 @@
-.PHONY: test coverage clean dev down reset-db logs migrate backend-shell frontend-shell mocks microservices microservices-up microservices-stop microservices-down microservices-reset server-nginx-render server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop community-up community-stop search-up search-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update logs-auth logs-media logs-user logs-post logs-chat logs-support logs-community logs-search logs-nginx
+.PHONY: test coverage clean dev down reset-db logs migrate mocks microservices microservices-up microservices-rebuild microservices-monitoring-up microservices-full-up microservices-stop microservices-down microservices-reset local-up local-rebuild local-monitoring-up local-full-up local-stop local-down local-reset server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop community-up community-stop search-up search-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update logs-auth logs-media logs-user logs-post logs-chat logs-support logs-community logs-search logs-nginx
 
-COMPOSE_FILE=./docker-compose.dev.yml
-COMPOSE_ENV_FILE=./.env.compose
-COMPOSE=docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE)
+COMPOSE_FILE=./docker-compose.yml
+COMPOSE_ENV_FILE=./.env
+COMPOSE_PARALLEL_LIMIT ?= 2
+COMPOSE=COMPOSE_PARALLEL_LIMIT=$(COMPOSE_PARALLEL_LIMIT) docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE)
 COMPOSE_SERVER_FILE=./docker-compose.server.yml
 COMPOSE_SERVER_ENV_FILE=./.env.server
 COMPOSE_SERVER=docker compose --env-file $(COMPOSE_SERVER_ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_SERVER_FILE)
-COMPOSE_LOCAL=docker compose -f ./docker/docker-compose.yml --env-file ./.env
 MICROSERVICE_SERVICES=auth media user post chat support community search
 MICROSERVICE_INFRA=db redis minio
 MICROSERVICE_EDGE=nginx
+MICROSERVICE_MONITORING=prometheus grafana node-exporter
 MICROSERVICE_INIT=migrate
-MICROSERVICE_ALL=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE) $(MICROSERVICE_INFRA)
+MICROSERVICE_ALL=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE) $(MICROSERVICE_MONITORING) $(MICROSERVICE_INFRA)
 MICROSERVICE_RUNTIME=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE)
+MICROSERVICE_RUNTIME_FULL=$(MICROSERVICE_RUNTIME) $(MICROSERVICE_MONITORING)
 NGINX_SITE_NAME ?= arisnet.ru
 NGINX_SITES_AVAILABLE ?= /etc/nginx/sites-available
 NGINX_SITES_ENABLED ?= /etc/nginx/sites-enabled
@@ -34,6 +36,7 @@ mocks:
 	go generate ./...
 
 clean:
+	go clean -testcache
 	rm -f ./coverage.out ./coverage.out.tmp
 	touch ./coverage.out
 	touch ./coverage.out.tmp
@@ -57,38 +60,27 @@ migrate-force-down:
 migrate:
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
-# обновить конфигурацию сваггера
-swagger:
-	swag init -g main.go --dir ./cmd/server,./internal/handler/auth,./internal/handler/feed,./internal/handler/profile,./internal/handler/friend,./internal/handler/user,./internal/handler/proxy,./internal/handler/dto,./internal/service/dto,./internal/models --output docs
-
-# будет подтянут postgres:16
-db-up:
-	$(COMPOSE_LOCAL) up -d ARISNET-DB
-
-db-stop:
-	$(COMPOSE_LOCAL) stop ARISNET-DB
-
-s3-up:
-	$(COMPOSE_LOCAL) up -d ARISNET-MINIO
-
-s3-stop:
-	$(COMPOSE_LOCAL) stop ARISNET-MINIO
-
-services-up:
-	$(COMPOSE_LOCAL) up -d
-
-services-stop:
-	$(COMPOSE_LOCAL) stop
-
 microservices: microservices-up
 
 local-up: microservices-up
+local-rebuild: microservices-rebuild
+local-monitoring-up: microservices-monitoring-up
+local-full-up: microservices-full-up
 local-stop: microservices-stop
 local-down: microservices-down
 local-reset: microservices-reset
 
 microservices-up:
-	$(COMPOSE) --profile microservices up --build -d $(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE)
+	$(COMPOSE) --profile microservices up -d $(MICROSERVICE_RUNTIME)
+
+microservices-rebuild:
+	$(COMPOSE) --profile microservices up --build -d $(MICROSERVICE_RUNTIME)
+
+microservices-monitoring-up:
+	$(COMPOSE) --profile microservices up -d $(MICROSERVICE_MONITORING)
+
+microservices-full-up:
+	$(COMPOSE) --profile microservices up -d $(MICROSERVICE_RUNTIME_FULL)
 
 microservices-stop:
 	$(COMPOSE) stop $(MICROSERVICE_ALL)
@@ -139,7 +131,7 @@ server-nginx-update: server-nginx-render
 
 server-nginx-install:
 	sudo mkdir -p $(NGINX_SITES_AVAILABLE) $(NGINX_SITES_ENABLED)
-	sudo install -m 0644 ./config/nginx.server.conf $(NGINX_SITES_AVAILABLE)/$(NGINX_SITE_NAME)
+	sudo install -m 0644 ./nginx/config/nginx.server.conf $(NGINX_SITES_AVAILABLE)/$(NGINX_SITE_NAME)
 	sudo ln -sfn $(NGINX_SITES_AVAILABLE)/$(NGINX_SITE_NAME) $(NGINX_SITES_ENABLED)/$(NGINX_SITE_NAME)
 	sudo nginx -t
 
@@ -243,26 +235,18 @@ logs-search:
 logs-nginx:
 	$(COMPOSE) logs -f nginx
 
-dev:
-	$(COMPOSE) up --build -d
-	sh ./scripts/dev-ready.sh $(COMPOSE_ENV_FILE)
+dev: server-up
 
-down:
-	$(COMPOSE) down
+down: server-down
 
-stop:
-	$(COMPOSE) stop
+stop: server-stop
 
 reset-db:
-	$(COMPOSE) down -v
-	$(COMPOSE) up --build -d
-	sh ./scripts/dev-ready.sh $(COMPOSE_ENV_FILE)
+	$(MAKE) microservices-reset
+	$(MAKE) microservices-up
 
 logs:
-	$(COMPOSE) logs -f
-
-logs-backend:
-	$(COMPOSE) logs -f backend
+	$(COMPOSE) logs -f $(MICROSERVICE_RUNTIME)
 
 logs-redis:
 	$(COMPOSE) logs -f redis
@@ -272,14 +256,8 @@ logs-db:
 
 logs-migrate:
 	$(COMPOSE) logs -f migrate
-
-backend-shell:
-	$(COMPOSE) exec backend sh
-
-frontend-shell:
-	$(COMPOSE) exec frontend sh
 	
 coverage-excluding-mocks: clean
-	go test ./... -coverprofile=coverage.out.tmp -coverpkg=./internal/...
-	cat coverage.out.tmp | grep -v -E "(mock|generated|pb\.go|mocks|_test\.go)" > coverage.out
+	go test -count=1 ./... -coverprofile=coverage.out.tmp -coverpkg=./internal/...
+	cat coverage.out.tmp | grep -v -E "(/mock/|/mocks/|_mock\.go)" > coverage.out
 	go tool cover -func=coverage.out | grep total

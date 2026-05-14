@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	pgerrors "github.com/go-park-mail-ru/2026_1_ARIS/internal/utils/pg_errors"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"

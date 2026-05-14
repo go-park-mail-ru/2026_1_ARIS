@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/handler/dto"
+	"github.com/go-park-mail-ru/2026_1_ARIS/internal/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/post/repository"

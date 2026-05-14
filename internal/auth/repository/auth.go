@@ -7,11 +7,27 @@ import (
 	legacyuserprofile "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/user_profile"
 )
 
-type Store struct {
+type AuthRepo struct {
 	Accounts     legacyaccount.UserAccountRepo
 	Profiles     legacyprofile.ProfileRepo
 	UserProfiles legacyuserprofile.UserProfileRepo
 	Sessions     legacysession.SessionRepo
+}
+
+type Store = AuthRepo
+
+func NewAuthRepo(
+	accounts legacyaccount.UserAccountRepo,
+	profiles legacyprofile.ProfileRepo,
+	userProfiles legacyuserprofile.UserProfileRepo,
+	sessions legacysession.SessionRepo,
+) AuthRepo {
+	return AuthRepo{
+		Accounts:     accounts,
+		Profiles:     profiles,
+		UserProfiles: userProfiles,
+		Sessions:     sessions,
+	}
 }
 
 func NewStore(
@@ -20,10 +36,5 @@ func NewStore(
 	userProfiles legacyuserprofile.UserProfileRepo,
 	sessions legacysession.SessionRepo,
 ) Store {
-	return Store{
-		Accounts:     accounts,
-		Profiles:     profiles,
-		UserProfiles: userProfiles,
-		Sessions:     sessions,
-	}
+	return NewAuthRepo(accounts, profiles, userProfiles, sessions)
 }

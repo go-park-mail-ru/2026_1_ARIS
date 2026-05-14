@@ -6,7 +6,12 @@ aris-server
 .DS_Store
 .gocache/
 .tmp/
+.agents/
 coverage.out
 coverage.out.tmp
 .codex
-config/nginx.local.conf
+nginx/config/nginx.local.conf
+nginx/config/nginx-runtime/
+nginx/config/nginx-runtime
+nginx/nginx-runtime/
+nginx/nginx-runtime

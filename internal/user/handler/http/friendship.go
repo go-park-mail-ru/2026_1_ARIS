@@ -6,9 +6,9 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	servicedto "github.com/go-park-mail-ru/2026_1_ARIS/internal/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models/xerrors"
-	servicedto "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/dto"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/user/service"
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/utils"
 )

@@ -1,32 +1,41 @@
 package middleware
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/internal/models"
-	mock_service "github.com/go-park-mail-ru/2026_1_ARIS/internal/service/mocks"
 )
 
-func TestAuthMiddleware_ValidSession(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+type fakeSessionService struct {
+	session *models.Session
+	err     error
+}
 
-	mockSessSvc := mock_service.NewMockSessionService(ctrl)
-	middleware := AuthMiddleware(mockSessSvc)
+func (f fakeSessionService) Create(context.Context, int64) (*models.Session, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (f fakeSessionService) Get(context.Context, models.SessionID) (*models.Session, error) {
+	return f.session, f.err
+}
+
+func (f fakeSessionService) Delete(context.Context, models.SessionID) error {
+	return errors.New("not implemented")
+}
+
+func TestAuthMiddleware_ValidSession(t *testing.T) {
+	expectedUserID := int64(12)
+	middleware := AuthMiddleware(fakeSessionService{session: &models.Session{UserID: expectedUserID}})
 
 	// Запрос с кукой
 	req := httptest.NewRequest("GET", "/", nil)
 	req.AddCookie(&http.Cookie{Name: "session_id", Value: "valid-session-id"})
-
-	expectedUserID := int64(12)
-	mockSessSvc.EXPECT().
-		Get(gomock.Any(), models.SessionID("valid-session-id")).
-		Return(&models.Session{UserID: expectedUserID}, nil)
 
 	// nextHandler проверит, что user_id добавлен в контекст
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -41,11 +50,7 @@ func TestAuthMiddleware_ValidSession(t *testing.T) {
 }
 
 func TestAuthMiddleware_NoCookie(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockSessSvc := mock_service.NewMockSessionService(ctrl)
-	middleware := AuthMiddleware(mockSessSvc)
+	middleware := AuthMiddleware(fakeSessionService{})
 
 	req := httptest.NewRequest("GET", "/", nil)
 	// nextHandler не должен быть вызван
