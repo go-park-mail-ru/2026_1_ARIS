@@ -3,7 +3,8 @@ name: Deploy Production
 on:
   push:
     branches:
-      - main
+      # ВРЕМЕННО: деплоим прод из dev, пока не вернем релизную ветку на main.
+      - dev
 
 jobs:
   deploy:
@@ -22,5 +23,5 @@ jobs:
 
             cd ${{ secrets.PROD_DEPLOY_PATH }}
             git fetch origin
-            git reset --hard origin/main
+            git reset --hard origin/dev
             sh scripts/deploy-remote.sh
