@@ -568,7 +568,7 @@ func (s *Service) canEditPost(ctx context.Context, post models.Post, actorProfil
 		return false
 	}
 	role := normalizeCommunityRole(member.Role)
-	return role == models.Owner
+	return role == models.Owner || role == models.Admin || role == models.Moderator
 }
 
 func (s *Service) canDeletePost(ctx context.Context, post models.Post, actorProfileID int64) bool {

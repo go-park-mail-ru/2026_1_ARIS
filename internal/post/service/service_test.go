@@ -232,6 +232,48 @@ func TestUpdatePostReplacesTextAndMedia(t *testing.T) {
 	require.Equal(t, newText, *details.Text)
 }
 
+func TestUpdateCommunityPostAllowsModerator(t *testing.T) {
+	ctrl, m := newPostMocks(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	oldText := "old community post"
+	newText := "updated community post"
+	postID := int64(99)
+	communityID := int64(1)
+	communityProfileID := int64(20)
+	moderatorProfileID := int64(30)
+
+	expectPostProfile(m, ctx, 10, moderatorProfileID)
+	m.posts.EXPECT().Get(ctx, postID).Return(&models.Post{
+		ID:          postID,
+		Uid:         uuid.New(),
+		Text:        &oldText,
+		AuthorID:    communityProfileID,
+		CommunityID: &communityID,
+	}, nil)
+	m.communities.EXPECT().Get(ctx, communityID).Return(&models.Community{ID: communityID, ProfileID: communityProfileID}, nil)
+	m.communities.EXPECT().GetMember(ctx, communityID, moderatorProfileID).Return(&models.CommunityMember{Role: models.Moderator, IsActive: true}, nil)
+	m.posts.EXPECT().Update(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, post models.Post) error {
+		require.Equal(t, newText, *post.Text)
+		return nil
+	})
+	expectPostProfile(m, ctx, 10, moderatorProfileID)
+	m.posts.EXPECT().Get(ctx, postID).Return(&models.Post{
+		ID:          postID,
+		Uid:         uuid.New(),
+		Text:        &newText,
+		AuthorID:    communityProfileID,
+		CommunityID: &communityID,
+	}, nil)
+	expectPostDetailsDeps(m, ctx, postID, communityProfileID, moderatorProfileID)
+
+	details, err := m.service.UpdatePost(ctx, 10, postID, UpdateInput{Text: &newText})
+
+	require.NoError(t, err)
+	require.Equal(t, newText, *details.Text)
+}
+
 func TestLikeAndUnlikePost(t *testing.T) {
 	ctrl, m := newPostMocks(t)
 	defer ctrl.Finish()
