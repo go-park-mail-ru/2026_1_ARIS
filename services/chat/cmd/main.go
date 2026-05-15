@@ -17,6 +17,7 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/postgres"
 	authpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/auth"
 	chatpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/chat"
+	mediapb "github.com/go-park-mail-ru/2026_1_ARIS/proto/media"
 	userpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/user"
 	chatGRPC "github.com/go-park-mail-ru/2026_1_ARIS/services/chat/internal/handler/grpc"
 	chatHTTP "github.com/go-park-mail-ru/2026_1_ARIS/services/chat/internal/handler/http"
@@ -62,7 +63,13 @@ func main() {
 	}
 	defer authConn.Close()
 
-	chatUsecase := usecase.New(repository.NewStore(db), userpb.NewUserServiceClient(userConn))
+	mediaConn, err := grpc.NewClient(utils.EnvString("MEDIA_GRPC_ADDR", "localhost:8003"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		logg.Fatal("failed to connect media grpc", zap.Error(err))
+	}
+	defer mediaConn.Close()
+
+	chatUsecase := usecase.New(repository.NewStore(db), userpb.NewUserServiceClient(userConn), mediapb.NewMediaServiceClient(mediaConn))
 	hub := websocket.NewHub()
 	go hub.Run()
 

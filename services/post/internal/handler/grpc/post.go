@@ -45,6 +45,14 @@ func toProtoFeed(feed usecase.FeedResult) *postpb.FeedResponse {
 				MediaLink: media.URL,
 			})
 		}
+		files := make([]*postpb.Media, 0, len(post.Files))
+		for _, file := range post.Files {
+			files = append(files, &postpb.Media{
+				Id:        file.UID,
+				MimeType:  file.MimeType,
+				MediaLink: file.URL,
+			})
+		}
 		posts = append(posts, &postpb.FeedPost{
 			Id:   strconv.FormatInt(post.ID, 10),
 			Text: post.Text,
@@ -60,6 +68,7 @@ func toProtoFeed(feed usecase.FeedResult) *postpb.FeedResponse {
 			Comments:  int32(post.Comments),
 			Reposts:   int32(post.Reposts),
 			Medias:    medias,
+			Files:     files,
 		})
 	}
 	return &postpb.FeedResponse{Posts: posts, NextCursor: feed.Cursor, HasMore: feed.HasMore}

@@ -9,6 +9,7 @@ import (
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/chat/internal/model"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
@@ -21,16 +22,22 @@ type DB interface {
 }
 
 type Store struct {
-	Chats       ChatRepo
-	ChatMembers ChatMemberRepo
-	Messages    MessageRepo
+	Chats        ChatRepo
+	ChatMembers  ChatMemberRepo
+	Messages     MessageRepo
+	MessageMedia MessageMediaRepo
+	Stickers     StickerRepo
+	Reactions    ReactionRepo
 }
 
 func NewStore(db DB) Store {
 	return Store{
-		Chats:       NewChatStorage(db),
-		ChatMembers: NewChatMemberStorage(db),
-		Messages:    NewMessageStorage(db),
+		Chats:        NewChatStorage(db),
+		ChatMembers:  NewChatMemberStorage(db),
+		Messages:     NewMessageStorage(db),
+		MessageMedia: NewMessageMediaStorage(db),
+		Stickers:     NewStickerStorage(db),
+		Reactions:    NewReactionStorage(db),
 	}
 }
 
@@ -155,9 +162,13 @@ func NewMessageStorage(db DB) MessageRepo {
 
 func (s *messageStorage) Save(ctx context.Context, msg *model.Message) error {
 	start := time.Now()
-	query := `INSERT INTO message (uid, message_text, chat_id, author_id) VALUES ($1, $2, $3, $4) RETURNING id`
+	query := `
+		INSERT INTO message (uid, message_text, parent_message_id, chat_id, sticker_id, author_id)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id
+	`
 	var id int64
-	err := s.db.QueryRow(ctx, query, msg.Uid, msg.Text, msg.ChatID, msg.AuthorID).Scan(&id)
+	err := s.db.QueryRow(ctx, query, msg.Uid, msg.Text, msg.ParentMessageID, msg.ChatID, msg.StickerID, msg.AuthorID).Scan(&id)
 	logQuery(ctx, "messageStorage.Save", start)
 	if err != nil {
 		return err
@@ -236,6 +247,252 @@ func (s *messageStorage) Delete(ctx context.Context, id int64) error {
 	_, err := s.db.Exec(ctx, `UPDATE message SET is_active=false WHERE id=$1`, id)
 	logQuery(ctx, "messageStorage.Delete", start)
 	return err
+}
+
+type MessageMediaRepo interface {
+	Save(ctx context.Context, item model.MessageMedia) error
+	GetByMessageIDs(ctx context.Context, messageIDs []int64) (map[int64][]model.MessageMedia, error)
+	GetMediaAuthorID(ctx context.Context, mediaID int64) (int64, error)
+	DeleteByMessageID(ctx context.Context, messageID int64) error
+}
+
+type messageMediaStorage struct {
+	db DB
+}
+
+func NewMessageMediaStorage(db DB) MessageMediaRepo {
+	return &messageMediaStorage{db: db}
+}
+
+func (s *messageMediaStorage) Save(ctx context.Context, item model.MessageMedia) error {
+	start := time.Now()
+	tag, err := s.db.Exec(ctx, `
+		INSERT INTO message_with_media (message_id, media_id, sort_order)
+		VALUES ($1, $2, $3)
+	`, item.MessageID, item.MediaID, item.Order)
+	logQuery(ctx, "messageMediaStorage.Save", start)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return errors.New("message media not saved")
+	}
+	return nil
+}
+
+func (s *messageMediaStorage) GetByMessageIDs(ctx context.Context, messageIDs []int64) (map[int64][]model.MessageMedia, error) {
+	result := make(map[int64][]model.MessageMedia, len(messageIDs))
+	if len(messageIDs) == 0 {
+		return result, nil
+	}
+	start := time.Now()
+	rows, err := s.db.Query(ctx, `
+		SELECT mwm.message_id, mwm.media_id, mwm.sort_order, m.uid AS media_uid, m.mime_type, m.link
+		FROM message_with_media mwm
+		JOIN media m ON m.id=mwm.media_id AND m.is_active=TRUE
+		WHERE mwm.message_id=ANY($1)
+		ORDER BY mwm.message_id, mwm.sort_order
+	`, messageIDs)
+	logQuery(ctx, "messageMediaStorage.GetByMessageIDs", start)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item model.MessageMedia
+		if err := rows.Scan(&item.MessageID, &item.MediaID, &item.Order, &item.MediaUID, &item.MimeType, &item.Link); err != nil {
+			return nil, err
+		}
+		result[item.MessageID] = append(result[item.MessageID], item)
+	}
+	return result, rows.Err()
+}
+
+func (s *messageMediaStorage) GetMediaAuthorID(ctx context.Context, mediaID int64) (int64, error) {
+	start := time.Now()
+	row := s.db.QueryRow(ctx, `SELECT author_id FROM media WHERE id=$1 AND is_active=TRUE`, mediaID)
+	logQuery(ctx, "messageMediaStorage.GetMediaAuthorID", start)
+
+	var authorID int64
+	if err := row.Scan(&authorID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, errors.New("media not found")
+		}
+		return 0, err
+	}
+	return authorID, nil
+}
+
+func (s *messageMediaStorage) DeleteByMessageID(ctx context.Context, messageID int64) error {
+	start := time.Now()
+	_, err := s.db.Exec(ctx, `DELETE FROM message_with_media WHERE message_id=$1`, messageID)
+	logQuery(ctx, "messageMediaStorage.DeleteByMessageID", start)
+	return err
+}
+
+type StickerRepo interface {
+	Get(ctx context.Context, id int64) (*model.Sticker, error)
+	ListPacks(ctx context.Context, limit, offset int) ([]model.StickerPack, error)
+	ListByPackID(ctx context.Context, packID int64, limit, offset int) ([]model.Sticker, error)
+}
+
+type stickerStorage struct {
+	db DB
+}
+
+func NewStickerStorage(db DB) StickerRepo {
+	return &stickerStorage{db: db}
+}
+
+func (s *stickerStorage) Get(ctx context.Context, id int64) (*model.Sticker, error) {
+	start := time.Now()
+	var sticker model.Sticker
+	err := pgxscan.Get(ctx, s.db, &sticker, `
+		SELECT s.id, s.uid, s.size, s.sort_order, s.pack_id, s.media_id,
+		       m.uid AS media_uid, m.mime_type, m.link,
+		       s.is_active, s.created_at, s.updated_at
+		FROM sticker s
+		LEFT JOIN media m ON m.id=s.media_id AND m.is_active=TRUE
+		WHERE s.id=$1 AND s.is_active=TRUE
+	`, id)
+	logQuery(ctx, "stickerStorage.Get", start)
+	if err != nil {
+		if pgxscan.NotFound(err) {
+			return nil, errors.New("sticker not found")
+		}
+		return nil, err
+	}
+	return &sticker, nil
+}
+
+func (s *stickerStorage) ListPacks(ctx context.Context, limit, offset int) ([]model.StickerPack, error) {
+	start := time.Now()
+	var packs []model.StickerPack
+	err := pgxscan.Select(ctx, s.db, &packs, `
+		SELECT *
+		FROM sticker_pack
+		WHERE is_active=TRUE
+		ORDER BY created_at DESC, id DESC
+		LIMIT $1 OFFSET $2
+	`, limit, offset)
+	logQuery(ctx, "stickerStorage.ListPacks", start)
+	if err != nil && !pgxscan.NotFound(err) {
+		return nil, err
+	}
+	return packs, nil
+}
+
+func (s *stickerStorage) ListByPackID(ctx context.Context, packID int64, limit, offset int) ([]model.Sticker, error) {
+	start := time.Now()
+	var stickers []model.Sticker
+	err := pgxscan.Select(ctx, s.db, &stickers, `
+		SELECT s.id, s.uid, s.size, s.sort_order, s.pack_id, s.media_id,
+		       m.uid AS media_uid, m.mime_type, m.link,
+		       s.is_active, s.created_at, s.updated_at
+		FROM sticker s
+		LEFT JOIN media m ON m.id=s.media_id AND m.is_active=TRUE
+		WHERE s.pack_id=$1 AND s.is_active=TRUE
+		ORDER BY s.sort_order ASC, s.id ASC
+		LIMIT $2 OFFSET $3
+	`, packID, limit, offset)
+	logQuery(ctx, "stickerStorage.ListByPackID", start)
+	if err != nil && !pgxscan.NotFound(err) {
+		return nil, err
+	}
+	return stickers, nil
+}
+
+type ReactionRepo interface {
+	Upsert(ctx context.Context, messageID, authorID int64, reactionType string) error
+	Delete(ctx context.Context, messageID, authorID int64) error
+	GetSummaryByMessageIDs(ctx context.Context, messageIDs []int64) (map[int64][]model.ReactionSummary, error)
+	GetUserReactionsByMessageIDs(ctx context.Context, messageIDs []int64, authorID int64) (map[int64]string, error)
+}
+
+type reactionStorage struct {
+	db DB
+}
+
+func NewReactionStorage(db DB) ReactionRepo {
+	return &reactionStorage{db: db}
+}
+
+func (s *reactionStorage) Upsert(ctx context.Context, messageID, authorID int64, reactionType string) error {
+	start := time.Now()
+	_, err := s.db.Exec(ctx, `
+		INSERT INTO reaction (uid, message_id, author_id, reaction_type, is_active)
+		VALUES ($4, $1, $2, $3::reaction_type, TRUE)
+		ON CONFLICT (message_id, author_id)
+		DO UPDATE SET reaction_type=$3::reaction_type, is_active=TRUE, updated_at=NOW()
+	`, messageID, authorID, reactionType, uuid.New())
+	logQuery(ctx, "reactionStorage.Upsert", start)
+	return err
+}
+
+func (s *reactionStorage) Delete(ctx context.Context, messageID, authorID int64) error {
+	start := time.Now()
+	_, err := s.db.Exec(ctx, `UPDATE reaction SET is_active=FALSE, updated_at=NOW() WHERE message_id=$1 AND author_id=$2`, messageID, authorID)
+	logQuery(ctx, "reactionStorage.Delete", start)
+	return err
+}
+
+func (s *reactionStorage) GetSummaryByMessageIDs(ctx context.Context, messageIDs []int64) (map[int64][]model.ReactionSummary, error) {
+	result := make(map[int64][]model.ReactionSummary, len(messageIDs))
+	if len(messageIDs) == 0 {
+		return result, nil
+	}
+	start := time.Now()
+	rows, err := s.db.Query(ctx, `
+		SELECT message_id, reaction_type::text, COUNT(*)::int
+		FROM reaction
+		WHERE message_id=ANY($1) AND is_active=TRUE
+		GROUP BY message_id, reaction_type
+		ORDER BY message_id, reaction_type
+	`, messageIDs)
+	logQuery(ctx, "reactionStorage.GetSummaryByMessageIDs", start)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var messageID int64
+		var summary model.ReactionSummary
+		if err := rows.Scan(&messageID, &summary.Type, &summary.Count); err != nil {
+			return nil, err
+		}
+		result[messageID] = append(result[messageID], summary)
+	}
+	return result, rows.Err()
+}
+
+func (s *reactionStorage) GetUserReactionsByMessageIDs(ctx context.Context, messageIDs []int64, authorID int64) (map[int64]string, error) {
+	result := make(map[int64]string, len(messageIDs))
+	if len(messageIDs) == 0 || authorID <= 0 {
+		return result, nil
+	}
+	start := time.Now()
+	rows, err := s.db.Query(ctx, `
+		SELECT message_id, reaction_type::text
+		FROM reaction
+		WHERE message_id=ANY($1) AND author_id=$2 AND is_active=TRUE
+	`, messageIDs, authorID)
+	logQuery(ctx, "reactionStorage.GetUserReactionsByMessageIDs", start)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var messageID int64
+		var reactionType string
+		if err := rows.Scan(&messageID, &reactionType); err != nil {
+			return nil, err
+		}
+		result[messageID] = reactionType
+	}
+	return result, rows.Err()
 }
 
 func escapeMessages(messages []model.Message) {

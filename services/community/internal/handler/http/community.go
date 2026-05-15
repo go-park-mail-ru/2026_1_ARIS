@@ -26,6 +26,7 @@ func (h *Handler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler)
 			r.Use(authMiddleware)
 		}
 		r.Get("/communities", h.List)
+		r.Post("/communities/check-exists", h.CheckExists)
 		r.Get("/communities/{id}", h.Get)
 		r.Get("/communities/by-profile/{profileID}", h.GetByProfileID)
 		r.Get("/communities/{id}/members", h.ListMembers)
@@ -136,6 +137,28 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.WriteJSON(w, http.StatusOK, mapDetails(details))
+}
+
+func (h *Handler) CheckExists(w http.ResponseWriter, r *http.Request) {
+	var req communityExistenceRequest
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	result, err := h.community.CheckExists(r.Context(), usecase.CheckExistsInput{
+		Title:    req.Title,
+		Username: req.Username,
+	})
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, communityExistenceResponse{
+		Exists:         result.Exists,
+		TitleExists:    result.TitleExists,
+		UsernameExists: result.UsernameExists,
+	})
 }
 
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {

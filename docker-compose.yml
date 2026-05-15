@@ -248,6 +248,8 @@ services:
         condition: service_healthy
       user:
         condition: service_healthy
+      media:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 8084 && nc -z 127.0.0.1 8006"]
       start_period: 3m

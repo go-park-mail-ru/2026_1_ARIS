@@ -18,6 +18,7 @@ import (
 
 type MediaRepo interface {
 	Get(ctx context.Context, id int64) (*models.Media, error)
+	GetIDByName(ctx context.Context, name string) (int64, error)
 	Save(ctx context.Context, media models.Media) (int64, error)
 	GetLink(ctx context.Context, id int64) (string, error)
 	UpdateLink(ctx context.Context, id int64, newLink string) error
@@ -61,6 +62,25 @@ func (storage *mediaStorage) Get(ctx context.Context, id int64) (*models.Media, 
 	}
 
 	return &media, err
+}
+
+func (storage *mediaStorage) GetIDByName(ctx context.Context, name string) (int64, error) {
+	logger := logger.FromContext(ctx)
+	query := `SELECT id FROM media WHERE media_name=$1 AND is_active=TRUE ORDER BY id LIMIT 1`
+
+	start := time.Now()
+	row := storage.db.QueryRow(ctx, query, name)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "GetMediaIDByName"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
+
+	var mediaID int64
+	if err := row.Scan(&mediaID); err != nil {
+		return 0, err
+	}
+	return mediaID, nil
 }
 
 func (storage *mediaStorage) Save(ctx context.Context, media models.Media) (int64, error) {

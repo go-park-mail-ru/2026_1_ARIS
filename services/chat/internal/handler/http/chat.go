@@ -33,6 +33,10 @@ func (h *Handler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler)
 		r.Get("/chats/{chatID}/messages", h.GetMessages)
 		r.Post("/chats/{chatID}/messages", h.SendMessage)
 		r.Put("/chats/{chatID}/messages/{messageID}", h.UpdateMessage)
+		r.Put("/chats/{chatID}/messages/{messageID}/reaction", h.SetMessageReaction)
+		r.Delete("/chats/{chatID}/messages/{messageID}/reaction", h.DeleteMessageReaction)
+		r.Get("/sticker-packs", h.GetStickerPacks)
+		r.Get("/sticker-packs/{packID}/stickers", h.GetStickersByPack)
 	})
 }
 
@@ -114,13 +118,13 @@ func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req textRequest
+	var req messageRequest
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, "неверный формат запроса", http.StatusBadRequest)
 		return
 	}
-	msg, err := h.chat.SendMessage(r.Context(), userID, chatID, req.Text)
+	msg, err := h.chat.SendMessage(r.Context(), userID, chatID, mapMessageInput(req))
 	if err != nil {
 		writeServiceError(w, err)
 		return
@@ -139,7 +143,7 @@ func (h *Handler) UpdateMessage(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req textRequest
+	var req messageRequest
 	defer r.Body.Close()
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, "неверный формат запроса", http.StatusBadRequest)
@@ -152,6 +156,95 @@ func (h *Handler) UpdateMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	resp := mapMessage(msg)
 	h.broadcast(msg.ChatID, resp)
+	utils.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) GetStickerPacks(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	limit := parseBoundedInt(r.URL.Query().Get("limit"), 50, 1, 100)
+	offset := parseBoundedInt(r.URL.Query().Get("offset"), 0, 0, 1<<30)
+	packs, err := h.chat.GetStickerPacks(r.Context(), userID, limit, offset)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	resp := make([]StickerPackResponse, 0, len(packs))
+	for _, pack := range packs {
+		resp = append(resp, mapStickerPack(pack))
+	}
+	utils.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) SetMessageReaction(w http.ResponseWriter, r *http.Request) {
+	userID, chatID, ok := h.userAndChatID(w, r)
+	if !ok {
+		return
+	}
+	messageID, ok := parsePathID(w, chi.URLParam(r, "messageID"), "неверный ID сообщения")
+	if !ok {
+		return
+	}
+	var req reactionRequest
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, "неверный формат запроса", http.StatusBadRequest)
+		return
+	}
+	msg, err := h.chat.SetMessageReaction(r.Context(), userID, chatID, messageID, req.Type)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	resp := mapMessage(msg)
+	h.broadcast(chatID, resp)
+	utils.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) DeleteMessageReaction(w http.ResponseWriter, r *http.Request) {
+	userID, chatID, ok := h.userAndChatID(w, r)
+	if !ok {
+		return
+	}
+
+	messageID, ok := parsePathID(w, chi.URLParam(r, "messageID"), "неверный ID сообщения")
+	if !ok {
+		return
+	}
+
+	msg, err := h.chat.DeleteMessageReaction(r.Context(), userID, chatID, messageID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	resp := mapMessage(msg)
+	h.broadcast(chatID, resp)
+	utils.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) GetStickersByPack(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	packID, ok := parsePathID(w, chi.URLParam(r, "packID"), "неверный ID набора")
+	if !ok {
+		return
+	}
+	limit := parseBoundedInt(r.URL.Query().Get("limit"), 100, 1, 200)
+	offset := parseBoundedInt(r.URL.Query().Get("offset"), 0, 0, 1<<30)
+	stickers, err := h.chat.GetStickersByPack(r.Context(), userID, packID, limit, offset)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	resp := make([]StickerResponse, 0, len(stickers))
+	for _, sticker := range stickers {
+		resp = append(resp, mapSticker(sticker))
+	}
 	utils.WriteJSON(w, http.StatusOK, resp)
 }
 
@@ -269,12 +362,12 @@ func (h *Handler) handleSocketMessage(ctx context.Context, chatIDRaw string, use
 		return nil, usecase.ErrInvalidInput
 	}
 
-	var req textRequest
+	var req messageRequest
 	if err := json.Unmarshal(payload, &req); err != nil {
 		return nil, err
 	}
 
-	msg, err := h.chat.SendMessage(ctx, userID, chatID, req.Text)
+	msg, err := h.chat.SendMessage(ctx, userID, chatID, mapMessageInput(req))
 	if err != nil {
 		return nil, err
 	}
@@ -305,10 +398,83 @@ func mapMessage(message usecase.Message) MessageResponse {
 		ChatID:          strconv.FormatInt(message.ChatID, 10),
 		AuthorID:        strconv.FormatInt(message.AuthorID, 10),
 		StickerID:       int64PtrString(message.StickerID),
+		Sticker:         mapStickerPtr(message.Sticker),
+		Media:           mapAttachments(message.Media),
+		Files:           mapAttachments(message.Files),
+		Reactions:       mapReactions(message.Reactions),
+		MyReaction:      message.MyReaction,
 		IsActive:        message.IsActive,
 		CreatedAt:       message.CreatedAt.Format(time.RFC3339Nano),
 		UpdatedAt:       message.UpdatedAt.Format(time.RFC3339Nano),
 	}
+}
+
+func mapMessageInput(req messageRequest) usecase.MessageInput {
+	return usecase.MessageInput{
+		Text:            req.Text,
+		ParentMessageID: req.ParentMessageID,
+		StickerID:       req.StickerID,
+		Media:           mapAttachmentInputs(req.Media),
+		Files:           mapAttachmentInputs(req.Files),
+	}
+}
+
+func mapAttachmentInputs(items []attachmentRequest) []usecase.AttachmentInput {
+	result := make([]usecase.AttachmentInput, 0, len(items))
+	for _, item := range items {
+		result = append(result, usecase.AttachmentInput{MediaID: item.MediaID})
+	}
+	return result
+}
+
+func mapAttachments(items []usecase.Attachment) []AttachmentResponse {
+	result := make([]AttachmentResponse, 0, len(items))
+	for _, item := range items {
+		result = append(result, AttachmentResponse{
+			ID:       strconv.FormatInt(item.ID, 10),
+			Uid:      item.UID,
+			MimeType: item.MimeType,
+			URL:      item.URL,
+		})
+	}
+	return result
+}
+
+func mapStickerPack(pack usecase.StickerPack) StickerPackResponse {
+	return StickerPackResponse{
+		ID:        strconv.FormatInt(pack.ID, 10),
+		Uid:       pack.UID,
+		Title:     pack.Title,
+		CreatedAt: pack.CreatedAt.Format(time.RFC3339Nano),
+		UpdatedAt: pack.UpdatedAt.Format(time.RFC3339Nano),
+	}
+}
+
+func mapStickerPtr(sticker *usecase.Sticker) *StickerResponse {
+	if sticker == nil {
+		return nil
+	}
+	resp := mapSticker(*sticker)
+	return &resp
+}
+
+func mapSticker(sticker usecase.Sticker) StickerResponse {
+	return StickerResponse{
+		ID:       strconv.FormatInt(sticker.ID, 10),
+		Uid:      sticker.UID,
+		PackID:   int64PtrString(sticker.PackID),
+		MediaID:  int64PtrString(sticker.MediaID),
+		MimeType: sticker.MimeType,
+		URL:      sticker.URL,
+	}
+}
+
+func mapReactions(items []usecase.ReactionSummary) []ReactionResponse {
+	result := make([]ReactionResponse, 0, len(items))
+	for _, item := range items {
+		result = append(result, ReactionResponse{Type: item.Type, Count: item.Count})
+	}
+	return result
 }
 
 func int64PtrString(value *int64) *string {

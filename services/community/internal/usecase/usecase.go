@@ -50,6 +50,17 @@ type UpdateInput struct {
 	RemoveCover  *bool
 }
 
+type CheckExistsInput struct {
+	Title    string
+	Username string
+}
+
+type CheckExistsResult struct {
+	Exists         bool
+	TitleExists    bool
+	UsernameExists bool
+}
+
 type Permissions struct {
 	CanEditCommunity   bool
 	CanDeleteCommunity bool
@@ -284,6 +295,23 @@ func (s *Service) Update(ctx context.Context, userAccountID, communityID int64, 
 		}
 	}
 	return s.decorate(ctx, *updated, viewerProfileID)
+}
+
+func (s *Service) CheckExists(ctx context.Context, input CheckExistsInput) (*CheckExistsResult, error) {
+	title := strings.TrimSpace(input.Title)
+	username := normalizeUsername(input.Username)
+	if title == "" || len(title) > 64 || len(username) < 3 || len(username) > 20 {
+		return nil, ErrInvalidInput
+	}
+	titleExists, usernameExists, err := s.communities.ExistsByTitleOrUsername(ctx, title, username)
+	if err != nil {
+		return nil, err
+	}
+	return &CheckExistsResult{
+		Exists:         titleExists || usernameExists,
+		TitleExists:    titleExists,
+		UsernameExists: usernameExists,
+	}, nil
 }
 
 func (s *Service) Delete(ctx context.Context, userAccountID, communityID int64) error {
