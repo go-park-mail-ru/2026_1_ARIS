@@ -273,6 +273,10 @@ services:
         condition: service_completed_successfully
       seed:
         condition: service_completed_successfully
+      user:
+        condition: service_healthy
+      media:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 8007 && nc -z 127.0.0.1 8086"]
       start_period: 3m

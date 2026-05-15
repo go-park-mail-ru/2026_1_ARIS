@@ -13,18 +13,18 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
-	mediarepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/repository/media"
-	supportGRPC "github.com/go-park-mail-ru/2026_1_ARIS/internal/support/handler/grpc"
-	supportHTTP "github.com/go-park-mail-ru/2026_1_ARIS/internal/support/handler/http"
-	supportrepo "github.com/go-park-mail-ru/2026_1_ARIS/internal/support/repository"
-	supportsvc "github.com/go-park-mail-ru/2026_1_ARIS/internal/support/service"
-	"github.com/go-park-mail-ru/2026_1_ARIS/internal/websocket"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/postgres"
 	authpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/auth"
 	mediapb "github.com/go-park-mail-ru/2026_1_ARIS/proto/media"
 	supportpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/support"
 	userpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/user"
+	supportGRPC "github.com/go-park-mail-ru/2026_1_ARIS/services/support/internal/handler/grpc"
+	supportHTTP "github.com/go-park-mail-ru/2026_1_ARIS/services/support/internal/handler/http"
+	"github.com/go-park-mail-ru/2026_1_ARIS/services/support/internal/model"
+	supportrepo "github.com/go-park-mail-ru/2026_1_ARIS/services/support/internal/repository"
+	supportsvc "github.com/go-park-mail-ru/2026_1_ARIS/services/support/internal/usecase"
+	"github.com/go-park-mail-ru/2026_1_ARIS/services/support/internal/websocket"
 	"github.com/go-park-mail-ru/2026_1_ARIS/utils"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
@@ -72,8 +72,11 @@ func main() {
 
 	ticketService := supportsvc.NewTicketService(
 		supportrepo.NewTicketStorage(db),
-		mediarepo.NewMediaStorage(db),
-		mediapb.NewMediaServiceClient(mediaConn),
+		supportsvc.Clients{
+			Auth:  authpb.NewAuthServiceClient(authConn),
+			User:  userpb.NewUserServiceClient(userConn),
+			Media: mediapb.NewMediaServiceClient(mediaConn),
+		},
 	)
 	seedSupportAdmins(ctx, logg, ticketService, 1, 2, 3, 4)
 
@@ -95,12 +98,7 @@ func main() {
 	hub := websocket.NewHub()
 	go hub.Run()
 
-	httpHandler := supportHTTP.NewSupportHandler(
-		authSessionService{client: authpb.NewAuthServiceClient(authConn)},
-		grpcUserService{client: userpb.NewUserServiceClient(userConn)},
-		ticketService,
-		hub,
-	)
+	httpHandler := supportHTTP.NewSupportHandler(ticketService, hub)
 	router := chi.NewRouter()
 	router.Use(chimiddleware.Recoverer)
 	router.Route("/api/support", func(r chi.Router) {
@@ -142,7 +140,7 @@ func main() {
 
 func seedSupportAdmins(ctx context.Context, logg *zap.Logger, service supportsvc.TicketService, profileIDs ...int64) {
 	for _, profileID := range profileIDs {
-		if err := supportsvc.MakeProfileAdmin(ctx, service, profileID); err != nil {
+		if err := service.SetProfileRole(ctx, profileID, model.SupportRoleAdmin); err != nil {
 			logg.Warn("failed to seed support admin", zap.Int64("profile_id", profileID), zap.Error(err))
 		}
 	}

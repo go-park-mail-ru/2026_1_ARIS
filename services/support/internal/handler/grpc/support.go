@@ -12,10 +12,10 @@ import (
 
 type Server struct {
 	supportpb.UnimplementedSupportServiceServer
-	support *usecase.Service
+	support usecase.TicketService
 }
 
-func New(support *usecase.Service) *Server {
+func New(support usecase.TicketService) *Server {
 	return &Server{support: support}
 }
 
