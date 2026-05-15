@@ -12,11 +12,21 @@ export COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-2}"
 sh scripts/render-service-envs.sh
 sh scripts/render-nginx-server-conf.sh
 
-docker compose --env-file ./.env.server \
-  -f ./docker-compose.yml \
-  -f ./docker-compose.server.yml \
-  --profile microservices \
-  up --build --force-recreate -d \
+compose() {
+  docker compose --env-file ./.env.server \
+    -f ./docker-compose.yml \
+    -f ./docker-compose.server.yml \
+    --profile microservices \
+    "$@"
+}
+
+echo "Building backend services in batches of 2..."
+compose build auth media
+compose build user post
+compose build chat support
+compose build community search
+
+compose up --no-build --force-recreate -d \
   auth media user post chat support community search prometheus grafana node-exporter nginx
 
 sleep 15
