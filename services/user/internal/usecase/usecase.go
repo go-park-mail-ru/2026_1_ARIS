@@ -2,7 +2,10 @@ package usecase
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"math/rand"
 	"strings"
 	"time"
@@ -45,6 +48,17 @@ type CreateAuthUserInput struct {
 	LastName     string
 	Birthday     string
 	Gender       model.Gender
+}
+
+type GetOrCreateOAuthUserInput struct {
+	Provider       string
+	ProviderUserID string
+	Username       string
+	Email          *string
+	FirstName      string
+	LastName       string
+	Birthday       string
+	Gender         model.Gender
 }
 
 type Credentials struct {
@@ -189,6 +203,80 @@ func (s *Service) CreateAuthUser(ctx context.Context, in CreateAuthUserInput) (*
 	}
 
 	return s.GetAuthUserByAccount(ctx, accountID)
+}
+
+func (s *Service) GetOrCreateOAuthUser(ctx context.Context, in GetOrCreateOAuthUserInput) (*AuthUser, error) {
+	provider := normalizeUsername(in.Provider)
+	providerUserID := strings.TrimSpace(in.ProviderUserID)
+	if provider == "" || providerUserID == "" || s.store.OAuth == nil {
+		return nil, ErrInvalidInput
+	}
+
+	accountID, err := s.store.OAuth.GetUserAccountID(ctx, provider, providerUserID)
+	if err == nil {
+		if err := s.syncOAuthProfile(ctx, accountID, in); err != nil {
+			return nil, err
+		}
+		return s.GetAuthUserByAccount(ctx, accountID)
+	}
+	if !errors.Is(err, repository.ErrUserAccountNotFound) {
+		return nil, err
+	}
+
+	username, err := s.availableOAuthUsername(ctx, provider, providerUserID, in.Username)
+	if err != nil {
+		return nil, err
+	}
+
+	birthday := oauthBirthday(in.Birthday)
+	firstName := normalizeProfileName(in.FirstName, "VKID")
+	lastName := normalizeProfileName(in.LastName, "User")
+	email := normalizeOptionalEmail(in.Email)
+
+	accountID, err = s.store.Accounts.Save(ctx, *model.NewUserAccount(username, nil, nil, oauthPasswordHash(provider, providerUserID)))
+	if err != nil {
+		return nil, err
+	}
+
+	profileID, err := s.store.Profiles.Save(ctx, *model.NewProfile(nil))
+	if err != nil {
+		return nil, err
+	}
+
+	userProfile := model.NewUserProfile(accountID, profileID, firstName, lastName, nil, birthday, normalizeGender(in.Gender))
+	if _, err := s.store.UserProfiles.Save(ctx, *userProfile); err != nil {
+		return nil, err
+	}
+
+	if err := s.store.OAuth.Save(ctx, provider, providerUserID, accountID, email); err != nil {
+		return nil, err
+	}
+
+	return s.GetAuthUserByAccount(ctx, accountID)
+}
+
+func (s *Service) syncOAuthProfile(ctx context.Context, accountID int64, in GetOrCreateOAuthUserInput) error {
+	userProfile, err := s.store.UserProfiles.GetByUserAccountID(ctx, accountID)
+	if err != nil {
+		return normalizeUserProfileError(err)
+	}
+
+	update := repository.UserProfileUpdate{ID: userProfile.ID}
+	if firstName := normalizeProfileName(in.FirstName, ""); firstName != "" && firstName != userProfile.FirstName {
+		update.FirstName = &firstName
+	}
+	if lastName := normalizeProfileName(in.LastName, ""); lastName != "" && lastName != userProfile.LastName {
+		update.LastName = &lastName
+	}
+	gender := normalizeGender(in.Gender)
+	if in.Gender != "" && gender != userProfile.Gender {
+		update.Gender = &gender
+	}
+
+	if !update.HasUpdates() {
+		return nil
+	}
+	return s.store.UserProfiles.Update(ctx, update)
 }
 
 func (s *Service) GetCredentialsByLogin(ctx context.Context, login string) (*Credentials, error) {
@@ -598,6 +686,105 @@ func (s *Service) RevokeFriendRequest(ctx context.Context, userAccountID int64, 
 
 func normalizeUsername(value string) string {
 	return strings.ToLower(strings.TrimSpace(value))
+}
+
+func (s *Service) availableOAuthUsername(ctx context.Context, provider, providerUserID, preferred string) (string, error) {
+	base := normalizeOAuthUsername(preferred)
+	if base == "" {
+		base = normalizeOAuthUsername(provider + providerUserID)
+	}
+	if base == "" {
+		base = "oauthuser"
+	}
+
+	for attempt := 0; attempt < 10; attempt++ {
+		candidate := oauthUsernameCandidate(base, provider, providerUserID, attempt)
+		available, err := s.CheckUsernameAvailable(ctx, candidate)
+		if err != nil {
+			return "", err
+		}
+		if available {
+			return candidate, nil
+		}
+	}
+
+	return "", ErrUsernameTaken
+}
+
+func oauthUsernameCandidate(base, provider, providerUserID string, attempt int) string {
+	if attempt == 0 && len(base) <= 20 {
+		return base
+	}
+
+	hash := sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%d", provider, providerUserID, attempt)))
+	suffix := hex.EncodeToString(hash[:])[:6]
+	maxBaseLen := 20 - len(suffix)
+	if len(base) > maxBaseLen {
+		base = base[:maxBaseLen]
+	}
+	return base + suffix
+}
+
+func normalizeOAuthUsername(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	var builder strings.Builder
+	for _, r := range value {
+		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
+			builder.WriteRune(r)
+		}
+	}
+	result := builder.String()
+	if len(result) > 20 {
+		result = result[:20]
+	}
+	if len(result) >= 3 {
+		return result
+	}
+	return ""
+}
+
+func normalizeProfileName(value, fallback string) string {
+	value = strings.TrimSpace(value)
+	var builder strings.Builder
+	for _, r := range value {
+		if isProfileNameRune(r) {
+			builder.WriteRune(r)
+		}
+		if builder.Len() >= 255 {
+			break
+		}
+	}
+	if builder.Len() == 0 {
+		return fallback
+	}
+	return builder.String()
+}
+
+func isProfileNameRune(r rune) bool {
+	return r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || r >= 'А' && r <= 'я' || r == 'Ё' || r == 'ё'
+}
+
+func normalizeOptionalEmail(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	email := strings.TrimSpace(*value)
+	if email == "" {
+		return nil
+	}
+	return &email
+}
+
+func oauthBirthday(value string) time.Time {
+	if parsed, err := time.Parse(time.DateOnly, strings.TrimSpace(value)); err == nil {
+		return parsed
+	}
+	return time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+}
+
+func oauthPasswordHash(provider, providerUserID string) string {
+	hash := sha256.Sum256([]byte(provider + ":" + providerUserID))
+	return "oauth:" + hex.EncodeToString(hash[:])
 }
 
 func (s *Service) buildProfileDetails(ctx context.Context, account *model.UserAccount, userProfile *model.UserProfile, profile *model.Profile) *ProfileDetails {

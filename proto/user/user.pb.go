@@ -242,6 +242,106 @@ func (x *CreateAuthUserRequest) GetGender() Gender {
 	return Gender_GENDER_UNSPECIFIED
 }
 
+type GetOrCreateOAuthUserRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Provider       string                 `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
+	ProviderUserId string                 `protobuf:"bytes,2,opt,name=provider_user_id,json=providerUserId,proto3" json:"provider_user_id,omitempty"`
+	Username       string                 `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
+	Email          *string                `protobuf:"bytes,4,opt,name=email,proto3,oneof" json:"email,omitempty"`
+	FirstName      string                 `protobuf:"bytes,5,opt,name=first_name,json=firstName,proto3" json:"first_name,omitempty"`
+	LastName       string                 `protobuf:"bytes,6,opt,name=last_name,json=lastName,proto3" json:"last_name,omitempty"`
+	Birthday       string                 `protobuf:"bytes,7,opt,name=birthday,proto3" json:"birthday,omitempty"`
+	Gender         Gender                 `protobuf:"varint,8,opt,name=gender,proto3,enum=aris.user.v1.Gender" json:"gender,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetOrCreateOAuthUserRequest) Reset() {
+	*x = GetOrCreateOAuthUserRequest{}
+	mi := &file_proto_user_user_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOrCreateOAuthUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOrCreateOAuthUserRequest) ProtoMessage() {}
+
+func (x *GetOrCreateOAuthUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_user_user_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOrCreateOAuthUserRequest.ProtoReflect.Descriptor instead.
+func (*GetOrCreateOAuthUserRequest) Descriptor() ([]byte, []int) {
+	return file_proto_user_user_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GetOrCreateOAuthUserRequest) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *GetOrCreateOAuthUserRequest) GetProviderUserId() string {
+	if x != nil {
+		return x.ProviderUserId
+	}
+	return ""
+}
+
+func (x *GetOrCreateOAuthUserRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *GetOrCreateOAuthUserRequest) GetEmail() string {
+	if x != nil && x.Email != nil {
+		return *x.Email
+	}
+	return ""
+}
+
+func (x *GetOrCreateOAuthUserRequest) GetFirstName() string {
+	if x != nil {
+		return x.FirstName
+	}
+	return ""
+}
+
+func (x *GetOrCreateOAuthUserRequest) GetLastName() string {
+	if x != nil {
+		return x.LastName
+	}
+	return ""
+}
+
+func (x *GetOrCreateOAuthUserRequest) GetBirthday() string {
+	if x != nil {
+		return x.Birthday
+	}
+	return ""
+}
+
+func (x *GetOrCreateOAuthUserRequest) GetGender() Gender {
+	if x != nil {
+		return x.Gender
+	}
+	return Gender_GENDER_UNSPECIFIED
+}
+
 type GetCredentialsByLoginRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Login         string                 `protobuf:"bytes,1,opt,name=login,proto3" json:"login,omitempty"`
@@ -251,7 +351,7 @@ type GetCredentialsByLoginRequest struct {
 
 func (x *GetCredentialsByLoginRequest) Reset() {
 	*x = GetCredentialsByLoginRequest{}
-	mi := &file_proto_user_user_proto_msgTypes[3]
+	mi := &file_proto_user_user_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -263,7 +363,7 @@ func (x *GetCredentialsByLoginRequest) String() string {
 func (*GetCredentialsByLoginRequest) ProtoMessage() {}
 
 func (x *GetCredentialsByLoginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_user_user_proto_msgTypes[3]
+	mi := &file_proto_user_user_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -276,7 +376,7 @@ func (x *GetCredentialsByLoginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCredentialsByLoginRequest.ProtoReflect.Descriptor instead.
 func (*GetCredentialsByLoginRequest) Descriptor() ([]byte, []int) {
-	return file_proto_user_user_proto_rawDescGZIP(), []int{3}
+	return file_proto_user_user_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetCredentialsByLoginRequest) GetLogin() string {
@@ -296,7 +396,7 @@ type GetCredentialsByLoginResponse struct {
 
 func (x *GetCredentialsByLoginResponse) Reset() {
 	*x = GetCredentialsByLoginResponse{}
-	mi := &file_proto_user_user_proto_msgTypes[4]
+	mi := &file_proto_user_user_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -308,7 +408,7 @@ func (x *GetCredentialsByLoginResponse) String() string {
 func (*GetCredentialsByLoginResponse) ProtoMessage() {}
 
 func (x *GetCredentialsByLoginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_user_user_proto_msgTypes[4]
+	mi := &file_proto_user_user_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -321,7 +421,7 @@ func (x *GetCredentialsByLoginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCredentialsByLoginResponse.ProtoReflect.Descriptor instead.
 func (*GetCredentialsByLoginResponse) Descriptor() ([]byte, []int) {
-	return file_proto_user_user_proto_rawDescGZIP(), []int{4}
+	return file_proto_user_user_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetCredentialsByLoginResponse) GetUserAccountId() int64 {
@@ -347,7 +447,7 @@ type GetAuthUserByAccountRequest struct {
 
 func (x *GetAuthUserByAccountRequest) Reset() {
 	*x = GetAuthUserByAccountRequest{}
-	mi := &file_proto_user_user_proto_msgTypes[5]
+	mi := &file_proto_user_user_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -359,7 +459,7 @@ func (x *GetAuthUserByAccountRequest) String() string {
 func (*GetAuthUserByAccountRequest) ProtoMessage() {}
 
 func (x *GetAuthUserByAccountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_user_user_proto_msgTypes[5]
+	mi := &file_proto_user_user_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -372,7 +472,7 @@ func (x *GetAuthUserByAccountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAuthUserByAccountRequest.ProtoReflect.Descriptor instead.
 func (*GetAuthUserByAccountRequest) Descriptor() ([]byte, []int) {
-	return file_proto_user_user_proto_rawDescGZIP(), []int{5}
+	return file_proto_user_user_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetAuthUserByAccountRequest) GetUserAccountId() int64 {
@@ -399,7 +499,7 @@ type AuthUserResponse struct {
 
 func (x *AuthUserResponse) Reset() {
 	*x = AuthUserResponse{}
-	mi := &file_proto_user_user_proto_msgTypes[6]
+	mi := &file_proto_user_user_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -411,7 +511,7 @@ func (x *AuthUserResponse) String() string {
 func (*AuthUserResponse) ProtoMessage() {}
 
 func (x *AuthUserResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_user_user_proto_msgTypes[6]
+	mi := &file_proto_user_user_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -424,7 +524,7 @@ func (x *AuthUserResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthUserResponse.ProtoReflect.Descriptor instead.
 func (*AuthUserResponse) Descriptor() ([]byte, []int) {
-	return file_proto_user_user_proto_rawDescGZIP(), []int{6}
+	return file_proto_user_user_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AuthUserResponse) GetUserAccountId() int64 {
@@ -499,7 +599,7 @@ type GetProfileByUserAccountRequest struct {
 
 func (x *GetProfileByUserAccountRequest) Reset() {
 	*x = GetProfileByUserAccountRequest{}
-	mi := &file_proto_user_user_proto_msgTypes[7]
+	mi := &file_proto_user_user_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -511,7 +611,7 @@ func (x *GetProfileByUserAccountRequest) String() string {
 func (*GetProfileByUserAccountRequest) ProtoMessage() {}
 
 func (x *GetProfileByUserAccountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_user_user_proto_msgTypes[7]
+	mi := &file_proto_user_user_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -524,7 +624,7 @@ func (x *GetProfileByUserAccountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProfileByUserAccountRequest.ProtoReflect.Descriptor instead.
 func (*GetProfileByUserAccountRequest) Descriptor() ([]byte, []int) {
-	return file_proto_user_user_proto_rawDescGZIP(), []int{7}
+	return file_proto_user_user_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetProfileByUserAccountRequest) GetUserAccountId() int64 {
@@ -543,7 +643,7 @@ type GetProfileByUserAccountResponse struct {
 
 func (x *GetProfileByUserAccountResponse) Reset() {
 	*x = GetProfileByUserAccountResponse{}
-	mi := &file_proto_user_user_proto_msgTypes[8]
+	mi := &file_proto_user_user_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -555,7 +655,7 @@ func (x *GetProfileByUserAccountResponse) String() string {
 func (*GetProfileByUserAccountResponse) ProtoMessage() {}
 
 func (x *GetProfileByUserAccountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_user_user_proto_msgTypes[8]
+	mi := &file_proto_user_user_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -568,7 +668,7 @@ func (x *GetProfileByUserAccountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProfileByUserAccountResponse.ProtoReflect.Descriptor instead.
 func (*GetProfileByUserAccountResponse) Descriptor() ([]byte, []int) {
-	return file_proto_user_user_proto_rawDescGZIP(), []int{8}
+	return file_proto_user_user_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetProfileByUserAccountResponse) GetProfileId() int64 {
@@ -587,7 +687,7 @@ type GetUserProfileByUserAccountRequest struct {
 
 func (x *GetUserProfileByUserAccountRequest) Reset() {
 	*x = GetUserProfileByUserAccountRequest{}
-	mi := &file_proto_user_user_proto_msgTypes[9]
+	mi := &file_proto_user_user_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -599,7 +699,7 @@ func (x *GetUserProfileByUserAccountRequest) String() string {
 func (*GetUserProfileByUserAccountRequest) ProtoMessage() {}
 
 func (x *GetUserProfileByUserAccountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_user_user_proto_msgTypes[9]
+	mi := &file_proto_user_user_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -612,7 +712,7 @@ func (x *GetUserProfileByUserAccountRequest) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use GetUserProfileByUserAccountRequest.ProtoReflect.Descriptor instead.
 func (*GetUserProfileByUserAccountRequest) Descriptor() ([]byte, []int) {
-	return file_proto_user_user_proto_rawDescGZIP(), []int{9}
+	return file_proto_user_user_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetUserProfileByUserAccountRequest) GetUserAccountId() int64 {
@@ -631,7 +731,7 @@ type GetUserProfileByUserAccountResponse struct {
 
 func (x *GetUserProfileByUserAccountResponse) Reset() {
 	*x = GetUserProfileByUserAccountResponse{}
-	mi := &file_proto_user_user_proto_msgTypes[10]
+	mi := &file_proto_user_user_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -643,7 +743,7 @@ func (x *GetUserProfileByUserAccountResponse) String() string {
 func (*GetUserProfileByUserAccountResponse) ProtoMessage() {}
 
 func (x *GetUserProfileByUserAccountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_user_user_proto_msgTypes[10]
+	mi := &file_proto_user_user_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -656,7 +756,7 @@ func (x *GetUserProfileByUserAccountResponse) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use GetUserProfileByUserAccountResponse.ProtoReflect.Descriptor instead.
 func (*GetUserProfileByUserAccountResponse) Descriptor() ([]byte, []int) {
-	return file_proto_user_user_proto_rawDescGZIP(), []int{10}
+	return file_proto_user_user_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetUserProfileByUserAccountResponse) GetUserProfileId() int64 {
@@ -675,7 +775,7 @@ type GetProfileSummaryRequest struct {
 
 func (x *GetProfileSummaryRequest) Reset() {
 	*x = GetProfileSummaryRequest{}
-	mi := &file_proto_user_user_proto_msgTypes[11]
+	mi := &file_proto_user_user_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -687,7 +787,7 @@ func (x *GetProfileSummaryRequest) String() string {
 func (*GetProfileSummaryRequest) ProtoMessage() {}
 
 func (x *GetProfileSummaryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_user_user_proto_msgTypes[11]
+	mi := &file_proto_user_user_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -700,7 +800,7 @@ func (x *GetProfileSummaryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProfileSummaryRequest.ProtoReflect.Descriptor instead.
 func (*GetProfileSummaryRequest) Descriptor() ([]byte, []int) {
-	return file_proto_user_user_proto_rawDescGZIP(), []int{11}
+	return file_proto_user_user_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetProfileSummaryRequest) GetProfileId() int64 {
@@ -724,7 +824,7 @@ type GetProfileSummaryResponse struct {
 
 func (x *GetProfileSummaryResponse) Reset() {
 	*x = GetProfileSummaryResponse{}
-	mi := &file_proto_user_user_proto_msgTypes[12]
+	mi := &file_proto_user_user_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -736,7 +836,7 @@ func (x *GetProfileSummaryResponse) String() string {
 func (*GetProfileSummaryResponse) ProtoMessage() {}
 
 func (x *GetProfileSummaryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_user_user_proto_msgTypes[12]
+	mi := &file_proto_user_user_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -749,7 +849,7 @@ func (x *GetProfileSummaryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProfileSummaryResponse.ProtoReflect.Descriptor instead.
 func (*GetProfileSummaryResponse) Descriptor() ([]byte, []int) {
-	return file_proto_user_user_proto_rawDescGZIP(), []int{12}
+	return file_proto_user_user_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetProfileSummaryResponse) GetProfileId() int64 {
@@ -804,7 +904,7 @@ type SearchProfilesRequest struct {
 
 func (x *SearchProfilesRequest) Reset() {
 	*x = SearchProfilesRequest{}
-	mi := &file_proto_user_user_proto_msgTypes[13]
+	mi := &file_proto_user_user_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -816,7 +916,7 @@ func (x *SearchProfilesRequest) String() string {
 func (*SearchProfilesRequest) ProtoMessage() {}
 
 func (x *SearchProfilesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_user_user_proto_msgTypes[13]
+	mi := &file_proto_user_user_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -829,7 +929,7 @@ func (x *SearchProfilesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchProfilesRequest.ProtoReflect.Descriptor instead.
 func (*SearchProfilesRequest) Descriptor() ([]byte, []int) {
-	return file_proto_user_user_proto_rawDescGZIP(), []int{13}
+	return file_proto_user_user_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *SearchProfilesRequest) GetQuery() string {
@@ -860,7 +960,7 @@ type SearchProfileItem struct {
 
 func (x *SearchProfileItem) Reset() {
 	*x = SearchProfileItem{}
-	mi := &file_proto_user_user_proto_msgTypes[14]
+	mi := &file_proto_user_user_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -872,7 +972,7 @@ func (x *SearchProfileItem) String() string {
 func (*SearchProfileItem) ProtoMessage() {}
 
 func (x *SearchProfileItem) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_user_user_proto_msgTypes[14]
+	mi := &file_proto_user_user_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -885,7 +985,7 @@ func (x *SearchProfileItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchProfileItem.ProtoReflect.Descriptor instead.
 func (*SearchProfileItem) Descriptor() ([]byte, []int) {
-	return file_proto_user_user_proto_rawDescGZIP(), []int{14}
+	return file_proto_user_user_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *SearchProfileItem) GetProfileId() int64 {
@@ -939,7 +1039,7 @@ type SearchProfilesResponse struct {
 
 func (x *SearchProfilesResponse) Reset() {
 	*x = SearchProfilesResponse{}
-	mi := &file_proto_user_user_proto_msgTypes[15]
+	mi := &file_proto_user_user_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -951,7 +1051,7 @@ func (x *SearchProfilesResponse) String() string {
 func (*SearchProfilesResponse) ProtoMessage() {}
 
 func (x *SearchProfilesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_user_user_proto_msgTypes[15]
+	mi := &file_proto_user_user_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -964,7 +1064,7 @@ func (x *SearchProfilesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchProfilesResponse.ProtoReflect.Descriptor instead.
 func (*SearchProfilesResponse) Descriptor() ([]byte, []int) {
-	return file_proto_user_user_proto_rawDescGZIP(), []int{15}
+	return file_proto_user_user_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *SearchProfilesResponse) GetProfiles() []*SearchProfileItem {
@@ -990,7 +1090,18 @@ const file_proto_user_user_proto_rawDesc = "" +
 	"first_name\x18\x03 \x01(\tR\tfirstName\x12\x1b\n" +
 	"\tlast_name\x18\x04 \x01(\tR\blastName\x12\x1a\n" +
 	"\bbirthday\x18\x05 \x01(\tR\bbirthday\x12,\n" +
-	"\x06gender\x18\x06 \x01(\x0e2\x14.aris.user.v1.GenderR\x06gender\"4\n" +
+	"\x06gender\x18\x06 \x01(\x0e2\x14.aris.user.v1.GenderR\x06gender\"\xaa\x02\n" +
+	"\x1bGetOrCreateOAuthUserRequest\x12\x1a\n" +
+	"\bprovider\x18\x01 \x01(\tR\bprovider\x12(\n" +
+	"\x10provider_user_id\x18\x02 \x01(\tR\x0eproviderUserId\x12\x1a\n" +
+	"\busername\x18\x03 \x01(\tR\busername\x12\x19\n" +
+	"\x05email\x18\x04 \x01(\tH\x00R\x05email\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"first_name\x18\x05 \x01(\tR\tfirstName\x12\x1b\n" +
+	"\tlast_name\x18\x06 \x01(\tR\blastName\x12\x1a\n" +
+	"\bbirthday\x18\a \x01(\tR\bbirthday\x12,\n" +
+	"\x06gender\x18\b \x01(\x0e2\x14.aris.user.v1.GenderR\x06genderB\b\n" +
+	"\x06_email\"4\n" +
 	"\x1cGetCredentialsByLoginRequest\x12\x14\n" +
 	"\x05login\x18\x01 \x01(\tR\x05login\"l\n" +
 	"\x1dGetCredentialsByLoginResponse\x12&\n" +
@@ -1056,10 +1167,11 @@ const file_proto_user_user_proto_rawDesc = "" +
 	"\x06Gender\x12\x16\n" +
 	"\x12GENDER_UNSPECIFIED\x10\x00\x12\x0f\n" +
 	"\vGENDER_MALE\x10\x01\x12\x11\n" +
-	"\rGENDER_FEMALE\x10\x022\xee\x06\n" +
+	"\rGENDER_FEMALE\x10\x022\xd1\a\n" +
 	"\vUserService\x12s\n" +
 	"\x16CheckUsernameAvailable\x12+.aris.user.v1.CheckUsernameAvailableRequest\x1a,.aris.user.v1.CheckUsernameAvailableResponse\x12U\n" +
-	"\x0eCreateAuthUser\x12#.aris.user.v1.CreateAuthUserRequest\x1a\x1e.aris.user.v1.AuthUserResponse\x12p\n" +
+	"\x0eCreateAuthUser\x12#.aris.user.v1.CreateAuthUserRequest\x1a\x1e.aris.user.v1.AuthUserResponse\x12a\n" +
+	"\x14GetOrCreateOAuthUser\x12).aris.user.v1.GetOrCreateOAuthUserRequest\x1a\x1e.aris.user.v1.AuthUserResponse\x12p\n" +
 	"\x15GetCredentialsByLogin\x12*.aris.user.v1.GetCredentialsByLoginRequest\x1a+.aris.user.v1.GetCredentialsByLoginResponse\x12a\n" +
 	"\x14GetAuthUserByAccount\x12).aris.user.v1.GetAuthUserByAccountRequest\x1a\x1e.aris.user.v1.AuthUserResponse\x12v\n" +
 	"\x17GetProfileByUserAccount\x12,.aris.user.v1.GetProfileByUserAccountRequest\x1a-.aris.user.v1.GetProfileByUserAccountResponse\x12\x82\x01\n" +
@@ -1080,50 +1192,54 @@ func file_proto_user_user_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_user_user_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_user_user_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_proto_user_user_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_proto_user_user_proto_goTypes = []any{
 	(Gender)(0),                                 // 0: aris.user.v1.Gender
 	(*CheckUsernameAvailableRequest)(nil),       // 1: aris.user.v1.CheckUsernameAvailableRequest
 	(*CheckUsernameAvailableResponse)(nil),      // 2: aris.user.v1.CheckUsernameAvailableResponse
 	(*CreateAuthUserRequest)(nil),               // 3: aris.user.v1.CreateAuthUserRequest
-	(*GetCredentialsByLoginRequest)(nil),        // 4: aris.user.v1.GetCredentialsByLoginRequest
-	(*GetCredentialsByLoginResponse)(nil),       // 5: aris.user.v1.GetCredentialsByLoginResponse
-	(*GetAuthUserByAccountRequest)(nil),         // 6: aris.user.v1.GetAuthUserByAccountRequest
-	(*AuthUserResponse)(nil),                    // 7: aris.user.v1.AuthUserResponse
-	(*GetProfileByUserAccountRequest)(nil),      // 8: aris.user.v1.GetProfileByUserAccountRequest
-	(*GetProfileByUserAccountResponse)(nil),     // 9: aris.user.v1.GetProfileByUserAccountResponse
-	(*GetUserProfileByUserAccountRequest)(nil),  // 10: aris.user.v1.GetUserProfileByUserAccountRequest
-	(*GetUserProfileByUserAccountResponse)(nil), // 11: aris.user.v1.GetUserProfileByUserAccountResponse
-	(*GetProfileSummaryRequest)(nil),            // 12: aris.user.v1.GetProfileSummaryRequest
-	(*GetProfileSummaryResponse)(nil),           // 13: aris.user.v1.GetProfileSummaryResponse
-	(*SearchProfilesRequest)(nil),               // 14: aris.user.v1.SearchProfilesRequest
-	(*SearchProfileItem)(nil),                   // 15: aris.user.v1.SearchProfileItem
-	(*SearchProfilesResponse)(nil),              // 16: aris.user.v1.SearchProfilesResponse
+	(*GetOrCreateOAuthUserRequest)(nil),         // 4: aris.user.v1.GetOrCreateOAuthUserRequest
+	(*GetCredentialsByLoginRequest)(nil),        // 5: aris.user.v1.GetCredentialsByLoginRequest
+	(*GetCredentialsByLoginResponse)(nil),       // 6: aris.user.v1.GetCredentialsByLoginResponse
+	(*GetAuthUserByAccountRequest)(nil),         // 7: aris.user.v1.GetAuthUserByAccountRequest
+	(*AuthUserResponse)(nil),                    // 8: aris.user.v1.AuthUserResponse
+	(*GetProfileByUserAccountRequest)(nil),      // 9: aris.user.v1.GetProfileByUserAccountRequest
+	(*GetProfileByUserAccountResponse)(nil),     // 10: aris.user.v1.GetProfileByUserAccountResponse
+	(*GetUserProfileByUserAccountRequest)(nil),  // 11: aris.user.v1.GetUserProfileByUserAccountRequest
+	(*GetUserProfileByUserAccountResponse)(nil), // 12: aris.user.v1.GetUserProfileByUserAccountResponse
+	(*GetProfileSummaryRequest)(nil),            // 13: aris.user.v1.GetProfileSummaryRequest
+	(*GetProfileSummaryResponse)(nil),           // 14: aris.user.v1.GetProfileSummaryResponse
+	(*SearchProfilesRequest)(nil),               // 15: aris.user.v1.SearchProfilesRequest
+	(*SearchProfileItem)(nil),                   // 16: aris.user.v1.SearchProfileItem
+	(*SearchProfilesResponse)(nil),              // 17: aris.user.v1.SearchProfilesResponse
 }
 var file_proto_user_user_proto_depIdxs = []int32{
 	0,  // 0: aris.user.v1.CreateAuthUserRequest.gender:type_name -> aris.user.v1.Gender
-	15, // 1: aris.user.v1.SearchProfilesResponse.profiles:type_name -> aris.user.v1.SearchProfileItem
-	1,  // 2: aris.user.v1.UserService.CheckUsernameAvailable:input_type -> aris.user.v1.CheckUsernameAvailableRequest
-	3,  // 3: aris.user.v1.UserService.CreateAuthUser:input_type -> aris.user.v1.CreateAuthUserRequest
-	4,  // 4: aris.user.v1.UserService.GetCredentialsByLogin:input_type -> aris.user.v1.GetCredentialsByLoginRequest
-	6,  // 5: aris.user.v1.UserService.GetAuthUserByAccount:input_type -> aris.user.v1.GetAuthUserByAccountRequest
-	8,  // 6: aris.user.v1.UserService.GetProfileByUserAccount:input_type -> aris.user.v1.GetProfileByUserAccountRequest
-	10, // 7: aris.user.v1.UserService.GetUserProfileByUserAccount:input_type -> aris.user.v1.GetUserProfileByUserAccountRequest
-	12, // 8: aris.user.v1.UserService.GetProfileSummary:input_type -> aris.user.v1.GetProfileSummaryRequest
-	14, // 9: aris.user.v1.UserService.SearchProfiles:input_type -> aris.user.v1.SearchProfilesRequest
-	2,  // 10: aris.user.v1.UserService.CheckUsernameAvailable:output_type -> aris.user.v1.CheckUsernameAvailableResponse
-	7,  // 11: aris.user.v1.UserService.CreateAuthUser:output_type -> aris.user.v1.AuthUserResponse
-	5,  // 12: aris.user.v1.UserService.GetCredentialsByLogin:output_type -> aris.user.v1.GetCredentialsByLoginResponse
-	7,  // 13: aris.user.v1.UserService.GetAuthUserByAccount:output_type -> aris.user.v1.AuthUserResponse
-	9,  // 14: aris.user.v1.UserService.GetProfileByUserAccount:output_type -> aris.user.v1.GetProfileByUserAccountResponse
-	11, // 15: aris.user.v1.UserService.GetUserProfileByUserAccount:output_type -> aris.user.v1.GetUserProfileByUserAccountResponse
-	13, // 16: aris.user.v1.UserService.GetProfileSummary:output_type -> aris.user.v1.GetProfileSummaryResponse
-	16, // 17: aris.user.v1.UserService.SearchProfiles:output_type -> aris.user.v1.SearchProfilesResponse
-	10, // [10:18] is the sub-list for method output_type
-	2,  // [2:10] is the sub-list for method input_type
-	2,  // [2:2] is the sub-list for extension type_name
-	2,  // [2:2] is the sub-list for extension extendee
-	0,  // [0:2] is the sub-list for field type_name
+	0,  // 1: aris.user.v1.GetOrCreateOAuthUserRequest.gender:type_name -> aris.user.v1.Gender
+	16, // 2: aris.user.v1.SearchProfilesResponse.profiles:type_name -> aris.user.v1.SearchProfileItem
+	1,  // 3: aris.user.v1.UserService.CheckUsernameAvailable:input_type -> aris.user.v1.CheckUsernameAvailableRequest
+	3,  // 4: aris.user.v1.UserService.CreateAuthUser:input_type -> aris.user.v1.CreateAuthUserRequest
+	4,  // 5: aris.user.v1.UserService.GetOrCreateOAuthUser:input_type -> aris.user.v1.GetOrCreateOAuthUserRequest
+	5,  // 6: aris.user.v1.UserService.GetCredentialsByLogin:input_type -> aris.user.v1.GetCredentialsByLoginRequest
+	7,  // 7: aris.user.v1.UserService.GetAuthUserByAccount:input_type -> aris.user.v1.GetAuthUserByAccountRequest
+	9,  // 8: aris.user.v1.UserService.GetProfileByUserAccount:input_type -> aris.user.v1.GetProfileByUserAccountRequest
+	11, // 9: aris.user.v1.UserService.GetUserProfileByUserAccount:input_type -> aris.user.v1.GetUserProfileByUserAccountRequest
+	13, // 10: aris.user.v1.UserService.GetProfileSummary:input_type -> aris.user.v1.GetProfileSummaryRequest
+	15, // 11: aris.user.v1.UserService.SearchProfiles:input_type -> aris.user.v1.SearchProfilesRequest
+	2,  // 12: aris.user.v1.UserService.CheckUsernameAvailable:output_type -> aris.user.v1.CheckUsernameAvailableResponse
+	8,  // 13: aris.user.v1.UserService.CreateAuthUser:output_type -> aris.user.v1.AuthUserResponse
+	8,  // 14: aris.user.v1.UserService.GetOrCreateOAuthUser:output_type -> aris.user.v1.AuthUserResponse
+	6,  // 15: aris.user.v1.UserService.GetCredentialsByLogin:output_type -> aris.user.v1.GetCredentialsByLoginResponse
+	8,  // 16: aris.user.v1.UserService.GetAuthUserByAccount:output_type -> aris.user.v1.AuthUserResponse
+	10, // 17: aris.user.v1.UserService.GetProfileByUserAccount:output_type -> aris.user.v1.GetProfileByUserAccountResponse
+	12, // 18: aris.user.v1.UserService.GetUserProfileByUserAccount:output_type -> aris.user.v1.GetUserProfileByUserAccountResponse
+	14, // 19: aris.user.v1.UserService.GetProfileSummary:output_type -> aris.user.v1.GetProfileSummaryResponse
+	17, // 20: aris.user.v1.UserService.SearchProfiles:output_type -> aris.user.v1.SearchProfilesResponse
+	12, // [12:21] is the sub-list for method output_type
+	3,  // [3:12] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_proto_user_user_proto_init() }
@@ -1131,16 +1247,17 @@ func file_proto_user_user_proto_init() {
 	if File_proto_user_user_proto != nil {
 		return
 	}
-	file_proto_user_user_proto_msgTypes[6].OneofWrappers = []any{}
-	file_proto_user_user_proto_msgTypes[12].OneofWrappers = []any{}
-	file_proto_user_user_proto_msgTypes[14].OneofWrappers = []any{}
+	file_proto_user_user_proto_msgTypes[3].OneofWrappers = []any{}
+	file_proto_user_user_proto_msgTypes[7].OneofWrappers = []any{}
+	file_proto_user_user_proto_msgTypes[13].OneofWrappers = []any{}
+	file_proto_user_user_proto_msgTypes[15].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_user_user_proto_rawDesc), len(file_proto_user_user_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   16,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
