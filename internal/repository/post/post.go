@@ -71,6 +71,9 @@ func (storage *postStorage) Delete(ctx context.Context, id int64) error {
 	query := `DELETE FROM post WHERE id=$1`
 
 	start := time.Now()
+	if _, err := storage.db.Exec(ctx, `DELETE FROM like_record WHERE post_id=$1 OR comment_id IN (SELECT id FROM comment WHERE post_id=$1)`, id); err != nil {
+		return err
+	}
 	res, err := storage.db.Exec(ctx, query, id)
 	if logger != nil {
 		logger.Debug("db query",

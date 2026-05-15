@@ -326,7 +326,7 @@ func ensureDemoUser(ctx context.Context, db *pgxpool.Pool, user demoUser) (demoU
 
 func seedDemoMedia(ctx context.Context, db *pgxpool.Pool, authorID int64) (map[string]int64, error) {
 	items := map[string]string{
-		"campus":    "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=1200",
+		"campus":    "https://moya-planeta.ru/upload/images/l/eb/e2/ebe21cb5a55a808b104f3d51c3ff96284bae5182.jpg",
 		"frontend":  "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=1200",
 		"community": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1200",
 		"coffee":    "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1200",

@@ -52,6 +52,10 @@ func TestPostStorageDelete(t *testing.T) {
 
 			repo := NewPostStorage(mockPool)
 
+			mockPool.ExpectExec("DELETE FROM like_record WHERE post_id=\\$1").
+				WithArgs(int64(10)).
+				WillReturnResult(pgxmock.NewResult("DELETE", 1))
+
 			mockPool.ExpectExec("DELETE FROM post WHERE id=\\$1").
 				WithArgs(int64(10)).
 				WillReturnResult(pgxmock.NewResult("DELETE", tc.affected))
