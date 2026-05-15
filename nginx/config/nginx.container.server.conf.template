@@ -7,44 +7,53 @@ events {
 http {
     default_type application/octet-stream;
     sendfile on;
+    resolver 127.0.0.11 valid=10s ipv6=off;
 
     upstream auth_service {
-        server auth:8085;
+        zone auth_service 64k;
+        server auth:8085 resolve;
         keepalive 32;
     }
 
     upstream media_service {
-        server media:8081;
+        zone media_service 64k;
+        server media:8081 resolve;
         keepalive 32;
     }
 
     upstream user_service {
-        server user:8082;
+        zone user_service 64k;
+        server user:8082 resolve;
         keepalive 32;
     }
 
     upstream post_service {
-        server post:8083;
+        zone post_service 64k;
+        server post:8083 resolve;
         keepalive 32;
     }
 
     upstream chat_service {
-        server chat:8084;
+        zone chat_service 64k;
+        server chat:8084 resolve;
         keepalive 32;
     }
 
     upstream support_service {
-        server support:8086;
+        zone support_service 64k;
+        server support:8086 resolve;
         keepalive 32;
     }
 
     upstream community_service {
-        server community:8087;
+        zone community_service 64k;
+        server community:8087 resolve;
         keepalive 32;
     }
 
     upstream search_service {
-        server search:8088;
+        zone search_service 64k;
+        server search:8088 resolve;
         keepalive 32;
     }
 

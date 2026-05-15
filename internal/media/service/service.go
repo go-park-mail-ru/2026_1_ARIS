@@ -157,6 +157,10 @@ func (s *Service) GetFileURL(ctx context.Context, mediaID int64) (string, error)
 		return "", err
 	}
 
+	if strings.HasPrefix(media.Link, "http://") || strings.HasPrefix(media.Link, "https://") {
+		return media.Link, nil
+	}
+
 	app_endpoint := os.Getenv("APP_ENDPOINT")
 	if app_endpoint == "" {
 		app_endpoint = "http://localhost:8080"

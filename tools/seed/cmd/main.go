@@ -66,5 +66,9 @@ func main() {
 		globalutils.EnvString("MINIO_BUCKET_NAME", "media"),
 	)
 
+	if err := utils.MakeDemoData(ctx, db); err != nil {
+		log.Fatal("fail to create demo seed data: ", err)
+	}
+
 	log.Println("seed data completed")
 }

@@ -65,6 +65,43 @@ func TestSaveFileStoresAllowedImage(t *testing.T) {
 	require.Equal(t, "/media/image.png", saved.URL)
 }
 
+func TestGetFileURLKeepsAbsoluteMediaLinks(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	mediaRepo := mediamock.NewMockMediaRepo(ctrl)
+	svc := New(repository.NewStore(mediaRepo, nil, ""), nil)
+
+	mediaRepo.EXPECT().
+		Get(ctx, int64(42)).
+		Return(&models.Media{ID: 42, Link: "https://cdn.example/avatar.jpg"}, nil)
+
+	url, err := svc.GetFileURL(ctx, 42)
+
+	require.NoError(t, err)
+	require.Equal(t, "https://cdn.example/avatar.jpg", url)
+}
+
+func TestGetFileURLAddsEndpointForRelativeMediaLinks(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	mediaRepo := mediamock.NewMockMediaRepo(ctrl)
+	svc := New(repository.NewStore(mediaRepo, nil, ""), nil)
+	t.Setenv("APP_ENDPOINT", "http://localhost:8080")
+
+	mediaRepo.EXPECT().
+		Get(ctx, int64(43)).
+		Return(&models.Media{ID: 43, Link: "/media/avatar.jpg"}, nil)
+
+	url, err := svc.GetFileURL(ctx, 43)
+
+	require.NoError(t, err)
+	require.Equal(t, "http://localhost:8080/media/avatar.jpg", url)
+}
+
 func TestSaveFilesValidatesUserAndInputs(t *testing.T) {
 	t.Run("invalid account", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
