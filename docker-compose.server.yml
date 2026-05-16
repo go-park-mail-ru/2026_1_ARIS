@@ -33,6 +33,8 @@ services:
         condition: service_healthy
       search:
         condition: service_healthy
+      game:
+        condition: service_healthy
       minio:
         condition: service_started
       prometheus:

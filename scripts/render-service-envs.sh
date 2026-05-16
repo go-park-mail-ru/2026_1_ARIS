@@ -197,3 +197,19 @@ write_env services/search/.env \
   USER_GRPC_ADDR user:8004 \
   COMMUNITY_GRPC_ADDR community:8009 \
   MEDIA_GRPC_ADDR media:8003
+
+write_env services/game/.env \
+  GAME_HTTP_PORT 8089 \
+  "" "" \
+  DB_HOST db \
+  DB_PORT 5432 \
+  DB_USER "$DB_USER" \
+  DB_PASSWORD "$DB_PASSWORD" \
+  DB_NAME "$DB_NAME" \
+  SSL_MODE "$SSL_MODE" \
+  POOL_MAX_CONNS "$POOL_MAX_CONNS" \
+  POOL_MAX_CONN_LIFETIME "$POOL_MAX_CONN_LIFETIME" \
+  POOL_MAX_CONN_IDLE_TIME "$POOL_MAX_CONN_IDLE_TIME" \
+  "" "" \
+  USER_GRPC_ADDR user:8004 \
+  AUTH_GRPC_ADDR auth:8002

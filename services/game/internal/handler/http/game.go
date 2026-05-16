@@ -1,0 +1,489 @@
+package http
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"strconv"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-park-mail-ru/2026_1_ARIS/services/game/internal/usecase"
+	"github.com/go-park-mail-ru/2026_1_ARIS/services/game/internal/websocket"
+	"github.com/go-park-mail-ru/2026_1_ARIS/utils"
+)
+
+type Handler struct {
+	game *usecase.Service
+	hub  *websocket.Hub
+}
+
+func New(game *usecase.Service, hub *websocket.Hub) *Handler {
+	h := &Handler{game: game, hub: hub}
+	game.SetNotifier(h.broadcastRoom)
+	return h
+}
+
+func (h *Handler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler) http.Handler) {
+	r.Group(func(r chi.Router) {
+		if authMiddleware != nil {
+			r.Use(authMiddleware)
+		}
+		r.Get("/games/rooms", h.ListRooms)
+		r.Post("/games/rooms", h.CreateRoom)
+		r.Post("/games/rooms/join", h.JoinRoom)
+		r.Get("/games/rooms/{roomID}", h.GetRoom)
+		r.Post("/games/rooms/{roomID}/start", h.StartRoom)
+		r.Post("/games/rooms/{roomID}/answers", h.SubmitAnswer)
+		r.Get("/games/history", h.History)
+		r.Get("/games/stats", h.Stats)
+	})
+}
+
+func (h *Handler) RegisterWebSocketRoute(r chi.Router, authMiddleware func(http.Handler) http.Handler) {
+	r.Group(func(r chi.Router) {
+		if authMiddleware != nil {
+			r.Use(authMiddleware)
+		}
+		r.Get("/ws/games/{roomID}", h.HandleWebSocket)
+	})
+}
+
+func (h *Handler) CreateRoom(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	var req createRoomRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	room, err := h.game.CreateRoom(r.Context(), userID, usecase.CreateRoomInput{
+		GameType:         req.GameType,
+		QuestionCount:    req.QuestionCount,
+		AnswerTimeoutSec: req.AnswerTimeoutSec,
+	})
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusCreated, mapRoom(room))
+}
+
+func (h *Handler) JoinRoom(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	var req joinRoomRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	room, err := h.game.JoinRoom(r.Context(), userID, req.InviteCode)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, mapRoom(room))
+}
+
+func (h *Handler) ListRooms(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	rooms, err := h.game.ListRooms(r.Context(), userID, queryInt(r, "limit", 50), queryInt(r, "offset", 0))
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	resp := make([]roomResponse, 0, len(rooms))
+	for _, room := range rooms {
+		resp = append(resp, mapRoom(room))
+	}
+	utils.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) GetRoom(w http.ResponseWriter, r *http.Request) {
+	userID, roomID, ok := h.userAndRoomID(w, r)
+	if !ok {
+		return
+	}
+	room, err := h.game.GetRoom(r.Context(), userID, roomID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, mapRoom(room))
+}
+
+func (h *Handler) StartRoom(w http.ResponseWriter, r *http.Request) {
+	userID, roomID, ok := h.userAndRoomID(w, r)
+	if !ok {
+		return
+	}
+	room, err := h.game.StartRoom(r.Context(), userID, roomID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, mapRoom(room))
+}
+
+func (h *Handler) SubmitAnswer(w http.ResponseWriter, r *http.Request) {
+	userID, roomID, ok := h.userAndRoomID(w, r)
+	if !ok {
+		return
+	}
+	var req submitAnswerRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	room, err := h.game.SubmitAnswer(r.Context(), userID, roomID, req.Answer)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, mapRoom(room))
+}
+
+func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	items, err := h.game.History(r.Context(), userID, queryInt(r, "limit", 50), queryInt(r, "offset", 0))
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	resp := make([]historyResponse, 0, len(items))
+	for _, item := range items {
+		resp = append(resp, historyResponse{Room: mapRoom(item.Room), MyScore: item.MyScore, OpponentScore: item.OpponentScore})
+	}
+	utils.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) Stats(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	stats, err := h.game.Stats(r.Context(), userID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, statsResponse{Played: stats.Played, Won: stats.Won, Lost: stats.Lost, Drawn: stats.Drawn})
+}
+
+func (h *Handler) ListQuestions(w http.ResponseWriter, r *http.Request) {
+	items, err := h.game.ListQuestions(
+		r.Context(),
+		r.URL.Query().Get("gameType"),
+		r.URL.Query().Get("includeInactive") == "true",
+		queryInt(r, "limit", 100),
+		queryInt(r, "offset", 0),
+	)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	resp := make([]questionResponse, 0, len(items))
+	for _, item := range items {
+		resp = append(resp, mapQuestion(item))
+	}
+	utils.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) CreateQuestion(w http.ResponseWriter, r *http.Request) {
+	var req questionRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	question, err := h.game.CreateQuestion(r.Context(), mapQuestionInput(req))
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusCreated, mapQuestion(question))
+}
+
+func (h *Handler) UpdateQuestion(w http.ResponseWriter, r *http.Request) {
+	questionID, ok := parsePathID(w, chi.URLParam(r, "questionID"), "неверный ID вопроса")
+	if !ok {
+		return
+	}
+	var req questionRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	question, err := h.game.UpdateQuestion(r.Context(), questionID, mapQuestionInput(req))
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, mapQuestion(question))
+}
+
+func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	userID, roomID, ok := h.userAndRoomID(w, r)
+	if !ok {
+		return
+	}
+	room, err := h.game.GetRoom(r.Context(), userID, roomID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	initial, _ := json.Marshal(socketEvent{Type: "room_state", Room: ptr(mapRoom(room))})
+	if err := websocket.Serve(h.hub, w, r, strconv.FormatInt(roomID, 10), userID, initial, h.handleSocketMessage); err != nil {
+		writeError(w, err.Error(), http.StatusBadRequest)
+	}
+}
+
+func (h *Handler) handleSocketMessage(ctx context.Context, roomIDRaw string, userID int64, payload []byte) ([]byte, error) {
+	roomID, err := strconv.ParseInt(roomIDRaw, 10, 64)
+	if err != nil || roomID <= 0 {
+		return nil, usecase.ErrInvalidInput
+	}
+	var msg socketMessage
+	if err := json.Unmarshal(payload, &msg); err != nil {
+		return marshalEvent(socketEvent{Type: "error", Error: "неверный формат сообщения"}), nil
+	}
+	if msg.Type != "" && msg.Type != "submit_answer" {
+		return marshalEvent(socketEvent{Type: "error", Error: "неподдерживаемый тип сообщения"}), nil
+	}
+	if _, err := h.game.SubmitAnswer(ctx, userID, roomID, msg.Answer); err != nil {
+		return marshalEvent(socketEvent{Type: "error", Error: serviceErrorMessage(err)}), nil
+	}
+	return nil, nil
+}
+
+func (h *Handler) broadcastRoom(ctx context.Context, roomID int64) {
+	if h.hub == nil {
+		return
+	}
+	h.hub.BroadcastRoomFunc(strconv.FormatInt(roomID, 10), func(userID int64) []byte {
+		room, err := h.game.GetRoom(ctx, userID, roomID)
+		if err != nil {
+			return marshalEvent(socketEvent{Type: "room_updated"})
+		}
+		return marshalEvent(socketEvent{Type: "room_state", Room: ptr(mapRoom(room))})
+	})
+}
+
+func (h *Handler) userAndRoomID(w http.ResponseWriter, r *http.Request) (int64, int64, bool) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return 0, 0, false
+	}
+	roomID, ok := parsePathID(w, chi.URLParam(r, "roomID"), "неверный ID комнаты")
+	return userID, roomID, ok
+}
+
+func userIDFromContext(w http.ResponseWriter, r *http.Request) (int64, bool) {
+	userID, ok := r.Context().Value("user_id").(int64)
+	if !ok || userID <= 0 {
+		writeError(w, "не авторизован", http.StatusUnauthorized)
+		return 0, false
+	}
+	return userID, true
+}
+
+func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(dst); err != nil {
+		writeError(w, "неверный формат запроса", http.StatusBadRequest)
+		return false
+	}
+	return true
+}
+
+func parsePathID(w http.ResponseWriter, raw string, message string) (int64, bool) {
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || id <= 0 {
+		writeError(w, message, http.StatusBadRequest)
+		return 0, false
+	}
+	return id, true
+}
+
+func queryInt(r *http.Request, name string, fallback int) int {
+	raw := r.URL.Query().Get(name)
+	if raw == "" {
+		return fallback
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return fallback
+	}
+	return value
+}
+
+func writeServiceError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, usecase.ErrInvalidInput), errors.Is(err, usecase.ErrAlreadyAnswered), errors.Is(err, usecase.ErrAlreadyStarted), errors.Is(err, usecase.ErrRoomFull):
+		writeError(w, serviceErrorMessage(err), http.StatusBadRequest)
+	case errors.Is(err, usecase.ErrForbidden):
+		writeError(w, "доступ запрещён", http.StatusForbidden)
+	case errors.Is(err, usecase.ErrNotFound):
+		writeError(w, "не найдено", http.StatusNotFound)
+	default:
+		writeError(w, "internal server error", http.StatusInternalServerError)
+	}
+}
+
+func serviceErrorMessage(err error) string {
+	switch {
+	case errors.Is(err, usecase.ErrAlreadyAnswered):
+		return "ответ уже отправлен"
+	case errors.Is(err, usecase.ErrAlreadyStarted):
+		return "игра уже началась"
+	case errors.Is(err, usecase.ErrRoomFull):
+		return "комната заполнена"
+	case errors.Is(err, usecase.ErrInvalidInput):
+		return "неверные данные"
+	case errors.Is(err, usecase.ErrForbidden):
+		return "доступ запрещён"
+	case errors.Is(err, usecase.ErrNotFound):
+		return "не найдено"
+	default:
+		return "internal server error"
+	}
+}
+
+func writeError(w http.ResponseWriter, message string, status int) {
+	utils.WriteJSON(w, status, errorResponse{Error: message})
+}
+
+func marshalEvent(event socketEvent) []byte {
+	data, _ := json.Marshal(event)
+	return data
+}
+
+func mapQuestionInput(req questionRequest) usecase.QuestionInput {
+	active := true
+	if req.IsActive != nil {
+		active = *req.IsActive
+	}
+	return usecase.QuestionInput{
+		GameType:      req.GameType,
+		Slug:          req.Slug,
+		Text:          req.Text,
+		CorrectAnswer: req.CorrectAnswer,
+		AnswerUnit:    req.AnswerUnit,
+		IsActive:      active,
+	}
+}
+
+func mapRoom(room usecase.Room) roomResponse {
+	resp := roomResponse{
+		ID:                   int64String(room.ID),
+		InviteCode:           room.InviteCode,
+		GameType:             room.GameType,
+		Status:               room.Status,
+		CreatedByProfileID:   int64String(room.CreatedByProfileID),
+		WinnerProfileID:      int64PtrString(room.WinnerProfileID),
+		QuestionCount:        room.QuestionCount,
+		AnswerTimeoutSec:     room.AnswerTimeoutSec,
+		CurrentQuestionIndex: room.CurrentQuestionIndex,
+		Players:              mapPlayers(room.Players),
+		Questions:            mapRoomQuestions(room.Questions),
+		ProfileStats:         statsResponse{Played: room.ProfileStats.Played, Won: room.ProfileStats.Won, Lost: room.ProfileStats.Lost, Drawn: room.ProfileStats.Drawn},
+		CreatedAt:            room.CreatedAt,
+		UpdatedAt:            room.UpdatedAt,
+		FinishedAt:           room.FinishedAt,
+	}
+	if room.CurrentQuestion != nil {
+		resp.CurrentQuestion = &currentQuestionResponse{
+			Position:    room.CurrentQuestion.Position,
+			ID:          int64String(room.CurrentQuestion.ID),
+			Text:        room.CurrentQuestion.Text,
+			AnswerUnit:  room.CurrentQuestion.AnswerUnit,
+			StartedAt:   room.CurrentQuestion.StartedAt,
+			DeadlineAt:  room.CurrentQuestion.DeadlineAt,
+			HasAnswered: room.CurrentQuestion.HasAnswered,
+		}
+	}
+	return resp
+}
+
+func mapPlayers(items []usecase.Player) []playerResponse {
+	result := make([]playerResponse, 0, len(items))
+	for _, item := range items {
+		result = append(result, playerResponse{
+			ProfileID:     int64String(item.ProfileID),
+			UserAccountID: int64String(item.UserAccountID),
+			Name:          item.Name,
+			Username:      item.Username,
+			FirstName:     item.FirstName,
+			LastName:      item.LastName,
+			AvatarID:      item.AvatarID,
+			Score:         item.Score,
+			HasAnswered:   item.HasAnswered,
+			IsMe:          item.IsMe,
+		})
+	}
+	return result
+}
+
+func mapRoomQuestions(items []usecase.RoomQuestion) []roomQuestionResponse {
+	result := make([]roomQuestionResponse, 0, len(items))
+	for _, item := range items {
+		result = append(result, roomQuestionResponse{
+			Position:        item.Position,
+			Status:          item.Status,
+			Question:        mapQuestion(item.Question),
+			WinnerProfileID: int64PtrString(item.WinnerProfileID),
+			StartedAt:       item.StartedAt,
+			DeadlineAt:      item.DeadlineAt,
+			CompletedAt:     item.CompletedAt,
+			Answers:         mapAnswers(item.Answers),
+		})
+	}
+	return result
+}
+
+func mapQuestion(item usecase.Question) questionResponse {
+	return questionResponse{
+		ID:            int64String(item.ID),
+		Slug:          item.Slug,
+		Text:          item.Text,
+		CorrectAnswer: item.CorrectAnswer,
+		AnswerUnit:    item.AnswerUnit,
+		IsActive:      item.IsActive,
+	}
+}
+
+func mapAnswers(items []usecase.Answer) []answerResponse {
+	result := make([]answerResponse, 0, len(items))
+	for _, item := range items {
+		result = append(result, answerResponse{
+			ProfileID:  int64String(item.ProfileID),
+			Answer:     item.Answer,
+			Distance:   item.Distance,
+			AnsweredAt: item.AnsweredAt,
+		})
+	}
+	return result
+}
+
+func int64String(value int64) string {
+	if value <= 0 {
+		return ""
+	}
+	return strconv.FormatInt(value, 10)
+}
+
+func int64PtrString(value *int64) *string {
+	if value == nil {
+		return nil
+	}
+	out := strconv.FormatInt(*value, 10)
+	return &out
+}
+
+func ptr[T any](value T) *T {
+	return &value
+}

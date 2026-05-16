@@ -344,6 +344,34 @@ services:
     ports:
       - "127.0.0.1:8088:8088"
 
+  game:
+    profiles: ["microservices"]
+    build:
+      context: .
+      dockerfile: services/game/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/game/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      auth:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8089"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:8089:8089"
+
   prometheus:
     profiles: ["microservices"]
     image: prom/prometheus:v2.55.1
@@ -364,6 +392,8 @@ services:
       community:
         condition: service_healthy
       search:
+        condition: service_healthy
+      game:
         condition: service_healthy
       node-exporter:
         condition: service_started
@@ -430,6 +460,8 @@ services:
       community:
         condition: service_healthy
       search:
+        condition: service_healthy
+      game:
         condition: service_healthy
       minio:
         condition: service_started
