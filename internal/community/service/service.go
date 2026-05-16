@@ -51,6 +51,18 @@ type UpdateInput struct {
 	RemoveCover  *bool
 }
 
+type CheckExistsInput struct {
+	Title    string
+	Username string
+}
+
+type CheckExistsResult struct {
+	Exists            bool
+	TitleExists       bool
+	UsernameExists    bool
+	SuggestedUsername string
+}
+
 type Permissions struct {
 	CanEditCommunity   bool
 	CanDeleteCommunity bool
@@ -203,7 +215,7 @@ func (s *Service) Update(ctx context.Context, userAccountID, communityID int64, 
 	}
 	if input.Username != nil {
 		username := normalizeUsername(*input.Username)
-		if len(username) < 3 || len(username) > 20 {
+		if !isValidCommunityUsername(username) {
 			return nil, ErrInvalidInput
 		}
 		next.Username = username
@@ -233,6 +245,24 @@ func (s *Service) Update(ctx context.Context, userAccountID, communityID int64, 
 		}
 	}
 	return s.decorate(ctx, *updated, viewerProfileID)
+}
+
+func (s *Service) CheckExists(ctx context.Context, input CheckExistsInput) (*CheckExistsResult, error) {
+	title := strings.TrimSpace(input.Title)
+	username := normalizeUsername(input.Username)
+	if title == "" || len(title) > 64 || !isValidCommunityUsername(username) {
+		return nil, ErrInvalidInput
+	}
+	_, usernameExists, err := s.store.Communities.ExistsByTitleOrUsername(ctx, "", username)
+	if err != nil {
+		return nil, err
+	}
+	return &CheckExistsResult{
+		Exists:            usernameExists,
+		TitleExists:       false,
+		UsernameExists:    usernameExists,
+		SuggestedUsername: "",
+	}, nil
 }
 
 func (s *Service) Delete(ctx context.Context, userAccountID, communityID int64) error {
@@ -468,8 +498,7 @@ func validateCreate(input CreateInput) error {
 	if !isValidType(input.Type) {
 		return ErrInvalidInput
 	}
-	username := normalizeUsername(input.Username)
-	if len(username) < 3 || len(username) > 20 {
+	if !isValidCommunityUsername(normalizeUsername(input.Username)) {
 		return ErrInvalidInput
 	}
 	if input.Bio != nil && len(strings.TrimSpace(*input.Bio)) > 2047 {
@@ -490,6 +519,25 @@ func isValidType(value models.CommunityType) bool {
 
 func normalizeUsername(value string) string {
 	return strings.ToLower(strings.TrimSpace(value))
+}
+
+func isValidCommunityUsername(value string) bool {
+	if len(value) < 3 || len(value) > 20 {
+		return false
+	}
+	if value[0] == '-' || value[len(value)-1] == '-' {
+		return false
+	}
+	for _, char := range value {
+		switch {
+		case char >= 'a' && char <= 'z':
+		case char >= '0' && char <= '9':
+		case char == '-':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func trimPtr(value *string) *string {

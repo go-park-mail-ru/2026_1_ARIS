@@ -56,9 +56,10 @@ type CheckExistsInput struct {
 }
 
 type CheckExistsResult struct {
-	Exists         bool
-	TitleExists    bool
-	UsernameExists bool
+	Exists            bool
+	TitleExists       bool
+	UsernameExists    bool
+	SuggestedUsername string
 }
 
 type Permissions struct {
@@ -265,7 +266,7 @@ func (s *Service) Update(ctx context.Context, userAccountID, communityID int64, 
 	}
 	if input.Username != nil {
 		username := normalizeUsername(*input.Username)
-		if len(username) < 3 || len(username) > 20 {
+		if !isValidCommunityUsername(username) {
 			return nil, ErrInvalidInput
 		}
 		next.Username = username
@@ -300,17 +301,18 @@ func (s *Service) Update(ctx context.Context, userAccountID, communityID int64, 
 func (s *Service) CheckExists(ctx context.Context, input CheckExistsInput) (*CheckExistsResult, error) {
 	title := strings.TrimSpace(input.Title)
 	username := normalizeUsername(input.Username)
-	if title == "" || len(title) > 64 || len(username) < 3 || len(username) > 20 {
+	if title == "" || len(title) > 64 || !isValidCommunityUsername(username) {
 		return nil, ErrInvalidInput
 	}
-	titleExists, usernameExists, err := s.communities.ExistsByTitleOrUsername(ctx, title, username)
+	_, usernameExists, err := s.communities.ExistsByTitleOrUsername(ctx, "", username)
 	if err != nil {
 		return nil, err
 	}
 	return &CheckExistsResult{
-		Exists:         titleExists || usernameExists,
-		TitleExists:    titleExists,
-		UsernameExists: usernameExists,
+		Exists:            usernameExists,
+		TitleExists:       false,
+		UsernameExists:    usernameExists,
+		SuggestedUsername: "",
 	}, nil
 }
 
@@ -598,8 +600,7 @@ func validateCreate(input CreateInput) error {
 	if !isValidType(input.Type) {
 		return ErrInvalidInput
 	}
-	username := normalizeUsername(input.Username)
-	if len(username) < 3 || len(username) > 20 {
+	if !isValidCommunityUsername(normalizeUsername(input.Username)) {
 		return ErrInvalidInput
 	}
 	if input.Bio != nil && len(strings.TrimSpace(*input.Bio)) > 2047 {
@@ -620,6 +621,25 @@ func isValidType(value model.CommunityType) bool {
 
 func normalizeUsername(value string) string {
 	return strings.ToLower(strings.TrimSpace(value))
+}
+
+func isValidCommunityUsername(value string) bool {
+	if len(value) < 3 || len(value) > 20 {
+		return false
+	}
+	if value[0] == '-' || value[len(value)-1] == '-' {
+		return false
+	}
+	for _, char := range value {
+		switch {
+		case char >= 'a' && char <= 'z':
+		case char >= '0' && char <= '9':
+		case char == '-':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func trimPtr(value *string) *string {
