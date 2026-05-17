@@ -23,5 +23,5 @@ jobs:
 
             cd ${{ secrets.PROD_DEPLOY_PATH }}
             git fetch origin
-            git reset --hard "origin/${{ github.ref_name }}"
+            git switch -C "${{ github.ref_name }}" "origin/${{ github.ref_name }}"
             sh scripts/deploy-remote.sh
