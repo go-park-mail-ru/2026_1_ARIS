@@ -52,6 +52,29 @@ func (mr *MockCommunityRepoMockRecorder) Create(ctx, community, ownerProfileID, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockCommunityRepo)(nil).Create), ctx, community, ownerProfileID, avatarID)
 }
 
+// ExistsByTitleOrUsername mocks base method.
+func (m *MockCommunityRepo) ExistsByTitleOrUsername(ctx context.Context, title, username string) (bool, bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExistsByTitleOrUsername", ctx, title, username)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ExistsByTitleOrUsername indicates an expected call of ExistsByTitleOrUsername.
+func (mr *MockCommunityRepoMockRecorder) ExistsByTitleOrUsername(ctx, title, username interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"ExistsByTitleOrUsername",
+		reflect.TypeOf((*MockCommunityRepo)(nil).ExistsByTitleOrUsername),
+		ctx,
+		title,
+		username,
+	)
+}
+
 // DeactivateMember mocks base method.
 func (m *MockCommunityRepo) DeactivateMember(ctx context.Context, communityID, profileID int64) error {
 	m.ctrl.T.Helper()

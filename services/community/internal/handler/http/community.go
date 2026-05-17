@@ -155,9 +155,10 @@ func (h *Handler) CheckExists(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.WriteJSON(w, http.StatusOK, communityExistenceResponse{
-		Exists:         result.Exists,
-		TitleExists:    result.TitleExists,
-		UsernameExists: result.UsernameExists,
+		Exists:            result.Exists,
+		TitleExists:       result.TitleExists,
+		UsernameExists:    result.UsernameExists,
+		SuggestedUsername: result.SuggestedUsername,
 	})
 }
 

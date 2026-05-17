@@ -32,9 +32,10 @@ type communityExistenceRequest struct {
 }
 
 type communityExistenceResponse struct {
-	Exists         bool `json:"exists"`
-	TitleExists    bool `json:"titleExists"`
-	UsernameExists bool `json:"usernameExists"`
+	Exists            bool   `json:"exists"`
+	TitleExists       bool   `json:"titleExists"`
+	UsernameExists    bool   `json:"usernameExists"`
+	SuggestedUsername string `json:"suggestedUsername"`
 }
 
 type updateMemberRoleRequest struct {
