@@ -28,6 +28,7 @@ type CommunityRepo interface {
 	Update(ctx context.Context, community models.Community) (*models.Community, error)
 	UpdateAvatar(ctx context.Context, communityProfileID int64, avatarID *int64) error
 	GetAvatarID(ctx context.Context, communityProfileID int64) (*int64, error)
+	ExistsByTitleOrUsername(ctx context.Context, title, username string) (bool, bool, error)
 	Delete(ctx context.Context, communityID int64) error
 	GetMember(ctx context.Context, communityID, profileID int64) (*models.CommunityMember, error)
 	ListMembers(ctx context.Context, communityID int64, includeBlocked bool) ([]models.CommunityMember, error)
@@ -161,6 +162,30 @@ func (storage *communityStorage) GetAvatarID(ctx context.Context, communityProfi
 		return nil, err
 	}
 	return avatarID, nil
+}
+
+func (storage *communityStorage) ExistsByTitleOrUsername(ctx context.Context, title, username string) (bool, bool, error) {
+	query := `
+		SELECT
+			EXISTS (
+				SELECT 1
+				FROM community
+				WHERE is_active=TRUE AND LOWER(title)=LOWER($1)
+			),
+			EXISTS (
+				SELECT 1
+				FROM community
+				WHERE is_active=TRUE AND username=$2
+			)`
+	var titleExists bool
+	var usernameExists bool
+	start := time.Now()
+	err := storage.db.QueryRow(ctx, query, title, username).Scan(&titleExists, &usernameExists)
+	logDuration(ctx, "communityRepo.ExistsByTitleOrUsername", start)
+	if err != nil {
+		return false, false, err
+	}
+	return titleExists, usernameExists, nil
 }
 
 func (storage *communityStorage) Delete(ctx context.Context, communityID int64) error {

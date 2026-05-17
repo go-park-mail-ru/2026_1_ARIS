@@ -69,6 +69,9 @@ func main() {
 	if err := utils.MakeDemoData(ctx, db); err != nil {
 		log.Fatal("fail to create demo seed data: ", err)
 	}
+	if err := utils.SeedDemoStickers(ctx, db, mediaRepo, media.NewMinioClient(minioClient), globalutils.EnvString("MINIO_BUCKET_NAME", "media")); err != nil {
+		log.Fatal("fail to create demo stickers: ", err)
+	}
 
 	log.Println("seed data completed")
 }

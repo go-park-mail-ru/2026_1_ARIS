@@ -165,7 +165,10 @@ func detectMimeType(file io.Reader) (string, string, error) {
 
 var allowedByContext = map[string][]string{
 	"avatar":  {"image/"},
-	"post":    {"image/"},
+	"post":    {"image/", "video/", "audio/", "application/", "text/"},
+	"chat":    {"image/", "video/", "audio/", "application/", "text/"},
+	"message": {"image/", "video/", "audio/", "application/", "text/"},
+	"sticker": {"image/"},
 	"support": {"image/"},
 }
 

@@ -47,6 +47,11 @@ func (h *Handler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler)
 		r.Patch("/{id}", h.UpdatePost)
 		r.Post("/{id}/likes", h.LikePost)
 		r.Delete("/{id}/likes", h.UnlikePost)
+		r.Get("/{id}/comments", h.GetPostComments)
+		r.Post("/{id}/comments", h.CreateComment)
+		r.Get("/{id}/comments/{commentID}/replies", h.GetCommentReplies)
+		r.Patch("/{id}/comments/{commentID}", h.UpdateComment)
+		r.Delete("/{id}/comments/{commentID}", h.DeleteComment)
 	})
 }
 
@@ -258,6 +263,107 @@ func (h *Handler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, mapPostDetails(updated))
 }
 
+func (h *Handler) GetPostComments(w http.ResponseWriter, r *http.Request) {
+	userAccountID, postID, ok := h.userAndPostID(w, r)
+	if !ok {
+		return
+	}
+	limit := parseBoundedQueryInt(r, "limit", 50, 1, 100)
+	offset := parseBoundedQueryInt(r, "offset", 0, 0, 1<<30)
+	comments, err := h.post.GetPostComments(r.Context(), userAccountID, postID, limit, offset)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, mapComments(comments))
+}
+
+func (h *Handler) GetCommentReplies(w http.ResponseWriter, r *http.Request) {
+	userAccountID, postID, ok := h.userAndPostID(w, r)
+	if !ok {
+		return
+	}
+	commentID, ok := parseID(w, chi.URLParam(r, "commentID"))
+	if !ok {
+		return
+	}
+	limit := parseBoundedQueryInt(r, "limit", 50, 1, 100)
+	offset := parseBoundedQueryInt(r, "offset", 0, 0, 1<<30)
+	comments, err := h.post.GetCommentReplies(r.Context(), userAccountID, postID, commentID, limit, offset)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, mapComments(comments))
+}
+
+func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
+	userAccountID, postID, ok := h.userAndPostID(w, r)
+	if !ok {
+		return
+	}
+	var req commentRequest
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid request body"})
+		return
+	}
+	comment, err := h.post.CreateComment(r.Context(), userAccountID, postID, req.Text, req.ParentCommentID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusCreated, mapComment(*comment))
+}
+
+func (h *Handler) UpdateComment(w http.ResponseWriter, r *http.Request) {
+	userAccountID, postID, ok := h.userAndPostID(w, r)
+	if !ok {
+		return
+	}
+	commentID, ok := parseID(w, chi.URLParam(r, "commentID"))
+	if !ok {
+		return
+	}
+	var req commentRequest
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid request body"})
+		return
+	}
+	comment, err := h.post.UpdateComment(r.Context(), userAccountID, postID, commentID, req.Text)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, mapComment(*comment))
+}
+
+func (h *Handler) DeleteComment(w http.ResponseWriter, r *http.Request) {
+	userAccountID, postID, ok := h.userAndPostID(w, r)
+	if !ok {
+		return
+	}
+	commentID, ok := parseID(w, chi.URLParam(r, "commentID"))
+	if !ok {
+		return
+	}
+	if err := h.post.DeleteComment(r.Context(), userAccountID, postID, commentID); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) userAndPostID(w http.ResponseWriter, r *http.Request) (int64, int64, bool) {
+	userAccountID, ok := userIDFromContext(w, r)
+	if !ok {
+		return 0, 0, false
+	}
+	postID, ok := parseID(w, chi.URLParam(r, "id"))
+	return userAccountID, postID, ok
+}
+
 func userIDFromContext(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	userAccountID, ok := r.Context().Value("user_id").(int64)
 	if !ok || userAccountID <= 0 {
@@ -289,11 +395,23 @@ func parseLimit(w http.ResponseWriter, r *http.Request) (int, bool) {
 	return limit, true
 }
 
+func parseBoundedQueryInt(r *http.Request, name string, fallback, minValue, maxValue int) int {
+	raw := r.URL.Query().Get(name)
+	if raw == "" {
+		return fallback
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < minValue || value > maxValue {
+		return fallback
+	}
+	return value
+}
+
 func writeServiceError(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, usecase.ErrInvalidInput), errors.Is(err, usecase.ErrPostContentRequired):
+	case errors.Is(err, usecase.ErrInvalidInput), errors.Is(err, usecase.ErrPostContentRequired), errors.Is(err, usecase.ErrCommentsDisabled):
 		utils.WriteJSON(w, http.StatusBadRequest, errorResponse{Error: err.Error()})
-	case errors.Is(err, usecase.ErrPostNotFound), errors.Is(err, usecase.ErrProfileNotFound), errors.Is(err, usecase.ErrCommunityNotFound):
+	case errors.Is(err, usecase.ErrPostNotFound), errors.Is(err, usecase.ErrCommentNotFound), errors.Is(err, usecase.ErrProfileNotFound), errors.Is(err, usecase.ErrCommunityNotFound):
 		utils.WriteJSON(w, http.StatusNotFound, errorResponse{Error: err.Error()})
 	case errors.Is(err, usecase.ErrForbidden):
 		utils.WriteJSON(w, http.StatusForbidden, errorResponse{Error: err.Error()})
@@ -310,7 +428,14 @@ func createInput(req postCreationRequest) usecase.CreateInput {
 			media = append(media, usecase.MediaRequestData{MediaID: item.MediaID, MediaURL: item.MediaURL})
 		}
 	}
-	return usecase.CreateInput{Text: req.Text, Media: media, AuthorProfileID: req.AuthorProfileID, CommunityID: req.CommunityID}
+	var files []usecase.MediaRequestData
+	if req.Files != nil {
+		files = make([]usecase.MediaRequestData, 0, len(*req.Files))
+		for _, item := range *req.Files {
+			files = append(files, usecase.MediaRequestData{MediaID: item.MediaID, MediaURL: item.MediaURL})
+		}
+	}
+	return usecase.CreateInput{Text: req.Text, Media: media, Files: files, AuthorProfileID: req.AuthorProfileID, CommunityID: req.CommunityID}
 }
 
 func mapPostDetails(post *usecase.PostDetails) postCreationResponse {
@@ -325,6 +450,9 @@ func mapPostDetails(post *usecase.PostDetails) postCreationResponse {
 	}
 	for _, media := range post.Media {
 		resp.Media = append(resp.Media, mediaRequestData{MediaID: media.ID, MediaURL: media.URL})
+	}
+	for _, file := range post.Files {
+		resp.Files = append(resp.Files, mediaRequestData{MediaID: file.ID, MediaURL: file.URL})
 	}
 	return resp
 }
@@ -351,6 +479,9 @@ func mapPostList(posts []usecase.PostDetails) []postListItemResponse {
 		for _, media := range post.Media {
 			item.Media = append(item.Media, mediaRequestData{MediaID: media.ID, MediaURL: media.URL})
 		}
+		for _, file := range post.Files {
+			item.Files = append(item.Files, mediaRequestData{MediaID: file.ID, MediaURL: file.URL})
+		}
 		result = append(result, item)
 	}
 	return result
@@ -374,6 +505,10 @@ func mapFeed(feed usecase.FeedResult) feedResponse {
 		for _, media := range post.Medias {
 			medias = append(medias, mediaFeedDTO{ID: media.UID, MimeType: media.MimeType, Link: media.URL})
 		}
+		files := make([]mediaFeedDTO, 0, len(post.Files))
+		for _, file := range post.Files {
+			files = append(files, mediaFeedDTO{ID: file.UID, MimeType: file.MimeType, Link: file.URL})
+		}
 		posts = append(posts, postFeedDTO{
 			ID:        post.ID,
 			Text:      post.Text,
@@ -383,9 +518,40 @@ func mapFeed(feed usecase.FeedResult) feedResponse {
 			Comments:  post.Comments,
 			Reposts:   post.Reposts,
 			Medias:    medias,
+			Files:     files,
 		})
 	}
 	return feedResponse{Items: posts, NextCursor: feed.Cursor, HasMore: feed.HasMore}
+}
+
+func mapComments(comments []usecase.Comment) []commentResponse {
+	result := make([]commentResponse, 0, len(comments))
+	for _, comment := range comments {
+		result = append(result, mapComment(comment))
+	}
+	return result
+}
+
+func mapComment(comment usecase.Comment) commentResponse {
+	return commentResponse{
+		ID:              strconv.FormatInt(comment.ID, 10),
+		Uid:             comment.UID.String(),
+		Text:            comment.Text,
+		PostID:          strconv.FormatInt(comment.PostID, 10),
+		ParentCommentID: int64PtrString(comment.ParentCommentID),
+		Author:          mapPostAuthor(comment.Author),
+		CreatedAt:       comment.CreatedAt,
+		UpdatedAt:       comment.UpdatedAt,
+		RepliesCount:    comment.RepliesCount,
+	}
+}
+
+func int64PtrString(value *int64) *string {
+	if value == nil {
+		return nil
+	}
+	out := strconv.FormatInt(*value, 10)
+	return &out
 }
 
 func escapeTextPtr(value *string) *string {

@@ -90,7 +90,8 @@ write_env services/media/.env \
   MINIO_USE_SSL "$MINIO_USE_SSL" \
   "" "" \
   USER_GRPC_ADDR user:8004 \
-  AUTH_GRPC_ADDR auth:8002
+  AUTH_GRPC_ADDR auth:8002 \
+  MEDIA_GRPC_ADDR media:8003
 
 write_env services/user/.env \
   USER_GRPC_PORT 8004 \

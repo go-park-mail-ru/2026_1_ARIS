@@ -26,6 +26,18 @@ type updateCommunityRequest struct {
 	RemoveCover  *bool                `json:"removeCover,omitempty"`
 }
 
+type communityExistenceRequest struct {
+	Title    string `json:"title"`
+	Username string `json:"username"`
+}
+
+type communityExistenceResponse struct {
+	Exists            bool   `json:"exists"`
+	TitleExists       bool   `json:"titleExists"`
+	UsernameExists    bool   `json:"usernameExists"`
+	SuggestedUsername string `json:"suggestedUsername"`
+}
+
 type updateMemberRoleRequest struct {
 	Role model.CommunityMemberRole `json:"role"`
 }

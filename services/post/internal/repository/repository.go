@@ -15,7 +15,8 @@ import (
 )
 
 var (
-	ErrPostNotFound = errors.New("post not found")
+	ErrPostNotFound    = errors.New("post not found")
+	ErrCommentNotFound = errors.New("comment not found")
 )
 
 type DB interface {
@@ -151,6 +152,8 @@ func (s *postStorage) GetByCommunityID(ctx context.Context, communityID int64) (
 
 type PostMediaRepo interface {
 	GetMediaByPostID(ctx context.Context, postID int64) []int64
+	GetDetailedMediaByPostID(ctx context.Context, postID int64) ([]model.AttachedMedia, error)
+	GetMediaAuthorID(ctx context.Context, mediaID int64) (int64, error)
 	Save(ctx context.Context, postWithMedia model.PostWithMedia) error
 	DeleteByPostID(ctx context.Context, postID int64) error
 }
@@ -182,6 +185,38 @@ func (s *postMediaStorage) GetMediaByPostID(ctx context.Context, postID int64) [
 	return mediaIDs
 }
 
+func (s *postMediaStorage) GetDetailedMediaByPostID(ctx context.Context, postID int64) ([]model.AttachedMedia, error) {
+	start := time.Now()
+	var items []model.AttachedMedia
+	err := pgxscan.Select(ctx, s.db, &items, `
+		SELECT pwm.media_id, m.uid, m.mime_type, m.link, m.author_id, pwm.sort_order
+		FROM post_with_media pwm
+		JOIN media m ON m.id=pwm.media_id AND m.is_active=TRUE
+		WHERE pwm.post_id=$1
+		ORDER BY pwm.sort_order
+	`, postID)
+	logQuery(ctx, "postMediaStorage.GetDetailedMediaByPostID", start)
+	if err != nil && !pgxscan.NotFound(err) {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (s *postMediaStorage) GetMediaAuthorID(ctx context.Context, mediaID int64) (int64, error) {
+	start := time.Now()
+	row := s.db.QueryRow(ctx, `SELECT author_id FROM media WHERE id=$1 AND is_active=TRUE`, mediaID)
+	logQuery(ctx, "postMediaStorage.GetMediaAuthorID", start)
+
+	var authorID int64
+	if err := row.Scan(&authorID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, errors.New("media not found")
+		}
+		return 0, err
+	}
+	return authorID, nil
+}
+
 func (s *postMediaStorage) Save(ctx context.Context, postWithMedia model.PostWithMedia) error {
 	start := time.Now()
 	tag, err := s.db.Exec(ctx, `INSERT INTO post_with_media (post_id, media_id, sort_order) VALUES ($1, $2, $3)`, postWithMedia.PostID, postWithMedia.MediaID, postWithMedia.Order)
@@ -204,6 +239,12 @@ func (s *postMediaStorage) DeleteByPostID(ctx context.Context, postID int64) err
 
 type CommentRepo interface {
 	GetCommentCount(ctx context.Context, postID int64) int
+	GetTopLevelByPostID(ctx context.Context, postID int64, limit, offset int) ([]model.Comment, error)
+	GetReplies(ctx context.Context, postID, parentCommentID int64, limit, offset int) ([]model.Comment, error)
+	Get(ctx context.Context, id int64) (*model.Comment, error)
+	Save(ctx context.Context, comment model.Comment) (int64, error)
+	Update(ctx context.Context, comment model.Comment) error
+	Delete(ctx context.Context, id int64) error
 }
 
 type commentStorage struct {
@@ -216,6 +257,115 @@ func NewCommentStorage(db DB) CommentRepo {
 
 func (s *commentStorage) GetCommentCount(ctx context.Context, postID int64) int {
 	return countByQuery(ctx, s.db, `SELECT COUNT(*) FROM comment WHERE post_id=$1 AND is_active=TRUE`, "commentStorage.GetCommentCount", postID)
+}
+
+func (s *commentStorage) GetTopLevelByPostID(ctx context.Context, postID int64, limit, offset int) ([]model.Comment, error) {
+	start := time.Now()
+	var comments []model.Comment
+	err := pgxscan.Select(ctx, s.db, &comments, `
+		SELECT c.*,
+		       (
+		           SELECT COUNT(*)
+		           FROM comment child
+		           WHERE child.parent_comment_id=c.id AND child.is_active=TRUE
+		       ) AS replies_count
+		FROM comment c
+		WHERE c.post_id=$1 AND c.parent_comment_id IS NULL AND c.is_active=TRUE
+		ORDER BY c.created_at DESC, c.id DESC
+		LIMIT $2 OFFSET $3
+	`, postID, limit, offset)
+	logQuery(ctx, "commentStorage.GetTopLevelByPostID", start)
+	if err != nil && !pgxscan.NotFound(err) {
+		return nil, err
+	}
+	return comments, nil
+}
+
+func (s *commentStorage) GetReplies(ctx context.Context, postID, parentCommentID int64, limit, offset int) ([]model.Comment, error) {
+	start := time.Now()
+	var comments []model.Comment
+	err := pgxscan.Select(ctx, s.db, &comments, `
+		SELECT c.*,
+		       (
+		           SELECT COUNT(*)
+		           FROM comment child
+		           WHERE child.parent_comment_id=c.id AND child.is_active=TRUE
+		       ) AS replies_count
+		FROM comment c
+		WHERE c.post_id=$1 AND c.parent_comment_id=$2 AND c.is_active=TRUE
+		ORDER BY c.created_at ASC, c.id ASC
+		LIMIT $3 OFFSET $4
+	`, postID, parentCommentID, limit, offset)
+	logQuery(ctx, "commentStorage.GetReplies", start)
+	if err != nil && !pgxscan.NotFound(err) {
+		return nil, err
+	}
+	return comments, nil
+}
+
+func (s *commentStorage) Get(ctx context.Context, id int64) (*model.Comment, error) {
+	start := time.Now()
+	var comment model.Comment
+	err := pgxscan.Get(ctx, s.db, &comment, `
+		SELECT c.*,
+		       (
+		           SELECT COUNT(*)
+		           FROM comment child
+		           WHERE child.parent_comment_id=c.id AND child.is_active=TRUE
+		       ) AS replies_count
+		FROM comment c
+		WHERE c.id=$1 AND c.is_active=TRUE
+	`, id)
+	logQuery(ctx, "commentStorage.Get", start)
+	if err != nil {
+		if pgxscan.NotFound(err) {
+			return nil, ErrCommentNotFound
+		}
+		return nil, err
+	}
+	return &comment, nil
+}
+
+func (s *commentStorage) Save(ctx context.Context, comment model.Comment) (int64, error) {
+	start := time.Now()
+	row := s.db.QueryRow(ctx, `
+		INSERT INTO comment (uid, comment_text, post_id, parent_comment_id, sticker_id, author_id)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id
+	`, uuid.New(), comment.Text, comment.PostID, comment.ParentCommentID, comment.StickerID, comment.AuthorID)
+	logQuery(ctx, "commentStorage.Save", start)
+
+	var id int64
+	if err := row.Scan(&id); err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
+func (s *commentStorage) Update(ctx context.Context, comment model.Comment) error {
+	start := time.Now()
+	tag, err := s.db.Exec(ctx, `UPDATE comment SET comment_text=$1, updated_at=NOW() WHERE id=$2 AND is_active=TRUE`, comment.Text, comment.ID)
+	logQuery(ctx, "commentStorage.Update", start)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrCommentNotFound
+	}
+	return nil
+}
+
+func (s *commentStorage) Delete(ctx context.Context, id int64) error {
+	start := time.Now()
+	tag, err := s.db.Exec(ctx, `UPDATE comment SET is_active=FALSE, updated_at=NOW() WHERE id=$1 AND is_active=TRUE`, id)
+	logQuery(ctx, "commentStorage.Delete", start)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrCommentNotFound
+	}
+	return nil
 }
 
 type LikeRepo interface {

@@ -15,5 +15,5 @@ RUN apk add --no-cache ca-certificates netcat-openbsd
 WORKDIR /app
 COPY --from=build /out/support /app/support
 
-EXPOSE 8007
+EXPOSE 8007 8086
 CMD ["/app/support"]

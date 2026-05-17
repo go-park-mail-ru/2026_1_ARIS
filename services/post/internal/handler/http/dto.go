@@ -9,6 +9,7 @@ type mediaRequestData struct {
 
 type postCreationRequest struct {
 	Media           *[]mediaRequestData `json:"media"`
+	Files           *[]mediaRequestData `json:"files"`
 	Text            *string             `json:"text"`
 	AuthorProfileID *int64              `json:"authorProfileId,omitempty"`
 	CommunityID     *int64              `json:"communityId,omitempty"`
@@ -19,6 +20,7 @@ type postCreationResponse struct {
 	ProfileID   int64              `json:"profileID"`
 	CommunityID *int64             `json:"communityId,omitempty"`
 	Media       []mediaRequestData `json:"media"`
+	Files       []mediaRequestData `json:"files"`
 	Text        *string            `json:"text"`
 	Author      postAuthorDTO      `json:"author"`
 	Likes       int                `json:"likes"`
@@ -32,6 +34,7 @@ type postListItemResponse struct {
 	Text        string             `json:"text"`
 	Author      postAuthorDTO      `json:"author"`
 	Media       []mediaRequestData `json:"media"`
+	Files       []mediaRequestData `json:"files"`
 	CreatedAt   time.Time          `json:"createdAt"`
 	UpdatedAt   *time.Time         `json:"updatedAt,omitempty"`
 	Likes       int                `json:"likes"`
@@ -62,6 +65,24 @@ type postFeedDTO struct {
 	Comments  int            `json:"comments"`
 	Reposts   int            `json:"reposts"`
 	Medias    []mediaFeedDTO `json:"medias"`
+	Files     []mediaFeedDTO `json:"files"`
+}
+
+type commentRequest struct {
+	Text            string `json:"text"`
+	ParentCommentID *int64 `json:"parentCommentId,omitempty"`
+}
+
+type commentResponse struct {
+	ID              string        `json:"id"`
+	Uid             string        `json:"uid"`
+	Text            *string       `json:"text,omitempty"`
+	PostID          string        `json:"postId"`
+	ParentCommentID *string       `json:"parentCommentId,omitempty"`
+	Author          postAuthorDTO `json:"author"`
+	CreatedAt       time.Time     `json:"createdAt"`
+	UpdatedAt       time.Time     `json:"updatedAt"`
+	RepliesCount    int           `json:"repliesCount"`
 }
 
 type popularPostDTO struct {

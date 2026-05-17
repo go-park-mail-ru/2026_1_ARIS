@@ -64,3 +64,53 @@ type Message struct {
 	CreatedAt       time.Time `db:"created_at"`
 	UpdatedAt       time.Time `db:"updated_at"`
 }
+
+type MessageMedia struct {
+	MessageID int64     `db:"message_id"`
+	MediaID   int64     `db:"media_id"`
+	Order     int       `db:"sort_order"`
+	MediaUID  uuid.UUID `db:"media_uid"`
+	MimeType  string    `db:"mime_type"`
+	Link      string    `db:"link"`
+}
+
+type StickerPack struct {
+	ID        int64     `db:"id"`
+	Uid       uuid.UUID `db:"uid"`
+	Title     string    `db:"title"`
+	AuthorID  *int64    `db:"author_id"`
+	IsActive  bool      `db:"is_active"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
+}
+
+type Sticker struct {
+	ID        int64      `db:"id"`
+	Uid       uuid.UUID  `db:"uid"`
+	Size      int64      `db:"size"`
+	Order     int        `db:"sort_order"`
+	PackID    *int64     `db:"pack_id"`
+	MediaID   *int64     `db:"media_id"`
+	MediaUID  *uuid.UUID `db:"media_uid"`
+	MimeType  *string    `db:"mime_type"`
+	Link      *string    `db:"link"`
+	IsActive  bool       `db:"is_active"`
+	CreatedAt time.Time  `db:"created_at"`
+	UpdatedAt time.Time  `db:"updated_at"`
+}
+
+type Reaction struct {
+	ID        int64     `db:"id"`
+	Uid       uuid.UUID `db:"uid"`
+	MessageID int64     `db:"message_id"`
+	Type      string    `db:"reaction_type"`
+	AuthorID  int64     `db:"author_id"`
+	IsActive  bool      `db:"is_active"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
+}
+
+type ReactionSummary struct {
+	Type  string `db:"reaction_type"`
+	Count int    `db:"count"`
+}

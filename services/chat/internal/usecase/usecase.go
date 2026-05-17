@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	mediapb "github.com/go-park-mail-ru/2026_1_ARIS/proto/media"
 	userpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/chat/internal/model"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/chat/internal/repository"
@@ -24,12 +25,17 @@ var (
 )
 
 type Service struct {
-	store      repository.Store
-	userClient userpb.UserServiceClient
+	store       repository.Store
+	userClient  userpb.UserServiceClient
+	mediaClient mediapb.MediaServiceClient
 }
 
-func New(store repository.Store, userClient userpb.UserServiceClient) *Service {
-	return &Service{store: store, userClient: userClient}
+func New(store repository.Store, userClient userpb.UserServiceClient, mediaClient ...mediapb.MediaServiceClient) *Service {
+	var media mediapb.MediaServiceClient
+	if len(mediaClient) > 0 {
+		media = mediaClient[0]
+	}
+	return &Service{store: store, userClient: userClient, mediaClient: media}
 }
 
 func (s *Service) GetUserChats(ctx context.Context, userAccountID int64) ([]Chat, error) {
@@ -154,15 +160,15 @@ func (s *Service) GetMessages(ctx context.Context, userAccountID, chatID int64, 
 	if !ok {
 		return nil, ErrForbidden
 	}
+	profileID, err := s.profileIDByAccount(ctx, userAccountID)
+	if err != nil {
+		return nil, err
+	}
 	messages, err := s.store.Messages.GetByChatID(ctx, chatID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]Message, 0, len(messages))
-	for _, message := range messages {
-		result = append(result, s.mapMessage(ctx, message))
-	}
-	return result, nil
+	return s.mapMessages(ctx, messages, profileID)
 }
 
 func (s *Service) GetMessagesAfter(ctx context.Context, userAccountID, chatID, afterID int64, limit int) ([]Message, error) {
@@ -179,22 +185,42 @@ func (s *Service) GetMessagesAfter(ctx context.Context, userAccountID, chatID, a
 	if !ok {
 		return nil, ErrForbidden
 	}
+	profileID, err := s.profileIDByAccount(ctx, userAccountID)
+	if err != nil {
+		return nil, err
+	}
 
 	messages, err := s.store.Messages.GetByChatIDAfter(ctx, chatID, afterID, limit)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]Message, 0, len(messages))
-	for _, message := range messages {
-		result = append(result, s.mapMessage(ctx, message))
-	}
-	return result, nil
+	return s.mapMessages(ctx, messages, profileID)
 }
 
-func (s *Service) SendMessage(ctx context.Context, userAccountID, chatID int64, text string) (Message, error) {
-	text = strings.TrimSpace(text)
-	if text == "" {
+func (s *Service) SendMessage(ctx context.Context, userAccountID, chatID int64, input MessageInput) (Message, error) {
+	text := strings.TrimSpace(input.Text)
+	attachments := appendAttachmentInputs(input.Media, input.Files)
+	if chatID <= 0 || userAccountID <= 0 {
 		return Message{}, ErrInvalidInput
+	}
+	if input.StickerID != nil {
+		if *input.StickerID <= 0 || text != "" || len(attachments) != 0 {
+			return Message{}, ErrInvalidInput
+		}
+		if _, err := s.store.Stickers.Get(ctx, *input.StickerID); err != nil {
+			return Message{}, ErrNotFound
+		}
+	} else if text == "" && len(attachments) == 0 {
+		return Message{}, ErrInvalidInput
+	}
+	if input.ParentMessageID != nil {
+		if *input.ParentMessageID <= 0 {
+			return Message{}, ErrInvalidInput
+		}
+		parent, err := s.store.Messages.GetByID(ctx, *input.ParentMessageID)
+		if err != nil || parent.ChatID != chatID {
+			return Message{}, ErrNotFound
+		}
 	}
 	ok, err := s.CheckUserInChat(ctx, chatID, userAccountID)
 	if err != nil {
@@ -207,19 +233,36 @@ func (s *Service) SendMessage(ctx context.Context, userAccountID, chatID int64, 
 	if err != nil {
 		return Message{}, err
 	}
+	if err := s.validateAttachments(ctx, profileID, attachments); err != nil {
+		return Message{}, err
+	}
+	var textPtr *string
+	if text != "" {
+		textPtr = &text
+	}
 	msg := model.Message{
-		Uid:       uuid.New(),
-		Text:      &text,
-		ChatID:    chatID,
-		AuthorID:  profileID,
-		IsActive:  true,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		Uid:             uuid.New(),
+		Text:            textPtr,
+		ParentMessageID: input.ParentMessageID,
+		ChatID:          chatID,
+		AuthorID:        profileID,
+		StickerID:       input.StickerID,
+		IsActive:        true,
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
 	}
 	if err := s.store.Messages.Save(ctx, &msg); err != nil {
 		return Message{}, err
 	}
-	return s.mapMessage(ctx, msg), nil
+	if err := s.attachMedia(ctx, msg.ID, attachments); err != nil {
+		_ = s.store.Messages.Delete(ctx, msg.ID)
+		return Message{}, err
+	}
+	messages, err := s.mapMessages(ctx, []model.Message{msg}, profileID)
+	if err != nil {
+		return Message{}, err
+	}
+	return messages[0], nil
 }
 
 func (s *Service) UpdateMessage(ctx context.Context, userAccountID, chatID, messageID int64, text string) (Message, error) {
@@ -248,12 +291,19 @@ func (s *Service) UpdateMessage(ctx context.Context, userAccountID, chatID, mess
 	if msg.AuthorID != profileID {
 		return Message{}, ErrForbidden
 	}
+	if msg.StickerID != nil {
+		return Message{}, ErrInvalidInput
+	}
 	msg.Text = &text
 	msg.UpdatedAt = time.Now()
 	if err := s.store.Messages.Update(ctx, msg); err != nil {
 		return Message{}, err
 	}
-	return s.mapMessage(ctx, *msg), nil
+	messages, err := s.mapMessages(ctx, []model.Message{*msg}, profileID)
+	if err != nil {
+		return Message{}, err
+	}
+	return messages[0], nil
 }
 
 func (s *Service) mapChat(ctx context.Context, chat model.Chat, viewerUserAccountID int64) Chat {
@@ -275,11 +325,47 @@ func (s *Service) mapChat(ctx context.Context, chat model.Chat, viewerUserAccoun
 	}
 }
 
-func (s *Service) mapMessage(ctx context.Context, message model.Message) Message {
+func (s *Service) mapMessages(ctx context.Context, messages []model.Message, viewerProfileID int64) ([]Message, error) {
+	messageIDs := make([]int64, 0, len(messages))
+	for _, message := range messages {
+		messageIDs = append(messageIDs, message.ID)
+	}
+	mediaByMessage, err := s.store.MessageMedia.GetByMessageIDs(ctx, messageIDs)
+	if err != nil {
+		return nil, err
+	}
+	reactionsByMessage, err := s.store.Reactions.GetSummaryByMessageIDs(ctx, messageIDs)
+	if err != nil {
+		return nil, err
+	}
+	myReactions, err := s.store.Reactions.GetUserReactionsByMessageIDs(ctx, messageIDs, viewerProfileID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]Message, 0, len(messages))
+	for _, message := range messages {
+		result = append(result, s.mapMessage(ctx, message, mediaByMessage[message.ID], reactionsByMessage[message.ID], myReactions[message.ID]))
+	}
+	return result, nil
+}
+
+func (s *Service) mapMessage(ctx context.Context, message model.Message, attachments []model.MessageMedia, reactions []model.ReactionSummary, myReaction string) Message {
 	text := message.Text
 	if text != nil {
 		escaped := html.EscapeString(html.UnescapeString(*text))
 		text = &escaped
+	}
+	media, files := s.splitAttachments(ctx, attachments)
+	var sticker *Sticker
+	if message.StickerID != nil {
+		if item, err := s.store.Stickers.Get(ctx, *message.StickerID); err == nil {
+			sticker = s.mapSticker(ctx, *item)
+		}
+	}
+	var myReactionPtr *string
+	if myReaction != "" {
+		normalized := normalizeStoredReaction(myReaction)
+		myReactionPtr = &normalized
 	}
 	return Message{
 		ID:              message.ID,
@@ -290,9 +376,263 @@ func (s *Service) mapMessage(ctx context.Context, message model.Message) Message
 		ChatID:          message.ChatID,
 		AuthorID:        message.AuthorID,
 		StickerID:       message.StickerID,
+		Sticker:         sticker,
+		Media:           media,
+		Files:           files,
+		Reactions:       mapReactionSummaries(reactions),
+		MyReaction:      myReactionPtr,
 		IsActive:        message.IsActive,
 		CreatedAt:       message.CreatedAt,
 		UpdatedAt:       message.UpdatedAt,
+	}
+}
+
+func (s *Service) GetStickerPacks(ctx context.Context, userAccountID int64, limit, offset int) ([]StickerPack, error) {
+	if userAccountID <= 0 {
+		return nil, ErrInvalidInput
+	}
+	if _, err := s.profileIDByAccount(ctx, userAccountID); err != nil {
+		return nil, err
+	}
+	limit, offset = normalizeListBounds(limit, offset)
+	packs, err := s.store.Stickers.ListPacks(ctx, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]StickerPack, 0, len(packs))
+	for _, pack := range packs {
+		result = append(result, StickerPack{
+			ID:        pack.ID,
+			UID:       pack.Uid.String(),
+			Title:     html.EscapeString(pack.Title),
+			CreatedAt: pack.CreatedAt,
+			UpdatedAt: pack.UpdatedAt,
+		})
+	}
+	return result, nil
+}
+
+func (s *Service) GetStickersByPack(ctx context.Context, userAccountID, packID int64, limit, offset int) ([]Sticker, error) {
+	if userAccountID <= 0 || packID <= 0 {
+		return nil, ErrInvalidInput
+	}
+	if _, err := s.profileIDByAccount(ctx, userAccountID); err != nil {
+		return nil, err
+	}
+	limit, offset = normalizeListBounds(limit, offset)
+	stickers, err := s.store.Stickers.ListByPackID(ctx, packID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]Sticker, 0, len(stickers))
+	for _, sticker := range stickers {
+		result = append(result, *s.mapSticker(ctx, sticker))
+	}
+	return result, nil
+}
+
+func (s *Service) SetMessageReaction(ctx context.Context, userAccountID, chatID, messageID int64, reactionType string) (Message, error) {
+	reactionType = normalizeInputReaction(reactionType)
+	if userAccountID <= 0 || chatID <= 0 || messageID <= 0 || reactionType == "" {
+		return Message{}, ErrInvalidInput
+	}
+	profileID, err := s.profileIDByAccount(ctx, userAccountID)
+	if err != nil {
+		return Message{}, err
+	}
+	msg, err := s.store.Messages.GetByID(ctx, messageID)
+	if err != nil || msg.ChatID != chatID {
+		return Message{}, ErrNotFound
+	}
+	ok, err := s.CheckUserInChat(ctx, chatID, userAccountID)
+	if err != nil {
+		return Message{}, err
+	}
+	if !ok {
+		return Message{}, ErrForbidden
+	}
+	if err := s.store.Reactions.Upsert(ctx, messageID, profileID, reactionType); err != nil {
+		return Message{}, err
+	}
+	messages, err := s.mapMessages(ctx, []model.Message{*msg}, profileID)
+	if err != nil {
+		return Message{}, err
+	}
+	return messages[0], nil
+}
+
+func (s *Service) DeleteMessageReaction(ctx context.Context, userAccountID, chatID, messageID int64) (Message, error) {
+	if userAccountID <= 0 || chatID <= 0 || messageID <= 0 {
+		return Message{}, ErrInvalidInput
+	}
+	profileID, err := s.profileIDByAccount(ctx, userAccountID)
+	if err != nil {
+		return Message{}, err
+	}
+	msg, err := s.store.Messages.GetByID(ctx, messageID)
+	if err != nil || msg.ChatID != chatID {
+		return Message{}, ErrNotFound
+	}
+	ok, err := s.CheckUserInChat(ctx, chatID, userAccountID)
+	if err != nil {
+		return Message{}, err
+	}
+	if !ok {
+		return Message{}, ErrForbidden
+	}
+	if err := s.store.Reactions.Delete(ctx, messageID, profileID); err != nil {
+		return Message{}, err
+	}
+	messages, err := s.mapMessages(ctx, []model.Message{*msg}, profileID)
+	if err != nil {
+		return Message{}, err
+	}
+	return messages[0], nil
+}
+
+func (s *Service) validateAttachments(ctx context.Context, actorProfileID int64, attachments []AttachmentInput) error {
+	if len(attachments) > 10 {
+		return ErrInvalidInput
+	}
+	seen := make(map[int64]struct{}, len(attachments))
+	for _, item := range attachments {
+		if item.MediaID <= 0 {
+			return ErrInvalidInput
+		}
+		if _, ok := seen[item.MediaID]; ok {
+			return ErrInvalidInput
+		}
+		seen[item.MediaID] = struct{}{}
+		authorID, err := s.store.MessageMedia.GetMediaAuthorID(ctx, item.MediaID)
+		if err != nil {
+			return ErrInvalidInput
+		}
+		if authorID != actorProfileID {
+			return ErrForbidden
+		}
+	}
+	return nil
+}
+
+func (s *Service) attachMedia(ctx context.Context, messageID int64, attachments []AttachmentInput) error {
+	for i, item := range attachments {
+		if err := s.store.MessageMedia.Save(ctx, model.MessageMedia{
+			MessageID: messageID,
+			MediaID:   item.MediaID,
+			Order:     i,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func appendAttachmentInputs(media []AttachmentInput, files []AttachmentInput) []AttachmentInput {
+	if len(files) == 0 {
+		return media
+	}
+	result := make([]AttachmentInput, 0, len(media)+len(files))
+	result = append(result, media...)
+	result = append(result, files...)
+	return result
+}
+
+func (s *Service) splitAttachments(ctx context.Context, items []model.MessageMedia) ([]Attachment, []Attachment) {
+	media := make([]Attachment, 0, len(items))
+	files := make([]Attachment, 0)
+	for _, item := range items {
+		attachment := Attachment{
+			ID:       item.MediaID,
+			UID:      item.MediaUID.String(),
+			MimeType: item.MimeType,
+			URL:      s.mediaURL(ctx, item.MediaID, item.Link),
+		}
+		if isMessageMedia(item.MimeType) {
+			media = append(media, attachment)
+			continue
+		}
+		files = append(files, attachment)
+	}
+	return media, files
+}
+
+func (s *Service) mapSticker(ctx context.Context, sticker model.Sticker) *Sticker {
+	result := &Sticker{
+		ID:       sticker.ID,
+		UID:      sticker.Uid.String(),
+		PackID:   sticker.PackID,
+		MediaID:  sticker.MediaID,
+		MimeType: sticker.MimeType,
+	}
+	if sticker.MediaID != nil && sticker.Link != nil {
+		url := s.mediaURL(ctx, *sticker.MediaID, *sticker.Link)
+		result.URL = &url
+	}
+	return result
+}
+
+func (s *Service) mediaURL(ctx context.Context, mediaID int64, raw string) string {
+	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") || s.mediaClient == nil {
+		return raw
+	}
+	resp, err := s.mediaClient.GetMediaURL(ctx, &mediapb.GetMediaURLRequest{MediaId: mediaID})
+	if err != nil || resp == nil || strings.TrimSpace(resp.GetUrl()) == "" {
+		return raw
+	}
+	return resp.GetUrl()
+}
+
+func isMessageMedia(mimeType string) bool {
+	return strings.HasPrefix(mimeType, "image/") || strings.HasPrefix(mimeType, "video/")
+}
+
+func normalizeListBounds(limit, offset int) (int, int) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return limit, offset
+}
+
+func mapReactionSummaries(items []model.ReactionSummary) []ReactionSummary {
+	result := make([]ReactionSummary, 0, len(items))
+	for _, item := range items {
+		result = append(result, ReactionSummary{Type: normalizeStoredReaction(item.Type), Count: item.Count})
+	}
+	return result
+}
+
+func normalizeInputReaction(value string) string {
+	switch strings.TrimSpace(value) {
+	case "👍", "like":
+		return "👍"
+	case "❤️", "love":
+		return "❤️"
+	case "😂", "laugh", "happy":
+		return "😂"
+	case "😢", "sad":
+		return "😢"
+	case "😡", "angry", "anger":
+		return "😡"
+	default:
+		return ""
+	}
+}
+
+func normalizeStoredReaction(value string) string {
+	switch value {
+	case `\like`, "like":
+		return "👍"
+	case `\dislike`, "dislike":
+		return "😢"
+	case `\happy`, "happy":
+		return "😂"
+	case `\anger`, "anger":
+		return "😡"
+	default:
+		return value
 	}
 }
 

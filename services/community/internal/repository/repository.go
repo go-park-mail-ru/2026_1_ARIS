@@ -36,6 +36,7 @@ type CommunityRepo interface {
 	Update(ctx context.Context, community model.Community) (*model.Community, error)
 	UpdateAvatar(ctx context.Context, communityProfileID int64, avatarID *int64) error
 	GetAvatarID(ctx context.Context, communityProfileID int64) (*int64, error)
+	ExistsByTitleOrUsername(ctx context.Context, title, username string) (bool, bool, error)
 	Delete(ctx context.Context, communityID int64) error
 	GetMember(ctx context.Context, communityID, profileID int64) (*model.CommunityMember, error)
 	ListMembers(ctx context.Context, communityID int64, includeBlocked bool) ([]model.CommunityMember, error)
@@ -175,9 +176,34 @@ func (s *communityStorage) GetAvatarID(ctx context.Context, communityProfileID i
 	return avatarID, nil
 }
 
+func (s *communityStorage) ExistsByTitleOrUsername(ctx context.Context, title, username string) (bool, bool, error) {
+	start := time.Now()
+	row := s.db.QueryRow(ctx, `
+		SELECT
+			EXISTS (
+				SELECT 1
+				FROM community
+				WHERE is_active=TRUE AND LOWER(title)=LOWER($1)
+			),
+			EXISTS (
+				SELECT 1
+				FROM community
+				WHERE is_active=TRUE AND username=$2
+			)
+	`, title, username)
+	logQuery(ctx, "communityStorage.ExistsByTitleOrUsername", start)
+
+	var titleExists bool
+	var usernameExists bool
+	if err := row.Scan(&titleExists, &usernameExists); err != nil {
+		return false, false, err
+	}
+	return titleExists, usernameExists, nil
+}
+
 func (s *communityStorage) Delete(ctx context.Context, communityID int64) error {
 	start := time.Now()
-	tag, err := s.db.Exec(ctx, `UPDATE community SET is_active=FALSE, updated_at=NOW() WHERE id=$1 AND is_active=TRUE`, communityID)
+	tag, err := s.db.Exec(ctx, `DELETE FROM community WHERE id=$1 AND is_active=TRUE`, communityID)
 	logQuery(ctx, "communityStorage.Delete", start)
 	if err != nil {
 		return err

@@ -23,11 +23,15 @@ var (
 	ErrInvalidInput         = errors.New("invalid input")
 	ErrPostContentRequired  = errors.New("post content required")
 	ErrPostNotFound         = repository.ErrPostNotFound
+	ErrCommentNotFound      = repository.ErrCommentNotFound
 	ErrProfileNotFound      = errors.New("profile not found")
 	ErrCommunityNotFound    = errors.New("community not found")
 	ErrForbidden            = errors.New("denied")
 	ErrMediaAttachmentError = errors.New("can't attach media")
+	ErrCommentsDisabled     = errors.New("comments disabled")
 )
+
+const maxAttachments = 10
 
 type Service struct {
 	store           repository.Store
@@ -61,6 +65,7 @@ type FeedPost struct {
 	Comments  int
 	Reposts   int
 	Medias    []Media
+	Files     []Media
 }
 
 type FeedResult struct {
@@ -77,6 +82,7 @@ type MediaRequestData struct {
 type CreateInput struct {
 	Text            *string
 	Media           []MediaRequestData
+	Files           []MediaRequestData
 	AuthorProfileID *int64
 	CommunityID     *int64
 }
@@ -93,8 +99,21 @@ type PostDetails struct {
 	UpdatedAt   time.Time
 	Author      Author
 	Media       []Media
+	Files       []Media
 	Likes       int
 	IsLiked     bool
+}
+
+type Comment struct {
+	ID              int64
+	UID             uuid.UUID
+	Text            *string
+	PostID          int64
+	ParentCommentID *int64
+	Author          Author
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	RepliesCount    int
 }
 
 type communityInfo struct {
@@ -118,7 +137,8 @@ func (s *Service) CreatePost(ctx context.Context, userAccountID int64, input Cre
 	if userAccountID <= 0 {
 		return nil, ErrInvalidInput
 	}
-	if input.Text == nil && len(input.Media) == 0 {
+	attachments := appendAttachmentRefs(input.Media, input.Files)
+	if input.Text == nil && len(attachments) == 0 {
 		return nil, ErrPostContentRequired
 	}
 
@@ -137,7 +157,7 @@ func (s *Service) CreatePost(ctx context.Context, userAccountID int64, input Cre
 	if err != nil {
 		return nil, err
 	}
-	if err := s.attachMedia(ctx, postID, input.Media); err != nil {
+	if err := s.attachMedia(ctx, postID, profileID, attachments); err != nil {
 		return nil, err
 	}
 	return s.GetPostForViewer(ctx, postID, userAccountID)
@@ -252,7 +272,8 @@ func (s *Service) UpdatePost(ctx context.Context, userAccountID int64, postID in
 	if userAccountID <= 0 || postID <= 0 {
 		return nil, ErrInvalidInput
 	}
-	if input.Text == nil && len(input.Media) == 0 {
+	attachments := appendAttachmentRefs(input.Media, input.Files)
+	if input.Text == nil && len(attachments) == 0 {
 		return nil, ErrPostContentRequired
 	}
 	profileID, err := s.profileIDByUserAccount(ctx, userAccountID)
@@ -273,11 +294,11 @@ func (s *Service) UpdatePost(ctx context.Context, userAccountID int64, postID in
 			return nil, normalizePostError(err)
 		}
 	}
-	if input.Media != nil {
+	if input.Media != nil || input.Files != nil {
 		if err := s.store.PostMedia.DeleteByPostID(ctx, postID); err != nil {
 			return nil, err
 		}
-		if err := s.attachMedia(ctx, postID, input.Media); err != nil {
+		if err := s.attachMedia(ctx, postID, profileID, attachments); err != nil {
 			return nil, err
 		}
 	}
@@ -346,6 +367,143 @@ func (s *Service) UnlikePost(ctx context.Context, userAccountID, postID int64) (
 		}
 	}
 	return s.GetPostForViewer(ctx, postID, userAccountID)
+}
+
+func (s *Service) GetPostComments(ctx context.Context, userAccountID, postID int64, limit, offset int) ([]Comment, error) {
+	if userAccountID <= 0 || postID <= 0 {
+		return nil, ErrInvalidInput
+	}
+	if _, err := s.profileIDByUserAccount(ctx, userAccountID); err != nil {
+		return nil, err
+	}
+	if _, err := s.store.Posts.Get(ctx, postID); err != nil {
+		return nil, normalizePostError(err)
+	}
+	limit, offset = normalizeListBounds(limit, offset)
+	comments, err := s.store.Comments.GetTopLevelByPostID(ctx, postID, limit, offset)
+	if err != nil {
+		return nil, normalizeCommentError(err)
+	}
+	return s.mapComments(ctx, comments), nil
+}
+
+func (s *Service) GetCommentReplies(ctx context.Context, userAccountID, postID, commentID int64, limit, offset int) ([]Comment, error) {
+	if userAccountID <= 0 || postID <= 0 || commentID <= 0 {
+		return nil, ErrInvalidInput
+	}
+	if _, err := s.profileIDByUserAccount(ctx, userAccountID); err != nil {
+		return nil, err
+	}
+	parent, err := s.store.Comments.Get(ctx, commentID)
+	if err != nil {
+		return nil, normalizeCommentError(err)
+	}
+	if parent.PostID != postID {
+		return nil, ErrCommentNotFound
+	}
+	limit, offset = normalizeListBounds(limit, offset)
+	comments, err := s.store.Comments.GetReplies(ctx, postID, commentID, limit, offset)
+	if err != nil {
+		return nil, normalizeCommentError(err)
+	}
+	return s.mapComments(ctx, comments), nil
+}
+
+func (s *Service) CreateComment(ctx context.Context, userAccountID, postID int64, text string, parentCommentID *int64) (*Comment, error) {
+	text = strings.TrimSpace(text)
+	if userAccountID <= 0 || postID <= 0 || text == "" {
+		return nil, ErrInvalidInput
+	}
+	post, err := s.store.Posts.Get(ctx, postID)
+	if err != nil {
+		return nil, normalizePostError(err)
+	}
+	if !post.AllowComments {
+		return nil, ErrCommentsDisabled
+	}
+	if parentCommentID != nil {
+		if *parentCommentID <= 0 {
+			return nil, ErrInvalidInput
+		}
+		parent, err := s.store.Comments.Get(ctx, *parentCommentID)
+		if err != nil {
+			return nil, normalizeCommentError(err)
+		}
+		if parent.PostID != postID {
+			return nil, ErrCommentNotFound
+		}
+	}
+	profileID, err := s.profileIDByUserAccount(ctx, userAccountID)
+	if err != nil {
+		return nil, err
+	}
+	comment := model.NewComment(&text, postID, parentCommentID, profileID)
+	id, err := s.store.Comments.Save(ctx, *comment)
+	if err != nil {
+		return nil, err
+	}
+	saved, err := s.store.Comments.Get(ctx, id)
+	if err != nil {
+		return nil, normalizeCommentError(err)
+	}
+	mapped := s.mapComment(ctx, *saved)
+	return &mapped, nil
+}
+
+func (s *Service) UpdateComment(ctx context.Context, userAccountID, postID, commentID int64, text string) (*Comment, error) {
+	text = strings.TrimSpace(text)
+	if userAccountID <= 0 || postID <= 0 || commentID <= 0 || text == "" {
+		return nil, ErrInvalidInput
+	}
+	profileID, err := s.profileIDByUserAccount(ctx, userAccountID)
+	if err != nil {
+		return nil, err
+	}
+	comment, err := s.store.Comments.Get(ctx, commentID)
+	if err != nil {
+		return nil, normalizeCommentError(err)
+	}
+	if comment.PostID != postID {
+		return nil, ErrCommentNotFound
+	}
+	if comment.AuthorID != profileID {
+		return nil, ErrForbidden
+	}
+	comment.Text = &text
+	if err := s.store.Comments.Update(ctx, *comment); err != nil {
+		return nil, normalizeCommentError(err)
+	}
+	updated, err := s.store.Comments.Get(ctx, commentID)
+	if err != nil {
+		return nil, normalizeCommentError(err)
+	}
+	mapped := s.mapComment(ctx, *updated)
+	return &mapped, nil
+}
+
+func (s *Service) DeleteComment(ctx context.Context, userAccountID, postID, commentID int64) error {
+	if userAccountID <= 0 || postID <= 0 || commentID <= 0 {
+		return ErrInvalidInput
+	}
+	profileID, err := s.profileIDByUserAccount(ctx, userAccountID)
+	if err != nil {
+		return err
+	}
+	comment, err := s.store.Comments.Get(ctx, commentID)
+	if err != nil {
+		return normalizeCommentError(err)
+	}
+	if comment.PostID != postID {
+		return ErrCommentNotFound
+	}
+	post, err := s.store.Posts.Get(ctx, postID)
+	if err != nil {
+		return normalizePostError(err)
+	}
+	if comment.AuthorID != profileID && !s.canDeletePost(ctx, *post, profileID) {
+		return ErrForbidden
+	}
+	return normalizeCommentError(s.store.Comments.Delete(ctx, commentID))
 }
 
 func (s *Service) GetFeed(ctx context.Context, rawCursor string, limit int) (FeedResult, error) {
@@ -443,6 +601,7 @@ func (s *Service) buildFeedPost(ctx context.Context, post model.Post) (FeedPost,
 		text = html.EscapeString(*post.Text)
 	}
 
+	media, files := splitMedia(s.postMedia(ctx, post.ID))
 	return FeedPost{
 		ID:        post.ID,
 		Text:      text,
@@ -451,7 +610,8 @@ func (s *Service) buildFeedPost(ctx context.Context, post model.Post) (FeedPost,
 		Likes:     s.store.Likes.GetLikeCountOnPost(ctx, post.ID),
 		Comments:  s.store.Comments.GetCommentCount(ctx, post.ID),
 		Reposts:   s.store.Reposts.GetRepostCount(ctx, post.ID),
-		Medias:    s.postMedia(ctx, post.ID),
+		Medias:    media,
+		Files:     files,
 	}, nil
 }
 
@@ -460,6 +620,7 @@ func (s *Service) buildPostDetails(ctx context.Context, post model.Post, viewerP
 	if err != nil {
 		return nil, err
 	}
+	media, files := splitMedia(s.postMedia(ctx, post.ID))
 	return &PostDetails{
 		ID:          post.ID,
 		UID:         post.Uid,
@@ -469,10 +630,42 @@ func (s *Service) buildPostDetails(ctx context.Context, post model.Post, viewerP
 		CreatedAt:   post.CreatedAt,
 		UpdatedAt:   post.UpdatedAt,
 		Author:      author,
-		Media:       s.postMedia(ctx, post.ID),
+		Media:       media,
+		Files:       files,
 		Likes:       s.store.Likes.GetLikeCountOnPost(ctx, post.ID),
 		IsLiked:     viewerProfileID > 0 && s.store.Likes.HasActivePostLike(ctx, post.ID, viewerProfileID),
 	}, nil
+}
+
+func (s *Service) mapComments(ctx context.Context, comments []model.Comment) []Comment {
+	result := make([]Comment, 0, len(comments))
+	for _, comment := range comments {
+		result = append(result, s.mapComment(ctx, comment))
+	}
+	return result
+}
+
+func (s *Service) mapComment(ctx context.Context, comment model.Comment) Comment {
+	text := comment.Text
+	if text != nil {
+		escaped := html.EscapeString(html.UnescapeString(*text))
+		text = &escaped
+	}
+	author, err := s.author(ctx, comment.AuthorID)
+	if err != nil {
+		author = Author{ID: comment.AuthorID}
+	}
+	return Comment{
+		ID:              comment.ID,
+		UID:             comment.Uid,
+		Text:            text,
+		PostID:          comment.PostID,
+		ParentCommentID: comment.ParentCommentID,
+		Author:          author,
+		CreatedAt:       comment.CreatedAt,
+		UpdatedAt:       comment.UpdatedAt,
+		RepliesCount:    comment.RepliesCount,
+	}
 }
 
 func (s *Service) author(ctx context.Context, profileID int64) (Author, error) {
@@ -507,12 +700,18 @@ func (s *Service) author(ctx context.Context, profileID int64) (Author, error) {
 }
 
 func (s *Service) postMedia(ctx context.Context, postID int64) []Media {
-	mediaIDs := s.store.PostMedia.GetMediaByPostID(ctx, postID)
-	items := make([]Media, 0, len(mediaIDs))
-	for _, mediaID := range mediaIDs {
-		if media := s.media(ctx, mediaID); media != nil {
-			items = append(items, *media)
-		}
+	attached, err := s.store.PostMedia.GetDetailedMediaByPostID(ctx, postID)
+	if err != nil {
+		return nil
+	}
+	items := make([]Media, 0, len(attached))
+	for _, item := range attached {
+		items = append(items, Media{
+			ID:       item.MediaID,
+			UID:      item.UID.String(),
+			MimeType: item.MimeType,
+			URL:      s.absoluteMediaURL(ctx, item.MediaID, item.Link),
+		})
 	}
 	return items
 }
@@ -536,6 +735,17 @@ func (s *Service) media(ctx context.Context, mediaID int64) *Media {
 	}
 
 	return &Media{ID: resp.GetMediaId(), UID: resp.GetUid(), MimeType: resp.GetMimeType(), URL: url}
+}
+
+func (s *Service) absoluteMediaURL(ctx context.Context, mediaID int64, raw string) string {
+	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") || s.mediaClient == nil {
+		return raw
+	}
+	resp, err := s.mediaClient.GetMediaURL(ctx, &mediapb.GetMediaURLRequest{MediaId: mediaID})
+	if err != nil || resp == nil || strings.TrimSpace(resp.GetUrl()) == "" {
+		return raw
+	}
+	return resp.GetUrl()
 }
 
 func (s *Service) mediaURL(ctx context.Context, mediaID int64) *string {
@@ -733,22 +943,68 @@ func normalizeCommunityRole(role string) string {
 	return role
 }
 
-func (s *Service) attachMedia(ctx context.Context, postID int64, medias []MediaRequestData) error {
+func (s *Service) attachMedia(ctx context.Context, postID, actorProfileID int64, medias []MediaRequestData) error {
+	if len(medias) > maxAttachments {
+		return ErrInvalidInput
+	}
+	seen := make(map[int64]struct{}, len(medias))
 	for i, media := range medias {
 		if media.MediaID <= 0 {
 			return ErrInvalidInput
 		}
-		if s.mediaClient != nil {
-			resp, err := s.mediaClient.GetMedia(ctx, &mediapb.GetMediaRequest{MediaId: media.MediaID})
-			if err != nil || resp == nil {
-				return ErrMediaAttachmentError
-			}
+		if _, ok := seen[media.MediaID]; ok {
+			return ErrInvalidInput
+		}
+		seen[media.MediaID] = struct{}{}
+		authorID, err := s.store.PostMedia.GetMediaAuthorID(ctx, media.MediaID)
+		if err != nil {
+			return ErrMediaAttachmentError
+		}
+		if authorID != actorProfileID {
+			return ErrForbidden
 		}
 		if err := s.store.PostMedia.Save(ctx, *model.NewPostWithMedia(postID, media.MediaID, i)); err != nil {
 			return ErrMediaAttachmentError
 		}
 	}
 	return nil
+}
+
+func appendAttachmentRefs(media []MediaRequestData, files []MediaRequestData) []MediaRequestData {
+	if len(files) == 0 {
+		return media
+	}
+	result := make([]MediaRequestData, 0, len(media)+len(files))
+	result = append(result, media...)
+	result = append(result, files...)
+	return result
+}
+
+func splitMedia(items []Media) ([]Media, []Media) {
+	media := make([]Media, 0, len(items))
+	files := make([]Media, 0)
+	for _, item := range items {
+		if isTimelineMedia(item.MimeType) {
+			media = append(media, item)
+			continue
+		}
+		files = append(files, item)
+	}
+	return media, files
+}
+
+func isTimelineMedia(mimeType string) bool {
+	return strings.HasPrefix(mimeType, "image/") || strings.HasPrefix(mimeType, "video/")
+}
+
+func normalizeListBounds(limit, offset int) (int, int) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return limit, offset
 }
 
 func normalizePostError(err error) error {
@@ -761,11 +1017,21 @@ func normalizePostError(err error) error {
 	return err
 }
 
+func normalizeCommentError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, repository.ErrCommentNotFound) {
+		return ErrCommentNotFound
+	}
+	return err
+}
+
 func ToStatus(err error) error {
 	switch {
 	case errors.Is(err, ErrInvalidInput), errors.Is(err, ErrPostContentRequired):
 		return status.Error(codes.InvalidArgument, err.Error())
-	case errors.Is(err, ErrPostNotFound), errors.Is(err, ErrProfileNotFound), errors.Is(err, ErrCommunityNotFound):
+	case errors.Is(err, ErrPostNotFound), errors.Is(err, ErrCommentNotFound), errors.Is(err, ErrProfileNotFound), errors.Is(err, ErrCommunityNotFound):
 		return status.Error(codes.NotFound, err.Error())
 	case errors.Is(err, ErrForbidden):
 		return status.Error(codes.PermissionDenied, err.Error())

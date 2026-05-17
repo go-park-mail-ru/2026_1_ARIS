@@ -29,6 +29,7 @@ message FeedPost {
   int32 comments = 6;
   int32 reposts = 7;
   repeated Media medias = 8;
+  repeated Media files = 9;
 }
 
 message Author {
