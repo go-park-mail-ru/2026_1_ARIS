@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	UserService_CheckUsernameAvailable_FullMethodName      = "/aris.user.v1.UserService/CheckUsernameAvailable"
 	UserService_CreateAuthUser_FullMethodName              = "/aris.user.v1.UserService/CreateAuthUser"
+	UserService_GetOrCreateOAuthUser_FullMethodName        = "/aris.user.v1.UserService/GetOrCreateOAuthUser"
 	UserService_GetCredentialsByLogin_FullMethodName       = "/aris.user.v1.UserService/GetCredentialsByLogin"
 	UserService_GetAuthUserByAccount_FullMethodName        = "/aris.user.v1.UserService/GetAuthUserByAccount"
 	UserService_GetProfileByUserAccount_FullMethodName     = "/aris.user.v1.UserService/GetProfileByUserAccount"
@@ -35,6 +36,7 @@ const (
 type UserServiceClient interface {
 	CheckUsernameAvailable(ctx context.Context, in *CheckUsernameAvailableRequest, opts ...grpc.CallOption) (*CheckUsernameAvailableResponse, error)
 	CreateAuthUser(ctx context.Context, in *CreateAuthUserRequest, opts ...grpc.CallOption) (*AuthUserResponse, error)
+	GetOrCreateOAuthUser(ctx context.Context, in *GetOrCreateOAuthUserRequest, opts ...grpc.CallOption) (*AuthUserResponse, error)
 	GetCredentialsByLogin(ctx context.Context, in *GetCredentialsByLoginRequest, opts ...grpc.CallOption) (*GetCredentialsByLoginResponse, error)
 	GetAuthUserByAccount(ctx context.Context, in *GetAuthUserByAccountRequest, opts ...grpc.CallOption) (*AuthUserResponse, error)
 	GetProfileByUserAccount(ctx context.Context, in *GetProfileByUserAccountRequest, opts ...grpc.CallOption) (*GetProfileByUserAccountResponse, error)
@@ -65,6 +67,16 @@ func (c *userServiceClient) CreateAuthUser(ctx context.Context, in *CreateAuthUs
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AuthUserResponse)
 	err := c.cc.Invoke(ctx, UserService_CreateAuthUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetOrCreateOAuthUser(ctx context.Context, in *GetOrCreateOAuthUserRequest, opts ...grpc.CallOption) (*AuthUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AuthUserResponse)
+	err := c.cc.Invoke(ctx, UserService_GetOrCreateOAuthUser_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -137,6 +149,7 @@ func (c *userServiceClient) SearchProfiles(ctx context.Context, in *SearchProfil
 type UserServiceServer interface {
 	CheckUsernameAvailable(context.Context, *CheckUsernameAvailableRequest) (*CheckUsernameAvailableResponse, error)
 	CreateAuthUser(context.Context, *CreateAuthUserRequest) (*AuthUserResponse, error)
+	GetOrCreateOAuthUser(context.Context, *GetOrCreateOAuthUserRequest) (*AuthUserResponse, error)
 	GetCredentialsByLogin(context.Context, *GetCredentialsByLoginRequest) (*GetCredentialsByLoginResponse, error)
 	GetAuthUserByAccount(context.Context, *GetAuthUserByAccountRequest) (*AuthUserResponse, error)
 	GetProfileByUserAccount(context.Context, *GetProfileByUserAccountRequest) (*GetProfileByUserAccountResponse, error)
@@ -158,6 +171,9 @@ func (UnimplementedUserServiceServer) CheckUsernameAvailable(context.Context, *C
 }
 func (UnimplementedUserServiceServer) CreateAuthUser(context.Context, *CreateAuthUserRequest) (*AuthUserResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateAuthUser not implemented")
+}
+func (UnimplementedUserServiceServer) GetOrCreateOAuthUser(context.Context, *GetOrCreateOAuthUserRequest) (*AuthUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetOrCreateOAuthUser not implemented")
 }
 func (UnimplementedUserServiceServer) GetCredentialsByLogin(context.Context, *GetCredentialsByLoginRequest) (*GetCredentialsByLoginResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetCredentialsByLogin not implemented")
@@ -230,6 +246,24 @@ func _UserService_CreateAuthUser_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).CreateAuthUser(ctx, req.(*CreateAuthUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetOrCreateOAuthUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetOrCreateOAuthUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetOrCreateOAuthUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetOrCreateOAuthUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetOrCreateOAuthUser(ctx, req.(*GetOrCreateOAuthUserRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -356,6 +390,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateAuthUser",
 			Handler:    _UserService_CreateAuthUser_Handler,
+		},
+		{
+			MethodName: "GetOrCreateOAuthUser",
+			Handler:    _UserService_GetOrCreateOAuthUser_Handler,
 		},
 		{
 			MethodName: "GetCredentialsByLogin",

@@ -17,7 +17,9 @@ REDIS_MAX_RETRIES="${REDIS_MAX_RETRIES:-3}"
 REDIS_DIAL_TIMEOUT="${REDIS_DIAL_TIMEOUT:-3s}"
 REDIS_TIMEOUT="${REDIS_TIMEOUT:-3s}"
 MINIO_USE_SSL="${MINIO_USE_SSL:-false}"
-APP_ENDPOINT="${APP_ENDPOINT:-http://localhost:${NGINX_PORT:-8080}}"
+APP_ENDPOINT="${APP_ENDPOINT:-https://arisnet.ru}"
+APP_ENDPOINT="${APP_ENDPOINT%/}"
+VKID_REDIRECT_URI="${VKID_REDIRECT_URI:-$APP_ENDPOINT/api/auth/vkid/callback}"
 case "$APP_ENDPOINT" in
   ""|http://localhost:*|http://127.0.0.1:*|http://host.docker.internal:*)
     REDIS_USER_PASSWORD="${REDIS_USER_PASSWORD:-local-redis-password}"
@@ -49,6 +51,7 @@ write_env() {
 }
 
 write_env services/auth/.env \
+  APP_ENDPOINT "$APP_ENDPOINT" \
   AUTH_GRPC_PORT "${AUTH_GRPC_PORT:-8002}" \
   AUTH_HTTP_PORT "${AUTH_HTTP_PORT:-8085}" \
   "" "" \
@@ -65,7 +68,14 @@ write_env services/auth/.env \
   "" "" \
   USER_GRPC_ADDR user:8004 \
   MEDIA_GRPC_ADDR media:8003 \
-  SUPPORT_GRPC_ADDR support:8007
+  SUPPORT_GRPC_ADDR support:8007 \
+  "" "" \
+  VKID_CLIENT_ID "${VKID_CLIENT_ID:-}" \
+  VKID_CLIENT_SECRET "${VKID_CLIENT_SECRET:-}" \
+  VKID_REDIRECT_URI "$VKID_REDIRECT_URI" \
+  VKID_SCOPE "${VKID_SCOPE:-email}" \
+  VKID_FRONTEND_SUCCESS_PATH "${VKID_FRONTEND_SUCCESS_PATH:-/feed?oauth=vkid}" \
+  VKID_FRONTEND_ERROR_PATH "${VKID_FRONTEND_ERROR_PATH:-/login}"
 
 write_env services/media/.env \
   APP_ENDPOINT "$APP_ENDPOINT" \

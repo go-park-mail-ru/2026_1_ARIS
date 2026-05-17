@@ -34,6 +34,7 @@ type DB interface {
 
 type Store struct {
 	Accounts     AccountRepo
+	OAuth        OAuthAccountRepo
 	Profiles     ProfileRepo
 	UserProfiles UserProfileRepo
 	Settings     SettingsRepo
@@ -43,6 +44,7 @@ type Store struct {
 func NewStore(db DB) Store {
 	return Store{
 		Accounts:     NewAccountStorage(db),
+		OAuth:        NewOAuthAccountStorage(db),
 		Profiles:     NewProfileStorage(db),
 		UserProfiles: NewUserProfileStorage(db),
 		Settings:     NewSettingsStorage(db),
@@ -74,6 +76,51 @@ type accountStorage struct {
 
 func NewAccountStorage(db DB) AccountRepo {
 	return &accountStorage{db: db}
+}
+
+type OAuthAccountRepo interface {
+	Save(ctx context.Context, provider, providerUserID string, userAccountID int64, email *string) error
+	GetUserAccountID(ctx context.Context, provider, providerUserID string) (int64, error)
+}
+
+type oauthAccountStorage struct {
+	db DB
+}
+
+func NewOAuthAccountStorage(db DB) OAuthAccountRepo {
+	return &oauthAccountStorage{db: db}
+}
+
+func (s *oauthAccountStorage) Save(ctx context.Context, provider, providerUserID string, userAccountID int64, email *string) error {
+	start := time.Now()
+	_, err := s.db.Exec(ctx, `
+		INSERT INTO oauth_account (provider, provider_user_id, user_account_id, email)
+		VALUES ($1, $2, $3, $4)
+	`, provider, providerUserID, userAccountID, email)
+	logQuery(ctx, "oauthAccountStorage.Save", start)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *oauthAccountStorage) GetUserAccountID(ctx context.Context, provider, providerUserID string) (int64, error) {
+	start := time.Now()
+	row := s.db.QueryRow(ctx, `
+		SELECT user_account_id
+		FROM oauth_account
+		WHERE provider=$1 AND provider_user_id=$2
+	`, provider, providerUserID)
+	logQuery(ctx, "oauthAccountStorage.GetUserAccountID", start)
+
+	var userAccountID int64
+	if err := row.Scan(&userAccountID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, ErrUserAccountNotFound
+		}
+		return 0, err
+	}
+	return userAccountID, nil
 }
 
 func (s *accountStorage) Save(ctx context.Context, account model.UserAccount) (int64, error) {

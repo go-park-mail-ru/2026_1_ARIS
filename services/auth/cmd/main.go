@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -81,10 +82,19 @@ func main() {
 	}
 	defer supportConn.Close()
 
+	appEndpoint := strings.TrimRight(utils.EnvString("APP_ENDPOINT", "https://arisnet.ru"), "/")
+	vkidRedirectURI := utils.EnvString("VKID_REDIRECT_URI", appEndpoint+"/api/auth/vkid/callback")
 	authUsecase := usecase.New(
 		repository.NewSessionStorage(redisClient),
 		userpb.NewUserServiceClient(userConn),
 		mediapb.NewMediaServiceClient(mediaConn),
+		usecase.WithVKIDClient(usecase.NewVKIDHTTPClient(usecase.VKIDConfig{
+			ClientID:     utils.EnvString("VKID_CLIENT_ID", ""),
+			ClientSecret: utils.EnvString("VKID_CLIENT_SECRET", ""),
+			TokenURL:     utils.EnvString("VKID_TOKEN_URL", ""),
+			UserInfoURL:  utils.EnvString("VKID_USER_INFO_URL", ""),
+			UsersGetURL:  utils.EnvString("VKID_USERS_GET_URL", ""),
+		})),
 	)
 
 	grpcServer := grpc.NewServer()
@@ -103,6 +113,15 @@ func main() {
 	}()
 
 	httpHandler := authHTTP.New(authUsecase, false, supportRoleProvider{client: supportpb.NewSupportServiceClient(supportConn)})
+	httpHandler.ConfigureOAuthStates(repository.NewOAuthStateStorage(redisClient))
+	httpHandler.ConfigureVKID(authHTTP.VKIDConfig{
+		ClientID:            utils.EnvString("VKID_CLIENT_ID", ""),
+		AuthorizeURL:        utils.EnvString("VKID_AUTHORIZE_URL", ""),
+		RedirectURI:         vkidRedirectURI,
+		Scope:               utils.EnvString("VKID_SCOPE", "email"),
+		FrontendSuccessPath: utils.EnvString("VKID_FRONTEND_SUCCESS_PATH", "/feed?oauth=vkid"),
+		FrontendErrorPath:   utils.EnvString("VKID_FRONTEND_ERROR_PATH", "/login"),
+	})
 	router := chi.NewRouter()
 	router.Use(middleware.Recoverer)
 	router.Route("/api/auth", func(r chi.Router) {

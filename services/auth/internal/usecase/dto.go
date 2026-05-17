@@ -27,6 +27,14 @@ type LoginInput struct {
 	Password string
 }
 
+type VKIDCallbackInput struct {
+	Code         string
+	DeviceID     string
+	CodeVerifier string
+	RedirectURI  string
+	State        string
+}
+
 type User struct {
 	UserAccountID int64
 	UserProfileID int64

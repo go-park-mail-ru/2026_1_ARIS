@@ -135,7 +135,7 @@ func (s *Service) GetFileURL(ctx context.Context, mediaID int64) (string, error)
 
 	appEndpoint := os.Getenv("APP_ENDPOINT")
 	if appEndpoint == "" {
-		appEndpoint = "http://localhost:8080"
+		appEndpoint = "https://arisnet.ru"
 	}
 	return fmt.Sprintf("%s%s", appEndpoint, media.Link), nil
 }

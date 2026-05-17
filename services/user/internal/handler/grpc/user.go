@@ -36,7 +36,24 @@ func (s *Server) CreateAuthUser(ctx context.Context, req *userpb.CreateAuthUserR
 		FirstName:    req.GetFirstName(),
 		LastName:     req.GetLastName(),
 		Birthday:     req.GetBirthday(),
-		Gender:       fromProtoGender(req.GetGender()),
+		Gender:       toRequiredGender(req.GetGender()),
+	})
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	return toAuthUserResponse(user), nil
+}
+
+func (s *Server) GetOrCreateOAuthUser(ctx context.Context, req *userpb.GetOrCreateOAuthUserRequest) (*userpb.AuthUserResponse, error) {
+	user, err := s.user.GetOrCreateOAuthUser(ctx, usecase.GetOrCreateOAuthUserInput{
+		Provider:       req.GetProvider(),
+		ProviderUserID: req.GetProviderUserId(),
+		Username:       req.GetUsername(),
+		Email:          req.Email,
+		FirstName:      req.GetFirstName(),
+		LastName:       req.GetLastName(),
+		Birthday:       req.GetBirthday(),
+		Gender:         fromProtoGender(req.GetGender()),
 	})
 	if err != nil {
 		return nil, toStatus(err)
@@ -139,6 +156,16 @@ func toAuthUserResponse(user *usecase.AuthUser) *userpb.AuthUserResponse {
 }
 
 func fromProtoGender(value userpb.Gender) model.Gender {
+	if value == userpb.Gender_GENDER_MALE {
+		return model.Male
+	}
+	if value == userpb.Gender_GENDER_FEMALE {
+		return model.Female
+	}
+	return ""
+}
+
+func toRequiredGender(value userpb.Gender) model.Gender {
 	if value == userpb.Gender_GENDER_MALE {
 		return model.Male
 	}

@@ -7,6 +7,7 @@ option go_package = "github.com/go-park-mail-ru/2026_1_ARIS/proto/user;userpb";
 service UserService {
     rpc CheckUsernameAvailable(CheckUsernameAvailableRequest) returns (CheckUsernameAvailableResponse);
     rpc CreateAuthUser(CreateAuthUserRequest) returns (AuthUserResponse);
+    rpc GetOrCreateOAuthUser(GetOrCreateOAuthUserRequest) returns (AuthUserResponse);
     rpc GetCredentialsByLogin(GetCredentialsByLoginRequest) returns (GetCredentialsByLoginResponse);
     rpc GetAuthUserByAccount(GetAuthUserByAccountRequest) returns (AuthUserResponse);
     rpc GetProfileByUserAccount(GetProfileByUserAccountRequest) returns (GetProfileByUserAccountResponse);
@@ -36,6 +37,17 @@ message CreateAuthUserRequest {
     string last_name = 4;
     string birthday = 5;
     Gender gender = 6;
+}
+
+message GetOrCreateOAuthUserRequest {
+    string provider = 1;
+    string provider_user_id = 2;
+    string username = 3;
+    optional string email = 4;
+    string first_name = 5;
+    string last_name = 6;
+    string birthday = 7;
+    Gender gender = 8;
 }
 
 message GetCredentialsByLoginRequest {

@@ -25,17 +25,44 @@ var (
 	ErrLoginAlreadyExists = errors.New("login already exists")
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrSessionNotFound    = errors.New("session not found")
+	ErrOAuthUnavailable   = errors.New("oauth provider unavailable")
+	ErrOAuthProvider      = errors.New("oauth provider error")
 )
+
+type VKIDClient interface {
+	ExchangeCode(ctx context.Context, in VKIDCallbackInput) (*VKIDUser, error)
+}
+
+type VKIDUser struct {
+	ID        string
+	FirstName string
+	LastName  string
+	Email     *string
+	Gender    userpb.Gender
+}
+
+type Option func(*Service)
 
 type Service struct {
 	sessions    repository.SessionRepo
 	users       userpb.UserServiceClient
 	mediaClient mediapb.MediaServiceClient
+	vkid        VKIDClient
 	now         func() time.Time
 }
 
-func New(sessions repository.SessionRepo, users userpb.UserServiceClient, mediaClient mediapb.MediaServiceClient) *Service {
-	return &Service{sessions: sessions, users: users, mediaClient: mediaClient, now: time.Now}
+func New(sessions repository.SessionRepo, users userpb.UserServiceClient, mediaClient mediapb.MediaServiceClient, opts ...Option) *Service {
+	service := &Service{sessions: sessions, users: users, mediaClient: mediaClient, now: time.Now}
+	for _, opt := range opts {
+		opt(service)
+	}
+	return service
+}
+
+func WithVKIDClient(client VKIDClient) Option {
+	return func(s *Service) {
+		s.vkid = client
+	}
 }
 
 func (s *Service) RegisterStepOne(ctx context.Context, in RegisterStepOneInput) error {
@@ -106,6 +133,39 @@ func (s *Service) Login(ctx context.Context, in LoginInput) (*AuthResult, error)
 	}
 
 	return s.issueAuthResult(ctx, credentials.GetUserAccountId())
+}
+
+func (s *Service) LoginWithVKID(ctx context.Context, in VKIDCallbackInput) (*AuthResult, error) {
+	if s.vkid == nil {
+		return nil, ErrOAuthUnavailable
+	}
+	if strings.TrimSpace(in.Code) == "" || strings.TrimSpace(in.CodeVerifier) == "" || strings.TrimSpace(in.RedirectURI) == "" {
+		return nil, ErrInvalidInput
+	}
+
+	vkUser, err := s.vkid.ExchangeCode(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	if vkUser == nil || strings.TrimSpace(vkUser.ID) == "" {
+		return nil, ErrOAuthProvider
+	}
+
+	user, err := s.users.GetOrCreateOAuthUser(ctx, &userpb.GetOrCreateOAuthUserRequest{
+		Provider:       "vkid",
+		ProviderUserId: vkUser.ID,
+		Username:       "vk" + vkUser.ID,
+		Email:          vkUser.Email,
+		FirstName:      vkUser.FirstName,
+		LastName:       vkUser.LastName,
+		Birthday:       "1970-01-01",
+		Gender:         vkUser.Gender,
+	})
+	if err != nil {
+		return nil, normalizeUserError(err)
+	}
+
+	return s.issueAuthResult(ctx, user.GetUserAccountId())
 }
 
 func (s *Service) ValidateSession(ctx context.Context, sessionID string) (*model.Session, error) {
