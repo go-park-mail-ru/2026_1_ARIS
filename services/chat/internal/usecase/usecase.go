@@ -583,7 +583,9 @@ func (s *Service) mediaURL(ctx context.Context, mediaID int64, raw string) strin
 }
 
 func isMessageMedia(mimeType string) bool {
-	return strings.HasPrefix(mimeType, "image/") || strings.HasPrefix(mimeType, "video/")
+	return strings.HasPrefix(mimeType, "image/") ||
+		strings.HasPrefix(mimeType, "video/") ||
+		strings.HasPrefix(mimeType, "audio/")
 }
 
 func normalizeListBounds(limit, offset int) (int, int) {
