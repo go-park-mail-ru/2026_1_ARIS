@@ -19,6 +19,7 @@ require (
 	github.com/pashagolub/pgxmock/v4 v4.9.0
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/stretchr/testify v1.11.1
+	github.com/tarantool/go-tarantool/v2 v2.4.2
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.47.0
 	google.golang.org/grpc v1.80.0
@@ -47,7 +48,10 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/rs/xid v1.6.0 // indirect
+	github.com/tarantool/go-iproto v1.1.0 // indirect
 	github.com/tinylib/msgp v1.6.1 // indirect
+	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
+	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect

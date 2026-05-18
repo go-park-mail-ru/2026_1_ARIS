@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	tarantoolcache "github.com/go-park-mail-ru/2026_1_ARIS/pkg/tarantool"
 	mediapb "github.com/go-park-mail-ru/2026_1_ARIS/proto/media"
 	userpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/user"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/chat/internal/model"
@@ -28,6 +29,15 @@ type Service struct {
 	store       repository.Store
 	userClient  userpb.UserServiceClient
 	mediaClient mediapb.MediaServiceClient
+	presence    PresenceStore
+}
+
+type PresenceStore interface {
+	GetPresence(ctx context.Context, userAccountID int64) (*tarantoolcache.PresenceStatus, error)
+	SetOnline(ctx context.Context, userAccountID int64) error
+	SetOffline(ctx context.Context, userAccountID int64) error
+	ForceOffline(ctx context.Context, userAccountID int64) error
+	Heartbeat(ctx context.Context, userAccountID int64) error
 }
 
 func New(store repository.Store, userClient userpb.UserServiceClient, mediaClient ...mediapb.MediaServiceClient) *Service {
@@ -36,6 +46,50 @@ func New(store repository.Store, userClient userpb.UserServiceClient, mediaClien
 		media = mediaClient[0]
 	}
 	return &Service{store: store, userClient: userClient, mediaClient: media}
+}
+
+func (s *Service) SetPresenceReader(presence PresenceStore) {
+	s.presence = presence
+}
+
+func (s *Service) SetPresenceOnline(ctx context.Context, userAccountID int64) error {
+	if userAccountID <= 0 {
+		return ErrInvalidInput
+	}
+	if s.presence == nil {
+		return nil
+	}
+	return s.presence.SetOnline(ctx, userAccountID)
+}
+
+func (s *Service) SetPresenceOffline(ctx context.Context, userAccountID int64) error {
+	if userAccountID <= 0 {
+		return ErrInvalidInput
+	}
+	if s.presence == nil {
+		return nil
+	}
+	return s.presence.SetOffline(ctx, userAccountID)
+}
+
+func (s *Service) ForcePresenceOffline(ctx context.Context, userAccountID int64) error {
+	if userAccountID <= 0 {
+		return ErrInvalidInput
+	}
+	if s.presence == nil {
+		return nil
+	}
+	return s.presence.ForceOffline(ctx, userAccountID)
+}
+
+func (s *Service) HeartbeatPresence(ctx context.Context, userAccountID int64) error {
+	if userAccountID <= 0 {
+		return ErrInvalidInput
+	}
+	if s.presence == nil {
+		return nil
+	}
+	return s.presence.Heartbeat(ctx, userAccountID)
 }
 
 func (s *Service) GetUserChats(ctx context.Context, userAccountID int64) ([]Chat, error) {
@@ -307,22 +361,47 @@ func (s *Service) UpdateMessage(ctx context.Context, userAccountID, chatID, mess
 }
 
 func (s *Service) mapChat(ctx context.Context, chat model.Chat, viewerUserAccountID int64) Chat {
-	title := html.EscapeString(chat.Title)
+	avatarLink := ""
+	if chat.AvatarID != nil {
+		avatarLink = s.avatarURL(ctx, *chat.AvatarID)
+	}
+
+	mapped := Chat{
+		ID:         chat.ID,
+		UID:        chat.Uid.String(),
+		Title:      html.EscapeString(chat.Title),
+		AvatarID:   chat.AvatarID,
+		AvatarLink: avatarLink,
+		Type:       chat.Type,
+		IsActive:   chat.IsActive,
+		CreatedAt:  chat.CreatedAt,
+		UpdatedAt:  chat.UpdatedAt,
+	}
+
 	if chat.Type == model.PrivateChat {
-		if resolved := s.privateChatTitle(ctx, chat.ID, viewerUserAccountID); resolved != "" {
-			title = html.EscapeString(resolved)
+		if peer := s.privateChatPeer(ctx, chat.ID, viewerUserAccountID); peer != nil {
+			if peer.displayName != "" {
+				mapped.Title = html.EscapeString(peer.displayName)
+			}
+			if peer.avatarID != nil {
+				mapped.AvatarID = peer.avatarID
+				mapped.AvatarLink = s.avatarURL(ctx, *peer.avatarID)
+			}
+			mapped.InterlocutorProfileID = int64Ptr(peer.profileID)
+			if peer.userAccountID > 0 {
+				mapped.InterlocutorUserAccountID = int64Ptr(peer.userAccountID)
+				if presence, err := s.presenceStatus(ctx, peer.userAccountID); err == nil && presence != nil {
+					mapped.IsOnline = presence.IsOnline
+					if !presence.LastSeenAt.IsZero() {
+						lastSeenAt := presence.LastSeenAt
+						mapped.LastSeenAt = &lastSeenAt
+					}
+				}
+			}
 		}
 	}
-	return Chat{
-		ID:        chat.ID,
-		UID:       chat.Uid.String(),
-		Title:     title,
-		AvatarID:  chat.AvatarID,
-		Type:      chat.Type,
-		IsActive:  chat.IsActive,
-		CreatedAt: chat.CreatedAt,
-		UpdatedAt: chat.UpdatedAt,
-	}
+
+	return mapped
 }
 
 func (s *Service) mapMessages(ctx context.Context, messages []model.Message, viewerProfileID int64) ([]Message, error) {
@@ -582,6 +661,17 @@ func (s *Service) mediaURL(ctx context.Context, mediaID int64, raw string) strin
 	return resp.GetUrl()
 }
 
+func (s *Service) avatarURL(ctx context.Context, mediaID int64) string {
+	if mediaID <= 0 || s.mediaClient == nil {
+		return ""
+	}
+	resp, err := s.mediaClient.GetMediaURL(ctx, &mediapb.GetMediaURLRequest{MediaId: mediaID})
+	if err != nil || resp == nil {
+		return ""
+	}
+	return strings.TrimSpace(resp.GetUrl())
+}
+
 func isMessageMedia(mimeType string) bool {
 	return strings.HasPrefix(mimeType, "image/") ||
 		strings.HasPrefix(mimeType, "video/") ||
@@ -638,21 +728,44 @@ func normalizeStoredReaction(value string) string {
 	}
 }
 
-func (s *Service) privateChatTitle(ctx context.Context, chatID, viewerUserAccountID int64) string {
+type privateChatPeer struct {
+	profileID     int64
+	userAccountID int64
+	displayName   string
+	avatarID      *int64
+}
+
+func (s *Service) privateChatPeer(ctx context.Context, chatID, viewerUserAccountID int64) *privateChatPeer {
 	viewerProfileID, err := s.profileIDByAccount(ctx, viewerUserAccountID)
 	if err != nil {
-		return ""
+		return nil
 	}
 	members, err := s.store.ChatMembers.GetByChatID(ctx, chatID)
 	if err != nil {
-		return ""
+		return nil
 	}
 	for _, member := range members {
 		if member.MemberID != viewerProfileID {
-			return s.displayName(ctx, member.MemberID)
+			summary := s.profileSummary(ctx, member.MemberID)
+			peer := &privateChatPeer{
+				profileID:   member.MemberID,
+				displayName: "Пользователь",
+			}
+			if summary == nil {
+				return peer
+			}
+			peer.userAccountID = summary.GetUserAccountId()
+			if name := displayNameFromSummary(summary); name != "" {
+				peer.displayName = name
+			}
+			if summary.AvatarId != nil {
+				avatarID := summary.GetAvatarId()
+				peer.avatarID = &avatarID
+			}
+			return peer
 		}
 	}
-	return ""
+	return nil
 }
 
 func (s *Service) displayName(ctx context.Context, profileID int64) string {
@@ -660,14 +773,29 @@ func (s *Service) displayName(ctx context.Context, profileID int64) string {
 	if summary == nil {
 		return "Пользователь"
 	}
+	if name := displayNameFromSummary(summary); name != "" {
+		return name
+	}
+	return "Пользователь"
+}
+
+func displayNameFromSummary(summary *userpb.GetProfileSummaryResponse) string {
 	name := strings.TrimSpace(summary.GetFirstName() + " " + summary.GetLastName())
 	if name == "" {
 		name = summary.GetUsername()
 	}
-	if name == "" {
-		return "Пользователь"
-	}
 	return name
+}
+
+func (s *Service) presenceStatus(ctx context.Context, userAccountID int64) (*tarantoolcache.PresenceStatus, error) {
+	if s.presence == nil || userAccountID <= 0 {
+		return nil, nil
+	}
+	return s.presence.GetPresence(ctx, userAccountID)
+}
+
+func int64Ptr(value int64) *int64 {
+	return &value
 }
 
 func (s *Service) resolveTarget(ctx context.Context, inputID int64) (int64, int64, error) {

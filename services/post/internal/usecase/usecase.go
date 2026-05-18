@@ -38,6 +38,13 @@ type Service struct {
 	userClient      userpb.UserServiceClient
 	mediaClient     mediapb.MediaServiceClient
 	communityClient communitypb.CommunityServiceClient
+	cache           PostCache
+}
+
+type PostCache interface {
+	GetPostLikeCount(ctx context.Context, postID int64) (int, error)
+	SetPostLikeCount(ctx context.Context, postID int64, count int) error
+	DeletePostLikeCount(ctx context.Context, postID int64) error
 }
 
 type Author struct {
@@ -131,6 +138,10 @@ type communityMemberInfo struct {
 
 func New(store repository.Store, userClient userpb.UserServiceClient, mediaClient mediapb.MediaServiceClient, communityClient communitypb.CommunityServiceClient) *Service {
 	return &Service{store: store, userClient: userClient, mediaClient: mediaClient, communityClient: communityClient}
+}
+
+func (s *Service) SetCache(cache PostCache) {
+	s.cache = cache
 }
 
 func (s *Service) CreatePost(ctx context.Context, userAccountID int64, input CreateInput) (*PostDetails, error) {
@@ -320,7 +331,11 @@ func (s *Service) DeletePost(ctx context.Context, userAccountID, postID int64) e
 	if !s.canDeletePost(ctx, *post, profileID) {
 		return ErrForbidden
 	}
-	return normalizePostError(s.store.Posts.Delete(ctx, postID))
+	if err := normalizePostError(s.store.Posts.Delete(ctx, postID)); err != nil {
+		return err
+	}
+	s.deletePostLikeCount(ctx, postID)
+	return nil
 }
 
 func (s *Service) LikePost(ctx context.Context, userAccountID, postID int64) (*PostDetails, error) {
@@ -340,12 +355,14 @@ func (s *Service) LikePost(ctx context.Context, userAccountID, postID int64) (*P
 			if err := s.store.Likes.SetActive(ctx, existing.ID, true); err != nil {
 				return nil, err
 			}
+			s.refreshPostLikeCount(ctx, postID)
 		}
 		return s.GetPostForViewer(ctx, postID, userAccountID)
 	}
 	if _, err := s.store.Likes.Save(ctx, *model.NewLikeToPost(postID, profileID)); err != nil {
 		return nil, err
 	}
+	s.refreshPostLikeCount(ctx, postID)
 	return s.GetPostForViewer(ctx, postID, userAccountID)
 }
 
@@ -365,6 +382,7 @@ func (s *Service) UnlikePost(ctx context.Context, userAccountID, postID int64) (
 		if err := s.store.Likes.SetActive(ctx, existing.ID, false); err != nil {
 			return nil, err
 		}
+		s.refreshPostLikeCount(ctx, postID)
 	}
 	return s.GetPostForViewer(ctx, postID, userAccountID)
 }
@@ -607,7 +625,7 @@ func (s *Service) buildFeedPost(ctx context.Context, post model.Post) (FeedPost,
 		Text:      text,
 		Author:    author,
 		CreatedAt: post.CreatedAt,
-		Likes:     s.store.Likes.GetLikeCountOnPost(ctx, post.ID),
+		Likes:     s.postLikeCount(ctx, post.ID),
 		Comments:  s.store.Comments.GetCommentCount(ctx, post.ID),
 		Reposts:   s.store.Reposts.GetRepostCount(ctx, post.ID),
 		Medias:    media,
@@ -632,9 +650,36 @@ func (s *Service) buildPostDetails(ctx context.Context, post model.Post, viewerP
 		Author:      author,
 		Media:       media,
 		Files:       files,
-		Likes:       s.store.Likes.GetLikeCountOnPost(ctx, post.ID),
+		Likes:       s.postLikeCount(ctx, post.ID),
 		IsLiked:     viewerProfileID > 0 && s.store.Likes.HasActivePostLike(ctx, post.ID, viewerProfileID),
 	}, nil
+}
+
+func (s *Service) postLikeCount(ctx context.Context, postID int64) int {
+	if s.cache != nil {
+		if count, err := s.cache.GetPostLikeCount(ctx, postID); err == nil {
+			return count
+		}
+	}
+	count := s.store.Likes.GetLikeCountOnPost(ctx, postID)
+	if s.cache != nil {
+		_ = s.cache.SetPostLikeCount(ctx, postID, count)
+	}
+	return count
+}
+
+func (s *Service) refreshPostLikeCount(ctx context.Context, postID int64) {
+	if s.cache == nil {
+		return
+	}
+	_ = s.cache.SetPostLikeCount(ctx, postID, s.store.Likes.GetLikeCountOnPost(ctx, postID))
+}
+
+func (s *Service) deletePostLikeCount(ctx context.Context, postID int64) {
+	if s.cache == nil {
+		return
+	}
+	_ = s.cache.DeletePostLikeCount(ctx, postID)
 }
 
 func (s *Service) mapComments(ctx context.Context, comments []model.Comment) []Comment {
