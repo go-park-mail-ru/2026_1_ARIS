@@ -22,5 +22,5 @@ jobs:
 
             cd ${{ secrets.STAGING_DEPLOY_PATH }}
             git fetch origin
-            git switch -C dev origin/dev
+            git switch -f -C dev origin/dev
             sh scripts/deploy-remote.sh
