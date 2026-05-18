@@ -34,6 +34,8 @@ type profileResponse struct {
 	Work          []workResponse      `json:"work,omitempty"`
 	Interests     *string             `json:"interests,omitempty"`
 	FavMusic      *string             `json:"favMusic,omitempty"`
+	IsOnline      bool                `json:"isOnline"`
+	LastSeenAt    *string             `json:"lastSeenAt,omitempty"`
 }
 
 type updateProfileRequest struct {
@@ -76,11 +78,13 @@ type latestEventsResponse struct {
 }
 
 type userCardDTO struct {
-	ID         string `json:"id"`
-	FirstName  string `json:"firstName"`
-	LastName   string `json:"lastName"`
-	Username   string `json:"username"`
-	AvatarLink string `json:"avatarLink"`
+	ID         string  `json:"id"`
+	FirstName  string  `json:"firstName"`
+	LastName   string  `json:"lastName"`
+	Username   string  `json:"username"`
+	AvatarLink string  `json:"avatarLink"`
+	IsOnline   bool    `json:"isOnline"`
+	LastSeenAt *string `json:"lastSeenAt,omitempty"`
 }
 
 type userCardsResponse struct {

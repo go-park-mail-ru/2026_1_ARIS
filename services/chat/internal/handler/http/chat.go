@@ -35,6 +35,10 @@ func (h *Handler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler)
 		r.Put("/chats/{chatID}/messages/{messageID}", h.UpdateMessage)
 		r.Put("/chats/{chatID}/messages/{messageID}/reaction", h.SetMessageReaction)
 		r.Delete("/chats/{chatID}/messages/{messageID}/reaction", h.DeleteMessageReaction)
+		r.Post("/presence/online", h.SetPresenceOnline)
+		r.Post("/presence/heartbeat", h.HeartbeatPresence)
+		r.Post("/presence/offline", h.SetPresenceOffline)
+		r.Post("/presence/force-offline", h.ForcePresenceOffline)
 		r.Get("/sticker-packs", h.GetStickerPacks)
 		r.Get("/sticker-packs/{packID}/stickers", h.GetStickersByPack)
 	})
@@ -81,6 +85,54 @@ func (h *Handler) CreateChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.WriteJSON(w, http.StatusCreated, mapChat(chat))
+}
+
+func (h *Handler) SetPresenceOnline(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	if err := h.chat.SetPresenceOnline(r.Context(), userID); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) HeartbeatPresence(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	if err := h.chat.HeartbeatPresence(r.Context(), userID); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) SetPresenceOffline(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	if err := h.chat.SetPresenceOffline(r.Context(), userID); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) ForcePresenceOffline(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	if err := h.chat.ForcePresenceOffline(r.Context(), userID); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
@@ -377,14 +429,19 @@ func (h *Handler) handleSocketMessage(ctx context.Context, chatIDRaw string, use
 
 func mapChat(chat usecase.Chat) ChatResponse {
 	return ChatResponse{
-		ID:        strconv.FormatInt(chat.ID, 10),
-		Uid:       chat.UID,
-		Title:     chat.Title,
-		AvatarID:  chat.AvatarID,
-		Type:      string(chat.Type),
-		IsActive:  chat.IsActive,
-		CreatedAt: chat.CreatedAt.Format(time.RFC3339Nano),
-		UpdatedAt: chat.UpdatedAt.Format(time.RFC3339Nano),
+		ID:                        strconv.FormatInt(chat.ID, 10),
+		Uid:                       chat.UID,
+		Title:                     chat.Title,
+		AvatarID:                  chat.AvatarID,
+		AvatarLink:                chat.AvatarLink,
+		Type:                      string(chat.Type),
+		IsActive:                  chat.IsActive,
+		InterlocutorProfileID:     int64PtrString(chat.InterlocutorProfileID),
+		InterlocutorUserAccountID: int64PtrString(chat.InterlocutorUserAccountID),
+		IsOnline:                  chat.IsOnline,
+		LastSeenAt:                timePtrString(chat.LastSeenAt),
+		CreatedAt:                 chat.CreatedAt.Format(time.RFC3339Nano),
+		UpdatedAt:                 chat.UpdatedAt.Format(time.RFC3339Nano),
 	}
 }
 
@@ -482,5 +539,13 @@ func int64PtrString(value *int64) *string {
 		return nil
 	}
 	out := strconv.FormatInt(*value, 10)
+	return &out
+}
+
+func timePtrString(value *time.Time) *string {
+	if value == nil || value.IsZero() {
+		return nil
+	}
+	out := value.Format(time.RFC3339Nano)
 	return &out
 }

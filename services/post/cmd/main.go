@@ -15,6 +15,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/postgres"
+	tarantoolcache "github.com/go-park-mail-ru/2026_1_ARIS/pkg/tarantool"
 	authpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/auth"
 	communitypb "github.com/go-park-mail-ru/2026_1_ARIS/proto/community"
 	mediapb "github.com/go-park-mail-ru/2026_1_ARIS/proto/media"
@@ -52,6 +53,13 @@ func main() {
 		logg.Fatal("fail to connect PostgreSQL", zap.Error(err))
 	}
 
+	postCache, err := tarantoolcache.InitTarantool(ctx)
+	if err != nil {
+		logg.Warn("tarantool post cache disabled", zap.Error(err))
+	} else {
+		defer postCache.Close()
+	}
+
 	userConn, err := grpc.NewClient(utils.EnvString("USER_GRPC_ADDR", "localhost:8004"), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		logg.Fatal("failed to connect user grpc", zap.Error(err))
@@ -82,6 +90,9 @@ func main() {
 		mediapb.NewMediaServiceClient(mediaConn),
 		communitypb.NewCommunityServiceClient(communityConn),
 	)
+	if postCache != nil {
+		postUsecase.SetCache(postCache)
+	}
 
 	grpcServer := grpc.NewServer()
 	postpb.RegisterPostServiceServer(grpcServer, postGRPC.New(postUsecase))
