@@ -7,7 +7,7 @@ COMPOSE=COMPOSE_PARALLEL_LIMIT=$(COMPOSE_PARALLEL_LIMIT) docker compose --env-fi
 COMPOSE_SERVER_FILE=./docker-compose.server.yml
 COMPOSE_SERVER_ENV_FILE=./.env.server
 COMPOSE_SERVER=docker compose --env-file $(COMPOSE_SERVER_ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_SERVER_FILE)
-MICROSERVICE_SERVICES=auth media user post chat support community search
+MICROSERVICE_SERVICES=auth media user post chat support community search game
 MICROSERVICE_INFRA=db redis minio
 MICROSERVICE_EDGE=nginx
 MICROSERVICE_MONITORING=prometheus grafana node-exporter
