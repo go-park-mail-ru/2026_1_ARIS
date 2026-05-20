@@ -642,6 +642,22 @@ func (s *Service) GetUsersFriends(ctx context.Context, profileID int64) ([]model
 	return s.store.Friendships.GetFriends(ctx, profileID, model.FriendshipAccepted)
 }
 
+func (s *Service) GetFriendProfileIDs(ctx context.Context, userAccountID int64) ([]int64, error) {
+	profileID, err := s.currentProfileID(ctx, userAccountID)
+	if err != nil {
+		return nil, err
+	}
+	friends, err := s.store.Friendships.GetFriends(ctx, profileID, model.FriendshipAccepted)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]int64, 0, len(friends))
+	for _, f := range friends {
+		ids = append(ids, f.ProfileID)
+	}
+	return ids, nil
+}
+
 func (s *Service) DeleteFriend(ctx context.Context, userAccountID int64, friendID int64) error {
 	profileID, err := s.currentProfileID(ctx, userAccountID)
 	if err != nil {

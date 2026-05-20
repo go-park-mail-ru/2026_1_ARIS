@@ -19,7 +19,7 @@ func New(post *usecase.Service) *Server {
 }
 
 func (s *Server) GetFeed(ctx context.Context, req *postpb.GetFeedRequest) (*postpb.FeedResponse, error) {
-	feed, err := s.post.GetFeed(ctx, req.GetCursor(), int(req.GetLimit()))
+	feed, err := s.post.GetFeed(ctx, 0, req.GetCursor(), "by-time", int(req.GetLimit()))
 	if err != nil {
 		return nil, usecase.ToStatus(err)
 	}

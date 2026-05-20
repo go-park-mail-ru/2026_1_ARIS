@@ -189,7 +189,7 @@ func (s *postMediaStorage) GetDetailedMediaByPostID(ctx context.Context, postID 
 	start := time.Now()
 	var items []model.AttachedMedia
 	err := pgxscan.Select(ctx, s.db, &items, `
-		SELECT pwm.media_id, m.uid, m.mime_type, m.link, m.author_id, pwm.sort_order
+		SELECT pwm.media_id, m.uid, m.media_name, m.mime_type, m.link, m.author_id, pwm.sort_order
 		FROM post_with_media pwm
 		JOIN media m ON m.id=pwm.media_id AND m.is_active=TRUE
 		WHERE pwm.post_id=$1
@@ -241,6 +241,7 @@ type CommentRepo interface {
 	GetCommentCount(ctx context.Context, postID int64) int
 	GetTopLevelByPostID(ctx context.Context, postID int64, limit, offset int) ([]model.Comment, error)
 	GetReplies(ctx context.Context, postID, parentCommentID int64, limit, offset int) ([]model.Comment, error)
+	GetRepliesByParentIDs(ctx context.Context, postID int64, parentCommentIDs []int64, limit, offset int) (map[int64][]model.Comment, error)
 	Get(ctx context.Context, id int64) (*model.Comment, error)
 	Save(ctx context.Context, comment model.Comment) (int64, error)
 	Update(ctx context.Context, comment model.Comment) error
@@ -301,6 +302,48 @@ func (s *commentStorage) GetReplies(ctx context.Context, postID, parentCommentID
 		return nil, err
 	}
 	return comments, nil
+}
+
+func (s *commentStorage) GetRepliesByParentIDs(ctx context.Context, postID int64, parentCommentIDs []int64, limit, offset int) (map[int64][]model.Comment, error) {
+	result := make(map[int64][]model.Comment, len(parentCommentIDs))
+	for _, parentID := range parentCommentIDs {
+		result[parentID] = []model.Comment{}
+	}
+	if len(parentCommentIDs) == 0 {
+		return result, nil
+	}
+
+	start := time.Now()
+	var comments []model.Comment
+	err := pgxscan.Select(ctx, s.db, &comments, `
+		WITH ranked AS (
+			SELECT c.*,
+			       (
+			           SELECT COUNT(*)
+			           FROM comment child
+			           WHERE child.parent_comment_id=c.id AND child.is_active=TRUE
+			       ) AS replies_count,
+			       ROW_NUMBER() OVER (PARTITION BY c.parent_comment_id ORDER BY c.created_at ASC, c.id ASC) AS rn
+			FROM comment c
+			WHERE c.post_id=$1 AND c.parent_comment_id=ANY($2) AND c.is_active=TRUE
+		)
+		SELECT id, uid, comment_text, post_id, parent_comment_id, sticker_id, author_id,
+		       is_active, created_at, updated_at, replies_count
+		FROM ranked
+		WHERE rn > $3 AND rn <= ($3 + $4)
+		ORDER BY parent_comment_id ASC, rn ASC
+	`, postID, parentCommentIDs, offset, limit)
+	logQuery(ctx, "commentStorage.GetRepliesByParentIDs", start)
+	if err != nil && !pgxscan.NotFound(err) {
+		return nil, err
+	}
+	for _, comment := range comments {
+		if comment.ParentCommentID == nil {
+			continue
+		}
+		result[*comment.ParentCommentID] = append(result[*comment.ParentCommentID], comment)
+	}
+	return result, nil
 }
 
 func (s *commentStorage) Get(ctx context.Context, id int64) (*model.Comment, error) {
@@ -374,6 +417,9 @@ type LikeRepo interface {
 	GetPostLikeByAuthor(ctx context.Context, postID, authorID int64) (*model.Like, error)
 	SetActive(ctx context.Context, likeID int64, active bool) error
 	HasActivePostLike(ctx context.Context, postID, authorID int64) bool
+	GetCommentLikeByAuthor(ctx context.Context, commentID, authorID int64) (*model.Like, error)
+	GetCommentLikeCountBatch(ctx context.Context, commentIDs []int64) (map[int64]int, error)
+	GetCommentViewerLikesBatch(ctx context.Context, commentIDs []int64, authorID int64) (map[int64]bool, error)
 }
 
 type likeStorage struct {
@@ -431,6 +477,71 @@ func (s *likeStorage) SetActive(ctx context.Context, likeID int64, active bool) 
 func (s *likeStorage) HasActivePostLike(ctx context.Context, postID, authorID int64) bool {
 	like, err := s.GetPostLikeByAuthor(ctx, postID, authorID)
 	return err == nil && like.IsActive
+}
+
+func (s *likeStorage) GetCommentLikeByAuthor(ctx context.Context, commentID, authorID int64) (*model.Like, error) {
+	start := time.Now()
+	var like model.Like
+	err := pgxscan.Get(ctx, s.db, &like, `SELECT * FROM like_record WHERE comment_id=$1 AND author_id=$2`, commentID, authorID)
+	logQuery(ctx, "likeStorage.GetCommentLikeByAuthor", start)
+	if err != nil {
+		return nil, err
+	}
+	return &like, nil
+}
+
+func (s *likeStorage) GetCommentLikeCountBatch(ctx context.Context, commentIDs []int64) (map[int64]int, error) {
+	result := make(map[int64]int, len(commentIDs))
+	if len(commentIDs) == 0 {
+		return result, nil
+	}
+	start := time.Now()
+	rows, err := s.db.Query(ctx, `
+		SELECT comment_id, COUNT(*)::int
+		FROM like_record
+		WHERE comment_id=ANY($1) AND is_active=TRUE
+		GROUP BY comment_id
+	`, commentIDs)
+	logQuery(ctx, "likeStorage.GetCommentLikeCountBatch", start)
+	if err != nil {
+		return result, nil
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var commentID int64
+		var count int
+		if err := rows.Scan(&commentID, &count); err != nil {
+			return result, nil
+		}
+		result[commentID] = count
+	}
+	return result, rows.Err()
+}
+
+func (s *likeStorage) GetCommentViewerLikesBatch(ctx context.Context, commentIDs []int64, authorID int64) (map[int64]bool, error) {
+	result := make(map[int64]bool, len(commentIDs))
+	if len(commentIDs) == 0 || authorID <= 0 {
+		return result, nil
+	}
+	start := time.Now()
+	rows, err := s.db.Query(ctx, `
+		SELECT comment_id
+		FROM like_record
+		WHERE comment_id=ANY($1) AND author_id=$2 AND is_active=TRUE
+	`, commentIDs, authorID)
+	logQuery(ctx, "likeStorage.GetCommentViewerLikesBatch", start)
+	if err != nil {
+		return result, nil
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var commentID int64
+		if err := rows.Scan(&commentID); err != nil {
+			return result, nil
+		}
+		result[commentID] = true
+	}
+	return result, rows.Err()
 }
 
 type RepostRepo interface {
