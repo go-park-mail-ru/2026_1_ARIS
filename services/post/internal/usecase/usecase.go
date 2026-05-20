@@ -52,6 +52,7 @@ type Author struct {
 type Media struct {
 	ID       int64
 	UID      string
+	Name     string
 	MimeType string
 	URL      string
 }
@@ -64,6 +65,7 @@ type FeedPost struct {
 	Likes     int
 	Comments  int
 	Reposts   int
+	IsLiked   bool
 	Medias    []Media
 	Files     []Media
 }
@@ -101,6 +103,7 @@ type PostDetails struct {
 	Media       []Media
 	Files       []Media
 	Likes       int
+	Comments    int
 	IsLiked     bool
 }
 
@@ -114,6 +117,8 @@ type Comment struct {
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 	RepliesCount    int
+	Likes           int
+	IsLiked         bool
 }
 
 type communityInfo struct {
@@ -171,13 +176,21 @@ func (s *Service) GetMyPosts(ctx context.Context, userAccountID int64) ([]PostDe
 	if err != nil {
 		return nil, err
 	}
-	return s.GetProfilePosts(ctx, profileID)
+	return s.buildProfilePostList(ctx, profileID, profileID)
 }
 
-func (s *Service) GetProfilePosts(ctx context.Context, profileID int64) ([]PostDetails, error) {
+func (s *Service) GetProfilePosts(ctx context.Context, profileID, viewerUserAccountID int64) ([]PostDetails, error) {
 	if profileID <= 0 {
 		return nil, ErrInvalidInput
 	}
+	var viewerProfileID int64
+	if viewerUserAccountID > 0 {
+		viewerProfileID, _ = s.profileIDByUserAccount(ctx, viewerUserAccountID)
+	}
+	return s.buildProfilePostList(ctx, profileID, viewerProfileID)
+}
+
+func (s *Service) buildProfilePostList(ctx context.Context, profileID, viewerProfileID int64) ([]PostDetails, error) {
 	posts, err := s.store.Posts.GetByAuthorID(ctx, profileID)
 	if err != nil {
 		return nil, err
@@ -187,7 +200,7 @@ func (s *Service) GetProfilePosts(ctx context.Context, profileID int64) ([]PostD
 		if post.CommunityID != nil {
 			continue
 		}
-		details, err := s.buildPostDetails(ctx, post, 0)
+		details, err := s.buildPostDetails(ctx, post, viewerProfileID)
 		if err == nil {
 			result = append(result, *details)
 		}
@@ -217,9 +230,13 @@ func (s *Service) GetCommunityPosts(ctx context.Context, communityID int64, view
 	return result, nil
 }
 
-func (s *Service) GetCommunityOfficialPosts(ctx context.Context, communityID int64) ([]PostDetails, error) {
+func (s *Service) GetCommunityOfficialPosts(ctx context.Context, communityID, viewerUserAccountID int64) ([]PostDetails, error) {
 	if communityID <= 0 {
 		return nil, ErrInvalidInput
+	}
+	var viewerProfileID int64
+	if viewerUserAccountID > 0 {
+		viewerProfileID, _ = s.profileIDByUserAccount(ctx, viewerUserAccountID)
 	}
 	community, err := s.communityByID(ctx, communityID)
 	if err != nil {
@@ -234,7 +251,7 @@ func (s *Service) GetCommunityOfficialPosts(ctx context.Context, communityID int
 		if post.AuthorID != community.ProfileID {
 			continue
 		}
-		details, err := s.buildPostDetails(ctx, post, 0)
+		details, err := s.buildPostDetails(ctx, post, viewerProfileID)
 		if err == nil {
 			result = append(result, *details)
 		}
@@ -373,7 +390,8 @@ func (s *Service) GetPostComments(ctx context.Context, userAccountID, postID int
 	if userAccountID <= 0 || postID <= 0 {
 		return nil, ErrInvalidInput
 	}
-	if _, err := s.profileIDByUserAccount(ctx, userAccountID); err != nil {
+	profileID, err := s.profileIDByUserAccount(ctx, userAccountID)
+	if err != nil {
 		return nil, err
 	}
 	if _, err := s.store.Posts.Get(ctx, postID); err != nil {
@@ -384,14 +402,15 @@ func (s *Service) GetPostComments(ctx context.Context, userAccountID, postID int
 	if err != nil {
 		return nil, normalizeCommentError(err)
 	}
-	return s.mapComments(ctx, comments), nil
+	return s.mapComments(ctx, comments, profileID), nil
 }
 
 func (s *Service) GetCommentReplies(ctx context.Context, userAccountID, postID, commentID int64, limit, offset int) ([]Comment, error) {
 	if userAccountID <= 0 || postID <= 0 || commentID <= 0 {
 		return nil, ErrInvalidInput
 	}
-	if _, err := s.profileIDByUserAccount(ctx, userAccountID); err != nil {
+	profileID, err := s.profileIDByUserAccount(ctx, userAccountID)
+	if err != nil {
 		return nil, err
 	}
 	parent, err := s.store.Comments.Get(ctx, commentID)
@@ -406,7 +425,42 @@ func (s *Service) GetCommentReplies(ctx context.Context, userAccountID, postID, 
 	if err != nil {
 		return nil, normalizeCommentError(err)
 	}
-	return s.mapComments(ctx, comments), nil
+	return s.mapComments(ctx, comments, profileID), nil
+}
+
+func (s *Service) GetCommentRepliesBatch(ctx context.Context, userAccountID, postID int64, parentCommentIDs []int64, limit, offset int) (map[int64][]Comment, error) {
+	if userAccountID <= 0 || postID <= 0 || len(parentCommentIDs) == 0 || len(parentCommentIDs) > 50 {
+		return nil, ErrInvalidInput
+	}
+	profileID, err := s.profileIDByUserAccount(ctx, userAccountID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.store.Posts.Get(ctx, postID); err != nil {
+		return nil, normalizePostError(err)
+	}
+	seen := make(map[int64]struct{}, len(parentCommentIDs))
+	ids := make([]int64, 0, len(parentCommentIDs))
+	for _, id := range parentCommentIDs {
+		if id <= 0 {
+			return nil, ErrInvalidInput
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	limit, offset = normalizeListBounds(limit, offset)
+	grouped, err := s.store.Comments.GetRepliesByParentIDs(ctx, postID, ids, limit, offset)
+	if err != nil {
+		return nil, normalizeCommentError(err)
+	}
+	result := make(map[int64][]Comment, len(ids))
+	for _, id := range ids {
+		result[id] = s.mapComments(ctx, grouped[id], profileID)
+	}
+	return result, nil
 }
 
 func (s *Service) CreateComment(ctx context.Context, userAccountID, postID int64, text string, parentCommentID *int64) (*Comment, error) {
@@ -437,6 +491,12 @@ func (s *Service) CreateComment(ctx context.Context, userAccountID, postID int64
 	if err != nil {
 		return nil, err
 	}
+	if post.CommunityID != nil {
+		member, err := s.communityMember(ctx, *post.CommunityID, profileID)
+		if err != nil || !member.IsActive {
+			return nil, ErrForbidden
+		}
+	}
 	comment := model.NewComment(&text, postID, parentCommentID, profileID)
 	id, err := s.store.Comments.Save(ctx, *comment)
 	if err != nil {
@@ -446,8 +506,8 @@ func (s *Service) CreateComment(ctx context.Context, userAccountID, postID int64
 	if err != nil {
 		return nil, normalizeCommentError(err)
 	}
-	mapped := s.mapComment(ctx, *saved)
-	return &mapped, nil
+	mapped := s.mapComments(ctx, []model.Comment{*saved}, profileID)
+	return &mapped[0], nil
 }
 
 func (s *Service) UpdateComment(ctx context.Context, userAccountID, postID, commentID int64, text string) (*Comment, error) {
@@ -477,8 +537,8 @@ func (s *Service) UpdateComment(ctx context.Context, userAccountID, postID, comm
 	if err != nil {
 		return nil, normalizeCommentError(err)
 	}
-	mapped := s.mapComment(ctx, *updated)
-	return &mapped, nil
+	mapped := s.mapComments(ctx, []model.Comment{*updated}, profileID)
+	return &mapped[0], nil
 }
 
 func (s *Service) DeleteComment(ctx context.Context, userAccountID, postID, commentID int64) error {
@@ -506,15 +566,85 @@ func (s *Service) DeleteComment(ctx context.Context, userAccountID, postID, comm
 	return normalizeCommentError(s.store.Comments.Delete(ctx, commentID))
 }
 
-func (s *Service) GetFeed(ctx context.Context, rawCursor string, limit int) (FeedResult, error) {
-	return s.getFeed(ctx, rawCursor, limit, false)
+func (s *Service) LikeComment(ctx context.Context, userAccountID, postID, commentID int64) (*Comment, error) {
+	if userAccountID <= 0 || postID <= 0 || commentID <= 0 {
+		return nil, ErrInvalidInput
+	}
+	profileID, err := s.profileIDByUserAccount(ctx, userAccountID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.store.Posts.Get(ctx, postID); err != nil {
+		return nil, normalizePostError(err)
+	}
+	comment, err := s.store.Comments.Get(ctx, commentID)
+	if err != nil {
+		return nil, normalizeCommentError(err)
+	}
+	if comment.PostID != postID {
+		return nil, ErrCommentNotFound
+	}
+	existing, err := s.store.Likes.GetCommentLikeByAuthor(ctx, commentID, profileID)
+	if err == nil {
+		if !existing.IsActive {
+			if err := s.store.Likes.SetActive(ctx, existing.ID, true); err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		if _, err := s.store.Likes.Save(ctx, *model.NewLikeToComment(commentID, profileID)); err != nil {
+			return nil, err
+		}
+	}
+	refreshed, err := s.store.Comments.Get(ctx, commentID)
+	if err != nil {
+		return nil, normalizeCommentError(err)
+	}
+	mapped := s.mapComments(ctx, []model.Comment{*refreshed}, profileID)
+	return &mapped[0], nil
+}
+
+func (s *Service) UnlikeComment(ctx context.Context, userAccountID, postID, commentID int64) (*Comment, error) {
+	if userAccountID <= 0 || postID <= 0 || commentID <= 0 {
+		return nil, ErrInvalidInput
+	}
+	profileID, err := s.profileIDByUserAccount(ctx, userAccountID)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := s.store.Posts.Get(ctx, postID); err != nil {
+		return nil, normalizePostError(err)
+	}
+	comment, err := s.store.Comments.Get(ctx, commentID)
+	if err != nil {
+		return nil, normalizeCommentError(err)
+	}
+	if comment.PostID != postID {
+		return nil, ErrCommentNotFound
+	}
+	existing, err := s.store.Likes.GetCommentLikeByAuthor(ctx, commentID, profileID)
+	if err == nil && existing.IsActive {
+		if err := s.store.Likes.SetActive(ctx, existing.ID, false); err != nil {
+			return nil, err
+		}
+	}
+	refreshed, err := s.store.Comments.Get(ctx, commentID)
+	if err != nil {
+		return nil, normalizeCommentError(err)
+	}
+	mapped := s.mapComments(ctx, []model.Comment{*refreshed}, profileID)
+	return &mapped[0], nil
+}
+
+func (s *Service) GetFeed(ctx context.Context, userAccountID int64, rawCursor, mode string, limit int) (FeedResult, error) {
+	return s.getFeed(ctx, userAccountID, rawCursor, mode, limit, false)
 }
 
 func (s *Service) GetPublicFeed(ctx context.Context, rawCursor string, limit int) (FeedResult, error) {
-	return s.getFeed(ctx, rawCursor, limit, true)
+	return s.getFeed(ctx, 0, rawCursor, "by-time", limit, true)
 }
 
-func (s *Service) getFeed(ctx context.Context, rawCursor string, limit int, publicOnly bool) (FeedResult, error) {
+func (s *Service) getFeed(ctx context.Context, userAccountID int64, rawCursor, mode string, limit int, publicOnly bool) (FeedResult, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
@@ -533,10 +663,28 @@ func (s *Service) getFeed(ctx context.Context, rawCursor string, limit int, publ
 		return FeedResult{}, err
 	}
 
+	var friendSet map[int64]struct{}
+	var viewerProfileID int64
+	if !publicOnly && userAccountID > 0 {
+		resp, err := s.userClient.GetFriendProfileIDs(ctx, &userpb.GetFriendProfileIDsRequest{UserAccountId: userAccountID})
+		if err == nil && resp != nil {
+			friendSet = make(map[int64]struct{}, len(resp.ProfileIds))
+			for _, id := range resp.ProfileIds {
+				friendSet[id] = struct{}{}
+			}
+		}
+		viewerProfileID, _ = s.profileIDByUserAccount(ctx, userAccountID)
+	}
+
 	posts := make([]model.Post, 0, len(allPosts))
 	for _, post := range allPosts {
 		if publicOnly != post.IsPublicDemo {
 			continue
+		}
+		if !publicOnly && friendSet != nil {
+			if _, ok := friendSet[post.AuthorID]; !ok {
+				continue
+			}
 		}
 		posts = append(posts, post)
 	}
@@ -581,7 +729,7 @@ func (s *Service) getFeed(ctx context.Context, rawCursor string, limit int, publ
 
 	result := make([]FeedPost, 0, len(page))
 	for _, post := range page {
-		item, err := s.buildFeedPost(ctx, post)
+		item, err := s.buildFeedPost(ctx, post, viewerProfileID)
 		if err == nil {
 			result = append(result, item)
 		}
@@ -590,7 +738,7 @@ func (s *Service) getFeed(ctx context.Context, rawCursor string, limit int, publ
 	return FeedResult{Posts: result, Cursor: nextCursor, HasMore: hasMore}, nil
 }
 
-func (s *Service) buildFeedPost(ctx context.Context, post model.Post) (FeedPost, error) {
+func (s *Service) buildFeedPost(ctx context.Context, post model.Post, viewerProfileID int64) (FeedPost, error) {
 	author, err := s.author(ctx, post.AuthorID)
 	if err != nil {
 		return FeedPost{}, err
@@ -608,6 +756,7 @@ func (s *Service) buildFeedPost(ctx context.Context, post model.Post) (FeedPost,
 		Author:    author,
 		CreatedAt: post.CreatedAt,
 		Likes:     s.store.Likes.GetLikeCountOnPost(ctx, post.ID),
+		IsLiked:   viewerProfileID > 0 && s.store.Likes.HasActivePostLike(ctx, post.ID, viewerProfileID),
 		Comments:  s.store.Comments.GetCommentCount(ctx, post.ID),
 		Reposts:   s.store.Reposts.GetRepostCount(ctx, post.ID),
 		Medias:    media,
@@ -633,19 +782,29 @@ func (s *Service) buildPostDetails(ctx context.Context, post model.Post, viewerP
 		Media:       media,
 		Files:       files,
 		Likes:       s.store.Likes.GetLikeCountOnPost(ctx, post.ID),
+		Comments:    s.store.Comments.GetCommentCount(ctx, post.ID),
 		IsLiked:     viewerProfileID > 0 && s.store.Likes.HasActivePostLike(ctx, post.ID, viewerProfileID),
 	}, nil
 }
 
-func (s *Service) mapComments(ctx context.Context, comments []model.Comment) []Comment {
+func (s *Service) mapComments(ctx context.Context, comments []model.Comment, viewerProfileID int64) []Comment {
+	if len(comments) == 0 {
+		return []Comment{}
+	}
+	commentIDs := make([]int64, 0, len(comments))
+	for _, c := range comments {
+		commentIDs = append(commentIDs, c.ID)
+	}
+	likeCounts, _ := s.store.Likes.GetCommentLikeCountBatch(ctx, commentIDs)
+	viewerLikes, _ := s.store.Likes.GetCommentViewerLikesBatch(ctx, commentIDs, viewerProfileID)
 	result := make([]Comment, 0, len(comments))
 	for _, comment := range comments {
-		result = append(result, s.mapComment(ctx, comment))
+		result = append(result, s.mapComment(ctx, comment, likeCounts[comment.ID], viewerLikes[comment.ID]))
 	}
 	return result
 }
 
-func (s *Service) mapComment(ctx context.Context, comment model.Comment) Comment {
+func (s *Service) mapComment(ctx context.Context, comment model.Comment, likes int, isLiked bool) Comment {
 	text := comment.Text
 	if text != nil {
 		escaped := html.EscapeString(html.UnescapeString(*text))
@@ -665,6 +824,8 @@ func (s *Service) mapComment(ctx context.Context, comment model.Comment) Comment
 		CreatedAt:       comment.CreatedAt,
 		UpdatedAt:       comment.UpdatedAt,
 		RepliesCount:    comment.RepliesCount,
+		Likes:           likes,
+		IsLiked:         isLiked,
 	}
 }
 
@@ -709,6 +870,7 @@ func (s *Service) postMedia(ctx context.Context, postID int64) []Media {
 		items = append(items, Media{
 			ID:       item.MediaID,
 			UID:      item.UID.String(),
+			Name:     item.Name,
 			MimeType: item.MimeType,
 			URL:      s.absoluteMediaURL(ctx, item.MediaID, item.Link),
 		})
@@ -994,7 +1156,11 @@ func splitMedia(items []Media) ([]Media, []Media) {
 }
 
 func isTimelineMedia(mimeType string) bool {
-	return strings.HasPrefix(mimeType, "image/") || strings.HasPrefix(mimeType, "video/")
+	mimeType = strings.ToLower(strings.TrimSpace(mimeType))
+	return mimeType == "image" ||
+		mimeType == "video" ||
+		strings.HasPrefix(mimeType, "image/") ||
+		strings.HasPrefix(mimeType, "video/")
 }
 
 func normalizeListBounds(limit, offset int) (int, int) {

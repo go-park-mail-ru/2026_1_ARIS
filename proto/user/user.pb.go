@@ -974,6 +974,94 @@ func (x *SearchProfilesResponse) GetProfiles() []*SearchProfileItem {
 	return nil
 }
 
+type GetFriendProfileIDsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserAccountId int64                  `protobuf:"varint,1,opt,name=user_account_id,json=userAccountId,proto3" json:"user_account_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFriendProfileIDsRequest) Reset() {
+	*x = GetFriendProfileIDsRequest{}
+	mi := &file_proto_user_user_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFriendProfileIDsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFriendProfileIDsRequest) ProtoMessage() {}
+
+func (x *GetFriendProfileIDsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_user_user_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFriendProfileIDsRequest.ProtoReflect.Descriptor instead.
+func (*GetFriendProfileIDsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_user_user_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *GetFriendProfileIDsRequest) GetUserAccountId() int64 {
+	if x != nil {
+		return x.UserAccountId
+	}
+	return 0
+}
+
+type GetFriendProfileIDsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ProfileIds    []int64                `protobuf:"varint,1,rep,packed,name=profile_ids,json=profileIds,proto3" json:"profile_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFriendProfileIDsResponse) Reset() {
+	*x = GetFriendProfileIDsResponse{}
+	mi := &file_proto_user_user_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFriendProfileIDsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFriendProfileIDsResponse) ProtoMessage() {}
+
+func (x *GetFriendProfileIDsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_user_user_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFriendProfileIDsResponse.ProtoReflect.Descriptor instead.
+func (*GetFriendProfileIDsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_user_user_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GetFriendProfileIDsResponse) GetProfileIds() []int64 {
+	if x != nil {
+		return x.ProfileIds
+	}
+	return nil
+}
+
 var File_proto_user_user_proto protoreflect.FileDescriptor
 
 const file_proto_user_user_proto_rawDesc = "" +
@@ -1052,11 +1140,16 @@ const file_proto_user_user_proto_rawDesc = "" +
 	"\n" +
 	"_avatar_id\"U\n" +
 	"\x16SearchProfilesResponse\x12;\n" +
-	"\bprofiles\x18\x01 \x03(\v2\x1f.aris.user.v1.SearchProfileItemR\bprofiles*D\n" +
+	"\bprofiles\x18\x01 \x03(\v2\x1f.aris.user.v1.SearchProfileItemR\bprofiles\"D\n" +
+	"\x1aGetFriendProfileIDsRequest\x12&\n" +
+	"\x0fuser_account_id\x18\x01 \x01(\x03R\ruserAccountId\">\n" +
+	"\x1bGetFriendProfileIDsResponse\x12\x1f\n" +
+	"\vprofile_ids\x18\x01 \x03(\x03R\n" +
+	"profileIds*D\n" +
 	"\x06Gender\x12\x16\n" +
 	"\x12GENDER_UNSPECIFIED\x10\x00\x12\x0f\n" +
 	"\vGENDER_MALE\x10\x01\x12\x11\n" +
-	"\rGENDER_FEMALE\x10\x022\xee\x06\n" +
+	"\rGENDER_FEMALE\x10\x022\xda\a\n" +
 	"\vUserService\x12s\n" +
 	"\x16CheckUsernameAvailable\x12+.aris.user.v1.CheckUsernameAvailableRequest\x1a,.aris.user.v1.CheckUsernameAvailableResponse\x12U\n" +
 	"\x0eCreateAuthUser\x12#.aris.user.v1.CreateAuthUserRequest\x1a\x1e.aris.user.v1.AuthUserResponse\x12p\n" +
@@ -1065,7 +1158,8 @@ const file_proto_user_user_proto_rawDesc = "" +
 	"\x17GetProfileByUserAccount\x12,.aris.user.v1.GetProfileByUserAccountRequest\x1a-.aris.user.v1.GetProfileByUserAccountResponse\x12\x82\x01\n" +
 	"\x1bGetUserProfileByUserAccount\x120.aris.user.v1.GetUserProfileByUserAccountRequest\x1a1.aris.user.v1.GetUserProfileByUserAccountResponse\x12d\n" +
 	"\x11GetProfileSummary\x12&.aris.user.v1.GetProfileSummaryRequest\x1a'.aris.user.v1.GetProfileSummaryResponse\x12[\n" +
-	"\x0eSearchProfiles\x12#.aris.user.v1.SearchProfilesRequest\x1a$.aris.user.v1.SearchProfilesResponseB:Z8github.com/go-park-mail-ru/2026_1_ARIS/proto/user;userpbb\x06proto3"
+	"\x0eSearchProfiles\x12#.aris.user.v1.SearchProfilesRequest\x1a$.aris.user.v1.SearchProfilesResponse\x12j\n" +
+	"\x13GetFriendProfileIDs\x12(.aris.user.v1.GetFriendProfileIDsRequest\x1a).aris.user.v1.GetFriendProfileIDsResponseB:Z8github.com/go-park-mail-ru/2026_1_ARIS/proto/user;userpbb\x06proto3"
 
 var (
 	file_proto_user_user_proto_rawDescOnce sync.Once
@@ -1080,7 +1174,7 @@ func file_proto_user_user_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_user_user_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_user_user_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_proto_user_user_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_proto_user_user_proto_goTypes = []any{
 	(Gender)(0),                                 // 0: aris.user.v1.Gender
 	(*CheckUsernameAvailableRequest)(nil),       // 1: aris.user.v1.CheckUsernameAvailableRequest
@@ -1099,6 +1193,8 @@ var file_proto_user_user_proto_goTypes = []any{
 	(*SearchProfilesRequest)(nil),               // 14: aris.user.v1.SearchProfilesRequest
 	(*SearchProfileItem)(nil),                   // 15: aris.user.v1.SearchProfileItem
 	(*SearchProfilesResponse)(nil),              // 16: aris.user.v1.SearchProfilesResponse
+	(*GetFriendProfileIDsRequest)(nil),          // 17: aris.user.v1.GetFriendProfileIDsRequest
+	(*GetFriendProfileIDsResponse)(nil),         // 18: aris.user.v1.GetFriendProfileIDsResponse
 }
 var file_proto_user_user_proto_depIdxs = []int32{
 	0,  // 0: aris.user.v1.CreateAuthUserRequest.gender:type_name -> aris.user.v1.Gender
@@ -1111,16 +1207,18 @@ var file_proto_user_user_proto_depIdxs = []int32{
 	10, // 7: aris.user.v1.UserService.GetUserProfileByUserAccount:input_type -> aris.user.v1.GetUserProfileByUserAccountRequest
 	12, // 8: aris.user.v1.UserService.GetProfileSummary:input_type -> aris.user.v1.GetProfileSummaryRequest
 	14, // 9: aris.user.v1.UserService.SearchProfiles:input_type -> aris.user.v1.SearchProfilesRequest
-	2,  // 10: aris.user.v1.UserService.CheckUsernameAvailable:output_type -> aris.user.v1.CheckUsernameAvailableResponse
-	7,  // 11: aris.user.v1.UserService.CreateAuthUser:output_type -> aris.user.v1.AuthUserResponse
-	5,  // 12: aris.user.v1.UserService.GetCredentialsByLogin:output_type -> aris.user.v1.GetCredentialsByLoginResponse
-	7,  // 13: aris.user.v1.UserService.GetAuthUserByAccount:output_type -> aris.user.v1.AuthUserResponse
-	9,  // 14: aris.user.v1.UserService.GetProfileByUserAccount:output_type -> aris.user.v1.GetProfileByUserAccountResponse
-	11, // 15: aris.user.v1.UserService.GetUserProfileByUserAccount:output_type -> aris.user.v1.GetUserProfileByUserAccountResponse
-	13, // 16: aris.user.v1.UserService.GetProfileSummary:output_type -> aris.user.v1.GetProfileSummaryResponse
-	16, // 17: aris.user.v1.UserService.SearchProfiles:output_type -> aris.user.v1.SearchProfilesResponse
-	10, // [10:18] is the sub-list for method output_type
-	2,  // [2:10] is the sub-list for method input_type
+	17, // 10: aris.user.v1.UserService.GetFriendProfileIDs:input_type -> aris.user.v1.GetFriendProfileIDsRequest
+	2,  // 11: aris.user.v1.UserService.CheckUsernameAvailable:output_type -> aris.user.v1.CheckUsernameAvailableResponse
+	7,  // 12: aris.user.v1.UserService.CreateAuthUser:output_type -> aris.user.v1.AuthUserResponse
+	5,  // 13: aris.user.v1.UserService.GetCredentialsByLogin:output_type -> aris.user.v1.GetCredentialsByLoginResponse
+	7,  // 14: aris.user.v1.UserService.GetAuthUserByAccount:output_type -> aris.user.v1.AuthUserResponse
+	9,  // 15: aris.user.v1.UserService.GetProfileByUserAccount:output_type -> aris.user.v1.GetProfileByUserAccountResponse
+	11, // 16: aris.user.v1.UserService.GetUserProfileByUserAccount:output_type -> aris.user.v1.GetUserProfileByUserAccountResponse
+	13, // 17: aris.user.v1.UserService.GetProfileSummary:output_type -> aris.user.v1.GetProfileSummaryResponse
+	16, // 18: aris.user.v1.UserService.SearchProfiles:output_type -> aris.user.v1.SearchProfilesResponse
+	18, // 19: aris.user.v1.UserService.GetFriendProfileIDs:output_type -> aris.user.v1.GetFriendProfileIDsResponse
+	11, // [11:20] is the sub-list for method output_type
+	2,  // [2:11] is the sub-list for method input_type
 	2,  // [2:2] is the sub-list for extension type_name
 	2,  // [2:2] is the sub-list for extension extendee
 	0,  // [0:2] is the sub-list for field type_name
@@ -1140,7 +1238,7 @@ func file_proto_user_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_user_user_proto_rawDesc), len(file_proto_user_user_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   16,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

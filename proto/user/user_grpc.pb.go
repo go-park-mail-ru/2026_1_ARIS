@@ -27,6 +27,7 @@ const (
 	UserService_GetUserProfileByUserAccount_FullMethodName = "/aris.user.v1.UserService/GetUserProfileByUserAccount"
 	UserService_GetProfileSummary_FullMethodName           = "/aris.user.v1.UserService/GetProfileSummary"
 	UserService_SearchProfiles_FullMethodName              = "/aris.user.v1.UserService/SearchProfiles"
+	UserService_GetFriendProfileIDs_FullMethodName         = "/aris.user.v1.UserService/GetFriendProfileIDs"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -41,6 +42,7 @@ type UserServiceClient interface {
 	GetUserProfileByUserAccount(ctx context.Context, in *GetUserProfileByUserAccountRequest, opts ...grpc.CallOption) (*GetUserProfileByUserAccountResponse, error)
 	GetProfileSummary(ctx context.Context, in *GetProfileSummaryRequest, opts ...grpc.CallOption) (*GetProfileSummaryResponse, error)
 	SearchProfiles(ctx context.Context, in *SearchProfilesRequest, opts ...grpc.CallOption) (*SearchProfilesResponse, error)
+	GetFriendProfileIDs(ctx context.Context, in *GetFriendProfileIDsRequest, opts ...grpc.CallOption) (*GetFriendProfileIDsResponse, error)
 }
 
 type userServiceClient struct {
@@ -131,6 +133,16 @@ func (c *userServiceClient) SearchProfiles(ctx context.Context, in *SearchProfil
 	return out, nil
 }
 
+func (c *userServiceClient) GetFriendProfileIDs(ctx context.Context, in *GetFriendProfileIDsRequest, opts ...grpc.CallOption) (*GetFriendProfileIDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFriendProfileIDsResponse)
+	err := c.cc.Invoke(ctx, UserService_GetFriendProfileIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -143,6 +155,7 @@ type UserServiceServer interface {
 	GetUserProfileByUserAccount(context.Context, *GetUserProfileByUserAccountRequest) (*GetUserProfileByUserAccountResponse, error)
 	GetProfileSummary(context.Context, *GetProfileSummaryRequest) (*GetProfileSummaryResponse, error)
 	SearchProfiles(context.Context, *SearchProfilesRequest) (*SearchProfilesResponse, error)
+	GetFriendProfileIDs(context.Context, *GetFriendProfileIDsRequest) (*GetFriendProfileIDsResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -176,6 +189,9 @@ func (UnimplementedUserServiceServer) GetProfileSummary(context.Context, *GetPro
 }
 func (UnimplementedUserServiceServer) SearchProfiles(context.Context, *SearchProfilesRequest) (*SearchProfilesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SearchProfiles not implemented")
+}
+func (UnimplementedUserServiceServer) GetFriendProfileIDs(context.Context, *GetFriendProfileIDsRequest) (*GetFriendProfileIDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetFriendProfileIDs not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -342,6 +358,24 @@ func _UserService_SearchProfiles_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetFriendProfileIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFriendProfileIDsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetFriendProfileIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetFriendProfileIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetFriendProfileIDs(ctx, req.(*GetFriendProfileIDsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -380,6 +414,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SearchProfiles",
 			Handler:    _UserService_SearchProfiles_Handler,
+		},
+		{
+			MethodName: "GetFriendProfileIDs",
+			Handler:    _UserService_GetFriendProfileIDs_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

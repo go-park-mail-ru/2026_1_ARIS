@@ -145,6 +145,14 @@ func fromProtoGender(value userpb.Gender) model.Gender {
 	return model.Female
 }
 
+func (s *Server) GetFriendProfileIDs(ctx context.Context, req *userpb.GetFriendProfileIDsRequest) (*userpb.GetFriendProfileIDsResponse, error) {
+	ids, err := s.user.GetFriendProfileIDs(ctx, req.GetUserAccountId())
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	return &userpb.GetFriendProfileIDsResponse{ProfileIds: ids}, nil
+}
+
 func toStatus(err error) error {
 	switch {
 	case errors.Is(err, usecase.ErrUsernameTaken):
