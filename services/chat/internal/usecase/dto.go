@@ -56,6 +56,7 @@ type AttachmentInput struct {
 type Attachment struct {
 	ID       int64
 	UID      string
+	Name     string
 	MimeType string
 	URL      string
 }
@@ -64,8 +65,18 @@ type StickerPack struct {
 	ID        int64
 	UID       string
 	Title     string
+	AuthorID  *int64
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type StickerPackInput struct {
+	Title string
+}
+
+type StickerInput struct {
+	MediaID   int64
+	SortOrder *int
 }
 
 type Sticker struct {

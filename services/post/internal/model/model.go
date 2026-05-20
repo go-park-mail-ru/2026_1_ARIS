@@ -44,6 +44,7 @@ type PostWithMedia struct {
 type AttachedMedia struct {
 	MediaID  int64     `db:"media_id"`
 	UID      uuid.UUID `db:"uid"`
+	Name     string    `db:"media_name"`
 	MimeType string    `db:"mime_type"`
 	Link     string    `db:"link"`
 	AuthorID int64     `db:"author_id"`
@@ -81,6 +82,19 @@ func NewLikeToPost(postID int64, authorID int64) *Like {
 		ID:        rand.Int64(),
 		Uid:       uuid.New(),
 		PostID:    &postID,
+		AuthorID:  authorID,
+		IsActive:  true,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+}
+
+func NewLikeToComment(commentID int64, authorID int64) *Like {
+	now := time.Now()
+	return &Like{
+		ID:        rand.Int64(),
+		Uid:       uuid.New(),
+		CommentID: &commentID,
 		AuthorID:  authorID,
 		IsActive:  true,
 		CreatedAt: now,

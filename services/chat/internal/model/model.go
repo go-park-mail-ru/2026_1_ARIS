@@ -70,6 +70,7 @@ type MessageMedia struct {
 	MediaID   int64     `db:"media_id"`
 	Order     int       `db:"sort_order"`
 	MediaUID  uuid.UUID `db:"media_uid"`
+	Name      string    `db:"media_name"`
 	MimeType  string    `db:"mime_type"`
 	Link      string    `db:"link"`
 }
@@ -97,6 +98,14 @@ type Sticker struct {
 	IsActive  bool       `db:"is_active"`
 	CreatedAt time.Time  `db:"created_at"`
 	UpdatedAt time.Time  `db:"updated_at"`
+}
+
+type MediaInfo struct {
+	ID       int64  `db:"id"`
+	AuthorID int64  `db:"author_id"`
+	MimeType string `db:"mime_type"`
+	Link     string `db:"link"`
+	Size     int64  `db:"size"`
 }
 
 type Reaction struct {

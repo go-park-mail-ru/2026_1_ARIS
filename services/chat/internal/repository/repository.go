@@ -287,7 +287,7 @@ func (s *messageMediaStorage) GetByMessageIDs(ctx context.Context, messageIDs []
 	}
 	start := time.Now()
 	rows, err := s.db.Query(ctx, `
-		SELECT mwm.message_id, mwm.media_id, mwm.sort_order, m.uid AS media_uid, m.mime_type, m.link
+		SELECT mwm.message_id, mwm.media_id, mwm.sort_order, m.uid AS media_uid, m.media_name, m.mime_type, m.link
 		FROM message_with_media mwm
 		JOIN media m ON m.id=mwm.media_id AND m.is_active=TRUE
 		WHERE mwm.message_id=ANY($1)
@@ -301,7 +301,7 @@ func (s *messageMediaStorage) GetByMessageIDs(ctx context.Context, messageIDs []
 
 	for rows.Next() {
 		var item model.MessageMedia
-		if err := rows.Scan(&item.MessageID, &item.MediaID, &item.Order, &item.MediaUID, &item.MimeType, &item.Link); err != nil {
+		if err := rows.Scan(&item.MessageID, &item.MediaID, &item.Order, &item.MediaUID, &item.Name, &item.MimeType, &item.Link); err != nil {
 			return nil, err
 		}
 		result[item.MessageID] = append(result[item.MessageID], item)
@@ -333,8 +333,15 @@ func (s *messageMediaStorage) DeleteByMessageID(ctx context.Context, messageID i
 
 type StickerRepo interface {
 	Get(ctx context.Context, id int64) (*model.Sticker, error)
+	GetPack(ctx context.Context, id int64) (*model.StickerPack, error)
 	ListPacks(ctx context.Context, limit, offset int) ([]model.StickerPack, error)
+	ListPacksByAuthorID(ctx context.Context, authorID int64, limit, offset int) ([]model.StickerPack, error)
+	SearchPacks(ctx context.Context, query string, limit, offset int) ([]model.StickerPack, error)
 	ListByPackID(ctx context.Context, packID int64, limit, offset int) ([]model.Sticker, error)
+	CreatePack(ctx context.Context, pack model.StickerPack) (int64, error)
+	CreateSticker(ctx context.Context, sticker model.Sticker) (int64, error)
+	NextStickerOrder(ctx context.Context, packID int64) (int, error)
+	GetMediaInfo(ctx context.Context, mediaID int64) (*model.MediaInfo, error)
 }
 
 type stickerStorage struct {
@@ -366,6 +373,24 @@ func (s *stickerStorage) Get(ctx context.Context, id int64) (*model.Sticker, err
 	return &sticker, nil
 }
 
+func (s *stickerStorage) GetPack(ctx context.Context, id int64) (*model.StickerPack, error) {
+	start := time.Now()
+	var pack model.StickerPack
+	err := pgxscan.Get(ctx, s.db, &pack, `
+		SELECT *
+		FROM sticker_pack
+		WHERE id=$1 AND is_active=TRUE
+	`, id)
+	logQuery(ctx, "stickerStorage.GetPack", start)
+	if err != nil {
+		if pgxscan.NotFound(err) {
+			return nil, errors.New("sticker pack not found")
+		}
+		return nil, err
+	}
+	return &pack, nil
+}
+
 func (s *stickerStorage) ListPacks(ctx context.Context, limit, offset int) ([]model.StickerPack, error) {
 	start := time.Now()
 	var packs []model.StickerPack
@@ -377,6 +402,43 @@ func (s *stickerStorage) ListPacks(ctx context.Context, limit, offset int) ([]mo
 		LIMIT $1 OFFSET $2
 	`, limit, offset)
 	logQuery(ctx, "stickerStorage.ListPacks", start)
+	if err != nil && !pgxscan.NotFound(err) {
+		return nil, err
+	}
+	return packs, nil
+}
+
+func (s *stickerStorage) ListPacksByAuthorID(ctx context.Context, authorID int64, limit, offset int) ([]model.StickerPack, error) {
+	start := time.Now()
+	var packs []model.StickerPack
+	err := pgxscan.Select(ctx, s.db, &packs, `
+		SELECT *
+		FROM sticker_pack
+		WHERE is_active=TRUE AND author_id=$1
+		ORDER BY created_at DESC, id DESC
+		LIMIT $2 OFFSET $3
+	`, authorID, limit, offset)
+	logQuery(ctx, "stickerStorage.ListPacksByAuthorID", start)
+	if err != nil && !pgxscan.NotFound(err) {
+		return nil, err
+	}
+	return packs, nil
+}
+
+func (s *stickerStorage) SearchPacks(ctx context.Context, query string, limit, offset int) ([]model.StickerPack, error) {
+	start := time.Now()
+	var packs []model.StickerPack
+	err := pgxscan.Select(ctx, s.db, &packs, `
+		SELECT *
+		FROM sticker_pack
+		WHERE is_active=TRUE AND title ILIKE '%' || $1 || '%'
+		ORDER BY
+			CASE WHEN title ILIKE $1 || '%' THEN 0 ELSE 1 END,
+			title ASC,
+			id DESC
+		LIMIT $2 OFFSET $3
+	`, query, limit, offset)
+	logQuery(ctx, "stickerStorage.SearchPacks", start)
 	if err != nil && !pgxscan.NotFound(err) {
 		return nil, err
 	}
@@ -401,6 +463,72 @@ func (s *stickerStorage) ListByPackID(ctx context.Context, packID int64, limit, 
 		return nil, err
 	}
 	return stickers, nil
+}
+
+func (s *stickerStorage) CreatePack(ctx context.Context, pack model.StickerPack) (int64, error) {
+	start := time.Now()
+	row := s.db.QueryRow(ctx, `
+		INSERT INTO sticker_pack (uid, title, author_id)
+		VALUES ($1, $2, $3)
+		RETURNING id
+	`, pack.Uid, pack.Title, pack.AuthorID)
+	logQuery(ctx, "stickerStorage.CreatePack", start)
+
+	var id int64
+	if err := row.Scan(&id); err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
+func (s *stickerStorage) CreateSticker(ctx context.Context, sticker model.Sticker) (int64, error) {
+	start := time.Now()
+	row := s.db.QueryRow(ctx, `
+		INSERT INTO sticker (uid, size, sort_order, pack_id, media_id)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id
+	`, sticker.Uid, sticker.Size, sticker.Order, sticker.PackID, sticker.MediaID)
+	logQuery(ctx, "stickerStorage.CreateSticker", start)
+
+	var id int64
+	if err := row.Scan(&id); err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
+func (s *stickerStorage) NextStickerOrder(ctx context.Context, packID int64) (int, error) {
+	start := time.Now()
+	row := s.db.QueryRow(ctx, `
+		SELECT COALESCE(MAX(sort_order) + 1, 0)
+		FROM sticker
+		WHERE pack_id=$1 AND is_active=TRUE
+	`, packID)
+	logQuery(ctx, "stickerStorage.NextStickerOrder", start)
+
+	var order int
+	if err := row.Scan(&order); err != nil {
+		return 0, err
+	}
+	return order, nil
+}
+
+func (s *stickerStorage) GetMediaInfo(ctx context.Context, mediaID int64) (*model.MediaInfo, error) {
+	start := time.Now()
+	var media model.MediaInfo
+	err := pgxscan.Get(ctx, s.db, &media, `
+		SELECT id, author_id, mime_type, link, size
+		FROM media
+		WHERE id=$1 AND is_active=TRUE
+	`, mediaID)
+	logQuery(ctx, "stickerStorage.GetMediaInfo", start)
+	if err != nil {
+		if pgxscan.NotFound(err) {
+			return nil, errors.New("media not found")
+		}
+		return nil, err
+	}
+	return &media, nil
 }
 
 type ReactionRepo interface {

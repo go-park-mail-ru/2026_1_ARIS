@@ -8,6 +8,7 @@ import (
 	"math/rand/v2"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	tarantoolcache "github.com/go-park-mail-ru/2026_1_ARIS/pkg/tarantool"
 	mediapb "github.com/go-park-mail-ru/2026_1_ARIS/proto/media"
@@ -466,29 +467,58 @@ func (s *Service) mapMessage(ctx context.Context, message model.Message, attachm
 	}
 }
 
-func (s *Service) GetStickerPacks(ctx context.Context, userAccountID int64, limit, offset int) ([]StickerPack, error) {
+func (s *Service) GetStickerPacks(ctx context.Context, userAccountID int64, query string, myOnly bool, limit, offset int) ([]StickerPack, error) {
 	if userAccountID <= 0 {
 		return nil, ErrInvalidInput
 	}
-	if _, err := s.profileIDByAccount(ctx, userAccountID); err != nil {
+	profileID, err := s.profileIDByAccount(ctx, userAccountID)
+	if err != nil {
 		return nil, err
 	}
 	limit, offset = normalizeListBounds(limit, offset)
-	packs, err := s.store.Stickers.ListPacks(ctx, limit, offset)
+	query = strings.TrimSpace(query)
+	var packs []model.StickerPack
+	switch {
+	case myOnly:
+		packs, err = s.store.Stickers.ListPacksByAuthorID(ctx, profileID, limit, offset)
+	case query != "":
+		packs, err = s.store.Stickers.SearchPacks(ctx, query, limit, offset)
+	default:
+		packs, err = s.store.Stickers.ListPacks(ctx, limit, offset)
+	}
 	if err != nil {
 		return nil, err
 	}
 	result := make([]StickerPack, 0, len(packs))
 	for _, pack := range packs {
-		result = append(result, StickerPack{
-			ID:        pack.ID,
-			UID:       pack.Uid.String(),
-			Title:     html.EscapeString(pack.Title),
-			CreatedAt: pack.CreatedAt,
-			UpdatedAt: pack.UpdatedAt,
-		})
+		result = append(result, mapStickerPack(pack))
 	}
 	return result, nil
+}
+
+func (s *Service) CreateStickerPack(ctx context.Context, userAccountID int64, input StickerPackInput) (StickerPack, error) {
+	title := strings.TrimSpace(input.Title)
+	if userAccountID <= 0 || title == "" || utf8.RuneCountInString(title) > 63 {
+		return StickerPack{}, ErrInvalidInput
+	}
+	profileID, err := s.profileIDByAccount(ctx, userAccountID)
+	if err != nil {
+		return StickerPack{}, err
+	}
+	pack := model.StickerPack{
+		Uid:      uuid.New(),
+		Title:    title,
+		AuthorID: &profileID,
+	}
+	id, err := s.store.Stickers.CreatePack(ctx, pack)
+	if err != nil {
+		return StickerPack{}, err
+	}
+	saved, err := s.store.Stickers.GetPack(ctx, id)
+	if err != nil {
+		return StickerPack{}, ErrNotFound
+	}
+	return mapStickerPack(*saved), nil
 }
 
 func (s *Service) GetStickersByPack(ctx context.Context, userAccountID, packID int64, limit, offset int) ([]Sticker, error) {
@@ -508,6 +538,61 @@ func (s *Service) GetStickersByPack(ctx context.Context, userAccountID, packID i
 		result = append(result, *s.mapSticker(ctx, sticker))
 	}
 	return result, nil
+}
+
+func (s *Service) CreateSticker(ctx context.Context, userAccountID, packID int64, input StickerInput) (Sticker, error) {
+	if userAccountID <= 0 || packID <= 0 || input.MediaID <= 0 {
+		return Sticker{}, ErrInvalidInput
+	}
+	profileID, err := s.profileIDByAccount(ctx, userAccountID)
+	if err != nil {
+		return Sticker{}, err
+	}
+	pack, err := s.store.Stickers.GetPack(ctx, packID)
+	if err != nil {
+		return Sticker{}, ErrNotFound
+	}
+	if pack.AuthorID == nil || *pack.AuthorID != profileID {
+		return Sticker{}, ErrForbidden
+	}
+	media, err := s.store.Stickers.GetMediaInfo(ctx, input.MediaID)
+	if err != nil {
+		return Sticker{}, ErrNotFound
+	}
+	if media.AuthorID != profileID {
+		return Sticker{}, ErrForbidden
+	}
+	if !isImageMedia(media.MimeType) {
+		return Sticker{}, ErrInvalidInput
+	}
+	order := 0
+	if input.SortOrder != nil {
+		order = *input.SortOrder
+	} else {
+		order, err = s.store.Stickers.NextStickerOrder(ctx, packID)
+		if err != nil {
+			return Sticker{}, err
+		}
+	}
+	if order < 0 || order > 100 {
+		return Sticker{}, ErrInvalidInput
+	}
+	sticker := model.Sticker{
+		Uid:     uuid.New(),
+		Size:    media.Size,
+		Order:   order,
+		PackID:  &packID,
+		MediaID: &input.MediaID,
+	}
+	id, err := s.store.Stickers.CreateSticker(ctx, sticker)
+	if err != nil {
+		return Sticker{}, err
+	}
+	saved, err := s.store.Stickers.Get(ctx, id)
+	if err != nil {
+		return Sticker{}, ErrNotFound
+	}
+	return *s.mapSticker(ctx, *saved), nil
 }
 
 func (s *Service) SetMessageReaction(ctx context.Context, userAccountID, chatID, messageID int64, reactionType string) (Message, error) {
@@ -623,6 +708,7 @@ func (s *Service) splitAttachments(ctx context.Context, items []model.MessageMed
 		attachment := Attachment{
 			ID:       item.MediaID,
 			UID:      item.MediaUID.String(),
+			Name:     item.Name,
 			MimeType: item.MimeType,
 			URL:      s.mediaURL(ctx, item.MediaID, item.Link),
 		}
@@ -650,6 +736,17 @@ func (s *Service) mapSticker(ctx context.Context, sticker model.Sticker) *Sticke
 	return result
 }
 
+func mapStickerPack(pack model.StickerPack) StickerPack {
+	return StickerPack{
+		ID:        pack.ID,
+		UID:       pack.Uid.String(),
+		Title:     html.EscapeString(pack.Title),
+		AuthorID:  pack.AuthorID,
+		CreatedAt: pack.CreatedAt,
+		UpdatedAt: pack.UpdatedAt,
+	}
+}
+
 func (s *Service) mediaURL(ctx context.Context, mediaID int64, raw string) string {
 	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") || s.mediaClient == nil {
 		return raw
@@ -673,9 +770,18 @@ func (s *Service) avatarURL(ctx context.Context, mediaID int64) string {
 }
 
 func isMessageMedia(mimeType string) bool {
+	mimeType = strings.ToLower(strings.TrimSpace(mimeType))
+	if mimeType == "image" || mimeType == "video" || mimeType == "audio" {
+		return true
+	}
 	return strings.HasPrefix(mimeType, "image/") ||
 		strings.HasPrefix(mimeType, "video/") ||
 		strings.HasPrefix(mimeType, "audio/")
+}
+
+func isImageMedia(mimeType string) bool {
+	mimeType = strings.ToLower(strings.TrimSpace(mimeType))
+	return mimeType == "image" || strings.HasPrefix(mimeType, "image/")
 }
 
 func normalizeListBounds(limit, offset int) (int, int) {
