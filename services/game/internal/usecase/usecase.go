@@ -3,6 +3,8 @@ package usecase
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
@@ -29,6 +31,11 @@ var (
 )
 
 type Notifier func(context.Context, int64)
+
+const (
+	emptyWaitingRoomTTL   = 30 * time.Second
+	staleWaitingMemberTTL = 15 * time.Second
+)
 
 type Service struct {
 	store      repository.Store
@@ -61,6 +68,9 @@ func (s *Service) CreateRoom(ctx context.Context, userAccountID int64, in Create
 				GameType:           in.GameType,
 				Status:             model.RoomStatusWaiting,
 				CreatedByProfileID: profileID,
+				MaxPlayers:         in.MaxPlayers,
+				PasswordHash:       passwordHashPtr(in.Password),
+				PasswordValue:      passwordValuePtr(in.Password),
 				QuestionCount:      in.QuestionCount,
 				AnswerTimeoutSec:   in.AnswerTimeoutSec,
 			}
@@ -83,9 +93,12 @@ func (s *Service) CreateRoom(ctx context.Context, userAccountID int64, in Create
 	return s.GetRoom(ctx, userAccountID, room.ID)
 }
 
-func (s *Service) JoinRoom(ctx context.Context, userAccountID int64, inviteCode string) (Room, error) {
+func (s *Service) JoinRoom(ctx context.Context, userAccountID int64, inviteCode string, password string) (Room, error) {
 	profileID, err := s.profileIDByAccount(ctx, userAccountID)
 	if err != nil {
+		return Room{}, err
+	}
+	if err := s.cleanupEmptyWaitingRooms(ctx); err != nil {
 		return Room{}, err
 	}
 	code := strings.ToUpper(strings.TrimSpace(inviteCode))
@@ -102,6 +115,9 @@ func (s *Service) JoinRoom(ctx context.Context, userAccountID int64, inviteCode 
 		if room.Status != model.RoomStatusWaiting {
 			return ErrAlreadyStarted
 		}
+		if !passwordMatches(room.PasswordHash, password) {
+			return ErrForbidden
+		}
 		members, err := tx.Members.List(ctx, room.ID)
 		if err != nil {
 			return err
@@ -111,7 +127,7 @@ func (s *Service) JoinRoom(ctx context.Context, userAccountID int64, inviteCode 
 				return nil
 			}
 		}
-		if len(members) >= 2 {
+		if len(members) >= room.MaxPlayers {
 			return ErrRoomFull
 		}
 		return tx.Members.Add(ctx, room.ID, profileID)
@@ -121,6 +137,153 @@ func (s *Service) JoinRoom(ctx context.Context, userAccountID int64, inviteCode 
 	}
 	s.notifyRoom(ctx, roomID)
 	return s.GetRoom(ctx, userAccountID, roomID)
+}
+
+func (s *Service) DisbandRoom(ctx context.Context, userAccountID, roomID int64) error {
+	profileID, err := s.profileIDByAccount(ctx, userAccountID)
+	if err != nil {
+		return err
+	}
+	err = s.store.InTx(ctx, func(tx repository.Store) error {
+		room, err := tx.Rooms.GetForUpdate(ctx, roomID)
+		if err != nil {
+			return mapRepoErr(err)
+		}
+		if room.CreatedByProfileID != profileID {
+			return ErrForbidden
+		}
+		if room.Status != model.RoomStatusWaiting {
+			return ErrAlreadyStarted
+		}
+		return tx.Rooms.Deactivate(ctx, room.ID)
+	})
+	if err != nil {
+		return err
+	}
+	s.notifyRoom(ctx, roomID)
+	return nil
+}
+
+func (s *Service) LeaveRoom(ctx context.Context, userAccountID, roomID int64) error {
+	profileID, err := s.profileIDByAccount(ctx, userAccountID)
+	if err != nil {
+		return err
+	}
+	err = s.store.InTx(ctx, func(tx repository.Store) error {
+		room, err := tx.Rooms.GetForUpdate(ctx, roomID)
+		if err != nil {
+			return mapRepoErr(err)
+		}
+		if room.Status != model.RoomStatusWaiting {
+			return ErrAlreadyStarted
+		}
+		if err := tx.Members.Deactivate(ctx, room.ID, profileID); err != nil {
+			return mapRepoErr(err)
+		}
+		members, err := tx.Members.List(ctx, room.ID)
+		if err != nil {
+			return err
+		}
+		if len(members) == 0 {
+			return tx.Rooms.TouchEmptyWaiting(ctx, room.ID)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	s.notifyRoom(ctx, roomID)
+	return nil
+}
+
+func (s *Service) LeaveWaitingRoomOnDisconnect(ctx context.Context, userAccountID, roomID int64) error {
+	err := s.LeaveRoom(ctx, userAccountID, roomID)
+	if errors.Is(err, ErrAlreadyStarted) || errors.Is(err, ErrForbidden) || errors.Is(err, ErrNotFound) {
+		return nil
+	}
+	return err
+}
+
+func (s *Service) TouchWaitingRoomMember(ctx context.Context, userAccountID, roomID int64) error {
+	profileID, err := s.profileIDByAccount(ctx, userAccountID)
+	if err != nil {
+		return err
+	}
+	return s.store.Members.TouchWaiting(ctx, roomID, profileID)
+}
+
+func (s *Service) KickPlayer(ctx context.Context, userAccountID, roomID, targetProfileID int64) error {
+	profileID, err := s.profileIDByAccount(ctx, userAccountID)
+	if err != nil {
+		return err
+	}
+	err = s.store.InTx(ctx, func(tx repository.Store) error {
+		room, err := tx.Rooms.GetForUpdate(ctx, roomID)
+		if err != nil {
+			return mapRepoErr(err)
+		}
+		if room.CreatedByProfileID != profileID || targetProfileID == profileID {
+			return ErrForbidden
+		}
+		if room.Status != model.RoomStatusWaiting {
+			return ErrAlreadyStarted
+		}
+		return mapRepoErr(tx.Members.Deactivate(ctx, room.ID, targetProfileID))
+	})
+	if err != nil {
+		return err
+	}
+	s.notifyRoom(ctx, roomID)
+	return nil
+}
+
+func (s *Service) SetReady(ctx context.Context, userAccountID, roomID int64, isReady bool) error {
+	profileID, err := s.profileIDByAccount(ctx, userAccountID)
+	if err != nil {
+		return err
+	}
+	err = s.store.InTx(ctx, func(tx repository.Store) error {
+		room, err := tx.Rooms.GetForUpdate(ctx, roomID)
+		if err != nil {
+			return mapRepoErr(err)
+		}
+		if room.Status != model.RoomStatusWaiting {
+			return ErrAlreadyStarted
+		}
+		return mapRepoErr(tx.Members.SetReady(ctx, room.ID, profileID, isReady))
+	})
+	if err != nil {
+		return err
+	}
+	s.notifyRoom(ctx, roomID)
+	return nil
+}
+
+func (s *Service) UpdateRoomPassword(ctx context.Context, userAccountID, roomID int64, password string) error {
+	profileID, err := s.profileIDByAccount(ctx, userAccountID)
+	if err != nil {
+		return err
+	}
+	err = s.store.InTx(ctx, func(tx repository.Store) error {
+		room, err := tx.Rooms.GetForUpdate(ctx, roomID)
+		if err != nil {
+			return mapRepoErr(err)
+		}
+		if room.CreatedByProfileID != profileID {
+			return ErrForbidden
+		}
+		if room.Status != model.RoomStatusWaiting {
+			return ErrAlreadyStarted
+		}
+		room.PasswordHash = passwordHashPtr(password)
+		room.PasswordValue = passwordValuePtr(password)
+		return tx.Rooms.Update(ctx, room)
+	})
+	if err != nil {
+		return err
+	}
+	s.notifyRoom(ctx, roomID)
+	return nil
 }
 
 func (s *Service) StartRoom(ctx context.Context, userAccountID, roomID int64) (Room, error) {
@@ -144,8 +307,13 @@ func (s *Service) StartRoom(ctx context.Context, userAccountID, roomID int64) (R
 		if err != nil {
 			return err
 		}
-		if len(members) != 2 {
+		if len(members) < 2 {
 			return ErrInvalidInput
+		}
+		for _, member := range members {
+			if !member.IsReady {
+				return ErrInvalidInput
+			}
 		}
 		questions, err := tx.Questions.Random(ctx, room.GameType, room.QuestionCount)
 		if err != nil {
@@ -290,6 +458,9 @@ func (s *Service) GetRoom(ctx context.Context, userAccountID, roomID int64) (Roo
 	if err != nil {
 		return Room{}, err
 	}
+	if err := s.cleanupEmptyWaitingRooms(ctx); err != nil {
+		return Room{}, err
+	}
 	room, err := s.store.Rooms.Get(ctx, roomID)
 	if err != nil {
 		return Room{}, mapRepoErr(err)
@@ -319,6 +490,13 @@ func (s *Service) ListRooms(ctx context.Context, userAccountID int64, limit, off
 	if err := s.finalizeExpiredForProfile(ctx, profileID); err != nil {
 		return nil, err
 	}
+	leftRoomIDs, err := s.store.Members.DeactivateWaitingForProfile(ctx, profileID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.cleanupEmptyWaitingRooms(ctx); err != nil {
+		return nil, err
+	}
 	rooms, err := s.store.Rooms.ListForProfile(ctx, profileID, normalizeLimit(limit, 50, 100), normalizeOffset(offset))
 	if err != nil {
 		return nil, err
@@ -330,6 +508,9 @@ func (s *Service) ListRooms(ctx context.Context, userAccountID int64, limit, off
 			result = append(result, view)
 		}
 	}
+	for _, roomID := range leftRoomIDs {
+		s.notifyRoom(ctx, roomID)
+	}
 	return result, nil
 }
 
@@ -339,6 +520,9 @@ func (s *Service) History(ctx context.Context, userAccountID int64, limit, offse
 		return nil, err
 	}
 	if err := s.finalizeExpiredForProfile(ctx, profileID); err != nil {
+		return nil, err
+	}
+	if err := s.cleanupEmptyWaitingRooms(ctx); err != nil {
 		return nil, err
 	}
 	rooms, err := s.store.Rooms.HistoryForProfile(ctx, profileID, normalizeLimit(limit, 50, 100), normalizeOffset(offset))
@@ -363,11 +547,31 @@ func (s *Service) Stats(ctx context.Context, userAccountID int64) (Stats, error)
 	if err := s.finalizeExpiredForProfile(ctx, profileID); err != nil {
 		return Stats{}, err
 	}
+	if err := s.cleanupEmptyWaitingRooms(ctx); err != nil {
+		return Stats{}, err
+	}
 	stats, err := s.store.Members.Stats(ctx, profileID)
 	if err != nil {
 		return Stats{}, err
 	}
 	return Stats{Played: stats.Played, Won: stats.Won, Lost: stats.Lost, Drawn: stats.Drawn}, nil
+}
+
+func (s *Service) CleanupEmptyWaitingRooms(ctx context.Context) error {
+	return s.cleanupEmptyWaitingRooms(ctx)
+}
+
+func (s *Service) cleanupEmptyWaitingRooms(ctx context.Context) error {
+	staleRoomIDs, err := s.store.Members.DeactivateStaleWaiting(ctx, staleWaitingMemberTTL)
+	if err != nil {
+		return err
+	}
+	for _, roomID := range staleRoomIDs {
+		if err := s.store.Rooms.TouchEmptyWaiting(ctx, roomID); err != nil && !errors.Is(mapRepoErr(err), ErrNotFound) {
+			return err
+		}
+	}
+	return s.store.Rooms.DeactivateEmptyWaitingOlderThan(ctx, emptyWaitingRoomTTL)
 }
 
 func (s *Service) finalizeExpiredForProfile(ctx context.Context, profileID int64) error {
@@ -502,8 +706,12 @@ func (s *Service) buildRoom(ctx context.Context, room model.Room, meProfileID in
 		Status:               room.Status,
 		CreatedByProfileID:   room.CreatedByProfileID,
 		WinnerProfileID:      room.WinnerProfileID,
+		MaxPlayers:           room.MaxPlayers,
+		HasPassword:          room.PasswordHash != nil && strings.TrimSpace(*room.PasswordHash) != "",
+		Password:             roomPasswordForProfile(room, meProfileID),
 		QuestionCount:        room.QuestionCount,
 		AnswerTimeoutSec:     room.AnswerTimeoutSec,
+		Creator:              s.player(ctx, model.RoomMember{ProfileID: room.CreatedByProfileID}, meProfileID, false),
 		CurrentQuestionIndex: room.CurrentQuestionIndex,
 		CurrentQuestion:      current,
 		Players:              players,
@@ -516,7 +724,7 @@ func (s *Service) buildRoom(ctx context.Context, room model.Room, meProfileID in
 }
 
 func (s *Service) player(ctx context.Context, member model.RoomMember, meProfileID int64, hasAnswered bool) Player {
-	player := Player{ProfileID: member.ProfileID, Score: member.Score, HasAnswered: hasAnswered, IsMe: member.ProfileID == meProfileID}
+	player := Player{ProfileID: member.ProfileID, Score: member.Score, IsReady: member.IsReady, HasAnswered: hasAnswered, IsMe: member.ProfileID == meProfileID}
 	summary, err := s.userClient.GetProfileSummary(ctx, &userpb.GetProfileSummaryRequest{ProfileId: member.ProfileID})
 	if err == nil {
 		player.UserAccountID = summary.GetUserAccountId()
@@ -722,6 +930,12 @@ func mapAnswers(items []model.Answer) []Answer {
 
 func normalizeCreateInput(in *CreateRoomInput) {
 	in.GameType = normalizeGameType(in.GameType)
+	if in.MaxPlayers < 2 {
+		in.MaxPlayers = 2
+	}
+	if in.MaxPlayers > 8 {
+		in.MaxPlayers = 8
+	}
 	if in.QuestionCount <= 0 || in.QuestionCount > 25 {
 		in.QuestionCount = 5
 	}
@@ -734,6 +948,39 @@ func normalizeCreateInput(in *CreateRoomInput) {
 	if in.AnswerTimeoutSec > 120 {
 		in.AnswerTimeoutSec = 120
 	}
+}
+
+func passwordHashPtr(password string) *string {
+	password = strings.TrimSpace(password)
+	if password == "" {
+		return nil
+	}
+	sum := sha256.Sum256([]byte(password))
+	hash := hex.EncodeToString(sum[:])
+	return &hash
+}
+
+func passwordValuePtr(password string) *string {
+	password = strings.TrimSpace(password)
+	if password == "" {
+		return nil
+	}
+	return &password
+}
+
+func roomPasswordForProfile(room model.Room, profileID int64) string {
+	if room.CreatedByProfileID != profileID || room.PasswordValue == nil {
+		return ""
+	}
+	return strings.TrimSpace(*room.PasswordValue)
+}
+
+func passwordMatches(hash *string, password string) bool {
+	if hash == nil || strings.TrimSpace(*hash) == "" {
+		return true
+	}
+	candidate := passwordHashPtr(password)
+	return candidate != nil && *candidate == *hash
 }
 
 func normalizeGameType(gameType string) string {

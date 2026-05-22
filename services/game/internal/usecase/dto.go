@@ -2,6 +2,8 @@ package usecase
 
 type CreateRoomInput struct {
 	GameType         string
+	MaxPlayers       int
+	Password         string
 	QuestionCount    int
 	AnswerTimeoutSec int
 }
@@ -24,6 +26,7 @@ type Player struct {
 	LastName      string
 	AvatarID      *int64
 	Score         int
+	IsReady       bool
 	HasAnswered   bool
 	IsMe          bool
 }
@@ -72,8 +75,12 @@ type Room struct {
 	Status               string
 	CreatedByProfileID   int64
 	WinnerProfileID      *int64
+	MaxPlayers           int
+	HasPassword          bool
+	Password             string
 	QuestionCount        int
 	AnswerTimeoutSec     int
+	Creator              Player
 	CurrentQuestionIndex int
 	CurrentQuestion      *CurrentQuestion
 	Players              []Player

@@ -33,6 +33,11 @@ func (h *Handler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler)
 		r.Post("/games/rooms", h.CreateRoom)
 		r.Post("/games/rooms/join", h.JoinRoom)
 		r.Get("/games/rooms/{roomID}", h.GetRoom)
+		r.Delete("/games/rooms/{roomID}", h.DisbandRoom)
+		r.Delete("/games/rooms/{roomID}/members/me", h.LeaveRoom)
+		r.Delete("/games/rooms/{roomID}/members/{profileID}", h.KickPlayer)
+		r.Patch("/games/rooms/{roomID}/ready", h.SetReady)
+		r.Patch("/games/rooms/{roomID}/password", h.UpdateRoomPassword)
 		r.Post("/games/rooms/{roomID}/start", h.StartRoom)
 		r.Post("/games/rooms/{roomID}/answers", h.SubmitAnswer)
 		r.Get("/games/history", h.History)
@@ -60,6 +65,8 @@ func (h *Handler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 	}
 	room, err := h.game.CreateRoom(r.Context(), userID, usecase.CreateRoomInput{
 		GameType:         req.GameType,
+		MaxPlayers:       req.MaxPlayers,
+		Password:         req.Password,
 		QuestionCount:    req.QuestionCount,
 		AnswerTimeoutSec: req.AnswerTimeoutSec,
 	})
@@ -79,7 +86,7 @@ func (h *Handler) JoinRoom(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	room, err := h.game.JoinRoom(r.Context(), userID, req.InviteCode)
+	room, err := h.game.JoinRoom(r.Context(), userID, req.InviteCode, req.Password)
 	if err != nil {
 		writeServiceError(w, err)
 		return
@@ -115,6 +122,79 @@ func (h *Handler) GetRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.WriteJSON(w, http.StatusOK, mapRoom(room))
+}
+
+func (h *Handler) DisbandRoom(w http.ResponseWriter, r *http.Request) {
+	userID, roomID, ok := h.userAndRoomID(w, r)
+	if !ok {
+		return
+	}
+	if err := h.game.DisbandRoom(r.Context(), userID, roomID); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) LeaveRoom(w http.ResponseWriter, r *http.Request) {
+	userID, roomID, ok := h.userAndRoomID(w, r)
+	if !ok {
+		return
+	}
+	if err := h.game.LeaveRoom(r.Context(), userID, roomID); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) KickPlayer(w http.ResponseWriter, r *http.Request) {
+	userID, roomID, ok := h.userAndRoomID(w, r)
+	if !ok {
+		return
+	}
+	profileID, err := strconv.ParseInt(chi.URLParam(r, "profileID"), 10, 64)
+	if err != nil || profileID <= 0 {
+		writeError(w, "invalid input", http.StatusBadRequest)
+		return
+	}
+	if err := h.game.KickPlayer(r.Context(), userID, roomID, profileID); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) SetReady(w http.ResponseWriter, r *http.Request) {
+	userID, roomID, ok := h.userAndRoomID(w, r)
+	if !ok {
+		return
+	}
+	var req readyRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if err := h.game.SetReady(r.Context(), userID, roomID, req.IsReady); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) UpdateRoomPassword(w http.ResponseWriter, r *http.Request) {
+	userID, roomID, ok := h.userAndRoomID(w, r)
+	if !ok {
+		return
+	}
+	var req passwordRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if err := h.game.UpdateRoomPassword(r.Context(), userID, roomID, req.Password); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) StartRoom(w http.ResponseWriter, r *http.Request) {
@@ -236,8 +316,19 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, err)
 		return
 	}
+	_ = h.game.TouchWaitingRoomMember(r.Context(), userID, roomID)
 	initial, _ := json.Marshal(socketEvent{Type: "room_state", Room: ptr(mapRoom(room))})
-	if err := websocket.Serve(h.hub, w, r, strconv.FormatInt(roomID, 10), userID, initial, h.handleSocketMessage); err != nil {
+	if err := websocket.Serve(
+		h.hub,
+		w,
+		r,
+		strconv.FormatInt(roomID, 10),
+		userID,
+		initial,
+		h.handleSocketMessage,
+		h.handleSocketDisconnect,
+		h.handleSocketHeartbeat,
+	); err != nil {
 		writeError(w, err.Error(), http.StatusBadRequest)
 	}
 }
@@ -258,6 +349,22 @@ func (h *Handler) handleSocketMessage(ctx context.Context, roomIDRaw string, use
 		return marshalEvent(socketEvent{Type: "error", Error: serviceErrorMessage(err)}), nil
 	}
 	return nil, nil
+}
+
+func (h *Handler) handleSocketDisconnect(ctx context.Context, roomIDRaw string, userID int64) {
+	roomID, err := strconv.ParseInt(roomIDRaw, 10, 64)
+	if err != nil || roomID <= 0 {
+		return
+	}
+	_ = h.game.LeaveWaitingRoomOnDisconnect(ctx, userID, roomID)
+}
+
+func (h *Handler) handleSocketHeartbeat(ctx context.Context, roomIDRaw string, userID int64) {
+	roomID, err := strconv.ParseInt(roomIDRaw, 10, 64)
+	if err != nil || roomID <= 0 {
+		return
+	}
+	_ = h.game.TouchWaitingRoomMember(ctx, userID, roomID)
 }
 
 func (h *Handler) broadcastRoom(ctx context.Context, roomID int64) {
@@ -385,8 +492,12 @@ func mapRoom(room usecase.Room) roomResponse {
 		Status:               room.Status,
 		CreatedByProfileID:   int64String(room.CreatedByProfileID),
 		WinnerProfileID:      int64PtrString(room.WinnerProfileID),
+		MaxPlayers:           room.MaxPlayers,
+		HasPassword:          room.HasPassword,
+		Password:             room.Password,
 		QuestionCount:        room.QuestionCount,
 		AnswerTimeoutSec:     room.AnswerTimeoutSec,
+		Creator:              mapPlayer(room.Creator),
 		CurrentQuestionIndex: room.CurrentQuestionIndex,
 		Players:              mapPlayers(room.Players),
 		Questions:            mapRoomQuestions(room.Questions),
@@ -412,20 +523,25 @@ func mapRoom(room usecase.Room) roomResponse {
 func mapPlayers(items []usecase.Player) []playerResponse {
 	result := make([]playerResponse, 0, len(items))
 	for _, item := range items {
-		result = append(result, playerResponse{
-			ProfileID:     int64String(item.ProfileID),
-			UserAccountID: int64String(item.UserAccountID),
-			Name:          item.Name,
-			Username:      item.Username,
-			FirstName:     item.FirstName,
-			LastName:      item.LastName,
-			AvatarID:      item.AvatarID,
-			Score:         item.Score,
-			HasAnswered:   item.HasAnswered,
-			IsMe:          item.IsMe,
-		})
+		result = append(result, mapPlayer(item))
 	}
 	return result
+}
+
+func mapPlayer(item usecase.Player) playerResponse {
+	return playerResponse{
+		ProfileID:     int64String(item.ProfileID),
+		UserAccountID: int64String(item.UserAccountID),
+		Name:          item.Name,
+		Username:      item.Username,
+		FirstName:     item.FirstName,
+		LastName:      item.LastName,
+		AvatarID:      item.AvatarID,
+		Score:         item.Score,
+		IsReady:       item.IsReady,
+		HasAnswered:   item.HasAnswered,
+		IsMe:          item.IsMe,
+	}
 }
 
 func mapRoomQuestions(items []usecase.RoomQuestion) []roomQuestionResponse {

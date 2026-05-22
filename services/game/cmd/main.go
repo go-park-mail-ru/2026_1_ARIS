@@ -60,6 +60,22 @@ func main() {
 	defer authConn.Close()
 
 	gameUsecase := usecase.New(repository.NewStore(db), userpb.NewUserServiceClient(userConn))
+	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
+	defer cleanupCancel()
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-cleanupCtx.Done():
+				return
+			case <-ticker.C:
+				if err := gameUsecase.CleanupEmptyWaitingRooms(cleanupCtx); err != nil {
+					logg.Warn("failed to cleanup empty game rooms", zap.Error(err))
+				}
+			}
+		}
+	}()
 	hub := websocket.NewHub()
 	go hub.Run()
 

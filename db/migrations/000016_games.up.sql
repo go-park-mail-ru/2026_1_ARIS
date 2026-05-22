@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS game_room (
     status TEXT NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting', 'active', 'finished')),
     created_by_profile_id BIGINT NOT NULL REFERENCES profile(id),
     winner_profile_id BIGINT REFERENCES profile(id),
+    max_players INT NOT NULL DEFAULT 2 CHECK (max_players >= 2 AND max_players <= 8),
     question_count INT NOT NULL DEFAULT 5 CHECK (question_count >= 1 AND question_count <= 25),
     answer_timeout_sec INT NOT NULL DEFAULT 10 CHECK (answer_timeout_sec >= 3 AND answer_timeout_sec <= 120),
     current_question_index INT NOT NULL DEFAULT 0 CHECK (current_question_index >= 0),
@@ -30,6 +31,9 @@ CREATE TABLE IF NOT EXISTS game_room (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     finished_at TIMESTAMPTZ
 );
+
+ALTER TABLE game_room
+    ADD COLUMN IF NOT EXISTS max_players INT NOT NULL DEFAULT 2 CHECK (max_players >= 2 AND max_players <= 8);
 
 CREATE TABLE IF NOT EXISTS game_room_member (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

@@ -39,6 +39,9 @@ type Room struct {
 	Status               string     `db:"status"`
 	CreatedByProfileID   int64      `db:"created_by_profile_id"`
 	WinnerProfileID      *int64     `db:"winner_profile_id"`
+	MaxPlayers           int        `db:"max_players"`
+	PasswordHash         *string    `db:"password_hash"`
+	PasswordValue        *string    `db:"password_value"`
 	QuestionCount        int        `db:"question_count"`
 	AnswerTimeoutSec     int        `db:"answer_timeout_sec"`
 	CurrentQuestionIndex int        `db:"current_question_index"`
@@ -57,6 +60,7 @@ type RoomMember struct {
 	RoomID    int64     `db:"room_id"`
 	ProfileID int64     `db:"profile_id"`
 	Score     int       `db:"score"`
+	IsReady   bool      `db:"is_ready"`
 	JoinedAt  time.Time `db:"joined_at"`
 	IsActive  bool      `db:"is_active"`
 	CreatedAt time.Time `db:"created_at"`

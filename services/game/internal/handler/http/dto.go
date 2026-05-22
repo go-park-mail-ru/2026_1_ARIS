@@ -2,12 +2,23 @@ package http
 
 type createRoomRequest struct {
 	GameType         string `json:"gameType"`
+	MaxPlayers       int    `json:"maxPlayers"`
+	Password         string `json:"password"`
 	QuestionCount    int    `json:"questionCount"`
 	AnswerTimeoutSec int    `json:"answerTimeoutSec"`
 }
 
 type joinRoomRequest struct {
 	InviteCode string `json:"inviteCode"`
+	Password   string `json:"password"`
+}
+
+type readyRequest struct {
+	IsReady bool `json:"isReady"`
+}
+
+type passwordRequest struct {
+	Password string `json:"password"`
 }
 
 type submitAnswerRequest struct {
@@ -32,6 +43,7 @@ type playerResponse struct {
 	LastName      string `json:"lastName"`
 	AvatarID      *int64 `json:"avatarId,omitempty"`
 	Score         int    `json:"score"`
+	IsReady       bool   `json:"isReady"`
 	HasAnswered   bool   `json:"hasAnswered"`
 	IsMe          bool   `json:"isMe"`
 }
@@ -80,8 +92,12 @@ type roomResponse struct {
 	Status               string                   `json:"status"`
 	CreatedByProfileID   string                   `json:"createdByProfileId"`
 	WinnerProfileID      *string                  `json:"winnerProfileId,omitempty"`
+	MaxPlayers           int                      `json:"maxPlayers"`
+	HasPassword          bool                     `json:"hasPassword"`
+	Password             string                   `json:"password,omitempty"`
 	QuestionCount        int                      `json:"questionCount"`
 	AnswerTimeoutSec     int                      `json:"answerTimeoutSec"`
+	Creator              playerResponse           `json:"creator"`
 	CurrentQuestionIndex int                      `json:"currentQuestionIndex"`
 	CurrentQuestion      *currentQuestionResponse `json:"currentQuestion,omitempty"`
 	Players              []playerResponse         `json:"players"`

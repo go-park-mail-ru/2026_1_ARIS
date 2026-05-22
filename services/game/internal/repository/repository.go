@@ -155,6 +155,9 @@ type RoomRepo interface {
 	ExpiredActiveIDsForProfile(ctx context.Context, profileID int64) ([]int64, error)
 	HistoryForProfile(ctx context.Context, profileID int64, limit, offset int) ([]model.HistoryRoom, error)
 	Update(ctx context.Context, room *model.Room) error
+	Deactivate(ctx context.Context, roomID int64) error
+	TouchEmptyWaiting(ctx context.Context, roomID int64) error
+	DeactivateEmptyWaitingOlderThan(ctx context.Context, olderThan time.Duration) error
 }
 
 type roomStorage struct {
@@ -170,10 +173,10 @@ func (s *roomStorage) Create(ctx context.Context, room *model.Room) error {
 		room.Uid = uuid.New()
 	}
 	return s.db.QueryRow(ctx, `
-		INSERT INTO game_room (uid, invite_code, game_type, status, created_by_profile_id, question_count, answer_timeout_sec)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO game_room (uid, invite_code, game_type, status, created_by_profile_id, max_players, password_hash, password_value, question_count, answer_timeout_sec)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id, created_at, updated_at
-	`, room.Uid, room.InviteCode, room.GameType, room.Status, room.CreatedByProfileID, room.QuestionCount, room.AnswerTimeoutSec).Scan(&room.ID, &room.CreatedAt, &room.UpdatedAt)
+	`, room.Uid, room.InviteCode, room.GameType, room.Status, room.CreatedByProfileID, room.MaxPlayers, room.PasswordHash, room.PasswordValue, room.QuestionCount, room.AnswerTimeoutSec).Scan(&room.ID, &room.CreatedAt, &room.UpdatedAt)
 }
 
 func (s *roomStorage) Get(ctx context.Context, id int64) (*model.Room, error) {
@@ -201,15 +204,21 @@ func (s *roomStorage) get(ctx context.Context, query string, args ...any) (*mode
 }
 
 func (s *roomStorage) ListForProfile(ctx context.Context, profileID int64, limit, offset int) ([]model.Room, error) {
+	_ = profileID
 	var rooms []model.Room
 	err := pgxscan.Select(ctx, s.db, &rooms, `
 		SELECT r.*
 		FROM game_room r
-		JOIN game_room_member m ON m.room_id=r.id
-		WHERE m.profile_id=$1 AND r.is_active=true
+		WHERE r.is_active=true
+		  AND r.status='waiting'
+		  AND (
+		    SELECT COUNT(*)::INT
+		    FROM game_room_member m
+		    WHERE m.room_id=r.id AND m.is_active=true
+		  ) BETWEEN 0 AND r.max_players - 1
 		ORDER BY r.updated_at DESC
-		LIMIT $2 OFFSET $3
-	`, profileID, limit, offset)
+		LIMIT $1 OFFSET $2
+	`, limit, offset)
 	if err != nil && !pgxscan.NotFound(err) {
 		return nil, err
 	}
@@ -255,9 +264,10 @@ func (s *roomStorage) Update(ctx context.Context, room *model.Room) error {
 	tag, err := s.db.Exec(ctx, `
 		UPDATE game_room
 		SET status=$1, winner_profile_id=$2, current_question_index=$3, current_question_id=$4,
-		    question_started_at=$5, question_deadline_at=$6, updated_at=NOW(), finished_at=$7
-		WHERE id=$8 AND is_active=true
-	`, room.Status, room.WinnerProfileID, room.CurrentQuestionIndex, room.CurrentQuestionID, room.QuestionStartedAt, room.QuestionDeadlineAt, room.FinishedAt, room.ID)
+		    question_started_at=$5, question_deadline_at=$6, updated_at=NOW(), finished_at=$7,
+		    password_hash=$8, password_value=$9
+		WHERE id=$10 AND is_active=true
+	`, room.Status, room.WinnerProfileID, room.CurrentQuestionIndex, room.CurrentQuestionID, room.QuestionStartedAt, room.QuestionDeadlineAt, room.FinishedAt, room.PasswordHash, room.PasswordValue, room.ID)
 	if err != nil {
 		return err
 	}
@@ -267,8 +277,70 @@ func (s *roomStorage) Update(ctx context.Context, room *model.Room) error {
 	return nil
 }
 
+func (s *roomStorage) Deactivate(ctx context.Context, roomID int64) error {
+	tag, err := s.db.Exec(ctx, `
+		UPDATE game_room
+		SET is_active=false, updated_at=NOW(), finished_at=COALESCE(finished_at, NOW())
+		WHERE id=$1 AND is_active=true
+	`, roomID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *roomStorage) TouchEmptyWaiting(ctx context.Context, roomID int64) error {
+	tag, err := s.db.Exec(ctx, `
+		UPDATE game_room r
+		SET updated_at=NOW()
+		WHERE r.id=$1
+		  AND r.status='waiting'
+		  AND r.is_active=true
+		  AND NOT EXISTS (
+		    SELECT 1
+		    FROM game_room_member m
+		    WHERE m.room_id=r.id AND m.is_active=true
+		  )
+	`, roomID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *roomStorage) DeactivateEmptyWaitingOlderThan(ctx context.Context, olderThan time.Duration) error {
+	seconds := int(olderThan / time.Second)
+	if seconds < 1 {
+		seconds = 1
+	}
+	_, err := s.db.Exec(ctx, `
+		UPDATE game_room r
+		SET is_active=false, updated_at=NOW(), finished_at=COALESCE(finished_at, NOW())
+		WHERE r.status='waiting'
+		  AND r.is_active=true
+		  AND r.updated_at <= NOW() - ($1 * INTERVAL '1 second')
+		  AND NOT EXISTS (
+		    SELECT 1
+		    FROM game_room_member m
+		    WHERE m.room_id=r.id AND m.is_active=true
+		  )
+	`, seconds)
+	return err
+}
+
 type MemberRepo interface {
 	Add(ctx context.Context, roomID, profileID int64) error
+	Deactivate(ctx context.Context, roomID, profileID int64) error
+	DeactivateWaitingForProfile(ctx context.Context, profileID int64) ([]int64, error)
+	DeactivateStaleWaiting(ctx context.Context, olderThan time.Duration) ([]int64, error)
+	TouchWaiting(ctx context.Context, roomID, profileID int64) error
+	SetReady(ctx context.Context, roomID, profileID int64, isReady bool) error
 	List(ctx context.Context, roomID int64) ([]model.RoomMember, error)
 	IsMember(ctx context.Context, roomID, profileID int64) (bool, error)
 	IncrementScore(ctx context.Context, roomID, profileID int64) error
@@ -287,9 +359,97 @@ func (s *memberStorage) Add(ctx context.Context, roomID, profileID int64) error 
 	_, err := s.db.Exec(ctx, `
 		INSERT INTO game_room_member (uid, room_id, profile_id)
 		VALUES ($1, $2, $3)
-		ON CONFLICT (room_id, profile_id) DO NOTHING
+		ON CONFLICT (room_id, profile_id)
+		DO UPDATE SET is_active=true, is_ready=false, updated_at=NOW()
 	`, uuid.New(), roomID, profileID)
 	return err
+}
+
+func (s *memberStorage) Deactivate(ctx context.Context, roomID, profileID int64) error {
+	tag, err := s.db.Exec(ctx, `
+		UPDATE game_room_member
+		SET is_active=false, updated_at=NOW()
+		WHERE room_id=$1 AND profile_id=$2 AND is_active=true
+	`, roomID, profileID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s *memberStorage) DeactivateWaitingForProfile(ctx context.Context, profileID int64) ([]int64, error) {
+	var roomIDs []int64
+	err := pgxscan.Select(ctx, s.db, &roomIDs, `
+		UPDATE game_room_member m
+		SET is_active=false, updated_at=NOW()
+		FROM game_room r
+		WHERE m.room_id=r.id
+		  AND m.profile_id=$1
+		  AND m.is_active=true
+		  AND r.is_active=true
+		  AND r.status='waiting'
+		RETURNING m.room_id
+	`, profileID)
+	if err != nil && !pgxscan.NotFound(err) {
+		return nil, err
+	}
+	return roomIDs, nil
+}
+
+func (s *memberStorage) DeactivateStaleWaiting(ctx context.Context, olderThan time.Duration) ([]int64, error) {
+	seconds := int(olderThan / time.Second)
+	if seconds < 1 {
+		seconds = 1
+	}
+	var roomIDs []int64
+	err := pgxscan.Select(ctx, s.db, &roomIDs, `
+		UPDATE game_room_member m
+		SET is_active=false, updated_at=NOW()
+		FROM game_room r
+		WHERE m.room_id=r.id
+		  AND m.is_active=true
+		  AND r.is_active=true
+		  AND r.status='waiting'
+		  AND m.updated_at <= NOW() - ($1 * INTERVAL '1 second')
+		RETURNING m.room_id
+	`, seconds)
+	if err != nil && !pgxscan.NotFound(err) {
+		return nil, err
+	}
+	return roomIDs, nil
+}
+
+func (s *memberStorage) TouchWaiting(ctx context.Context, roomID, profileID int64) error {
+	_, err := s.db.Exec(ctx, `
+		UPDATE game_room_member m
+		SET updated_at=NOW()
+		FROM game_room r
+		WHERE m.room_id=r.id
+		  AND m.room_id=$1
+		  AND m.profile_id=$2
+		  AND m.is_active=true
+		  AND r.is_active=true
+		  AND r.status='waiting'
+	`, roomID, profileID)
+	return err
+}
+
+func (s *memberStorage) SetReady(ctx context.Context, roomID, profileID int64, isReady bool) error {
+	tag, err := s.db.Exec(ctx, `
+		UPDATE game_room_member
+		SET is_ready=$3, updated_at=NOW()
+		WHERE room_id=$1 AND profile_id=$2 AND is_active=true
+	`, roomID, profileID, isReady)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (s *memberStorage) List(ctx context.Context, roomID int64) ([]model.RoomMember, error) {
