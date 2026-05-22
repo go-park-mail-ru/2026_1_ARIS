@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/post/internal/usecase"
@@ -49,9 +50,12 @@ func (h *Handler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler)
 		r.Delete("/{id}/likes", h.UnlikePost)
 		r.Get("/{id}/comments", h.GetPostComments)
 		r.Post("/{id}/comments", h.CreateComment)
+		r.Get("/{id}/comments/replies", h.GetCommentRepliesBatch)
 		r.Get("/{id}/comments/{commentID}/replies", h.GetCommentReplies)
 		r.Patch("/{id}/comments/{commentID}", h.UpdateComment)
 		r.Delete("/{id}/comments/{commentID}", h.DeleteComment)
+		r.Post("/{id}/comments/{commentID}/likes", h.LikeComment)
+		r.Delete("/{id}/comments/{commentID}/likes", h.UnlikeComment)
 	})
 }
 
@@ -73,11 +77,15 @@ func (h *Handler) GetCommunityPosts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetCommunityOfficialPosts(w http.ResponseWriter, r *http.Request) {
+	userAccountID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
 	communityID, ok := parseID(w, chi.URLParam(r, "communityID"))
 	if !ok {
 		return
 	}
-	posts, err := h.post.GetCommunityOfficialPosts(r.Context(), communityID)
+	posts, err := h.post.GetCommunityOfficialPosts(r.Context(), communityID, userAccountID)
 	if err != nil {
 		writeServiceError(w, err)
 		return
@@ -90,7 +98,15 @@ func (h *Handler) GetFeed(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	feed, err := h.post.GetFeed(r.Context(), r.URL.Query().Get("cursor"), limit)
+	userAccountID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	mode := r.URL.Query().Get("mode")
+	if mode != "by-time" && mode != "for-you" {
+		mode = "by-time"
+	}
+	feed, err := h.post.GetFeed(r.Context(), userAccountID, r.URL.Query().Get("cursor"), mode, limit)
 	if err != nil {
 		writeServiceError(w, err)
 		return
@@ -161,11 +177,15 @@ func (h *Handler) GetMyPosts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetProfilePosts(w http.ResponseWriter, r *http.Request) {
+	userAccountID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
 	profileID, ok := parseID(w, chi.URLParam(r, "profileID"))
 	if !ok {
 		return
 	}
-	posts, err := h.post.GetProfilePosts(r.Context(), profileID)
+	posts, err := h.post.GetProfilePosts(r.Context(), profileID, userAccountID)
 	if err != nil {
 		writeServiceError(w, err)
 		return
@@ -263,6 +283,40 @@ func (h *Handler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, mapPostDetails(updated))
 }
 
+func (h *Handler) LikeComment(w http.ResponseWriter, r *http.Request) {
+	userAccountID, postID, ok := h.userAndPostID(w, r)
+	if !ok {
+		return
+	}
+	commentID, ok := parseID(w, chi.URLParam(r, "commentID"))
+	if !ok {
+		return
+	}
+	comment, err := h.post.LikeComment(r.Context(), userAccountID, postID, commentID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, mapComment(*comment))
+}
+
+func (h *Handler) UnlikeComment(w http.ResponseWriter, r *http.Request) {
+	userAccountID, postID, ok := h.userAndPostID(w, r)
+	if !ok {
+		return
+	}
+	commentID, ok := parseID(w, chi.URLParam(r, "commentID"))
+	if !ok {
+		return
+	}
+	comment, err := h.post.UnlikeComment(r.Context(), userAccountID, postID, commentID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, mapComment(*comment))
+}
+
 func (h *Handler) GetPostComments(w http.ResponseWriter, r *http.Request) {
 	userAccountID, postID, ok := h.userAndPostID(w, r)
 	if !ok {
@@ -295,6 +349,25 @@ func (h *Handler) GetCommentReplies(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.WriteJSON(w, http.StatusOK, mapComments(comments))
+}
+
+func (h *Handler) GetCommentRepliesBatch(w http.ResponseWriter, r *http.Request) {
+	userAccountID, postID, ok := h.userAndPostID(w, r)
+	if !ok {
+		return
+	}
+	parentIDs, ok := parseParentIDs(w, r.URL.Query().Get("parentIds"))
+	if !ok {
+		return
+	}
+	limit := parseBoundedQueryInt(r, "limit", 50, 1, 100)
+	offset := parseBoundedQueryInt(r, "offset", 0, 0, 1<<30)
+	grouped, err := h.post.GetCommentRepliesBatch(r.Context(), userAccountID, postID, parentIDs, limit, offset)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, mapCommentsByParent(grouped))
 }
 
 func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
@@ -407,6 +480,28 @@ func parseBoundedQueryInt(r *http.Request, name string, fallback, minValue, maxV
 	return value
 }
 
+func parseParentIDs(w http.ResponseWriter, raw string) ([]int64, bool) {
+	if strings.TrimSpace(raw) == "" {
+		utils.WriteJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid request"})
+		return nil, false
+	}
+	parts := strings.Split(raw, ",")
+	if len(parts) > 50 {
+		utils.WriteJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid request"})
+		return nil, false
+	}
+	ids := make([]int64, 0, len(parts))
+	for _, part := range parts {
+		id, err := strconv.ParseInt(strings.TrimSpace(part), 10, 64)
+		if err != nil || id <= 0 {
+			utils.WriteJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid request"})
+			return nil, false
+		}
+		ids = append(ids, id)
+	}
+	return ids, true
+}
+
 func writeServiceError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, usecase.ErrInvalidInput), errors.Is(err, usecase.ErrPostContentRequired), errors.Is(err, usecase.ErrCommentsDisabled):
@@ -446,13 +541,14 @@ func mapPostDetails(post *usecase.PostDetails) postCreationResponse {
 		Text:        escapeTextPtr(post.Text),
 		Author:      mapPostAuthor(post.Author),
 		Likes:       post.Likes,
+		Comments:    post.Comments,
 		IsLiked:     post.IsLiked,
 	}
 	for _, media := range post.Media {
-		resp.Media = append(resp.Media, mediaRequestData{MediaID: media.ID, MediaURL: media.URL})
+		resp.Media = append(resp.Media, mediaRequestData{MediaID: media.ID, Name: media.Name, MediaURL: media.URL})
 	}
 	for _, file := range post.Files {
-		resp.Files = append(resp.Files, mediaRequestData{MediaID: file.ID, MediaURL: file.URL})
+		resp.Files = append(resp.Files, mediaRequestData{MediaID: file.ID, Name: file.Name, MediaURL: file.URL})
 	}
 	return resp
 }
@@ -467,6 +563,7 @@ func mapPostList(posts []usecase.PostDetails) []postListItemResponse {
 			Author:      mapPostAuthor(post.Author),
 			CreatedAt:   post.CreatedAt,
 			Likes:       post.Likes,
+			Comments:    post.Comments,
 			IsLiked:     post.IsLiked,
 		}
 		if post.Text != nil {
@@ -477,10 +574,10 @@ func mapPostList(posts []usecase.PostDetails) []postListItemResponse {
 			item.UpdatedAt = &updatedAt
 		}
 		for _, media := range post.Media {
-			item.Media = append(item.Media, mediaRequestData{MediaID: media.ID, MediaURL: media.URL})
+			item.Media = append(item.Media, mediaRequestData{MediaID: media.ID, Name: media.Name, MediaURL: media.URL})
 		}
 		for _, file := range post.Files {
-			item.Files = append(item.Files, mediaRequestData{MediaID: file.ID, MediaURL: file.URL})
+			item.Files = append(item.Files, mediaRequestData{MediaID: file.ID, Name: file.Name, MediaURL: file.URL})
 		}
 		result = append(result, item)
 	}
@@ -503,11 +600,11 @@ func mapFeed(feed usecase.FeedResult) feedResponse {
 	for _, post := range feed.Posts {
 		medias := make([]mediaFeedDTO, 0, len(post.Medias))
 		for _, media := range post.Medias {
-			medias = append(medias, mediaFeedDTO{ID: media.UID, MimeType: media.MimeType, Link: media.URL})
+			medias = append(medias, mediaFeedDTO{ID: media.UID, Name: media.Name, MimeType: media.MimeType, Link: media.URL})
 		}
 		files := make([]mediaFeedDTO, 0, len(post.Files))
 		for _, file := range post.Files {
-			files = append(files, mediaFeedDTO{ID: file.UID, MimeType: file.MimeType, Link: file.URL})
+			files = append(files, mediaFeedDTO{ID: file.UID, Name: file.Name, MimeType: file.MimeType, Link: file.URL})
 		}
 		posts = append(posts, postFeedDTO{
 			ID:        post.ID,
@@ -515,6 +612,7 @@ func mapFeed(feed usecase.FeedResult) feedResponse {
 			Author:    authorFeedDTO{ID: strconv.FormatInt(post.Author.ID, 10), FirstName: post.Author.FirstName, LastName: post.Author.LastName, Username: post.Author.Username, AvatarLink: derefString(post.Author.AvatarURL)},
 			CreatedAt: post.CreatedAt,
 			Likes:     post.Likes,
+			IsLiked:   post.IsLiked,
 			Comments:  post.Comments,
 			Reposts:   post.Reposts,
 			Medias:    medias,
@@ -532,6 +630,14 @@ func mapComments(comments []usecase.Comment) []commentResponse {
 	return result
 }
 
+func mapCommentsByParent(grouped map[int64][]usecase.Comment) map[string][]commentResponse {
+	result := make(map[string][]commentResponse, len(grouped))
+	for parentID, comments := range grouped {
+		result[strconv.FormatInt(parentID, 10)] = mapComments(comments)
+	}
+	return result
+}
+
 func mapComment(comment usecase.Comment) commentResponse {
 	return commentResponse{
 		ID:              strconv.FormatInt(comment.ID, 10),
@@ -543,6 +649,8 @@ func mapComment(comment usecase.Comment) commentResponse {
 		CreatedAt:       comment.CreatedAt,
 		UpdatedAt:       comment.UpdatedAt,
 		RepliesCount:    comment.RepliesCount,
+		Likes:           comment.Likes,
+		IsLiked:         comment.IsLiked,
 	}
 }
 

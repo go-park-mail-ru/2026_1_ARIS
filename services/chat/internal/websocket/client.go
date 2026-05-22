@@ -72,6 +72,7 @@ func (c *Client) readPump() {
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.conn.SetPongHandler(func(string) error {
 		c.conn.SetReadDeadline(time.Now().Add(pongWait))
+		c.hub.Heartbeat(c.userID)
 		return nil
 	})
 	for {
@@ -85,6 +86,7 @@ func (c *Client) readPump() {
 		if messageType != websocket.TextMessage || c.onMessage == nil {
 			continue
 		}
+		c.hub.Heartbeat(c.userID)
 
 		ctx, cancel := context.WithTimeout(context.Background(), messageWait)
 		broadcast, err := c.onMessage(ctx, c.chatID, c.userID, message)

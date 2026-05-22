@@ -264,9 +264,14 @@ func mapProfile(profile *usecase.ProfileDetails) profileResponse {
 		Town:          escapePtr(profile.Town),
 		Interests:     escapePtr(profile.Interests),
 		FavMusic:      escapePtr(profile.FavMusic),
+		IsOnline:      profile.IsOnline,
 	}
 	if !profile.BirthdayDate.IsZero() {
 		resp.BirthdayDate = profile.BirthdayDate.Format(time.DateOnly)
+	}
+	if profile.LastSeenAt != nil && !profile.LastSeenAt.IsZero() {
+		lastSeenAt := profile.LastSeenAt.UTC().Format(time.RFC3339Nano)
+		resp.LastSeenAt = &lastSeenAt
 	}
 	resp.Education = make([]educationResponse, 0, len(profile.Education))
 	for _, education := range profile.Education {
@@ -300,9 +305,19 @@ func mapUserCards(users []usecase.UserCard) []userCardDTO {
 			LastName:   user.LastName,
 			Username:   user.Username,
 			AvatarLink: user.AvatarLink,
+			IsOnline:   user.IsOnline,
+			LastSeenAt: formatOptionalTime(user.LastSeenAt),
 		})
 	}
 	return items
+}
+
+func formatOptionalTime(value *time.Time) *string {
+	if value == nil || value.IsZero() {
+		return nil
+	}
+	formatted := value.UTC().Format(time.RFC3339Nano)
+	return &formatted
 }
 
 func escapePtr(value *string) *string {

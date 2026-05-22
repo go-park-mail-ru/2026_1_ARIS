@@ -15,6 +15,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/postgres"
+	tarantoolcache "github.com/go-park-mail-ru/2026_1_ARIS/pkg/tarantool"
 	authpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/auth"
 	chatpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/chat"
 	mediapb "github.com/go-park-mail-ru/2026_1_ARIS/proto/media"
@@ -51,6 +52,13 @@ func main() {
 		logg.Fatal("fail to connect PostgreSQL", zap.Error(err))
 	}
 
+	presenceCache, err := tarantoolcache.InitTarantool(ctx)
+	if err != nil {
+		logg.Warn("tarantool presence cache disabled", zap.Error(err))
+	} else {
+		defer presenceCache.Close()
+	}
+
 	userConn, err := grpc.NewClient(utils.EnvString("USER_GRPC_ADDR", "localhost:8004"), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		logg.Fatal("failed to connect user grpc", zap.Error(err))
@@ -70,7 +78,13 @@ func main() {
 	defer mediaConn.Close()
 
 	chatUsecase := usecase.New(repository.NewStore(db), userpb.NewUserServiceClient(userConn), mediapb.NewMediaServiceClient(mediaConn))
-	hub := websocket.NewHub()
+	var hub *websocket.Hub
+	if presenceCache != nil {
+		chatUsecase.SetPresenceReader(presenceCache)
+		hub = websocket.NewHub(presenceCache)
+	} else {
+		hub = websocket.NewHub()
+	}
 	go hub.Run()
 
 	grpcServer := grpc.NewServer()

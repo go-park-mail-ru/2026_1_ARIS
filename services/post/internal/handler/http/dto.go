@@ -4,6 +4,7 @@ import "time"
 
 type mediaRequestData struct {
 	MediaID  int64  `json:"mediaID"`
+	Name     string `json:"name,omitempty"`
 	MediaURL string `json:"mediaURL"`
 }
 
@@ -24,6 +25,7 @@ type postCreationResponse struct {
 	Text        *string            `json:"text"`
 	Author      postAuthorDTO      `json:"author"`
 	Likes       int                `json:"likes"`
+	Comments    int                `json:"comments"`
 	IsLiked     bool               `json:"isLiked"`
 }
 
@@ -38,6 +40,7 @@ type postListItemResponse struct {
 	CreatedAt   time.Time          `json:"createdAt"`
 	UpdatedAt   *time.Time         `json:"updatedAt,omitempty"`
 	Likes       int                `json:"likes"`
+	Comments    int                `json:"comments"`
 	IsLiked     bool               `json:"isLiked"`
 }
 
@@ -62,6 +65,7 @@ type postFeedDTO struct {
 	Author    authorFeedDTO  `json:"author"`
 	CreatedAt time.Time      `json:"createdAt"`
 	Likes     int            `json:"likes"`
+	IsLiked   bool           `json:"isLiked"`
 	Comments  int            `json:"comments"`
 	Reposts   int            `json:"reposts"`
 	Medias    []mediaFeedDTO `json:"medias"`
@@ -83,6 +87,8 @@ type commentResponse struct {
 	CreatedAt       time.Time     `json:"createdAt"`
 	UpdatedAt       time.Time     `json:"updatedAt"`
 	RepliesCount    int           `json:"repliesCount"`
+	Likes           int           `json:"likes"`
+	IsLiked         bool          `json:"isLiked"`
 }
 
 type popularPostDTO struct {
@@ -103,6 +109,7 @@ type authorFeedDTO struct {
 
 type mediaFeedDTO struct {
 	ID       string `json:"id"`
+	Name     string `json:"name"`
 	MimeType string `json:"mimeType"`
 	Link     string `json:"mediaLink"`
 }

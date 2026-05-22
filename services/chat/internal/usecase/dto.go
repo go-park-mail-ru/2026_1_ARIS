@@ -7,14 +7,19 @@ import (
 )
 
 type Chat struct {
-	ID        int64
-	UID       string
-	Title     string
-	AvatarID  *int64
-	Type      model.ChatType
-	IsActive  bool
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID                        int64
+	UID                       string
+	Title                     string
+	AvatarID                  *int64
+	AvatarLink                string
+	Type                      model.ChatType
+	IsActive                  bool
+	InterlocutorProfileID     *int64
+	InterlocutorUserAccountID *int64
+	IsOnline                  bool
+	LastSeenAt                *time.Time
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
 }
 
 type Message struct {
@@ -51,6 +56,7 @@ type AttachmentInput struct {
 type Attachment struct {
 	ID       int64
 	UID      string
+	Name     string
 	MimeType string
 	URL      string
 }
@@ -59,8 +65,18 @@ type StickerPack struct {
 	ID        int64
 	UID       string
 	Title     string
+	AuthorID  *int64
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type StickerPackInput struct {
+	Title string
+}
+
+type StickerInput struct {
+	MediaID   int64
+	SortOrder *int
 }
 
 type Sticker struct {

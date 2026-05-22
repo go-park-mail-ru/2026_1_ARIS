@@ -28,9 +28,10 @@ compose build community search
 compose build game
 
 compose up --no-build --force-recreate -d \
-  auth media user post chat support community search game prometheus grafana node-exporter nginx
+  tarantool auth media user post chat support community search game prometheus grafana node-exporter nginx
 
 sleep 15
+docker ps --format '{{.Names}} {{.Status}}' | grep 'arisnet-tarantool .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-auth-1 .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-user-1 .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-post-1 .*healthy'

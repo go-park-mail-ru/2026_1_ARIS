@@ -14,6 +14,7 @@ service UserService {
     rpc GetUserProfileByUserAccount(GetUserProfileByUserAccountRequest) returns (GetUserProfileByUserAccountResponse);
     rpc GetProfileSummary(GetProfileSummaryRequest) returns (GetProfileSummaryResponse);
     rpc SearchProfiles(SearchProfilesRequest) returns (SearchProfilesResponse);
+    rpc GetFriendProfileIDs(GetFriendProfileIDsRequest) returns (GetFriendProfileIDsResponse);
 }
 
 enum Gender {
@@ -120,4 +121,12 @@ message SearchProfileItem {
 
 message SearchProfilesResponse {
     repeated SearchProfileItem profiles = 1;
+}
+
+message GetFriendProfileIDsRequest {
+    int64 user_account_id = 1;
+}
+
+message GetFriendProfileIDsResponse {
+    repeated int64 profile_ids = 1;
 }
