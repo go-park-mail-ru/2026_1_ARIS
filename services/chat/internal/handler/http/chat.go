@@ -35,8 +35,14 @@ func (h *Handler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler)
 		r.Put("/chats/{chatID}/messages/{messageID}", h.UpdateMessage)
 		r.Put("/chats/{chatID}/messages/{messageID}/reaction", h.SetMessageReaction)
 		r.Delete("/chats/{chatID}/messages/{messageID}/reaction", h.DeleteMessageReaction)
+		r.Post("/presence/online", h.SetPresenceOnline)
+		r.Post("/presence/heartbeat", h.HeartbeatPresence)
+		r.Post("/presence/offline", h.SetPresenceOffline)
+		r.Post("/presence/force-offline", h.ForcePresenceOffline)
 		r.Get("/sticker-packs", h.GetStickerPacks)
+		r.Post("/sticker-packs", h.CreateStickerPack)
 		r.Get("/sticker-packs/{packID}/stickers", h.GetStickersByPack)
+		r.Post("/sticker-packs/{packID}/stickers", h.CreateSticker)
 	})
 }
 
@@ -81,6 +87,54 @@ func (h *Handler) CreateChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.WriteJSON(w, http.StatusCreated, mapChat(chat))
+}
+
+func (h *Handler) SetPresenceOnline(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	if err := h.chat.SetPresenceOnline(r.Context(), userID); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) HeartbeatPresence(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	if err := h.chat.HeartbeatPresence(r.Context(), userID); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) SetPresenceOffline(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	if err := h.chat.SetPresenceOffline(r.Context(), userID); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) ForcePresenceOffline(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	if err := h.chat.ForcePresenceOffline(r.Context(), userID); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
@@ -166,7 +220,8 @@ func (h *Handler) GetStickerPacks(w http.ResponseWriter, r *http.Request) {
 	}
 	limit := parseBoundedInt(r.URL.Query().Get("limit"), 50, 1, 100)
 	offset := parseBoundedInt(r.URL.Query().Get("offset"), 0, 0, 1<<30)
-	packs, err := h.chat.GetStickerPacks(r.Context(), userID, limit, offset)
+	myOnly := r.URL.Query().Get("my") == "true"
+	packs, err := h.chat.GetStickerPacks(r.Context(), userID, r.URL.Query().Get("search"), myOnly, limit, offset)
 	if err != nil {
 		writeServiceError(w, err)
 		return
@@ -176,6 +231,25 @@ func (h *Handler) GetStickerPacks(w http.ResponseWriter, r *http.Request) {
 		resp = append(resp, mapStickerPack(pack))
 	}
 	utils.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) CreateStickerPack(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	var req stickerPackRequest
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, "неверный формат запроса", http.StatusBadRequest)
+		return
+	}
+	pack, err := h.chat.CreateStickerPack(r.Context(), userID, usecase.StickerPackInput{Title: req.Title})
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusCreated, mapStickerPack(pack))
 }
 
 func (h *Handler) SetMessageReaction(w http.ResponseWriter, r *http.Request) {
@@ -246,6 +320,29 @@ func (h *Handler) GetStickersByPack(w http.ResponseWriter, r *http.Request) {
 		resp = append(resp, mapSticker(sticker))
 	}
 	utils.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) CreateSticker(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	packID, ok := parsePathID(w, chi.URLParam(r, "packID"), "неверный ID набора")
+	if !ok {
+		return
+	}
+	var req stickerRequest
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, "неверный формат запроса", http.StatusBadRequest)
+		return
+	}
+	sticker, err := h.chat.CreateSticker(r.Context(), userID, packID, usecase.StickerInput{MediaID: req.MediaID, SortOrder: req.SortOrder})
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusCreated, mapSticker(sticker))
 }
 
 func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -377,14 +474,19 @@ func (h *Handler) handleSocketMessage(ctx context.Context, chatIDRaw string, use
 
 func mapChat(chat usecase.Chat) ChatResponse {
 	return ChatResponse{
-		ID:        strconv.FormatInt(chat.ID, 10),
-		Uid:       chat.UID,
-		Title:     chat.Title,
-		AvatarID:  chat.AvatarID,
-		Type:      string(chat.Type),
-		IsActive:  chat.IsActive,
-		CreatedAt: chat.CreatedAt.Format(time.RFC3339Nano),
-		UpdatedAt: chat.UpdatedAt.Format(time.RFC3339Nano),
+		ID:                        strconv.FormatInt(chat.ID, 10),
+		Uid:                       chat.UID,
+		Title:                     chat.Title,
+		AvatarID:                  chat.AvatarID,
+		AvatarLink:                chat.AvatarLink,
+		Type:                      string(chat.Type),
+		IsActive:                  chat.IsActive,
+		InterlocutorProfileID:     int64PtrString(chat.InterlocutorProfileID),
+		InterlocutorUserAccountID: int64PtrString(chat.InterlocutorUserAccountID),
+		IsOnline:                  chat.IsOnline,
+		LastSeenAt:                timePtrString(chat.LastSeenAt),
+		CreatedAt:                 chat.CreatedAt.Format(time.RFC3339Nano),
+		UpdatedAt:                 chat.UpdatedAt.Format(time.RFC3339Nano),
 	}
 }
 
@@ -433,6 +535,7 @@ func mapAttachments(items []usecase.Attachment) []AttachmentResponse {
 		result = append(result, AttachmentResponse{
 			ID:       strconv.FormatInt(item.ID, 10),
 			Uid:      item.UID,
+			Name:     item.Name,
 			MimeType: item.MimeType,
 			URL:      item.URL,
 		})
@@ -445,6 +548,7 @@ func mapStickerPack(pack usecase.StickerPack) StickerPackResponse {
 		ID:        strconv.FormatInt(pack.ID, 10),
 		Uid:       pack.UID,
 		Title:     pack.Title,
+		AuthorID:  int64PtrString(pack.AuthorID),
 		CreatedAt: pack.CreatedAt.Format(time.RFC3339Nano),
 		UpdatedAt: pack.UpdatedAt.Format(time.RFC3339Nano),
 	}
@@ -482,5 +586,13 @@ func int64PtrString(value *int64) *string {
 		return nil
 	}
 	out := strconv.FormatInt(*value, 10)
+	return &out
+}
+
+func timePtrString(value *time.Time) *string {
+	if value == nil || value.IsZero() {
+		return nil
+	}
+	out := value.Format(time.RFC3339Nano)
 	return &out
 }

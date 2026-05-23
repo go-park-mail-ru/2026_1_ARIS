@@ -25,3 +25,4 @@ scrape_configs:
           - support:8086
           - community:8087
           - search:8088
+          - game:8089

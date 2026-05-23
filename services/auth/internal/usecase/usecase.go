@@ -27,6 +27,9 @@ var (
 	ErrSessionNotFound    = errors.New("session not found")
 	ErrOAuthUnavailable   = errors.New("oauth provider unavailable")
 	ErrOAuthProvider      = errors.New("oauth provider error")
+	ErrPasswordMismatch   = errors.New("passwords do not match")
+	ErrPasswordReuse      = errors.New("new password must differ from old password")
+	ErrWeakPassword       = errors.New("password must be 7-20 characters")
 )
 
 type VKIDClient interface {
@@ -133,6 +136,52 @@ func (s *Service) Login(ctx context.Context, in LoginInput) (*AuthResult, error)
 	}
 
 	return s.issueAuthResult(ctx, credentials.GetUserAccountId())
+}
+
+func (s *Service) ChangePassword(ctx context.Context, sessionID string, in ChangePasswordInput) error {
+	session, err := s.ValidateSession(ctx, sessionID)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(in.OldPassword) == "" || in.NewPassword1 == "" || in.NewPassword2 == "" {
+		return ErrInvalidInput
+	}
+	if in.NewPassword1 != in.NewPassword2 {
+		return ErrPasswordMismatch
+	}
+	if len(in.NewPassword1) < 7 || len(in.NewPassword1) > 20 {
+		return ErrWeakPassword
+	}
+
+	user, err := s.userByAccountID(ctx, session.UserID)
+	if err != nil {
+		return err
+	}
+	credentials, err := s.users.GetCredentialsByLogin(ctx, &userpb.GetCredentialsByLoginRequest{
+		Login: normalizeLogin(user.Login),
+	})
+	if err != nil || credentials.GetUserAccountId() != session.UserID {
+		return ErrInvalidCredentials
+	}
+	currentHash := []byte(credentials.GetPasswordHash())
+	if bcrypt.CompareHashAndPassword(currentHash, []byte(in.OldPassword)) != nil {
+		return ErrInvalidCredentials
+	}
+	if bcrypt.CompareHashAndPassword(currentHash, []byte(in.NewPassword1)) == nil {
+		return ErrPasswordReuse
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(in.NewPassword1), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	if _, err := s.users.UpdatePasswordHash(ctx, &userpb.UpdatePasswordHashRequest{
+		UserAccountId: session.UserID,
+		PasswordHash:  string(hash),
+	}); err != nil {
+		return normalizeUserError(err)
+	}
+	return s.Logout(ctx, sessionID)
 }
 
 func (s *Service) LoginWithVKID(ctx context.Context, in VKIDCallbackInput) (*AuthResult, error) {

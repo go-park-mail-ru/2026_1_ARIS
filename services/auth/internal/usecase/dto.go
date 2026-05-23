@@ -27,6 +27,12 @@ type LoginInput struct {
 	Password string
 }
 
+type ChangePasswordInput struct {
+	OldPassword  string
+	NewPassword1 string
+	NewPassword2 string
+}
+
 type VKIDCallbackInput struct {
 	Code         string
 	DeviceID     string

@@ -25,7 +25,7 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       MINIO_ENDPOINT: ${MINIO_ENDPOINT}
     ports:
-      - "127.0.0.1:${MINIO_PORT}:9000"
+      - "127.0.0.1:${MINIO_PUBLIC_PORT:-9000}:9000"
       - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - aris_minio_data:/data
@@ -68,6 +68,8 @@ services:
       POOL_MAX_CONN_LIFETIME: ${POOL_MAX_CONN_LIFETIME}
       POOL_MAX_CONN_IDLE_TIME: ${POOL_MAX_CONN_IDLE_TIME}
       MINIO_ENDPOINT: minio:9000
+      MINIO_HOST: minio
+      MINIO_PORT: "9000"
       MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
@@ -105,6 +107,29 @@ services:
       timeout: 10s
       retries: 5
 
+  tarantool:
+    image: tarantool/tarantool:2.11
+    restart: unless-stopped
+    container_name: ${TARANTOOL_CONTAINER_NAME:-arisnet-tarantool}
+    command: ["tarantool", "/opt/tarantool/init.lua"]
+    environment:
+      TARANTOOL_LISTEN: 0.0.0.0:3301
+      TARANTOOL_WORK_DIR: /var/lib/tarantool
+      TARANTOOL_USER: ${TARANTOOL_USER:-cache}
+      TARANTOOL_PASSWORD: ${TARANTOOL_PASSWORD:-local-tarantool-password}
+      TARANTOOL_MEMTX_MEMORY: ${TARANTOOL_MEMTX_MEMORY:-134217728}
+      TARANTOOL_WAL_MODE: ${TARANTOOL_WAL_MODE:-write}
+    ports:
+      - "127.0.0.1:${TARANTOOL_PUBLIC_PORT:-3301}:3301"
+    volumes:
+      - aris_tarantool_data:/var/lib/tarantool
+      - ./tarantool/init.lua:/opt/tarantool/init.lua:ro
+    healthcheck:
+      test: ["CMD-SHELL", "tarantool -e \"local net_box=require('net.box'); local c=assert(net_box.connect('127.0.0.1:3301', {user=os.getenv('TARANTOOL_USER') or 'cache', password=os.getenv('TARANTOOL_PASSWORD') or 'local-tarantool-password'})); assert(c:ping()); c:close()\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   auth:
     profiles: ["microservices"]
     build:
@@ -135,8 +160,8 @@ services:
       timeout: 5s
       retries: 20
     ports:
-      - "127.0.0.1:8002:8002"
-      - "127.0.0.1:8085:8085"
+      - "127.0.0.1:${AUTH_GRPC_PUBLIC_PORT:-8002}:8002"
+      - "127.0.0.1:${AUTH_HTTP_PUBLIC_PORT:-8085}:8085"
 
   media:
     profiles: ["microservices"]
@@ -164,8 +189,8 @@ services:
       timeout: 5s
       retries: 20
     ports:
-      - "127.0.0.1:8003:8003"
-      - "127.0.0.1:8081:8081"
+      - "127.0.0.1:${MEDIA_GRPC_PUBLIC_PORT:-8003}:8003"
+      - "127.0.0.1:${MEDIA_HTTP_PUBLIC_PORT:-8081}:8081"
 
   user:
     profiles: ["microservices"]
@@ -186,6 +211,8 @@ services:
         condition: service_completed_successfully
       media:
         condition: service_healthy
+      tarantool:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 8004 && nc -z 127.0.0.1 8082"]
       start_period: 3m
@@ -193,8 +220,8 @@ services:
       timeout: 5s
       retries: 20
     ports:
-      - "127.0.0.1:8004:8004"
-      - "127.0.0.1:8082:8082"
+      - "127.0.0.1:${USER_GRPC_PUBLIC_PORT:-8004}:8004"
+      - "127.0.0.1:${USER_HTTP_PUBLIC_PORT:-8082}:8082"
 
   post:
     profiles: ["microservices"]
@@ -219,6 +246,8 @@ services:
         condition: service_healthy
       community:
         condition: service_healthy
+      tarantool:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 8005 && nc -z 127.0.0.1 8083"]
       start_period: 3m
@@ -226,8 +255,8 @@ services:
       timeout: 5s
       retries: 20
     ports:
-      - "127.0.0.1:8005:8005"
-      - "127.0.0.1:8083:8083"
+      - "127.0.0.1:${POST_GRPC_PUBLIC_PORT:-8005}:8005"
+      - "127.0.0.1:${POST_HTTP_PUBLIC_PORT:-8083}:8083"
 
   chat:
     profiles: ["microservices"]
@@ -250,6 +279,8 @@ services:
         condition: service_healthy
       media:
         condition: service_healthy
+      tarantool:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 8084 && nc -z 127.0.0.1 8006"]
       start_period: 3m
@@ -257,8 +288,8 @@ services:
       timeout: 5s
       retries: 20
     ports:
-      - "127.0.0.1:8006:8006"
-      - "127.0.0.1:8084:8084"
+      - "127.0.0.1:${CHAT_GRPC_PUBLIC_PORT:-8006}:8006"
+      - "127.0.0.1:${CHAT_HTTP_PUBLIC_PORT:-8084}:8084"
 
   support:
     profiles: ["microservices"]
@@ -286,8 +317,8 @@ services:
       timeout: 5s
       retries: 20
     ports:
-      - "127.0.0.1:8007:8007"
-      - "127.0.0.1:8086:8086"
+      - "127.0.0.1:${SUPPORT_GRPC_PUBLIC_PORT:-8007}:8007"
+      - "127.0.0.1:${SUPPORT_HTTP_PUBLIC_PORT:-8086}:8086"
 
   community:
     profiles: ["microservices"]
@@ -317,8 +348,8 @@ services:
       timeout: 5s
       retries: 20
     ports:
-      - "127.0.0.1:8009:8009"
-      - "127.0.0.1:8087:8087"
+      - "127.0.0.1:${COMMUNITY_GRPC_PUBLIC_PORT:-8009}:8009"
+      - "127.0.0.1:${COMMUNITY_HTTP_PUBLIC_PORT:-8087}:8087"
 
   search:
     profiles: ["microservices"]
@@ -342,7 +373,35 @@ services:
       timeout: 5s
       retries: 20
     ports:
-      - "127.0.0.1:8088:8088"
+      - "127.0.0.1:${SEARCH_HTTP_PUBLIC_PORT:-8088}:8088"
+
+  game:
+    profiles: ["microservices"]
+    build:
+      context: .
+      dockerfile: services/game/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/game/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      auth:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8089"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${GAME_HTTP_PUBLIC_PORT:-8089}:8089"
 
   prometheus:
     profiles: ["microservices"]
@@ -364,6 +423,8 @@ services:
       community:
         condition: service_healthy
       search:
+        condition: service_healthy
+      game:
         condition: service_healthy
       node-exporter:
         condition: service_started
@@ -431,6 +492,8 @@ services:
         condition: service_healthy
       search:
         condition: service_healthy
+      game:
+        condition: service_healthy
       minio:
         condition: service_started
     healthcheck:
@@ -450,5 +513,6 @@ volumes:
   aris_go_pkg:
   aris_go_build:
   aris_redis_data:
+  aris_tarantool_data:
   aris_prometheus_data:
   aris_grafana_data:

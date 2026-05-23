@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	cache "github.com/go-park-mail-ru/2026_1_ARIS/pkg/tarantool"
 	mediapb "github.com/go-park-mail-ru/2026_1_ARIS/proto/media"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/user/internal/model"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/user/internal/repository"
@@ -31,6 +32,7 @@ var (
 type Service struct {
 	store       repository.Store
 	mediaClient mediapb.MediaServiceClient
+	cache       ProfileCache
 }
 
 func New(store repository.Store, mediaClient ...mediapb.MediaServiceClient) *Service {
@@ -39,6 +41,26 @@ func New(store repository.Store, mediaClient ...mediapb.MediaServiceClient) *Ser
 		media = mediaClient[0]
 	}
 	return &Service{store: store, mediaClient: media}
+}
+
+type ProfileCache interface {
+	GetAuthUserByAccount(ctx context.Context, userAccountID int64) (*cache.AuthUser, error)
+	SetAuthUserByAccount(ctx context.Context, user cache.AuthUser) error
+	DeleteAuthUserByAccount(ctx context.Context, userAccountID int64) error
+	GetProfileDetails(ctx context.Context, profileID int64) (*cache.ProfileDetails, error)
+	SetProfileDetails(ctx context.Context, details cache.ProfileDetails) error
+	DeleteProfileDetails(ctx context.Context, profileID int64) error
+	GetProfileSummary(ctx context.Context, profileID int64) (*cache.ProfileSummary, error)
+	SetProfileSummary(ctx context.Context, summary cache.ProfileSummary) error
+	DeleteProfileSummary(ctx context.Context, profileID int64) error
+	GetProfileIDByAccount(ctx context.Context, userAccountID int64) (int64, error)
+	SetProfileIDByAccount(ctx context.Context, userAccountID, profileID int64) error
+	DeleteProfileIDByAccount(ctx context.Context, userAccountID int64) error
+	GetPresence(ctx context.Context, userAccountID int64) (*cache.PresenceStatus, error)
+}
+
+func (s *Service) SetCache(cache ProfileCache) {
+	s.cache = cache
 }
 
 type CreateAuthUserInput struct {
@@ -76,6 +98,8 @@ type AuthUser struct {
 	LastName      string
 	AvatarID      *int64
 	CreatedAt     time.Time
+	IsOnline      bool
+	LastSeenAt    *time.Time
 }
 
 type SearchProfileResult struct {
@@ -117,6 +141,8 @@ type ProfileDetails struct {
 	Work          []Work
 	Interests     *string
 	FavMusic      *string
+	IsOnline      bool
+	LastSeenAt    *time.Time
 }
 
 type UserCard struct {
@@ -125,6 +151,8 @@ type UserCard struct {
 	LastName   string
 	Username   string
 	AvatarLink string
+	IsOnline   bool
+	LastSeenAt *time.Time
 }
 
 type LatestEvent struct {
@@ -276,7 +304,11 @@ func (s *Service) syncOAuthProfile(ctx context.Context, accountID int64, in GetO
 	if !update.HasUpdates() {
 		return nil
 	}
-	return s.store.UserProfiles.Update(ctx, update)
+	if err := s.store.UserProfiles.Update(ctx, update); err != nil {
+		return err
+	}
+	s.invalidateProfileCache(ctx, accountID, userProfile.ProfileID)
+	return nil
 }
 
 func (s *Service) GetCredentialsByLogin(ctx context.Context, login string) (*Credentials, error) {
@@ -291,9 +323,25 @@ func (s *Service) GetCredentialsByLogin(ctx context.Context, login string) (*Cre
 	return &Credentials{UserAccountID: account.ID, PasswordHash: account.PasswordHash}, nil
 }
 
+func (s *Service) UpdatePasswordHash(ctx context.Context, userAccountID int64, passwordHash string) error {
+	if userAccountID <= 0 || strings.TrimSpace(passwordHash) == "" {
+		return ErrInvalidInput
+	}
+	if err := s.store.Accounts.Update(ctx, repository.AccountUpdate{
+		ID:           userAccountID,
+		PasswordHash: &passwordHash,
+	}); err != nil {
+		return normalizeAccountError(err)
+	}
+	return nil
+}
+
 func (s *Service) GetAuthUserByAccount(ctx context.Context, userAccountID int64) (*AuthUser, error) {
 	if userAccountID <= 0 {
 		return nil, ErrInvalidInput
+	}
+	if cached, ok := s.cachedAuthUser(ctx, userAccountID); ok {
+		return cached, nil
 	}
 
 	account, err := s.store.Accounts.Get(ctx, userAccountID)
@@ -309,7 +357,7 @@ func (s *Service) GetAuthUserByAccount(ctx context.Context, userAccountID int64)
 		return nil, normalizeProfileError(err)
 	}
 
-	return &AuthUser{
+	user := &AuthUser{
 		UserAccountID: account.ID,
 		UserProfileID: userProfile.ID,
 		ProfileID:     userProfile.ProfileID,
@@ -319,17 +367,27 @@ func (s *Service) GetAuthUserByAccount(ctx context.Context, userAccountID int64)
 		LastName:      userProfile.LastName,
 		AvatarID:      profile.AvatarID,
 		CreatedAt:     userProfile.CreatedAt,
-	}, nil
+	}
+	s.applyPresence(ctx, user)
+	s.cacheAuthUser(ctx, user)
+	s.cacheProfileIDByAccount(ctx, user.UserAccountID, user.ProfileID)
+	return user, nil
 }
 
 func (s *Service) GetProfileByUserAccount(ctx context.Context, userAccountID int64) (*model.Profile, error) {
 	if userAccountID <= 0 {
 		return nil, ErrInvalidInput
 	}
+	if s.cache != nil {
+		if profileID, err := s.cache.GetProfileIDByAccount(ctx, userAccountID); err == nil && profileID > 0 {
+			return &model.Profile{ID: profileID}, nil
+		}
+	}
 	profile, err := s.store.Profiles.GetByUserAccountID(ctx, userAccountID)
 	if err != nil {
 		return nil, normalizeProfileError(err)
 	}
+	s.cacheProfileIDByAccount(ctx, userAccountID, profile.ID)
 	return profile, nil
 }
 
@@ -348,11 +406,18 @@ func (s *Service) GetProfileSummary(ctx context.Context, profileID int64) (*Auth
 	if profileID <= 0 {
 		return nil, ErrInvalidInput
 	}
+	if cached, ok := s.cachedProfileSummary(ctx, profileID); ok {
+		return cached, nil
+	}
 	userProfile, err := s.store.UserProfiles.GetByProfileID(ctx, profileID)
 	if err != nil {
 		return nil, normalizeUserProfileError(err)
 	}
-	return s.GetAuthUserByAccount(ctx, userProfile.UserAccountID)
+	user, err := s.GetAuthUserByAccount(ctx, userProfile.UserAccountID)
+	if err == nil {
+		s.cacheProfileSummary(ctx, summaryFromAuthUser(user))
+	}
+	return user, err
 }
 
 func (s *Service) SearchProfiles(ctx context.Context, query string, limit int) ([]SearchProfileResult, error) {
@@ -400,6 +465,9 @@ func (s *Service) GetProfileByID(ctx context.Context, profileID int64) (*Profile
 	if profileID <= 0 {
 		return nil, ErrInvalidInput
 	}
+	if cached, ok := s.cachedProfileDetails(ctx, profileID); ok {
+		return cached, nil
+	}
 	userProfile, err := s.store.UserProfiles.GetByProfileID(ctx, profileID)
 	if err != nil {
 		return nil, normalizeUserProfileError(err)
@@ -412,7 +480,12 @@ func (s *Service) GetProfileByID(ctx context.Context, profileID int64) (*Profile
 	if err != nil {
 		return nil, normalizeProfileError(err)
 	}
-	return s.buildProfileDetails(ctx, account, userProfile, profile), nil
+	details := s.buildProfileDetails(ctx, account, userProfile, profile)
+	s.applyPresence(ctx, details)
+	s.cacheProfileDetails(ctx, details)
+	s.cacheProfileSummary(ctx, summaryFromProfileDetails(details))
+	s.cacheProfileIDByAccount(ctx, details.UserAccountID, details.ProfileID)
+	return details, nil
 }
 
 func (s *Service) UpdateMe(ctx context.Context, userAccountID int64, update UpdateFullProfileInput) error {
@@ -475,6 +548,7 @@ func (s *Service) UpdateMe(ctx context.Context, userAccountID int64, update Upda
 			return err
 		}
 	}
+	s.invalidateProfileCache(ctx, userAccountID, userProfile.ProfileID)
 	return nil
 }
 
@@ -579,6 +653,22 @@ func (s *Service) GetUsersFriends(ctx context.Context, profileID int64) ([]model
 		return nil, normalizeProfileError(err)
 	}
 	return s.store.Friendships.GetFriends(ctx, profileID, model.FriendshipAccepted)
+}
+
+func (s *Service) GetFriendProfileIDs(ctx context.Context, userAccountID int64) ([]int64, error) {
+	profileID, err := s.currentProfileID(ctx, userAccountID)
+	if err != nil {
+		return nil, err
+	}
+	friends, err := s.store.Friendships.GetFriends(ctx, profileID, model.FriendshipAccepted)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]int64, 0, len(friends))
+	for _, f := range friends {
+		ids = append(ids, f.ProfileID)
+	}
+	return ids, nil
 }
 
 func (s *Service) DeleteFriend(ctx context.Context, userAccountID int64, friendID int64) error {
@@ -811,6 +901,280 @@ func (s *Service) buildProfileDetails(ctx context.Context, account *model.UserAc
 	}
 }
 
+func (s *Service) cachedAuthUser(ctx context.Context, userAccountID int64) (*AuthUser, bool) {
+	if s.cache == nil {
+		return nil, false
+	}
+	cached, err := s.cache.GetAuthUserByAccount(ctx, userAccountID)
+	if err != nil {
+		return nil, false
+	}
+	user := authUserFromCache(cached)
+	s.applyPresence(ctx, user)
+	return user, true
+}
+
+func (s *Service) cacheAuthUser(ctx context.Context, user *AuthUser) {
+	if s.cache == nil || user == nil {
+		return
+	}
+	_ = s.cache.SetAuthUserByAccount(ctx, authUserToCache(user))
+}
+
+func (s *Service) cachedProfileDetails(ctx context.Context, profileID int64) (*ProfileDetails, bool) {
+	if s.cache == nil {
+		return nil, false
+	}
+	cached, err := s.cache.GetProfileDetails(ctx, profileID)
+	if err != nil {
+		return nil, false
+	}
+	details := profileDetailsFromCache(cached)
+	s.applyPresence(ctx, details)
+	return details, true
+}
+
+func (s *Service) cacheProfileDetails(ctx context.Context, details *ProfileDetails) {
+	if s.cache == nil || details == nil {
+		return
+	}
+	_ = s.cache.SetProfileDetails(ctx, profileDetailsToCache(details))
+}
+
+func (s *Service) cachedProfileSummary(ctx context.Context, profileID int64) (*AuthUser, bool) {
+	if s.cache == nil {
+		return nil, false
+	}
+	cached, err := s.cache.GetProfileSummary(ctx, profileID)
+	if err != nil {
+		return nil, false
+	}
+	user := authUserFromSummary(cached)
+	s.applyPresence(ctx, user)
+	return user, true
+}
+
+func (s *Service) cacheProfileSummary(ctx context.Context, summary cache.ProfileSummary) {
+	if s.cache == nil || summary.ProfileID <= 0 {
+		return
+	}
+	_ = s.cache.SetProfileSummary(ctx, summary)
+}
+
+func (s *Service) cacheProfileIDByAccount(ctx context.Context, userAccountID, profileID int64) {
+	if s.cache == nil || userAccountID <= 0 || profileID <= 0 {
+		return
+	}
+	_ = s.cache.SetProfileIDByAccount(ctx, userAccountID, profileID)
+}
+
+func (s *Service) invalidateProfileCache(ctx context.Context, userAccountID, profileID int64) {
+	if s.cache == nil {
+		return
+	}
+	_ = s.cache.DeleteAuthUserByAccount(ctx, userAccountID)
+	_ = s.cache.DeleteProfileIDByAccount(ctx, userAccountID)
+	_ = s.cache.DeleteProfileDetails(ctx, profileID)
+	_ = s.cache.DeleteProfileSummary(ctx, profileID)
+}
+
+func (s *Service) applyPresence(ctx context.Context, target interface{}) {
+	var userAccountID int64
+	switch value := target.(type) {
+	case *AuthUser:
+		userAccountID = value.UserAccountID
+	case *ProfileDetails:
+		userAccountID = value.UserAccountID
+	default:
+		return
+	}
+
+	presence := s.presence(ctx, userAccountID)
+	if presence == nil {
+		return
+	}
+	lastSeenAt := presence.LastSeenAt
+	switch value := target.(type) {
+	case *AuthUser:
+		value.IsOnline = presence.IsOnline
+		value.LastSeenAt = &lastSeenAt
+	case *ProfileDetails:
+		value.IsOnline = presence.IsOnline
+		value.LastSeenAt = &lastSeenAt
+	}
+}
+
+func (s *Service) presence(ctx context.Context, userAccountID int64) *cache.PresenceStatus {
+	if s.cache == nil || userAccountID <= 0 {
+		return nil
+	}
+	presence, err := s.cache.GetPresence(ctx, userAccountID)
+	if err != nil {
+		return nil
+	}
+	return presence
+}
+
+func authUserToCache(user *AuthUser) cache.AuthUser {
+	if user == nil {
+		return cache.AuthUser{}
+	}
+	return cache.AuthUser{
+		UserAccountID: user.UserAccountID,
+		UserProfileID: user.UserProfileID,
+		ProfileID:     user.ProfileID,
+		Login:         user.Login,
+		Email:         user.Email,
+		FirstName:     user.FirstName,
+		LastName:      user.LastName,
+		AvatarID:      user.AvatarID,
+		CreatedAt:     user.CreatedAt,
+		IsOnline:      user.IsOnline,
+		LastSeenAt:    user.LastSeenAt,
+	}
+}
+
+func authUserFromCache(user *cache.AuthUser) *AuthUser {
+	if user == nil {
+		return nil
+	}
+	return &AuthUser{
+		UserAccountID: user.UserAccountID,
+		UserProfileID: user.UserProfileID,
+		ProfileID:     user.ProfileID,
+		Login:         user.Login,
+		Email:         user.Email,
+		FirstName:     user.FirstName,
+		LastName:      user.LastName,
+		AvatarID:      user.AvatarID,
+		CreatedAt:     user.CreatedAt,
+		IsOnline:      user.IsOnline,
+		LastSeenAt:    user.LastSeenAt,
+	}
+}
+
+func authUserFromSummary(summary *cache.ProfileSummary) *AuthUser {
+	if summary == nil {
+		return nil
+	}
+	return &AuthUser{
+		UserAccountID: summary.UserAccountID,
+		ProfileID:     summary.ProfileID,
+		Login:         summary.Username,
+		FirstName:     summary.FirstName,
+		LastName:      summary.LastName,
+		AvatarID:      summary.AvatarID,
+		IsOnline:      summary.IsOnline,
+		LastSeenAt:    summary.LastSeenAt,
+	}
+}
+
+func summaryFromAuthUser(user *AuthUser) cache.ProfileSummary {
+	if user == nil {
+		return cache.ProfileSummary{}
+	}
+	return cache.ProfileSummary{
+		ProfileID:     user.ProfileID,
+		UserAccountID: user.UserAccountID,
+		FirstName:     user.FirstName,
+		LastName:      user.LastName,
+		Username:      user.Login,
+		AvatarID:      user.AvatarID,
+		IsOnline:      user.IsOnline,
+		LastSeenAt:    user.LastSeenAt,
+	}
+}
+
+func summaryFromProfileDetails(details *ProfileDetails) cache.ProfileSummary {
+	if details == nil {
+		return cache.ProfileSummary{}
+	}
+	return cache.ProfileSummary{
+		ProfileID:     details.ProfileID,
+		UserAccountID: details.UserAccountID,
+		FirstName:     details.FirstName,
+		LastName:      details.LastName,
+		Username:      details.Username,
+		AvatarID:      details.AvatarID,
+		IsOnline:      details.IsOnline,
+		LastSeenAt:    details.LastSeenAt,
+	}
+}
+
+func profileDetailsToCache(details *ProfileDetails) cache.ProfileDetails {
+	if details == nil {
+		return cache.ProfileDetails{}
+	}
+	education := make([]cache.Education, 0, len(details.Education))
+	for _, item := range details.Education {
+		education = append(education, cache.Education{Institution: item.Institution, Group: item.Group})
+	}
+	work := make([]cache.Work, 0, len(details.Work))
+	for _, item := range details.Work {
+		work = append(work, cache.Work{Company: item.Company, JobTitle: item.JobTitle})
+	}
+	return cache.ProfileDetails{
+		ProfileID:     details.ProfileID,
+		UserProfileID: details.UserProfileID,
+		UserAccountID: details.UserAccountID,
+		Username:      details.Username,
+		AvatarID:      details.AvatarID,
+		FirstName:     details.FirstName,
+		LastName:      details.LastName,
+		Bio:           details.Bio,
+		ImageLink:     details.ImageLink,
+		Gender:        string(details.Gender),
+		BirthdayDate:  details.BirthdayDate,
+		NativeTown:    details.NativeTown,
+		Phone:         details.Phone,
+		Email:         details.Email,
+		Town:          details.Town,
+		Education:     education,
+		Work:          work,
+		Interests:     details.Interests,
+		FavMusic:      details.FavMusic,
+		IsOnline:      details.IsOnline,
+		LastSeenAt:    details.LastSeenAt,
+	}
+}
+
+func profileDetailsFromCache(details *cache.ProfileDetails) *ProfileDetails {
+	if details == nil {
+		return nil
+	}
+	education := make([]Education, 0, len(details.Education))
+	for _, item := range details.Education {
+		education = append(education, Education{Institution: item.Institution, Group: item.Group})
+	}
+	work := make([]Work, 0, len(details.Work))
+	for _, item := range details.Work {
+		work = append(work, Work{Company: item.Company, JobTitle: item.JobTitle})
+	}
+	return &ProfileDetails{
+		ProfileID:     details.ProfileID,
+		UserProfileID: details.UserProfileID,
+		UserAccountID: details.UserAccountID,
+		Username:      details.Username,
+		AvatarID:      details.AvatarID,
+		FirstName:     details.FirstName,
+		LastName:      details.LastName,
+		Bio:           details.Bio,
+		ImageLink:     details.ImageLink,
+		Gender:        model.Gender(details.Gender),
+		BirthdayDate:  details.BirthdayDate,
+		NativeTown:    details.NativeTown,
+		Phone:         details.Phone,
+		Email:         details.Email,
+		Town:          details.Town,
+		Education:     education,
+		Work:          work,
+		Interests:     details.Interests,
+		FavMusic:      details.FavMusic,
+		IsOnline:      details.IsOnline,
+		LastSeenAt:    details.LastSeenAt,
+	}
+}
+
 func (s *Service) cardsByUsernames(ctx context.Context, usernames []string) ([]UserCard, error) {
 	profilesByUsername, err := s.profilesByUsername(ctx)
 	if err != nil {
@@ -845,13 +1209,18 @@ func (s *Service) cardFromProfile(ctx context.Context, profile model.Profile) (U
 	if err != nil {
 		return UserCard{}, err
 	}
-	return UserCard{
+	card := UserCard{
 		ID:         profile.ID,
 		FirstName:  userProfile.FirstName,
 		LastName:   userProfile.LastName,
 		Username:   account.Username,
 		AvatarLink: derefString(s.avatarURL(ctx, profile.AvatarID)),
-	}, nil
+	}
+	if presence := s.presence(ctx, account.ID); presence != nil {
+		card.IsOnline = presence.IsOnline
+		card.LastSeenAt = &presence.LastSeenAt
+	}
+	return card, nil
 }
 
 func (s *Service) profilesByUsername(ctx context.Context) (map[string]model.Profile, error) {

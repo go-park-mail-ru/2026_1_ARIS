@@ -5,6 +5,7 @@ docker/.env
 aris-server
 .DS_Store
 .gocache/
+.cache/
 .tmp/
 .agents/
 coverage.out

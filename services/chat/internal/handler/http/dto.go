@@ -1,14 +1,19 @@
 package http
 
 type ChatResponse struct {
-	ID        string `json:"id"`
-	Uid       string `json:"uid"`
-	Title     string `json:"title"`
-	AvatarID  *int64 `json:"avatarId,omitempty"`
-	Type      string `json:"type"`
-	IsActive  bool   `json:"isActive"`
-	CreatedAt string `json:"createdAt"`
-	UpdatedAt string `json:"updatedAt"`
+	ID                        string  `json:"id"`
+	Uid                       string  `json:"uid"`
+	Title                     string  `json:"title"`
+	AvatarID                  *int64  `json:"avatarId,omitempty"`
+	AvatarLink                string  `json:"avatarLink,omitempty"`
+	Type                      string  `json:"type"`
+	IsActive                  bool    `json:"isActive"`
+	InterlocutorProfileID     *string `json:"interlocutorProfileId,omitempty"`
+	InterlocutorUserAccountID *string `json:"interlocutorUserAccountId,omitempty"`
+	IsOnline                  bool    `json:"isOnline"`
+	LastSeenAt                *string `json:"lastSeenAt,omitempty"`
+	CreatedAt                 string  `json:"createdAt"`
+	UpdatedAt                 string  `json:"updatedAt"`
 }
 
 type MessageResponse struct {
@@ -45,16 +50,27 @@ type attachmentRequest struct {
 type AttachmentResponse struct {
 	ID       string `json:"id"`
 	Uid      string `json:"uid"`
+	Name     string `json:"name"`
 	MimeType string `json:"mimeType"`
 	URL      string `json:"url"`
 }
 
 type StickerPackResponse struct {
-	ID        string `json:"id"`
-	Uid       string `json:"uid"`
-	Title     string `json:"title"`
-	CreatedAt string `json:"createdAt"`
-	UpdatedAt string `json:"updatedAt"`
+	ID        string  `json:"id"`
+	Uid       string  `json:"uid"`
+	Title     string  `json:"title"`
+	AuthorID  *string `json:"authorId"`
+	CreatedAt string  `json:"createdAt"`
+	UpdatedAt string  `json:"updatedAt"`
+}
+
+type stickerPackRequest struct {
+	Title string `json:"title"`
+}
+
+type stickerRequest struct {
+	MediaID   int64 `json:"mediaID"`
+	SortOrder *int  `json:"sortOrder,omitempty"`
 }
 
 type StickerResponse struct {

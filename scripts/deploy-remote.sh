@@ -25,11 +25,13 @@ compose build auth media
 compose build user post
 compose build chat support
 compose build community search
+compose build game
 
 compose up --no-build --force-recreate -d \
-  auth media user post chat support community search prometheus grafana node-exporter nginx
+  tarantool auth media user post chat support community search game prometheus grafana node-exporter nginx
 
 sleep 15
+docker ps --format '{{.Names}} {{.Status}}' | grep 'arisnet-tarantool .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-auth-1 .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-user-1 .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-post-1 .*healthy'
@@ -38,6 +40,7 @@ docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-media-1 .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-support-1 .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-community-1 .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-search-1 .*healthy'
+docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-game-1 .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-prometheus-1 .*Up'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-grafana-1 .*Up'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-node-exporter-1 .*Up'
@@ -103,4 +106,6 @@ require_status '/api/support/tickets/my' 401
 require_not_5xx '/api/communities'
 require_not_5xx '/api/communities/'
 require_not_5xx '/api/search?q=test'
+require_not_5xx '/api/games'
+require_not_5xx '/api/games/'
 require_not_5xx '/api/unknown-smoke'
