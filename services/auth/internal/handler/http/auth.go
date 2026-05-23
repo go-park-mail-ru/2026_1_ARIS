@@ -69,6 +69,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/login", h.Login)
 	r.Get("/vkid/login", h.VKIDLogin)
 	r.Get("/vkid/callback", h.VKIDCallback)
+	r.Post("/password", h.ChangePassword)
 	r.Post("/logout", h.Logout)
 	r.Get("/me", h.Me)
 }
@@ -130,6 +131,31 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	h.setSessionCookie(w, result.Session.SessionID, result.Session.ExpiredAt)
 	utils.WriteJSON(w, http.StatusOK, h.mapUser(r.Context(), result.User))
+}
+
+func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie(sessionCookieName)
+	if err != nil {
+		utils.WriteJSON(w, http.StatusUnauthorized, errorResponse{Error: "unauthorized"})
+		return
+	}
+
+	var req changePasswordRequest
+	if !utils.DecodeJSON(w, r, &req) {
+		return
+	}
+
+	if err := h.authUsecase.ChangePassword(r.Context(), cookie.Value, usecase.ChangePasswordInput{
+		OldPassword:  req.OldPassword,
+		NewPassword1: req.NewPassword1,
+		NewPassword2: req.NewPassword2,
+	}); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+
+	h.clearSessionCookie(w)
+	utils.WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (h *Handler) VKIDLogin(w http.ResponseWriter, r *http.Request) {
@@ -224,15 +250,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		_ = h.authUsecase.Logout(r.Context(), cookie.Value)
 	}
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     sessionCookieName,
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1,
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
-		Secure:   h.cookieSecure,
-	})
+	h.clearSessionCookie(w)
 	utils.WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -381,6 +399,18 @@ func (h *Handler) setSessionCookie(w http.ResponseWriter, id model.SessionID, ex
 	})
 }
 
+func (h *Handler) clearSessionCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		Secure:   h.cookieSecure,
+	})
+}
+
 func parseGender(value int) model.Gender {
 	if value == 1 {
 		return model.Male
@@ -420,7 +450,8 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		utils.WriteJSON(w, http.StatusConflict, errorResponse{Error: "login already exists"})
 	case errors.Is(err, usecase.ErrInvalidCredentials), errors.Is(err, usecase.ErrSessionNotFound):
 		utils.WriteJSON(w, http.StatusUnauthorized, errorResponse{Error: "unauthorized"})
-	case errors.Is(err, usecase.ErrInvalidInput), errors.Is(err, usecase.ErrInvalidBirthday), errors.Is(err, usecase.ErrTooYoung):
+	case errors.Is(err, usecase.ErrInvalidInput), errors.Is(err, usecase.ErrInvalidBirthday), errors.Is(err, usecase.ErrTooYoung),
+		errors.Is(err, usecase.ErrPasswordMismatch), errors.Is(err, usecase.ErrPasswordReuse), errors.Is(err, usecase.ErrWeakPassword):
 		utils.WriteJSON(w, http.StatusBadRequest, errorResponse{Error: err.Error()})
 	case errors.Is(err, usecase.ErrOAuthUnavailable):
 		utils.WriteJSON(w, http.StatusServiceUnavailable, errorResponse{Error: err.Error()})

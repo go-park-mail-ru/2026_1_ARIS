@@ -21,6 +21,12 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
+type changePasswordRequest struct {
+	OldPassword  string `json:"oldPassword"`
+	NewPassword1 string `json:"newPassword1"`
+	NewPassword2 string `json:"newPassword2"`
+}
+
 type userResponse struct {
 	ID            int64   `json:"id"`
 	UserAccountID int64   `json:"userAccountId"`

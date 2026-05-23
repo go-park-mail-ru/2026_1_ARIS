@@ -72,6 +72,13 @@ func (s *Server) GetCredentialsByLogin(ctx context.Context, req *userpb.GetCrede
 	}, nil
 }
 
+func (s *Server) UpdatePasswordHash(ctx context.Context, req *userpb.UpdatePasswordHashRequest) (*userpb.UpdatePasswordHashResponse, error) {
+	if err := s.user.UpdatePasswordHash(ctx, req.GetUserAccountId(), req.GetPasswordHash()); err != nil {
+		return nil, toStatus(err)
+	}
+	return &userpb.UpdatePasswordHashResponse{Ok: true}, nil
+}
+
 func (s *Server) GetAuthUserByAccount(ctx context.Context, req *userpb.GetAuthUserByAccountRequest) (*userpb.AuthUserResponse, error) {
 	user, err := s.user.GetAuthUserByAccount(ctx, req.GetUserAccountId())
 	if err != nil {

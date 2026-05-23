@@ -60,14 +60,15 @@ type AccountRepo interface {
 }
 
 type AccountUpdate struct {
-	ID       int64
-	Username *string
-	Email    *string
-	Phone    *string
+	ID           int64
+	Username     *string
+	Email        *string
+	Phone        *string
+	PasswordHash *string
 }
 
 func (u AccountUpdate) HasUpdates() bool {
-	return u.Username != nil || u.Email != nil || u.Phone != nil
+	return u.Username != nil || u.Email != nil || u.Phone != nil || u.PasswordHash != nil
 }
 
 type accountStorage struct {
@@ -180,6 +181,10 @@ func (s *accountStorage) Update(ctx context.Context, update AccountUpdate) error
 	if update.Phone != nil {
 		args = append(args, update.Phone)
 		set = append(set, "phone=$"+strconv.Itoa(len(args)))
+	}
+	if update.PasswordHash != nil {
+		args = append(args, *update.PasswordHash)
+		set = append(set, "password_hash=$"+strconv.Itoa(len(args)))
 	}
 	if len(set) == 0 {
 		return nil
