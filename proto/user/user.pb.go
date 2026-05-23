@@ -1162,6 +1162,102 @@ func (x *GetFriendProfileIDsResponse) GetProfileIds() []int64 {
 	return nil
 }
 
+type UpdatePasswordHashRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserAccountId int64                  `protobuf:"varint,1,opt,name=user_account_id,json=userAccountId,proto3" json:"user_account_id,omitempty"`
+	PasswordHash  string                 `protobuf:"bytes,2,opt,name=password_hash,json=passwordHash,proto3" json:"password_hash,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdatePasswordHashRequest) Reset() {
+	*x = UpdatePasswordHashRequest{}
+	mi := &file_proto_user_user_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdatePasswordHashRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdatePasswordHashRequest) ProtoMessage() {}
+
+func (x *UpdatePasswordHashRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_user_user_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdatePasswordHashRequest.ProtoReflect.Descriptor instead.
+func (*UpdatePasswordHashRequest) Descriptor() ([]byte, []int) {
+	return file_proto_user_user_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *UpdatePasswordHashRequest) GetUserAccountId() int64 {
+	if x != nil {
+		return x.UserAccountId
+	}
+	return 0
+}
+
+func (x *UpdatePasswordHashRequest) GetPasswordHash() string {
+	if x != nil {
+		return x.PasswordHash
+	}
+	return ""
+}
+
+type UpdatePasswordHashResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ok            bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdatePasswordHashResponse) Reset() {
+	*x = UpdatePasswordHashResponse{}
+	mi := &file_proto_user_user_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdatePasswordHashResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdatePasswordHashResponse) ProtoMessage() {}
+
+func (x *UpdatePasswordHashResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_user_user_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdatePasswordHashResponse.ProtoReflect.Descriptor instead.
+func (*UpdatePasswordHashResponse) Descriptor() ([]byte, []int) {
+	return file_proto_user_user_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *UpdatePasswordHashResponse) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
 var File_proto_user_user_proto protoreflect.FileDescriptor
 
 const file_proto_user_user_proto_rawDesc = "" +
@@ -1256,11 +1352,16 @@ const file_proto_user_user_proto_rawDesc = "" +
 	"\x0fuser_account_id\x18\x01 \x01(\x03R\ruserAccountId\">\n" +
 	"\x1bGetFriendProfileIDsResponse\x12\x1f\n" +
 	"\vprofile_ids\x18\x01 \x03(\x03R\n" +
-	"profileIds*D\n" +
+	"profileIds\"h\n" +
+	"\x19UpdatePasswordHashRequest\x12&\n" +
+	"\x0fuser_account_id\x18\x01 \x01(\x03R\ruserAccountId\x12#\n" +
+	"\rpassword_hash\x18\x02 \x01(\tR\fpasswordHash\",\n" +
+	"\x1aUpdatePasswordHashResponse\x12\x0e\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok*D\n" +
 	"\x06Gender\x12\x16\n" +
 	"\x12GENDER_UNSPECIFIED\x10\x00\x12\x0f\n" +
 	"\vGENDER_MALE\x10\x01\x12\x11\n" +
-	"\rGENDER_FEMALE\x10\x022\xbd\b\n" +
+	"\rGENDER_FEMALE\x10\x022\xa6\t\n" +
 	"\vUserService\x12s\n" +
 	"\x16CheckUsernameAvailable\x12+.aris.user.v1.CheckUsernameAvailableRequest\x1a,.aris.user.v1.CheckUsernameAvailableResponse\x12U\n" +
 	"\x0eCreateAuthUser\x12#.aris.user.v1.CreateAuthUserRequest\x1a\x1e.aris.user.v1.AuthUserResponse\x12a\n" +
@@ -1271,7 +1372,8 @@ const file_proto_user_user_proto_rawDesc = "" +
 	"\x1bGetUserProfileByUserAccount\x120.aris.user.v1.GetUserProfileByUserAccountRequest\x1a1.aris.user.v1.GetUserProfileByUserAccountResponse\x12d\n" +
 	"\x11GetProfileSummary\x12&.aris.user.v1.GetProfileSummaryRequest\x1a'.aris.user.v1.GetProfileSummaryResponse\x12[\n" +
 	"\x0eSearchProfiles\x12#.aris.user.v1.SearchProfilesRequest\x1a$.aris.user.v1.SearchProfilesResponse\x12j\n" +
-	"\x13GetFriendProfileIDs\x12(.aris.user.v1.GetFriendProfileIDsRequest\x1a).aris.user.v1.GetFriendProfileIDsResponseB:Z8github.com/go-park-mail-ru/2026_1_ARIS/proto/user;userpbb\x06proto3"
+	"\x13GetFriendProfileIDs\x12(.aris.user.v1.GetFriendProfileIDsRequest\x1a).aris.user.v1.GetFriendProfileIDsResponse\x12g\n" +
+	"\x12UpdatePasswordHash\x12'.aris.user.v1.UpdatePasswordHashRequest\x1a(.aris.user.v1.UpdatePasswordHashResponseB:Z8github.com/go-park-mail-ru/2026_1_ARIS/proto/user;userpbb\x06proto3"
 
 var (
 	file_proto_user_user_proto_rawDescOnce sync.Once
@@ -1286,7 +1388,7 @@ func file_proto_user_user_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_user_user_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_proto_user_user_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_proto_user_user_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_proto_user_user_proto_goTypes = []any{
 	(Gender)(0),                                 // 0: aris.user.v1.Gender
 	(*CheckUsernameAvailableRequest)(nil),       // 1: aris.user.v1.CheckUsernameAvailableRequest
@@ -1308,6 +1410,8 @@ var file_proto_user_user_proto_goTypes = []any{
 	(*SearchProfilesResponse)(nil),              // 17: aris.user.v1.SearchProfilesResponse
 	(*GetFriendProfileIDsRequest)(nil),          // 18: aris.user.v1.GetFriendProfileIDsRequest
 	(*GetFriendProfileIDsResponse)(nil),         // 19: aris.user.v1.GetFriendProfileIDsResponse
+	(*UpdatePasswordHashRequest)(nil),           // 20: aris.user.v1.UpdatePasswordHashRequest
+	(*UpdatePasswordHashResponse)(nil),          // 21: aris.user.v1.UpdatePasswordHashResponse
 }
 var file_proto_user_user_proto_depIdxs = []int32{
 	0,  // 0: aris.user.v1.CreateAuthUserRequest.gender:type_name -> aris.user.v1.Gender
@@ -1323,18 +1427,20 @@ var file_proto_user_user_proto_depIdxs = []int32{
 	13, // 10: aris.user.v1.UserService.GetProfileSummary:input_type -> aris.user.v1.GetProfileSummaryRequest
 	15, // 11: aris.user.v1.UserService.SearchProfiles:input_type -> aris.user.v1.SearchProfilesRequest
 	18, // 12: aris.user.v1.UserService.GetFriendProfileIDs:input_type -> aris.user.v1.GetFriendProfileIDsRequest
-	2,  // 13: aris.user.v1.UserService.CheckUsernameAvailable:output_type -> aris.user.v1.CheckUsernameAvailableResponse
-	8,  // 14: aris.user.v1.UserService.CreateAuthUser:output_type -> aris.user.v1.AuthUserResponse
-	8,  // 15: aris.user.v1.UserService.GetOrCreateOAuthUser:output_type -> aris.user.v1.AuthUserResponse
-	6,  // 16: aris.user.v1.UserService.GetCredentialsByLogin:output_type -> aris.user.v1.GetCredentialsByLoginResponse
-	8,  // 17: aris.user.v1.UserService.GetAuthUserByAccount:output_type -> aris.user.v1.AuthUserResponse
-	10, // 18: aris.user.v1.UserService.GetProfileByUserAccount:output_type -> aris.user.v1.GetProfileByUserAccountResponse
-	12, // 19: aris.user.v1.UserService.GetUserProfileByUserAccount:output_type -> aris.user.v1.GetUserProfileByUserAccountResponse
-	14, // 20: aris.user.v1.UserService.GetProfileSummary:output_type -> aris.user.v1.GetProfileSummaryResponse
-	17, // 21: aris.user.v1.UserService.SearchProfiles:output_type -> aris.user.v1.SearchProfilesResponse
-	19, // 22: aris.user.v1.UserService.GetFriendProfileIDs:output_type -> aris.user.v1.GetFriendProfileIDsResponse
-	13, // [13:23] is the sub-list for method output_type
-	3,  // [3:13] is the sub-list for method input_type
+	20, // 13: aris.user.v1.UserService.UpdatePasswordHash:input_type -> aris.user.v1.UpdatePasswordHashRequest
+	2,  // 14: aris.user.v1.UserService.CheckUsernameAvailable:output_type -> aris.user.v1.CheckUsernameAvailableResponse
+	8,  // 15: aris.user.v1.UserService.CreateAuthUser:output_type -> aris.user.v1.AuthUserResponse
+	8,  // 16: aris.user.v1.UserService.GetOrCreateOAuthUser:output_type -> aris.user.v1.AuthUserResponse
+	6,  // 17: aris.user.v1.UserService.GetCredentialsByLogin:output_type -> aris.user.v1.GetCredentialsByLoginResponse
+	8,  // 18: aris.user.v1.UserService.GetAuthUserByAccount:output_type -> aris.user.v1.AuthUserResponse
+	10, // 19: aris.user.v1.UserService.GetProfileByUserAccount:output_type -> aris.user.v1.GetProfileByUserAccountResponse
+	12, // 20: aris.user.v1.UserService.GetUserProfileByUserAccount:output_type -> aris.user.v1.GetUserProfileByUserAccountResponse
+	14, // 21: aris.user.v1.UserService.GetProfileSummary:output_type -> aris.user.v1.GetProfileSummaryResponse
+	17, // 22: aris.user.v1.UserService.SearchProfiles:output_type -> aris.user.v1.SearchProfilesResponse
+	19, // 23: aris.user.v1.UserService.GetFriendProfileIDs:output_type -> aris.user.v1.GetFriendProfileIDsResponse
+	21, // 24: aris.user.v1.UserService.UpdatePasswordHash:output_type -> aris.user.v1.UpdatePasswordHashResponse
+	14, // [14:25] is the sub-list for method output_type
+	3,  // [3:14] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name
@@ -1355,7 +1461,7 @@ func file_proto_user_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_user_user_proto_rawDesc), len(file_proto_user_user_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   19,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

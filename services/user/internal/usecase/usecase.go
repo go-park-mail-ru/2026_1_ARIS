@@ -323,6 +323,19 @@ func (s *Service) GetCredentialsByLogin(ctx context.Context, login string) (*Cre
 	return &Credentials{UserAccountID: account.ID, PasswordHash: account.PasswordHash}, nil
 }
 
+func (s *Service) UpdatePasswordHash(ctx context.Context, userAccountID int64, passwordHash string) error {
+	if userAccountID <= 0 || strings.TrimSpace(passwordHash) == "" {
+		return ErrInvalidInput
+	}
+	if err := s.store.Accounts.Update(ctx, repository.AccountUpdate{
+		ID:           userAccountID,
+		PasswordHash: &passwordHash,
+	}); err != nil {
+		return normalizeAccountError(err)
+	}
+	return nil
+}
+
 func (s *Service) GetAuthUserByAccount(ctx context.Context, userAccountID int64) (*AuthUser, error) {
 	if userAccountID <= 0 {
 		return nil, ErrInvalidInput

@@ -15,6 +15,7 @@ service UserService {
     rpc GetProfileSummary(GetProfileSummaryRequest) returns (GetProfileSummaryResponse);
     rpc SearchProfiles(SearchProfilesRequest) returns (SearchProfilesResponse);
     rpc GetFriendProfileIDs(GetFriendProfileIDsRequest) returns (GetFriendProfileIDsResponse);
+    rpc UpdatePasswordHash(UpdatePasswordHashRequest) returns (UpdatePasswordHashResponse);
 }
 
 enum Gender {
@@ -129,4 +130,13 @@ message GetFriendProfileIDsRequest {
 
 message GetFriendProfileIDsResponse {
     repeated int64 profile_ids = 1;
+}
+
+message UpdatePasswordHashRequest {
+    int64 user_account_id = 1;
+    string password_hash = 2;
+}
+
+message UpdatePasswordHashResponse {
+    bool ok = 1;
 }

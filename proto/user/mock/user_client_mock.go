@@ -8,7 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	userpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/user"
+	user "github.com/go-park-mail-ru/2026_1_ARIS/proto/user"
 	gomock "github.com/golang/mock/gomock"
 	grpc "google.golang.org/grpc"
 )
@@ -37,14 +37,14 @@ func (m *MockUserServiceClient) EXPECT() *MockUserServiceClientMockRecorder {
 }
 
 // CheckUsernameAvailable mocks base method.
-func (m *MockUserServiceClient) CheckUsernameAvailable(ctx context.Context, in *userpb.CheckUsernameAvailableRequest, opts ...grpc.CallOption) (*userpb.CheckUsernameAvailableResponse, error) {
+func (m *MockUserServiceClient) CheckUsernameAvailable(ctx context.Context, in *user.CheckUsernameAvailableRequest, opts ...grpc.CallOption) (*user.CheckUsernameAvailableResponse, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "CheckUsernameAvailable", varargs...)
-	ret0, _ := ret[0].(*userpb.CheckUsernameAvailableResponse)
+	ret0, _ := ret[0].(*user.CheckUsernameAvailableResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -57,14 +57,14 @@ func (mr *MockUserServiceClientMockRecorder) CheckUsernameAvailable(ctx, in inte
 }
 
 // CreateAuthUser mocks base method.
-func (m *MockUserServiceClient) CreateAuthUser(ctx context.Context, in *userpb.CreateAuthUserRequest, opts ...grpc.CallOption) (*userpb.AuthUserResponse, error) {
+func (m *MockUserServiceClient) CreateAuthUser(ctx context.Context, in *user.CreateAuthUserRequest, opts ...grpc.CallOption) (*user.AuthUserResponse, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "CreateAuthUser", varargs...)
-	ret0, _ := ret[0].(*userpb.AuthUserResponse)
+	ret0, _ := ret[0].(*user.AuthUserResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -77,14 +77,14 @@ func (mr *MockUserServiceClientMockRecorder) CreateAuthUser(ctx, in interface{},
 }
 
 // GetAuthUserByAccount mocks base method.
-func (m *MockUserServiceClient) GetAuthUserByAccount(ctx context.Context, in *userpb.GetAuthUserByAccountRequest, opts ...grpc.CallOption) (*userpb.AuthUserResponse, error) {
+func (m *MockUserServiceClient) GetAuthUserByAccount(ctx context.Context, in *user.GetAuthUserByAccountRequest, opts ...grpc.CallOption) (*user.AuthUserResponse, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "GetAuthUserByAccount", varargs...)
-	ret0, _ := ret[0].(*userpb.AuthUserResponse)
+	ret0, _ := ret[0].(*user.AuthUserResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -97,14 +97,14 @@ func (mr *MockUserServiceClientMockRecorder) GetAuthUserByAccount(ctx, in interf
 }
 
 // GetCredentialsByLogin mocks base method.
-func (m *MockUserServiceClient) GetCredentialsByLogin(ctx context.Context, in *userpb.GetCredentialsByLoginRequest, opts ...grpc.CallOption) (*userpb.GetCredentialsByLoginResponse, error) {
+func (m *MockUserServiceClient) GetCredentialsByLogin(ctx context.Context, in *user.GetCredentialsByLoginRequest, opts ...grpc.CallOption) (*user.GetCredentialsByLoginResponse, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "GetCredentialsByLogin", varargs...)
-	ret0, _ := ret[0].(*userpb.GetCredentialsByLoginResponse)
+	ret0, _ := ret[0].(*user.GetCredentialsByLoginResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -116,15 +116,35 @@ func (mr *MockUserServiceClientMockRecorder) GetCredentialsByLogin(ctx, in inter
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCredentialsByLogin", reflect.TypeOf((*MockUserServiceClient)(nil).GetCredentialsByLogin), varargs...)
 }
 
+// GetFriendProfileIDs mocks base method.
+func (m *MockUserServiceClient) GetFriendProfileIDs(ctx context.Context, in *user.GetFriendProfileIDsRequest, opts ...grpc.CallOption) (*user.GetFriendProfileIDsResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetFriendProfileIDs", varargs...)
+	ret0, _ := ret[0].(*user.GetFriendProfileIDsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetFriendProfileIDs indicates an expected call of GetFriendProfileIDs.
+func (mr *MockUserServiceClientMockRecorder) GetFriendProfileIDs(ctx, in interface{}, opts ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFriendProfileIDs", reflect.TypeOf((*MockUserServiceClient)(nil).GetFriendProfileIDs), varargs...)
+}
+
 // GetOrCreateOAuthUser mocks base method.
-func (m *MockUserServiceClient) GetOrCreateOAuthUser(ctx context.Context, in *userpb.GetOrCreateOAuthUserRequest, opts ...grpc.CallOption) (*userpb.AuthUserResponse, error) {
+func (m *MockUserServiceClient) GetOrCreateOAuthUser(ctx context.Context, in *user.GetOrCreateOAuthUserRequest, opts ...grpc.CallOption) (*user.AuthUserResponse, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "GetOrCreateOAuthUser", varargs...)
-	ret0, _ := ret[0].(*userpb.AuthUserResponse)
+	ret0, _ := ret[0].(*user.AuthUserResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -137,14 +157,14 @@ func (mr *MockUserServiceClientMockRecorder) GetOrCreateOAuthUser(ctx, in interf
 }
 
 // GetProfileByUserAccount mocks base method.
-func (m *MockUserServiceClient) GetProfileByUserAccount(ctx context.Context, in *userpb.GetProfileByUserAccountRequest, opts ...grpc.CallOption) (*userpb.GetProfileByUserAccountResponse, error) {
+func (m *MockUserServiceClient) GetProfileByUserAccount(ctx context.Context, in *user.GetProfileByUserAccountRequest, opts ...grpc.CallOption) (*user.GetProfileByUserAccountResponse, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "GetProfileByUserAccount", varargs...)
-	ret0, _ := ret[0].(*userpb.GetProfileByUserAccountResponse)
+	ret0, _ := ret[0].(*user.GetProfileByUserAccountResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -157,14 +177,14 @@ func (mr *MockUserServiceClientMockRecorder) GetProfileByUserAccount(ctx, in int
 }
 
 // GetProfileSummary mocks base method.
-func (m *MockUserServiceClient) GetProfileSummary(ctx context.Context, in *userpb.GetProfileSummaryRequest, opts ...grpc.CallOption) (*userpb.GetProfileSummaryResponse, error) {
+func (m *MockUserServiceClient) GetProfileSummary(ctx context.Context, in *user.GetProfileSummaryRequest, opts ...grpc.CallOption) (*user.GetProfileSummaryResponse, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "GetProfileSummary", varargs...)
-	ret0, _ := ret[0].(*userpb.GetProfileSummaryResponse)
+	ret0, _ := ret[0].(*user.GetProfileSummaryResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -177,14 +197,14 @@ func (mr *MockUserServiceClientMockRecorder) GetProfileSummary(ctx, in interface
 }
 
 // GetUserProfileByUserAccount mocks base method.
-func (m *MockUserServiceClient) GetUserProfileByUserAccount(ctx context.Context, in *userpb.GetUserProfileByUserAccountRequest, opts ...grpc.CallOption) (*userpb.GetUserProfileByUserAccountResponse, error) {
+func (m *MockUserServiceClient) GetUserProfileByUserAccount(ctx context.Context, in *user.GetUserProfileByUserAccountRequest, opts ...grpc.CallOption) (*user.GetUserProfileByUserAccountResponse, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "GetUserProfileByUserAccount", varargs...)
-	ret0, _ := ret[0].(*userpb.GetUserProfileByUserAccountResponse)
+	ret0, _ := ret[0].(*user.GetUserProfileByUserAccountResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -197,14 +217,14 @@ func (mr *MockUserServiceClientMockRecorder) GetUserProfileByUserAccount(ctx, in
 }
 
 // SearchProfiles mocks base method.
-func (m *MockUserServiceClient) SearchProfiles(ctx context.Context, in *userpb.SearchProfilesRequest, opts ...grpc.CallOption) (*userpb.SearchProfilesResponse, error) {
+func (m *MockUserServiceClient) SearchProfiles(ctx context.Context, in *user.SearchProfilesRequest, opts ...grpc.CallOption) (*user.SearchProfilesResponse, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{ctx, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "SearchProfiles", varargs...)
-	ret0, _ := ret[0].(*userpb.SearchProfilesResponse)
+	ret0, _ := ret[0].(*user.SearchProfilesResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -214,6 +234,26 @@ func (mr *MockUserServiceClientMockRecorder) SearchProfiles(ctx, in interface{},
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{ctx, in}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchProfiles", reflect.TypeOf((*MockUserServiceClient)(nil).SearchProfiles), varargs...)
+}
+
+// UpdatePasswordHash mocks base method.
+func (m *MockUserServiceClient) UpdatePasswordHash(ctx context.Context, in *user.UpdatePasswordHashRequest, opts ...grpc.CallOption) (*user.UpdatePasswordHashResponse, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "UpdatePasswordHash", varargs...)
+	ret0, _ := ret[0].(*user.UpdatePasswordHashResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdatePasswordHash indicates an expected call of UpdatePasswordHash.
+func (mr *MockUserServiceClientMockRecorder) UpdatePasswordHash(ctx, in interface{}, opts ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePasswordHash", reflect.TypeOf((*MockUserServiceClient)(nil).UpdatePasswordHash), varargs...)
 }
 
 // MockUserServiceServer is a mock of UserServiceServer interface.
@@ -240,10 +280,10 @@ func (m *MockUserServiceServer) EXPECT() *MockUserServiceServerMockRecorder {
 }
 
 // CheckUsernameAvailable mocks base method.
-func (m *MockUserServiceServer) CheckUsernameAvailable(arg0 context.Context, arg1 *userpb.CheckUsernameAvailableRequest) (*userpb.CheckUsernameAvailableResponse, error) {
+func (m *MockUserServiceServer) CheckUsernameAvailable(arg0 context.Context, arg1 *user.CheckUsernameAvailableRequest) (*user.CheckUsernameAvailableResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CheckUsernameAvailable", arg0, arg1)
-	ret0, _ := ret[0].(*userpb.CheckUsernameAvailableResponse)
+	ret0, _ := ret[0].(*user.CheckUsernameAvailableResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -255,10 +295,10 @@ func (mr *MockUserServiceServerMockRecorder) CheckUsernameAvailable(arg0, arg1 i
 }
 
 // CreateAuthUser mocks base method.
-func (m *MockUserServiceServer) CreateAuthUser(arg0 context.Context, arg1 *userpb.CreateAuthUserRequest) (*userpb.AuthUserResponse, error) {
+func (m *MockUserServiceServer) CreateAuthUser(arg0 context.Context, arg1 *user.CreateAuthUserRequest) (*user.AuthUserResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateAuthUser", arg0, arg1)
-	ret0, _ := ret[0].(*userpb.AuthUserResponse)
+	ret0, _ := ret[0].(*user.AuthUserResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -270,10 +310,10 @@ func (mr *MockUserServiceServerMockRecorder) CreateAuthUser(arg0, arg1 interface
 }
 
 // GetAuthUserByAccount mocks base method.
-func (m *MockUserServiceServer) GetAuthUserByAccount(arg0 context.Context, arg1 *userpb.GetAuthUserByAccountRequest) (*userpb.AuthUserResponse, error) {
+func (m *MockUserServiceServer) GetAuthUserByAccount(arg0 context.Context, arg1 *user.GetAuthUserByAccountRequest) (*user.AuthUserResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAuthUserByAccount", arg0, arg1)
-	ret0, _ := ret[0].(*userpb.AuthUserResponse)
+	ret0, _ := ret[0].(*user.AuthUserResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -285,10 +325,10 @@ func (mr *MockUserServiceServerMockRecorder) GetAuthUserByAccount(arg0, arg1 int
 }
 
 // GetCredentialsByLogin mocks base method.
-func (m *MockUserServiceServer) GetCredentialsByLogin(arg0 context.Context, arg1 *userpb.GetCredentialsByLoginRequest) (*userpb.GetCredentialsByLoginResponse, error) {
+func (m *MockUserServiceServer) GetCredentialsByLogin(arg0 context.Context, arg1 *user.GetCredentialsByLoginRequest) (*user.GetCredentialsByLoginResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetCredentialsByLogin", arg0, arg1)
-	ret0, _ := ret[0].(*userpb.GetCredentialsByLoginResponse)
+	ret0, _ := ret[0].(*user.GetCredentialsByLoginResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -299,11 +339,26 @@ func (mr *MockUserServiceServerMockRecorder) GetCredentialsByLogin(arg0, arg1 in
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCredentialsByLogin", reflect.TypeOf((*MockUserServiceServer)(nil).GetCredentialsByLogin), arg0, arg1)
 }
 
+// GetFriendProfileIDs mocks base method.
+func (m *MockUserServiceServer) GetFriendProfileIDs(arg0 context.Context, arg1 *user.GetFriendProfileIDsRequest) (*user.GetFriendProfileIDsResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetFriendProfileIDs", arg0, arg1)
+	ret0, _ := ret[0].(*user.GetFriendProfileIDsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetFriendProfileIDs indicates an expected call of GetFriendProfileIDs.
+func (mr *MockUserServiceServerMockRecorder) GetFriendProfileIDs(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFriendProfileIDs", reflect.TypeOf((*MockUserServiceServer)(nil).GetFriendProfileIDs), arg0, arg1)
+}
+
 // GetOrCreateOAuthUser mocks base method.
-func (m *MockUserServiceServer) GetOrCreateOAuthUser(arg0 context.Context, arg1 *userpb.GetOrCreateOAuthUserRequest) (*userpb.AuthUserResponse, error) {
+func (m *MockUserServiceServer) GetOrCreateOAuthUser(arg0 context.Context, arg1 *user.GetOrCreateOAuthUserRequest) (*user.AuthUserResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOrCreateOAuthUser", arg0, arg1)
-	ret0, _ := ret[0].(*userpb.AuthUserResponse)
+	ret0, _ := ret[0].(*user.AuthUserResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -315,10 +370,10 @@ func (mr *MockUserServiceServerMockRecorder) GetOrCreateOAuthUser(arg0, arg1 int
 }
 
 // GetProfileByUserAccount mocks base method.
-func (m *MockUserServiceServer) GetProfileByUserAccount(arg0 context.Context, arg1 *userpb.GetProfileByUserAccountRequest) (*userpb.GetProfileByUserAccountResponse, error) {
+func (m *MockUserServiceServer) GetProfileByUserAccount(arg0 context.Context, arg1 *user.GetProfileByUserAccountRequest) (*user.GetProfileByUserAccountResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetProfileByUserAccount", arg0, arg1)
-	ret0, _ := ret[0].(*userpb.GetProfileByUserAccountResponse)
+	ret0, _ := ret[0].(*user.GetProfileByUserAccountResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -330,10 +385,10 @@ func (mr *MockUserServiceServerMockRecorder) GetProfileByUserAccount(arg0, arg1 
 }
 
 // GetProfileSummary mocks base method.
-func (m *MockUserServiceServer) GetProfileSummary(arg0 context.Context, arg1 *userpb.GetProfileSummaryRequest) (*userpb.GetProfileSummaryResponse, error) {
+func (m *MockUserServiceServer) GetProfileSummary(arg0 context.Context, arg1 *user.GetProfileSummaryRequest) (*user.GetProfileSummaryResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetProfileSummary", arg0, arg1)
-	ret0, _ := ret[0].(*userpb.GetProfileSummaryResponse)
+	ret0, _ := ret[0].(*user.GetProfileSummaryResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -345,10 +400,10 @@ func (mr *MockUserServiceServerMockRecorder) GetProfileSummary(arg0, arg1 interf
 }
 
 // GetUserProfileByUserAccount mocks base method.
-func (m *MockUserServiceServer) GetUserProfileByUserAccount(arg0 context.Context, arg1 *userpb.GetUserProfileByUserAccountRequest) (*userpb.GetUserProfileByUserAccountResponse, error) {
+func (m *MockUserServiceServer) GetUserProfileByUserAccount(arg0 context.Context, arg1 *user.GetUserProfileByUserAccountRequest) (*user.GetUserProfileByUserAccountResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserProfileByUserAccount", arg0, arg1)
-	ret0, _ := ret[0].(*userpb.GetUserProfileByUserAccountResponse)
+	ret0, _ := ret[0].(*user.GetUserProfileByUserAccountResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -360,10 +415,10 @@ func (mr *MockUserServiceServerMockRecorder) GetUserProfileByUserAccount(arg0, a
 }
 
 // SearchProfiles mocks base method.
-func (m *MockUserServiceServer) SearchProfiles(arg0 context.Context, arg1 *userpb.SearchProfilesRequest) (*userpb.SearchProfilesResponse, error) {
+func (m *MockUserServiceServer) SearchProfiles(arg0 context.Context, arg1 *user.SearchProfilesRequest) (*user.SearchProfilesResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SearchProfiles", arg0, arg1)
-	ret0, _ := ret[0].(*userpb.SearchProfilesResponse)
+	ret0, _ := ret[0].(*user.SearchProfilesResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -372,6 +427,21 @@ func (m *MockUserServiceServer) SearchProfiles(arg0 context.Context, arg1 *userp
 func (mr *MockUserServiceServerMockRecorder) SearchProfiles(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchProfiles", reflect.TypeOf((*MockUserServiceServer)(nil).SearchProfiles), arg0, arg1)
+}
+
+// UpdatePasswordHash mocks base method.
+func (m *MockUserServiceServer) UpdatePasswordHash(arg0 context.Context, arg1 *user.UpdatePasswordHashRequest) (*user.UpdatePasswordHashResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdatePasswordHash", arg0, arg1)
+	ret0, _ := ret[0].(*user.UpdatePasswordHashResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdatePasswordHash indicates an expected call of UpdatePasswordHash.
+func (mr *MockUserServiceServerMockRecorder) UpdatePasswordHash(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePasswordHash", reflect.TypeOf((*MockUserServiceServer)(nil).UpdatePasswordHash), arg0, arg1)
 }
 
 // mustEmbedUnimplementedUserServiceServer mocks base method.
