@@ -27,21 +27,51 @@ type DB interface {
 }
 
 type Store struct {
-	Posts     PostRepo
-	PostMedia PostMediaRepo
-	Comments  CommentRepo
-	Likes     LikeRepo
-	Reposts   RepostRepo
+	Posts       PostRepo
+	PostMedia   PostMediaRepo
+	Comments    CommentRepo
+	Likes       LikeRepo
+	Reposts     RepostRepo
+	Memberships MembershipRepo
 }
 
 func NewStore(db DB) Store {
 	return Store{
-		Posts:     NewPostStorage(db),
-		PostMedia: NewPostMediaStorage(db),
-		Comments:  NewCommentStorage(db),
-		Likes:     NewLikeStorage(db),
-		Reposts:   NewRepostStorage(db),
+		Posts:       NewPostStorage(db),
+		PostMedia:   NewPostMediaStorage(db),
+		Comments:    NewCommentStorage(db),
+		Likes:       NewLikeStorage(db),
+		Reposts:     NewRepostStorage(db),
+		Memberships: NewMembershipStorage(db),
 	}
+}
+
+type MembershipRepo interface {
+	GetMemberCommunityIDs(ctx context.Context, profileID int64) ([]int64, error)
+}
+
+type membershipStorage struct{ db DB }
+
+func NewMembershipStorage(db DB) MembershipRepo { return &membershipStorage{db: db} }
+
+func (s *membershipStorage) GetMemberCommunityIDs(ctx context.Context, profileID int64) ([]int64, error) {
+	rows, err := s.db.Query(ctx,
+		`SELECT community_id FROM community_member WHERE profile_id=$1 AND is_active=true`,
+		profileID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 type PostRepo interface {
@@ -52,6 +82,8 @@ type PostRepo interface {
 	GetAll(ctx context.Context) ([]model.Post, error)
 	GetByAuthorID(ctx context.Context, authorID int64) ([]model.Post, error)
 	GetByCommunityID(ctx context.Context, communityID int64) ([]model.Post, error)
+	GetByIDs(ctx context.Context, ids []int64) ([]model.Post, error)
+	GetFeedPage(ctx context.Context, authorIDs []int64, beforeTime *time.Time, beforeID *int64, limit int, publicOnly bool) ([]model.Post, error)
 }
 
 type postStorage struct {
@@ -198,9 +230,72 @@ func (s *postStorage) GetByCommunityID(ctx context.Context, communityID int64) (
 	return pgx.CollectRows(rows, pgx.RowToStructByName[model.Post])
 }
 
+func (s *postStorage) GetByIDs(ctx context.Context, ids []int64) ([]model.Post, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	start := time.Now()
+	rows, err := s.db.Query(ctx, `SELECT * FROM post WHERE id=ANY($1) AND is_active=TRUE`, ids)
+	logQuery(ctx, "postStorage.GetByIDs", start)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByName[model.Post])
+}
+
+func (s *postStorage) GetFeedPage(ctx context.Context, authorIDs []int64, beforeTime *time.Time, beforeID *int64, limit int, publicOnly bool) ([]model.Post, error) {
+	start := time.Now()
+	var rows pgx.Rows
+	var err error
+	if len(authorIDs) == 0 {
+		// public feed: no author filter
+		if beforeTime != nil && beforeID != nil {
+			rows, err = s.db.Query(ctx, `
+				SELECT * FROM post
+				WHERE is_active = TRUE AND is_public_demo = $1
+				  AND (created_at, id) < ($2, $3)
+				ORDER BY created_at DESC, id DESC
+				LIMIT $4
+			`, publicOnly, *beforeTime, *beforeID, limit)
+		} else {
+			rows, err = s.db.Query(ctx, `
+				SELECT * FROM post
+				WHERE is_active = TRUE AND is_public_demo = $1
+				ORDER BY created_at DESC, id DESC
+				LIMIT $2
+			`, publicOnly, limit)
+		}
+	} else {
+		if beforeTime != nil && beforeID != nil {
+			rows, err = s.db.Query(ctx, `
+				SELECT * FROM post
+				WHERE is_active = TRUE AND is_public_demo = $1
+				  AND author_id = ANY($2)
+				  AND (created_at, id) < ($3, $4)
+				ORDER BY created_at DESC, id DESC
+				LIMIT $5
+			`, publicOnly, authorIDs, *beforeTime, *beforeID, limit)
+		} else {
+			rows, err = s.db.Query(ctx, `
+				SELECT * FROM post
+				WHERE is_active = TRUE AND is_public_demo = $1
+				  AND author_id = ANY($2)
+				ORDER BY created_at DESC, id DESC
+				LIMIT $3
+			`, publicOnly, authorIDs, limit)
+		}
+	}
+	logQuery(ctx, "postStorage.GetFeedPage", start)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByName[model.Post])
+}
+
 type PostMediaRepo interface {
 	GetMediaByPostID(ctx context.Context, postID int64) []int64
 	GetDetailedMediaByPostID(ctx context.Context, postID int64) ([]model.AttachedMedia, error)
+	GetDetailedMediaByPostIDs(ctx context.Context, postIDs []int64) (map[int64][]model.AttachedMedia, error)
 	GetMediaAuthorID(ctx context.Context, mediaID int64) (int64, error)
 	Save(ctx context.Context, postWithMedia model.PostWithMedia) error
 	DeleteByPostID(ctx context.Context, postID int64) error
@@ -250,6 +345,33 @@ func (s *postMediaStorage) GetDetailedMediaByPostID(ctx context.Context, postID 
 	return items, nil
 }
 
+func (s *postMediaStorage) GetDetailedMediaByPostIDs(ctx context.Context, postIDs []int64) (map[int64][]model.AttachedMedia, error) {
+	result := make(map[int64][]model.AttachedMedia, len(postIDs))
+	if len(postIDs) == 0 {
+		return result, nil
+	}
+	start := time.Now()
+	var items []struct {
+		model.AttachedMedia
+		PostID int64 `db:"post_id"`
+	}
+	err := pgxscan.Select(ctx, s.db, &items, `
+		SELECT pwm.post_id, pwm.media_id, m.uid, m.media_name, m.mime_type, m.link, m.author_id, pwm.sort_order
+		FROM post_with_media pwm
+		JOIN media m ON m.id=pwm.media_id AND m.is_active=TRUE
+		WHERE pwm.post_id=ANY($1)
+		ORDER BY pwm.post_id, pwm.sort_order
+	`, postIDs)
+	logQuery(ctx, "postMediaStorage.GetDetailedMediaByPostIDs", start)
+	if err != nil && !pgxscan.NotFound(err) {
+		return nil, err
+	}
+	for _, item := range items {
+		result[item.PostID] = append(result[item.PostID], item.AttachedMedia)
+	}
+	return result, nil
+}
+
 func (s *postMediaStorage) GetMediaAuthorID(ctx context.Context, mediaID int64) (int64, error) {
 	start := time.Now()
 	row := s.db.QueryRow(ctx, `SELECT author_id FROM media WHERE id=$1 AND is_active=TRUE`, mediaID)
@@ -294,6 +416,7 @@ type CommentRepo interface {
 	Save(ctx context.Context, comment model.Comment) (int64, error)
 	Update(ctx context.Context, comment model.Comment) error
 	Delete(ctx context.Context, id int64) error
+	GetCommentCountsBatch(ctx context.Context, postIDs []int64) (map[int64]int, error)
 }
 
 type commentStorage struct {
@@ -459,6 +582,34 @@ func (s *commentStorage) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
+func (s *commentStorage) GetCommentCountsBatch(ctx context.Context, postIDs []int64) (map[int64]int, error) {
+	result := make(map[int64]int, len(postIDs))
+	if len(postIDs) == 0 {
+		return result, nil
+	}
+	start := time.Now()
+	rows, err := s.db.Query(ctx, `
+		SELECT post_id, COUNT(*)::int
+		FROM comment
+		WHERE post_id=ANY($1) AND is_active=TRUE
+		GROUP BY post_id
+	`, postIDs)
+	logQuery(ctx, "commentStorage.GetCommentCountsBatch", start)
+	if err != nil {
+		return result, nil
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var postID int64
+		var count int
+		if err := rows.Scan(&postID, &count); err != nil {
+			continue
+		}
+		result[postID] = count
+	}
+	return result, rows.Err()
+}
+
 type LikeRepo interface {
 	Save(ctx context.Context, like model.Like) (int64, error)
 	GetLikeCountOnPost(ctx context.Context, postID int64) int
@@ -468,6 +619,8 @@ type LikeRepo interface {
 	GetCommentLikeByAuthor(ctx context.Context, commentID, authorID int64) (*model.Like, error)
 	GetCommentLikeCountBatch(ctx context.Context, commentIDs []int64) (map[int64]int, error)
 	GetCommentViewerLikesBatch(ctx context.Context, commentIDs []int64, authorID int64) (map[int64]bool, error)
+	GetPostLikeCountsBatch(ctx context.Context, postIDs []int64) (map[int64]int, error)
+	GetViewerPostLikesBatch(ctx context.Context, postIDs []int64, viewerProfileID int64) (map[int64]bool, error)
 }
 
 type likeStorage struct {
@@ -592,8 +745,63 @@ func (s *likeStorage) GetCommentViewerLikesBatch(ctx context.Context, commentIDs
 	return result, rows.Err()
 }
 
+func (s *likeStorage) GetPostLikeCountsBatch(ctx context.Context, postIDs []int64) (map[int64]int, error) {
+	result := make(map[int64]int, len(postIDs))
+	if len(postIDs) == 0 {
+		return result, nil
+	}
+	start := time.Now()
+	rows, err := s.db.Query(ctx, `
+		SELECT post_id, COUNT(*)::int
+		FROM like_record
+		WHERE post_id=ANY($1) AND is_active=TRUE
+		GROUP BY post_id
+	`, postIDs)
+	logQuery(ctx, "likeStorage.GetPostLikeCountsBatch", start)
+	if err != nil {
+		return result, nil
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var postID int64
+		var count int
+		if err := rows.Scan(&postID, &count); err != nil {
+			continue
+		}
+		result[postID] = count
+	}
+	return result, rows.Err()
+}
+
+func (s *likeStorage) GetViewerPostLikesBatch(ctx context.Context, postIDs []int64, viewerProfileID int64) (map[int64]bool, error) {
+	result := make(map[int64]bool, len(postIDs))
+	if len(postIDs) == 0 || viewerProfileID <= 0 {
+		return result, nil
+	}
+	start := time.Now()
+	rows, err := s.db.Query(ctx, `
+		SELECT post_id
+		FROM like_record
+		WHERE post_id=ANY($1) AND author_id=$2 AND is_active=TRUE
+	`, postIDs, viewerProfileID)
+	logQuery(ctx, "likeStorage.GetViewerPostLikesBatch", start)
+	if err != nil {
+		return result, nil
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var postID int64
+		if err := rows.Scan(&postID); err != nil {
+			continue
+		}
+		result[postID] = true
+	}
+	return result, rows.Err()
+}
+
 type RepostRepo interface {
 	GetRepostCount(ctx context.Context, postID int64) int
+	GetRepostCountsBatch(ctx context.Context, postIDs []int64) (map[int64]int, error)
 }
 
 type repostStorage struct {
@@ -606,6 +814,34 @@ func NewRepostStorage(db DB) RepostRepo {
 
 func (s *repostStorage) GetRepostCount(ctx context.Context, postID int64) int {
 	return countByQuery(ctx, s.db, `SELECT COUNT(*) FROM repost WHERE post_id=$1 AND is_active=TRUE`, "repostStorage.GetRepostCount", postID)
+}
+
+func (s *repostStorage) GetRepostCountsBatch(ctx context.Context, postIDs []int64) (map[int64]int, error) {
+	result := make(map[int64]int, len(postIDs))
+	if len(postIDs) == 0 {
+		return result, nil
+	}
+	start := time.Now()
+	rows, err := s.db.Query(ctx, `
+		SELECT post_id, COUNT(*)::int
+		FROM repost
+		WHERE post_id=ANY($1) AND is_active=TRUE
+		GROUP BY post_id
+	`, postIDs)
+	logQuery(ctx, "repostStorage.GetRepostCountsBatch", start)
+	if err != nil {
+		return result, nil
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var postID int64
+		var count int
+		if err := rows.Scan(&postID, &count); err != nil {
+			continue
+		}
+		result[postID] = count
+	}
+	return result, rows.Err()
 }
 
 func countByQuery(ctx context.Context, db DB, query string, label string, args ...any) int {

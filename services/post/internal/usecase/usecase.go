@@ -2,8 +2,11 @@ package usecase
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"html"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -12,9 +15,11 @@ import (
 	communitypb "github.com/go-park-mail-ru/2026_1_ARIS/proto/community"
 	mediapb "github.com/go-park-mail-ru/2026_1_ARIS/proto/media"
 	userpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/user"
+	"github.com/go-park-mail-ru/2026_1_ARIS/services/post/internal/analytics"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/post/internal/model"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/post/internal/repository"
 	"github.com/google/uuid"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -39,6 +44,14 @@ type Service struct {
 	mediaClient     mediapb.MediaServiceClient
 	communityClient communitypb.CommunityServiceClient
 	cache           PostCache
+	analytics       *analytics.Writer
+	recommendation  repository.RecommendationRepo
+	sessionCache    FeedSessionCache
+}
+
+type FeedSessionCache interface {
+	SaveFeedSession(ctx context.Context, sessionID string, postIDs []int64, ttl time.Duration) error
+	GetFeedSession(ctx context.Context, sessionID string) ([]int64, error)
 }
 
 type PostCache interface {
@@ -149,6 +162,18 @@ func (s *Service) SetCache(cache PostCache) {
 	s.cache = cache
 }
 
+func (s *Service) SetAnalytics(w *analytics.Writer) {
+	s.analytics = w
+}
+
+func (s *Service) SetRecommendation(repo repository.RecommendationRepo) {
+	s.recommendation = repo
+}
+
+func (s *Service) SetSessionCache(sc FeedSessionCache) {
+	s.sessionCache = sc
+}
+
 func (s *Service) CreatePost(ctx context.Context, userAccountID int64, input CreateInput) (*PostDetails, error) {
 	if userAccountID <= 0 {
 		return nil, ErrInvalidInput
@@ -176,6 +201,9 @@ func (s *Service) CreatePost(ctx context.Context, userAccountID int64, input Cre
 	if err := s.attachMedia(ctx, postID, profileID, attachments); err != nil {
 		return nil, err
 	}
+	post.ID = postID
+	s.emitSnapshot(*post, len(attachments) > 0)
+	s.emitEvent(profileID, postID, authorID, communityID, analytics.EventPostCreated)
 	return s.GetPostForViewer(ctx, postID, userAccountID)
 }
 
@@ -330,6 +358,8 @@ func (s *Service) UpdatePost(ctx context.Context, userAccountID int64, postID in
 			return nil, err
 		}
 	}
+	s.emitSnapshot(*post, len(attachments) > 0)
+	s.emitEvent(profileID, postID, post.AuthorID, post.CommunityID, analytics.EventPostUpdated)
 	return s.GetPostForViewer(ctx, postID, userAccountID)
 }
 
@@ -348,6 +378,10 @@ func (s *Service) DeletePost(ctx context.Context, userAccountID, postID int64) e
 	if !s.canDeletePost(ctx, *post, profileID) {
 		return ErrForbidden
 	}
+	deletedPost := *post
+	deletedPost.IsActive = false
+	s.emitSnapshot(deletedPost, false)
+	s.emitEvent(profileID, postID, post.AuthorID, post.CommunityID, analytics.EventPostDeleted)
 	if err := normalizePostError(s.store.Posts.Delete(ctx, postID)); err != nil {
 		return err
 	}
@@ -366,6 +400,7 @@ func (s *Service) LikePost(ctx context.Context, userAccountID, postID int64) (*P
 	if _, err := s.store.Posts.Get(ctx, postID); err != nil {
 		return nil, normalizePostError(err)
 	}
+	likedPost, err2 := s.store.Posts.Get(ctx, postID)
 	existing, err := s.store.Likes.GetPostLikeByAuthor(ctx, postID, profileID)
 	if err == nil {
 		if !existing.IsActive {
@@ -373,6 +408,9 @@ func (s *Service) LikePost(ctx context.Context, userAccountID, postID int64) (*P
 				return nil, err
 			}
 			s.refreshPostLikeCount(ctx, postID)
+			if err2 == nil {
+				s.emitEvent(profileID, postID, likedPost.AuthorID, likedPost.CommunityID, analytics.EventPostLike)
+			}
 		}
 		return s.GetPostForViewer(ctx, postID, userAccountID)
 	}
@@ -380,6 +418,9 @@ func (s *Service) LikePost(ctx context.Context, userAccountID, postID int64) (*P
 		return nil, err
 	}
 	s.refreshPostLikeCount(ctx, postID)
+	if err2 == nil {
+		s.emitEvent(profileID, postID, likedPost.AuthorID, likedPost.CommunityID, analytics.EventPostLike)
+	}
 	return s.GetPostForViewer(ctx, postID, userAccountID)
 }
 
@@ -394,12 +435,16 @@ func (s *Service) UnlikePost(ctx context.Context, userAccountID, postID int64) (
 	if _, err := s.store.Posts.Get(ctx, postID); err != nil {
 		return nil, normalizePostError(err)
 	}
+	unlikedPost, unlikedErr := s.store.Posts.Get(ctx, postID)
 	existing, err := s.store.Likes.GetPostLikeByAuthor(ctx, postID, profileID)
 	if err == nil && existing.IsActive {
 		if err := s.store.Likes.SetActive(ctx, existing.ID, false); err != nil {
 			return nil, err
 		}
 		s.refreshPostLikeCount(ctx, postID)
+		if unlikedErr == nil {
+			s.emitEvent(profileID, postID, unlikedPost.AuthorID, unlikedPost.CommunityID, analytics.EventPostUnlike)
+		}
 	}
 	return s.GetPostForViewer(ctx, postID, userAccountID)
 }
@@ -520,6 +565,7 @@ func (s *Service) CreateComment(ctx context.Context, userAccountID, postID int64
 	if err != nil {
 		return nil, err
 	}
+	s.emitEvent(profileID, postID, post.AuthorID, post.CommunityID, analytics.EventPostComment)
 	saved, err := s.store.Comments.Get(ctx, id)
 	if err != nil {
 		return nil, normalizeCommentError(err)
@@ -662,99 +708,401 @@ func (s *Service) GetPublicFeed(ctx context.Context, rawCursor string, limit int
 	return s.getFeed(ctx, 0, rawCursor, "by-time", limit, true)
 }
 
+func (s *Service) RecordFeedEvents(ctx context.Context, userAccountID int64, events []analytics.PostEvent) {
+	if s.analytics == nil || userAccountID <= 0 {
+		return
+	}
+	profileID, err := s.profileIDByUserAccount(ctx, userAccountID)
+	if err != nil || profileID <= 0 {
+		return
+	}
+
+	postIDs := make([]int64, 0, len(events))
+	for _, e := range events {
+		postIDs = append(postIDs, e.PostID)
+	}
+	postMeta := make(map[int64]struct {
+		authorID    int64
+		communityID *int64
+	})
+	if posts, err := s.store.Posts.GetByIDs(ctx, postIDs); err == nil {
+		for _, p := range posts {
+			postMeta[p.ID] = struct {
+				authorID    int64
+				communityID *int64
+			}{p.AuthorID, p.CommunityID}
+		}
+	}
+
+	now := time.Now()
+	for _, e := range events {
+		e.ProfileID = profileID
+		e.EventTime = now
+		if meta, ok := postMeta[e.PostID]; ok {
+			e.AuthorProfileID = meta.authorID
+			e.CommunityID = meta.communityID
+		}
+		switch e.Type {
+		case analytics.EventPostView, analytics.EventPostHide, analytics.EventPostReport:
+			s.analytics.WriteEvent(e)
+		}
+	}
+}
+
 func (s *Service) getFeed(ctx context.Context, userAccountID int64, rawCursor, mode string, limit int, publicOnly bool) (FeedResult, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
+	if mode == "for-you" && s.recommendation != nil && userAccountID > 0 {
+		return s.getRecommendedFeed(ctx, userAccountID, rawCursor, limit)
+	}
+	return s.getChronologicalFeed(ctx, userAccountID, rawCursor, limit, publicOnly)
+}
 
-	var cur *cursor.Cursor
+func (s *Service) getChronologicalFeed(ctx context.Context, userAccountID int64, rawCursor string, limit int, publicOnly bool) (FeedResult, error) {
+	var friendIDs []int64
+	var viewerProfileID int64
+
+	if !publicOnly && userAccountID > 0 {
+		resp, err := s.userClient.GetFriendProfileIDs(ctx, &userpb.GetFriendProfileIDsRequest{UserAccountId: userAccountID})
+		if err == nil && resp != nil {
+			friendIDs = resp.ProfileIds
+		}
+		viewerProfileID, _ = s.profileIDByUserAccount(ctx, userAccountID)
+	}
+
+	if !publicOnly && len(friendIDs) == 0 {
+		return FeedResult{Posts: []FeedPost{}}, nil
+	}
+
+	var beforeTime *time.Time
+	var beforeID *int64
+	var legacyCursor *cursor.Cursor
+
 	if rawCursor != "" {
 		decoded, err := cursor.Decode(rawCursor)
 		if err != nil {
 			return FeedResult{}, ErrInvalidInput
 		}
-		cur = &decoded
+		legacyCursor = &decoded
 	}
 
-	allPosts, err := s.store.Posts.GetAll(ctx)
+	if legacyCursor != nil {
+		t := legacyCursor.CreatedAt
+		beforeTime = &t
+		// legacy cursor has uuid, not int64; use a very large ID so we get all posts at this timestamp
+		id := int64(math.MaxInt64)
+		beforeID = &id
+	}
+
+	fetchLimit := limit + 1
+	var posts []model.Post
+	var err error
+	if publicOnly {
+		posts, err = s.store.Posts.GetFeedPage(ctx, nil, beforeTime, beforeID, fetchLimit, true)
+	} else {
+		posts, err = s.store.Posts.GetFeedPage(ctx, friendIDs, beforeTime, beforeID, fetchLimit, false)
+	}
 	if err != nil {
 		return FeedResult{}, err
 	}
 
-	var friendSet map[int64]struct{}
-	var viewerProfileID int64
-	if !publicOnly && userAccountID > 0 {
-		resp, err := s.userClient.GetFriendProfileIDs(ctx, &userpb.GetFriendProfileIDsRequest{UserAccountId: userAccountID})
-		if err == nil && resp != nil {
-			friendSet = make(map[int64]struct{}, len(resp.ProfileIds))
-			for _, id := range resp.ProfileIds {
-				friendSet[id] = struct{}{}
-			}
-		}
-		viewerProfileID, _ = s.profileIDByUserAccount(ctx, userAccountID)
-	}
-
-	posts := make([]model.Post, 0, len(allPosts))
-	for _, post := range allPosts {
-		if publicOnly != post.IsPublicDemo {
-			continue
-		}
-		if !publicOnly && friendSet != nil {
-			if _, ok := friendSet[post.AuthorID]; !ok {
-				continue
-			}
-		}
-		posts = append(posts, post)
-	}
-
-	sort.Slice(posts, func(i, j int) bool {
-		if posts[i].CreatedAt.Equal(posts[j].CreatedAt) {
-			return posts[i].ID > posts[j].ID
-		}
-		return posts[i].CreatedAt.After(posts[j].CreatedAt)
-	})
-
-	start := 0
-	if cur != nil {
-		start = len(posts)
-		for i, post := range posts {
-			if post.CreatedAt.Before(cur.CreatedAt) || (post.CreatedAt.Equal(cur.CreatedAt) && post.Uid.String() != cur.ID.String()) {
-				start = i
-				break
-			}
-		}
-	}
-
-	if start >= len(posts) {
-		return FeedResult{Posts: []FeedPost{}}, nil
-	}
-
-	end := start + limit + 1
-	if end > len(posts) {
-		end = len(posts)
-	}
-	page := posts[start:end]
-	hasMore := len(page) > limit
+	hasMore := len(posts) > limit
 	if hasMore {
-		page = page[:limit]
+		posts = posts[:limit]
 	}
 
 	var nextCursor string
-	if hasMore && len(page) > 0 {
-		last := page[len(page)-1]
+	if hasMore && len(posts) > 0 {
+		last := posts[len(posts)-1]
 		nextCursor = cursor.Encode(cursor.Cursor{CreatedAt: last.CreatedAt, ID: last.Uid})
 	}
 
-	result := make([]FeedPost, 0, len(page))
-	for _, post := range page {
-		item, err := s.buildFeedPost(ctx, post, viewerProfileID)
-		if err == nil {
-			result = append(result, item)
+	feedPosts := s.buildFeedBatch(ctx, posts, viewerProfileID)
+	return FeedResult{Posts: feedPosts, Cursor: nextCursor, HasMore: hasMore}, nil
+}
+
+func (s *Service) getRecommendedFeed(ctx context.Context, userAccountID int64, rawCursor string, limit int) (FeedResult, error) {
+	profileID, err := s.profileIDByUserAccount(ctx, userAccountID)
+	if err != nil {
+		return FeedResult{Posts: []FeedPost{}}, nil
+	}
+
+	var sessionID string
+	offset := 0
+
+	if rawCursor != "" {
+		sc, decErr := decodeSessionCursor(rawCursor)
+		if decErr == nil {
+			sessionID = sc.SessionID
+			offset = sc.Offset
 		}
 	}
 
-	return FeedResult{Posts: result, Cursor: nextCursor, HasMore: hasMore}, nil
+	var candidateIDs []int64
+	if sessionID != "" && s.sessionCache != nil {
+		candidateIDs, _ = s.sessionCache.GetFeedSession(ctx, sessionID)
+	}
+
+	if len(candidateIDs) == 0 {
+		candidateIDs, err = s.buildCandidates(ctx, profileID, userAccountID)
+		if err != nil || len(candidateIDs) == 0 {
+			return s.getChronologicalFeed(ctx, userAccountID, "", limit, false)
+		}
+		sessionID = uuid.New().String()
+		offset = 0
+		if s.sessionCache != nil {
+			_ = s.sessionCache.SaveFeedSession(ctx, sessionID, candidateIDs, 10*time.Minute)
+		}
+	}
+
+	if offset >= len(candidateIDs) {
+		return FeedResult{Posts: []FeedPost{}, Cursor: "", HasMore: false}, nil
+	}
+
+	end := offset + limit
+	if end > len(candidateIDs) {
+		end = len(candidateIDs)
+	}
+	pageIDs := candidateIDs[offset:end]
+	hasMore := end < len(candidateIDs)
+
+	posts, err := s.store.Posts.GetByIDs(ctx, pageIDs)
+	if err != nil {
+		return FeedResult{}, err
+	}
+
+	postMap := make(map[int64]model.Post, len(posts))
+	for _, p := range posts {
+		postMap[p.ID] = p
+	}
+	orderedPosts := make([]model.Post, 0, len(pageIDs))
+	for _, id := range pageIDs {
+		if p, ok := postMap[id]; ok {
+			orderedPosts = append(orderedPosts, p)
+		}
+	}
+
+	var nextCursor string
+	if hasMore {
+		nextCursor = encodeSessionCursor(sessionCursor{SessionID: sessionID, Offset: end})
+	}
+
+	feedPosts := s.buildFeedBatch(ctx, orderedPosts, profileID)
+	return FeedResult{Posts: feedPosts, Cursor: nextCursor, HasMore: hasMore}, nil
 }
+
+func (s *Service) buildCandidates(ctx context.Context, profileID, userAccountID int64) ([]int64, error) {
+	resp, err := s.userClient.GetFriendProfileIDs(ctx, &userpb.GetFriendProfileIDsRequest{UserAccountId: userAccountID})
+	var friendIDs []int64
+	if err == nil && resp != nil {
+		friendIDs = resp.ProfileIds
+	}
+
+	candidateIDs, err := s.recommendation.GetForYouCandidates(ctx, repository.ForYouInput{
+		ProfileID:       profileID,
+		FriendIDs:       friendIDs,
+		Limit:           200,
+		ExcludeAuthorID: profileID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(candidateIDs) == 0 {
+		return nil, nil
+	}
+
+	stats, _ := s.recommendation.GetPostStats(ctx, candidateIDs)
+	authorAffinity, _ := s.recommendation.GetAuthorAffinity(ctx, profileID, 30)
+	communityAffinity, _ := s.recommendation.GetCommunityAffinity(ctx, profileID, 30)
+
+	posts, _ := s.store.Posts.GetByIDs(ctx, candidateIDs)
+	postMeta := make(map[int64]struct {
+		authorID    int64
+		communityID int64
+	}, len(posts))
+	for _, p := range posts {
+		var cid int64
+		if p.CommunityID != nil {
+			cid = *p.CommunityID
+		}
+		postMeta[p.ID] = struct {
+			authorID    int64
+			communityID int64
+		}{p.AuthorID, cid}
+	}
+
+	friendSet := make(map[int64]struct{}, len(friendIDs))
+	for _, id := range friendIDs {
+		friendSet[id] = struct{}{}
+	}
+
+	memberCommunityIDs, _ := s.store.Memberships.GetMemberCommunityIDs(ctx, profileID)
+	memberCommunitySet := make(map[int64]struct{}, len(memberCommunityIDs))
+	for _, cid := range memberCommunityIDs {
+		memberCommunitySet[cid] = struct{}{}
+	}
+
+	type scoredPost struct {
+		id    int64
+		score float64
+	}
+	scored := make([]scoredPost, 0, len(candidateIDs))
+	for _, id := range candidateIDs {
+		meta := postMeta[id]
+		_, isFriend := friendSet[meta.authorID]
+		_, isMemberCommunity := memberCommunitySet[meta.communityID]
+		if meta.communityID == 0 {
+			isMemberCommunity = false
+		}
+		scored = append(scored, scoredPost{
+			id: id,
+			score: repository.ScorePost(
+				stats[id],
+				authorAffinity[meta.authorID],
+				communityAffinity[meta.communityID],
+				isFriend,
+				isMemberCommunity,
+			),
+		})
+	}
+
+	sort.Slice(scored, func(i, j int) bool {
+		return scored[i].score > scored[j].score
+	})
+
+	result := make([]int64, 0, len(scored))
+	for _, sp := range scored {
+		result = append(result, sp.id)
+	}
+	return result, nil
+}
+
+func (s *Service) buildFeedBatch(ctx context.Context, posts []model.Post, viewerProfileID int64) []FeedPost {
+	if len(posts) == 0 {
+		return []FeedPost{}
+	}
+	ids := make([]int64, 0, len(posts))
+	for _, p := range posts {
+		ids = append(ids, p.ID)
+	}
+
+	type batchData struct {
+		likeCounts    map[int64]int
+		isLiked       map[int64]bool
+		commentCounts map[int64]int
+		repostCounts  map[int64]int
+		mediaByPost   map[int64][]model.AttachedMedia
+	}
+
+	var bd batchData
+	eg, egCtx := errgroup.WithContext(ctx)
+
+	eg.Go(func() error {
+		bd.likeCounts, _ = s.store.Likes.GetPostLikeCountsBatch(egCtx, ids)
+		return nil
+	})
+	eg.Go(func() error {
+		bd.isLiked, _ = s.store.Likes.GetViewerPostLikesBatch(egCtx, ids, viewerProfileID)
+		return nil
+	})
+	eg.Go(func() error {
+		bd.commentCounts, _ = s.store.Comments.GetCommentCountsBatch(egCtx, ids)
+		return nil
+	})
+	eg.Go(func() error {
+		bd.repostCounts, _ = s.store.Reposts.GetRepostCountsBatch(egCtx, ids)
+		return nil
+	})
+	eg.Go(func() error {
+		bd.mediaByPost, _ = s.store.PostMedia.GetDetailedMediaByPostIDs(egCtx, ids)
+		return nil
+	})
+	_ = eg.Wait()
+
+	if bd.likeCounts == nil {
+		bd.likeCounts = map[int64]int{}
+	}
+	if bd.isLiked == nil {
+		bd.isLiked = map[int64]bool{}
+	}
+	if bd.commentCounts == nil {
+		bd.commentCounts = map[int64]int{}
+	}
+	if bd.repostCounts == nil {
+		bd.repostCounts = map[int64]int{}
+	}
+	if bd.mediaByPost == nil {
+		bd.mediaByPost = map[int64][]model.AttachedMedia{}
+	}
+
+	result := make([]FeedPost, 0, len(posts))
+	for _, post := range posts {
+		author, err := s.author(ctx, post.AuthorID)
+		if err != nil {
+			continue
+		}
+		text := ""
+		if post.Text != nil {
+			text = html.EscapeString(*post.Text)
+		}
+		attached := make([]Media, 0, len(bd.mediaByPost[post.ID]))
+		for _, item := range bd.mediaByPost[post.ID] {
+			attached = append(attached, Media{
+				ID:       item.MediaID,
+				UID:      item.UID.String(),
+				Name:     item.Name,
+				MimeType: item.MimeType,
+				URL:      s.absoluteMediaURL(ctx, item.MediaID, item.Link),
+			})
+		}
+		media, files := splitMedia(attached)
+
+		likeCount := bd.likeCounts[post.ID]
+		if s.cache != nil {
+			if cached, err := s.cache.GetPostLikeCount(ctx, post.ID); err == nil {
+				likeCount = cached
+			}
+		}
+
+		result = append(result, FeedPost{
+			ID:        post.ID,
+			Text:      text,
+			Author:    author,
+			CreatedAt: post.CreatedAt,
+			Likes:     likeCount,
+			IsLiked:   bd.isLiked[post.ID],
+			Comments:  bd.commentCounts[post.ID],
+			Reposts:   bd.repostCounts[post.ID],
+			Medias:    media,
+			Files:     files,
+		})
+	}
+	return result
+}
+
+type sessionCursor struct {
+	SessionID string `json:"s"`
+	Offset    int    `json:"o"`
+}
+
+func encodeSessionCursor(sc sessionCursor) string {
+	b, _ := json.Marshal(sc)
+	return "v2s:" + base64.StdEncoding.EncodeToString(b)
+}
+
+func decodeSessionCursor(raw string) (sessionCursor, error) {
+	if !strings.HasPrefix(raw, "v2s:") {
+		return sessionCursor{}, errors.New("not a session cursor")
+	}
+	b, err := base64.StdEncoding.DecodeString(raw[4:])
+	if err != nil {
+		return sessionCursor{}, err
+	}
+	var sc sessionCursor
+	return sc, json.Unmarshal(b, &sc)
+}
+
 
 func (s *Service) buildFeedPost(ctx context.Context, post model.Post, viewerProfileID int64) (FeedPost, error) {
 	author, err := s.author(ctx, post.AuthorID)
@@ -830,6 +1178,45 @@ func (s *Service) deletePostLikeCount(ctx context.Context, postID int64) {
 		return
 	}
 	_ = s.cache.DeletePostLikeCount(ctx, postID)
+}
+
+func (s *Service) emitSnapshot(post model.Post, hasMedia bool) {
+	if s.analytics == nil {
+		return
+	}
+	s.analytics.WriteSnapshot(analytics.PostSnapshot{
+		PostID:          post.ID,
+		AuthorProfileID: post.AuthorID,
+		CommunityID:     post.CommunityID,
+		IsPublicDemo:    post.IsPublicDemo,
+		IsActive:        post.IsActive,
+		AllowComments:   post.AllowComments,
+		CreatedAt:       post.CreatedAt,
+		UpdatedAt:       post.UpdatedAt,
+		TextLength:      uint16(len(derefStr(post.Text))),
+		HasMedia:        hasMedia,
+	})
+}
+
+func (s *Service) emitEvent(profileID, postID, authorProfileID int64, communityID *int64, t analytics.EventType) {
+	if s.analytics == nil {
+		return
+	}
+	s.analytics.WriteEvent(analytics.PostEvent{
+		EventTime:       time.Now(),
+		ProfileID:       profileID,
+		PostID:          postID,
+		AuthorProfileID: authorProfileID,
+		CommunityID:     communityID,
+		Type:            t,
+	})
+}
+
+func derefStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 func (s *Service) mapComments(ctx context.Context, comments []model.Comment, viewerProfileID int64) []Comment {

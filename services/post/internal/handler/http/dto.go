@@ -117,3 +117,15 @@ type mediaFeedDTO struct {
 type errorResponse struct {
 	Error string `json:"error"`
 }
+
+type feedEventItem struct {
+	PostID   int64  `json:"postId"`
+	Type     string `json:"type"`
+	DwellMs  uint32 `json:"dwellMs"`
+	Position uint16 `json:"position"`
+	Source   string `json:"source"`
+}
+
+type feedEventsRequest struct {
+	Events []feedEventItem `json:"events"`
+}
