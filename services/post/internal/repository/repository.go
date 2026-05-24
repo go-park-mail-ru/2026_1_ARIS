@@ -23,6 +23,7 @@ type DB interface {
 	Query(context.Context, string, ...any) (pgx.Rows, error)
 	QueryRow(context.Context, string, ...any) pgx.Row
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+	Begin(context.Context) (pgx.Tx, error)
 }
 
 type Store struct {
@@ -62,8 +63,14 @@ func NewPostStorage(db DB) PostRepo {
 }
 
 func (s *postStorage) Save(ctx context.Context, post model.Post) (int64, error) {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx)
+
 	start := time.Now()
-	row := s.db.QueryRow(ctx, `
+	row := tx.QueryRow(ctx, `
 		INSERT INTO post (uid, post_text, author_id, community_id, is_public_demo, allow_comments)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id
@@ -74,15 +81,41 @@ func (s *postStorage) Save(ctx context.Context, post model.Post) (int64, error) 
 	if err := row.Scan(&postID); err != nil {
 		return 0, err
 	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO search_outbox (entity_type, entity_id, operation)
+		VALUES ('post', $1, 'upsert')
+	`, postID); err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
 	return postID, nil
 }
 
 func (s *postStorage) Delete(ctx context.Context, id int64) error {
-	start := time.Now()
-	if _, err := s.db.Exec(ctx, `DELETE FROM like_record WHERE post_id=$1 OR comment_id IN (SELECT id FROM comment WHERE post_id=$1)`, id); err != nil {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
 		return err
 	}
-	tag, err := s.db.Exec(ctx, `DELETE FROM post WHERE id=$1`, id)
+	defer tx.Rollback(ctx)
+
+	start := time.Now()
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO search_outbox (entity_type, entity_id, operation)
+		VALUES ('post', $1, 'delete')
+	`, id); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(ctx, `DELETE FROM like_record WHERE post_id=$1 OR comment_id IN (SELECT id FROM comment WHERE post_id=$1)`, id); err != nil {
+		return err
+	}
+
+	tag, err := tx.Exec(ctx, `DELETE FROM post WHERE id=$1`, id)
 	logQuery(ctx, "postStorage.Delete", start)
 	if err != nil {
 		return err
@@ -90,12 +123,19 @@ func (s *postStorage) Delete(ctx context.Context, id int64) error {
 	if tag.RowsAffected() == 0 {
 		return ErrPostNotFound
 	}
-	return nil
+
+	return tx.Commit(ctx)
 }
 
 func (s *postStorage) Update(ctx context.Context, post model.Post) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
 	start := time.Now()
-	tag, err := s.db.Exec(ctx, `UPDATE post SET post_text=$1, updated_at=$2 WHERE id=$3`, post.Text, post.UpdatedAt, post.ID)
+	tag, err := tx.Exec(ctx, `UPDATE post SET post_text=$1, updated_at=$2 WHERE id=$3`, post.Text, post.UpdatedAt, post.ID)
 	logQuery(ctx, "postStorage.Update", start)
 	if err != nil {
 		return err
@@ -103,7 +143,15 @@ func (s *postStorage) Update(ctx context.Context, post model.Post) error {
 	if tag.RowsAffected() == 0 {
 		return ErrPostNotFound
 	}
-	return nil
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO search_outbox (entity_type, entity_id, operation)
+		VALUES ('post', $1, 'upsert')
+	`, post.ID); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (s *postStorage) Get(ctx context.Context, id int64) (*model.Post, error) {

@@ -360,9 +360,7 @@ services:
     env_file:
       - services/search/.env
     depends_on:
-      user:
-        condition: service_healthy
-      community:
+      elasticsearch:
         condition: service_healthy
       media:
         condition: service_healthy
@@ -374,6 +372,41 @@ services:
       retries: 20
     ports:
       - "127.0.0.1:${SEARCH_HTTP_PUBLIC_PORT:-8088}:8088"
+
+  elasticsearch:
+    profiles: ["microservices"]
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:9200/_cluster/health | grep -qv '\"status\":\"red\"'"]
+      start_period: 60s
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - aris_elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "127.0.0.1:${ELASTICSEARCH_PUBLIC_PORT:-9200}:9200"
+
+  indexer:
+    profiles: ["microservices"]
+    build:
+      context: .
+      dockerfile: services/indexer/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/indexer/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      elasticsearch:
+        condition: service_healthy
 
   game:
     profiles: ["microservices"]
@@ -516,3 +549,4 @@ volumes:
   aris_tarantool_data:
   aris_prometheus_data:
   aris_grafana_data:
+  aris_elasticsearch_data:
