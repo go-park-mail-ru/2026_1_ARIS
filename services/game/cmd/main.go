@@ -15,6 +15,7 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/postgres"
 	authpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/auth"
+	supportpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/support"
 	userpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/user"
 	gameHTTP "github.com/go-park-mail-ru/2026_1_ARIS/services/game/internal/handler/http"
 	gameMiddleware "github.com/go-park-mail-ru/2026_1_ARIS/services/game/internal/middleware"
@@ -59,7 +60,29 @@ func main() {
 	}
 	defer authConn.Close()
 
-	gameUsecase := usecase.New(repository.NewStore(db), userpb.NewUserServiceClient(userConn))
+	supportConn, err := grpc.NewClient(utils.EnvString("SUPPORT_GRPC_ADDR", "localhost:8007"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		logg.Fatal("failed to connect support grpc", zap.Error(err))
+	}
+	defer supportConn.Close()
+
+	gameUsecase := usecase.New(repository.NewStore(db), userpb.NewUserServiceClient(userConn), supportpb.NewSupportServiceClient(supportConn))
+	cleanupCtx, cleanupCancel := context.WithCancel(context.Background())
+	defer cleanupCancel()
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-cleanupCtx.Done():
+				return
+			case <-ticker.C:
+				if err := gameUsecase.CleanupEmptyWaitingRooms(cleanupCtx); err != nil {
+					logg.Warn("failed to cleanup empty game rooms", zap.Error(err))
+				}
+			}
+		}
+	}()
 	hub := websocket.NewHub()
 	go hub.Run()
 
