@@ -53,7 +53,7 @@ BASE_URL="$APP_ENDPOINT"
 
 require_2xx() {
   path="$1"
-  code="$(curl --output /dev/null --silent --show-error --max-time 15 --write-out '%{http_code}' "$BASE_URL$path")"
+  code="$(curl --insecure --output /dev/null --silent --show-error --max-time 15 --write-out '%{http_code}' "$BASE_URL$path")"
   case "$code" in
     2*) echo "[PASS] $path -> $code" ;;
     *) echo "[FAIL] $path -> $code, expected 2xx" >&2; exit 1 ;;
@@ -62,7 +62,7 @@ require_2xx() {
 
 require_not_5xx() {
   path="$1"
-  code="$(curl --output /dev/null --silent --show-error --max-time 15 --write-out '%{http_code}' "$BASE_URL$path")"
+  code="$(curl --insecure --output /dev/null --silent --show-error --max-time 15 --write-out '%{http_code}' "$BASE_URL$path")"
   case "$code" in
     000|5*) echo "[FAIL] $path -> $code" >&2; exit 1 ;;
     *) echo "[PASS] $path -> $code" ;;
@@ -72,7 +72,7 @@ require_not_5xx() {
 require_status() {
   path="$1"
   expected="$2"
-  code="$(curl --output /dev/null --silent --show-error --max-time 15 --write-out '%{http_code}' "$BASE_URL$path")"
+  code="$(curl --insecure --output /dev/null --silent --show-error --max-time 15 --write-out '%{http_code}' "$BASE_URL$path")"
   if [ "$code" = "$expected" ]; then
     echo "[PASS] $path -> $code"
   else
@@ -83,7 +83,7 @@ require_status() {
 
 require_2xx '/'
 require_2xx '/health'
-curl --fail --silent --show-error "$BASE_URL/health" | grep '"status":"ok"'
+curl --insecure --fail --silent --show-error "$BASE_URL/health" | grep '"status":"ok"'
 require_2xx '/metrics/api/health'
 require_2xx '/prometheus/-/healthy'
 require_2xx '/api/public/feed?limit=1'
