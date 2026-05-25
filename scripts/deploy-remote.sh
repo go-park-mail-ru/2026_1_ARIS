@@ -6,8 +6,8 @@ set -a
 set +a
 
 : "${APP_ENDPOINT:?APP_ENDPOINT is required}"
-
-export COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-2}"
+: "${IMAGE_REGISTRY:?IMAGE_REGISTRY is required}"
+: "${IMAGE_TAG:?IMAGE_TAG is required}"
 
 sh scripts/render-service-envs.sh
 sh scripts/render-nginx-server-conf.sh
@@ -20,13 +20,12 @@ compose() {
     "$@"
 }
 
-echo "Building backend services in batches of 2..."
-compose build auth media
-compose build user post
-compose build chat support
-compose build community search
-compose build game
-compose build indexer
+if [ -n "${GHCR_TOKEN:-}" ]; then
+  echo "$GHCR_TOKEN" | docker login ghcr.io -u "${GHCR_USER:?GHCR_USER is required when GHCR_TOKEN is set}" --password-stdin
+fi
+
+echo "Pulling backend images from ${IMAGE_REGISTRY}..."
+compose pull auth media user post chat support community search game indexer
 
 compose up --no-build --force-recreate -d \
   tarantool auth media user post chat support community search game prometheus grafana node-exporter nginx \
