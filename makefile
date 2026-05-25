@@ -1,4 +1,4 @@
-.PHONY: test coverage clean dev down reset-db logs migrate mocks seed tarantool-stats ws-open microservices local-prepare microservices-up microservices-rebuild microservices-monitoring-up microservices-full-up microservices-stop microservices-down microservices-reset local-up local-rebuild local-monitoring-up local-full-up local-stop local-down local-reset server-prepare server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop community-up community-stop search-up search-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update logs-auth logs-media logs-user logs-post logs-chat logs-support logs-community logs-search logs-nginx
+.PHONY: test coverage clean dev down reset-db logs migrate mocks seed tarantool-stats ws-open microservices local-prepare microservices-up microservices-rebuild microservices-monitoring-up microservices-full-up microservices-stop microservices-down microservices-reset local-up local-rebuild local-monitoring-up local-full-up local-stop local-down local-reset server-prepare server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop community-up community-stop search-up search-stop elasticsearch-up elasticsearch-stop indexer-up indexer-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update nginx-recreate logs-auth logs-media logs-user logs-post logs-chat logs-support logs-community logs-search logs-elasticsearch logs-indexer logs-nginx seed-elasticsearch
 
 COMPOSE_FILE=./docker-compose.yml
 COMPOSE_ENV_FILE=./.env
@@ -7,8 +7,8 @@ COMPOSE=COMPOSE_PARALLEL_LIMIT=$(COMPOSE_PARALLEL_LIMIT) docker compose --env-fi
 COMPOSE_SERVER_FILE=./docker-compose.server.yml
 COMPOSE_SERVER_ENV_FILE=./.env.server
 COMPOSE_SERVER=docker compose --env-file $(COMPOSE_SERVER_ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_SERVER_FILE)
-MICROSERVICE_SERVICES=auth media user post chat support community search game
-MICROSERVICE_INFRA=db redis minio tarantool
+MICROSERVICE_SERVICES=auth media user post chat support community search game indexer
+MICROSERVICE_INFRA=db redis minio tarantool elasticsearch clickhouse
 MICROSERVICE_EDGE=nginx
 MICROSERVICE_MONITORING=prometheus grafana node-exporter
 MICROSERVICE_INIT=migrate
@@ -75,6 +75,9 @@ local-reset: microservices-reset
 
 seed: local-prepare
 	$(COMPOSE) up seed
+
+seed-elasticsearch:
+	set -a; . $(COMPOSE_ENV_FILE); set +a; sh scripts/seed-elasticsearch.sh
 
 tarantool-stats:
 	sh scripts/tarantool-stats.sh
@@ -203,6 +206,18 @@ search-up: local-prepare
 search-stop:
 	$(COMPOSE) stop search
 
+elasticsearch-up:
+	$(COMPOSE) --profile microservices up -d elasticsearch
+
+elasticsearch-stop:
+	$(COMPOSE) stop elasticsearch
+
+indexer-up: local-prepare
+	$(COMPOSE) up --build -d indexer
+
+indexer-stop:
+	$(COMPOSE) stop indexer
+
 nginx-up: local-prepare
 	$(COMPOSE) --profile microservices up -d nginx
 
@@ -217,9 +232,10 @@ nginx-reload:
 	$(COMPOSE) exec -T nginx nginx -s reload
 
 nginx-update:
-	$(COMPOSE) --profile microservices up -d nginx
-	$(COMPOSE) exec -T nginx nginx -t
-	$(COMPOSE) exec -T nginx nginx -s reload
+	$(COMPOSE) --profile microservices up -d --force-recreate nginx
+
+nginx-recreate: local-prepare
+	$(COMPOSE) --profile microservices up -d --force-recreate nginx
 
 logs-auth:
 	$(COMPOSE) logs -f auth
@@ -244,6 +260,12 @@ logs-community:
 
 logs-search:
 	$(COMPOSE) logs -f search
+
+logs-elasticsearch:
+	$(COMPOSE) logs -f elasticsearch
+
+logs-indexer:
+	$(COMPOSE) logs -f indexer
 
 logs-nginx:
 	$(COMPOSE) logs -f nginx

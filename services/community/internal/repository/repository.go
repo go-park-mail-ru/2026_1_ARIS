@@ -93,6 +93,13 @@ func (s *communityStorage) Create(ctx context.Context, community model.Community
 		return nil, err
 	}
 
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO search_outbox (entity_type, entity_id, operation)
+		VALUES ('community', $1, 'upsert')
+	`, created.ID); err != nil {
+		return nil, err
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
@@ -133,9 +140,15 @@ func (s *communityStorage) List(ctx context.Context, limit, offset int) ([]model
 }
 
 func (s *communityStorage) Update(ctx context.Context, community model.Community) (*model.Community, error) {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
 	var updated model.Community
 	start := time.Now()
-	err := pgxscan.Get(ctx, s.db, &updated, `
+	err = pgxscan.Get(ctx, tx, &updated, `
 		UPDATE community
 		SET title=$1, bio=$2, community_type=$3, username=$4, cover_media_id=$5, updated_at=NOW()
 		WHERE id=$6 AND is_active=TRUE
@@ -145,12 +158,29 @@ func (s *communityStorage) Update(ctx context.Context, community model.Community
 	if err != nil {
 		return nil, normalizeCommunityError(mapPgError(err))
 	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO search_outbox (entity_type, entity_id, operation)
+		VALUES ('community', $1, 'upsert')
+	`, updated.ID); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
 	return &updated, nil
 }
 
 func (s *communityStorage) UpdateAvatar(ctx context.Context, communityProfileID int64, avatarID *int64) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
 	start := time.Now()
-	tag, err := s.db.Exec(ctx, `UPDATE profile SET avatar_id=$1, updated_at=NOW() WHERE id=$2`, avatarID, communityProfileID)
+	tag, err := tx.Exec(ctx, `UPDATE profile SET avatar_id=$1, updated_at=NOW() WHERE id=$2`, avatarID, communityProfileID)
 	logQuery(ctx, "communityStorage.UpdateAvatar", start)
 	if err != nil {
 		return err
@@ -158,7 +188,23 @@ func (s *communityStorage) UpdateAvatar(ctx context.Context, communityProfileID 
 	if tag.RowsAffected() == 0 {
 		return ErrCommunityNotFound
 	}
-	return nil
+
+	var communityID int64
+	if err := tx.QueryRow(ctx, `SELECT id FROM community WHERE profile_id=$1 AND is_active=TRUE`, communityProfileID).Scan(&communityID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return tx.Commit(ctx)
+		}
+		return err
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO search_outbox (entity_type, entity_id, operation)
+		VALUES ('community', $1, 'upsert')
+	`, communityID); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (s *communityStorage) GetAvatarID(ctx context.Context, communityProfileID int64) (*int64, error) {
@@ -202,8 +248,14 @@ func (s *communityStorage) ExistsByTitleOrUsername(ctx context.Context, title, u
 }
 
 func (s *communityStorage) Delete(ctx context.Context, communityID int64) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
 	start := time.Now()
-	tag, err := s.db.Exec(ctx, `DELETE FROM community WHERE id=$1 AND is_active=TRUE`, communityID)
+	tag, err := tx.Exec(ctx, `UPDATE community SET is_active=FALSE, updated_at=NOW() WHERE id=$1 AND is_active=TRUE`, communityID)
 	logQuery(ctx, "communityStorage.Delete", start)
 	if err != nil {
 		return err
@@ -211,7 +263,15 @@ func (s *communityStorage) Delete(ctx context.Context, communityID int64) error 
 	if tag.RowsAffected() == 0 {
 		return ErrCommunityNotFound
 	}
-	return nil
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO search_outbox (entity_type, entity_id, operation)
+		VALUES ('community', $1, 'delete')
+	`, communityID); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (s *communityStorage) GetMember(ctx context.Context, communityID, profileID int64) (*model.CommunityMember, error) {

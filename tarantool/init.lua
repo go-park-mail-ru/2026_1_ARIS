@@ -70,6 +70,12 @@ ensure_space('post_like_counts', {
     {name = 'updated_at', type = 'number'},
 }, {{field = 'post_id', type = 'unsigned'}})
 
+ensure_space('feed_sessions', {
+    {name = 'session_id', type = 'string'},
+    {name = 'post_ids',   type = 'string'},
+    {name = 'expires_at', type = 'number'},
+}, {{field = 'session_id', type = 'string'}})
+
 ensure_space('presence', {
     {name = 'user_account_id', type = 'unsigned'},
     {name = 'is_online', type = 'boolean'},

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-park-mail-ru/2026_1_ARIS/services/post/internal/analytics"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/post/internal/usecase"
 	"github.com/go-park-mail-ru/2026_1_ARIS/utils"
 )
@@ -32,6 +33,7 @@ func (h *Handler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler)
 		}
 		r.Get("/feed", h.GetFeed)
 		r.Get("/posts/popular", h.GetPopularPosts)
+		r.Post("/feed/events", h.PostFeedEvents)
 	})
 
 	r.Route("/post", func(r chi.Router) {
@@ -57,6 +59,50 @@ func (h *Handler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler)
 		r.Post("/{id}/comments/{commentID}/likes", h.LikeComment)
 		r.Delete("/{id}/comments/{commentID}/likes", h.UnlikeComment)
 	})
+}
+
+func (h *Handler) PostFeedEvents(w http.ResponseWriter, r *http.Request) {
+	userAccountID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	var req feedEventsRequest
+	defer r.Body.Close()
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.WriteJSON(w, http.StatusBadRequest, errorResponse{Error: "bad request"})
+		return
+	}
+	if len(req.Events) > 50 {
+		utils.WriteJSON(w, http.StatusBadRequest, errorResponse{Error: "too many events"})
+		return
+	}
+	h.post.RecordFeedEvents(r.Context(), userAccountID, mapFeedEvents(req.Events))
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func mapFeedEvents(items []feedEventItem) []analytics.PostEvent {
+	result := make([]analytics.PostEvent, 0, len(items))
+	for _, item := range items {
+		var t analytics.EventType
+		switch item.Type {
+		case "view":
+			t = analytics.EventPostView
+		case "hide":
+			t = analytics.EventPostHide
+		case "report":
+			t = analytics.EventPostReport
+		default:
+			continue
+		}
+		result = append(result, analytics.PostEvent{
+			PostID:   item.PostID,
+			Type:     t,
+			DwellMs:  item.DwellMs,
+			Position: item.Position,
+			Source:   item.Source,
+		})
+	}
+	return result
 }
 
 func (h *Handler) GetCommunityPosts(w http.ResponseWriter, r *http.Request) {

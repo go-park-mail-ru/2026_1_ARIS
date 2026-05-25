@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	pkgclickhouse "github.com/go-park-mail-ru/2026_1_ARIS/pkg/clickhouse"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/postgres"
 	tarantoolcache "github.com/go-park-mail-ru/2026_1_ARIS/pkg/tarantool"
@@ -21,6 +22,7 @@ import (
 	mediapb "github.com/go-park-mail-ru/2026_1_ARIS/proto/media"
 	postpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/post"
 	userpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/user"
+	"github.com/go-park-mail-ru/2026_1_ARIS/services/post/internal/analytics"
 	postGRPC "github.com/go-park-mail-ru/2026_1_ARIS/services/post/internal/handler/grpc"
 	postHTTP "github.com/go-park-mail-ru/2026_1_ARIS/services/post/internal/handler/http"
 	postMiddleware "github.com/go-park-mail-ru/2026_1_ARIS/services/post/internal/middleware"
@@ -60,6 +62,13 @@ func main() {
 		defer postCache.Close()
 	}
 
+	chConn, err := pkgclickhouse.New()
+	if err != nil {
+		logg.Warn("clickhouse unavailable, analytics and recommendations disabled", zap.Error(err))
+	} else {
+		defer chConn.Close()
+	}
+
 	userConn, err := grpc.NewClient(utils.EnvString("USER_GRPC_ADDR", "localhost:8004"), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		logg.Fatal("failed to connect user grpc", zap.Error(err))
@@ -84,14 +93,23 @@ func main() {
 	}
 	defer communityConn.Close()
 
+	store := repository.NewStore(db)
 	postUsecase := usecase.New(
-		repository.NewStore(db),
+		store,
 		userpb.NewUserServiceClient(userConn),
 		mediapb.NewMediaServiceClient(mediaConn),
 		communitypb.NewCommunityServiceClient(communityConn),
 	)
 	if postCache != nil {
 		postUsecase.SetCache(postCache)
+		postUsecase.SetSessionCache(postCache)
+	}
+	if chConn != nil {
+		analyticsWriter := analytics.NewWriter(chConn, logg)
+		syncSnapshots(ctx, logg, analyticsWriter, store)
+		go analyticsWriter.Run(ctx)
+		postUsecase.SetAnalytics(analyticsWriter)
+		postUsecase.SetRecommendation(repository.NewClickhouseRecommendationRepo(chConn))
 	}
 
 	grpcServer := grpc.NewServer()
@@ -141,4 +159,43 @@ func main() {
 		logg.Fatal("post http server forced to shutdown", zap.Error(err))
 	}
 	logg.Info("post service stopped")
+}
+
+// syncSnapshots bulk-loads all active PostgreSQL posts into ClickHouse
+// post_snapshot on first startup. On subsequent restarts the table is
+// already populated, so the function returns immediately without writes.
+func syncSnapshots(ctx context.Context, logg *zap.Logger, w *analytics.Writer, store repository.Store) {
+	posts, err := store.Posts.GetAll(ctx)
+	if err != nil {
+		logg.Warn("initial snapshot sync: failed to fetch posts", zap.Error(err))
+		return
+	}
+	snaps := make([]analytics.PostSnapshot, 0, len(posts))
+	for _, p := range posts {
+		var textLen uint16
+		if p.Text != nil {
+			textLen = uint16(len(*p.Text))
+		}
+		snaps = append(snaps, analytics.PostSnapshot{
+			PostID:          p.ID,
+			AuthorProfileID: p.AuthorID,
+			CommunityID:     p.CommunityID,
+			IsPublicDemo:    p.IsPublicDemo,
+			IsActive:        p.IsActive,
+			AllowComments:   p.AllowComments,
+			CreatedAt:       p.CreatedAt,
+			UpdatedAt:       p.UpdatedAt,
+			TextLength:      textLen,
+		})
+	}
+	inserted, err := w.SyncSnapshotsIfEmpty(ctx, snaps)
+	if err != nil {
+		logg.Warn("initial snapshot sync failed", zap.Error(err))
+		return
+	}
+	if inserted {
+		logg.Info("initial snapshot sync completed", zap.Int("posts", len(snaps)))
+	} else {
+		logg.Info("initial snapshot sync skipped: post_snapshot already populated")
+	}
 }
