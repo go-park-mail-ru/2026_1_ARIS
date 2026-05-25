@@ -1,16 +1,17 @@
 package usecase
 
 type CreateRoomInput struct {
+	Title            string
 	GameType         string
 	MaxPlayers       int
 	Password         string
+	IsRanked         bool
 	QuestionCount    int
 	AnswerTimeoutSec int
 }
 
 type QuestionInput struct {
 	GameType      string
-	Slug          string
 	Text          string
 	CorrectAnswer float64
 	AnswerUnit    *string
@@ -18,22 +19,23 @@ type QuestionInput struct {
 }
 
 type Player struct {
-	ProfileID     int64
-	UserAccountID int64
-	Name          string
-	Username      string
-	FirstName     string
-	LastName      string
-	AvatarID      *int64
-	Score         int
-	IsReady       bool
-	HasAnswered   bool
-	IsMe          bool
+	ProfileID            int64
+	UserAccountID        int64
+	Name                 string
+	Username             string
+	FirstName            string
+	LastName             string
+	AvatarID             *int64
+	Score                int
+	IsReady              bool
+	HasAnswered          bool
+	PauseUsed            bool
+	ForceResumeRequested bool
+	IsMe                 bool
 }
 
 type Question struct {
 	ID            int64
-	Slug          string
 	Text          string
 	CorrectAnswer float64
 	AnswerUnit    *string
@@ -41,10 +43,20 @@ type Question struct {
 }
 
 type Answer struct {
-	ProfileID  int64
-	Answer     float64
-	Distance   float64
-	AnsweredAt string
+	ProfileID      int64
+	Answer         float64
+	Distance       float64
+	AnsweredAt     string
+	ResponseTimeMs int64
+}
+
+type RoomMessage struct {
+	ID        int64
+	RoomID    int64
+	ProfileID int64
+	Text      string
+	Author    Player
+	CreatedAt string
 }
 
 type RoomQuestion struct {
@@ -69,26 +81,35 @@ type CurrentQuestion struct {
 }
 
 type Room struct {
-	ID                   int64
-	InviteCode           string
-	GameType             string
-	Status               string
-	CreatedByProfileID   int64
-	WinnerProfileID      *int64
-	MaxPlayers           int
-	HasPassword          bool
-	Password             string
-	QuestionCount        int
-	AnswerTimeoutSec     int
-	Creator              Player
-	CurrentQuestionIndex int
-	CurrentQuestion      *CurrentQuestion
-	Players              []Player
-	Questions            []RoomQuestion
-	ProfileStats         Stats
-	CreatedAt            string
-	UpdatedAt            string
-	FinishedAt           *string
+	ID                      int64
+	Title                   string
+	InviteCode              string
+	GameType                string
+	Status                  string
+	CreatedByProfileID      int64
+	WinnerProfileID         *int64
+	MaxPlayers              int
+	HasPassword             bool
+	Password                string
+	IsRanked                bool
+	QuestionCount           int
+	AnswerTimeoutSec        int
+	Creator                 Player
+	CurrentQuestionIndex    int
+	NextQuestionAt          *string
+	PausedByProfileID       *int64
+	PauseStartedAt          *string
+	PauseUntilAt            *string
+	PauseForceVotes         int
+	PauseForceVotesRequired int
+	CurrentQuestion         *CurrentQuestion
+	Players                 []Player
+	Questions               []RoomQuestion
+	RatingChanges           []RatingChange
+	ProfileStats            Stats
+	CreatedAt               string
+	UpdatedAt               string
+	FinishedAt              *string
 }
 
 type HistoryItem struct {
@@ -102,4 +123,39 @@ type Stats struct {
 	Won    int
 	Lost   int
 	Drawn  int
+}
+
+type RatingSeason struct {
+	SeasonNumber int
+	Title        string
+	StartsAt     string
+	EndsAt       string
+}
+
+type RatingChange struct {
+	ProfileID    int64
+	Score        int
+	Place        int
+	BeforeRating int
+	AfterRating  int
+	RatingDelta  int
+	RatingWeight float64
+	SeasonNumber int
+	SeasonTitle  string
+}
+
+type LeaderboardEntry struct {
+	Rank        int
+	ProfileID   int64
+	Player      Player
+	Rating      int
+	GamesPlayed int
+	Wins        int
+	Draws       int
+}
+
+type Leaderboard struct {
+	GameType string
+	Season   RatingSeason
+	Entries  []LeaderboardEntry
 }
