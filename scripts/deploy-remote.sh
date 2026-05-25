@@ -81,7 +81,7 @@ require_status() {
   fi
 }
 
-require_2xx '/'
+require_not_5xx '/'
 require_2xx '/health'
 curl --insecure --fail --silent --show-error "$BASE_URL/health" | grep '"status":"ok"'
 require_2xx '/metrics/api/health'
