@@ -2,6 +2,7 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    mem_limit: 512m
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
@@ -19,6 +20,7 @@ services:
   minio:
     image: minio/minio:latest
     restart: unless-stopped
+    mem_limit: 256m
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -93,6 +95,7 @@ services:
   redis:
     image: redis:latest
     restart: unless-stopped
+    mem_limit: 256m
     container_name: ${REDIS_CONTAINER_NAME:-arisnet-redis}
     command: ["redis-server", "--requirepass", "${REDIS_USER_PASSWORD:-local-redis-password}", "--appendonly", "yes"]
     environment:
@@ -110,6 +113,7 @@ services:
   clickhouse:
     image: clickhouse/clickhouse-server:25.4
     restart: unless-stopped
+    mem_limit: 512m
     container_name: ${CLICKHOUSE_CONTAINER_NAME:-arisnet-clickhouse}
     environment:
       CLICKHOUSE_DB: ${CLICKHOUSE_DB:-aris}
@@ -131,6 +135,7 @@ services:
   tarantool:
     image: tarantool/tarantool:2.11
     restart: unless-stopped
+    mem_limit: 256m
     container_name: ${TARANTOOL_CONTAINER_NAME:-arisnet-tarantool}
     command: ["tarantool", "/opt/tarantool/init.lua"]
     environment:
@@ -400,10 +405,11 @@ services:
     profiles: ["microservices"]
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
     restart: unless-stopped
+    mem_limit: 1g
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - ES_JAVA_OPTS=-Xms256m -Xmx256m
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:9200/_cluster/health | grep -qv '\"status\":\"red\"'"]
       start_period: 60s
@@ -463,6 +469,7 @@ services:
     profiles: ["microservices"]
     image: prom/prometheus:v2.55.1
     restart: unless-stopped
+    mem_limit: 512m
     depends_on:
       auth:
         condition: service_healthy
@@ -499,6 +506,7 @@ services:
     profiles: ["microservices"]
     image: grafana/grafana:11.3.0
     restart: unless-stopped
+    mem_limit: 256m
     depends_on:
       prometheus:
         condition: service_started
@@ -517,6 +525,7 @@ services:
     profiles: ["microservices"]
     image: prom/node-exporter:v1.8.2
     restart: unless-stopped
+    mem_limit: 128m
     pid: host
     command:
       - "--path.rootfs=/host"
@@ -529,6 +538,7 @@ services:
     profiles: ["microservices"]
     image: nginx:1.27-alpine
     restart: unless-stopped
+    mem_limit: 128m
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
