@@ -50,6 +50,8 @@ services:
       GF_SECURITY_CSRF_TRUSTED_ORIGINS: ${APP_ENDPOINT:-https://arisnet.ru}
 
   nginx:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       auth:
         condition: service_healthy
