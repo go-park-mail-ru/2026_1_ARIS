@@ -1,4 +1,34 @@
 services:
+  auth:
+    image: ${IMAGE_REGISTRY}/auth:${IMAGE_TAG}
+
+  media:
+    image: ${IMAGE_REGISTRY}/media:${IMAGE_TAG}
+
+  user:
+    image: ${IMAGE_REGISTRY}/user:${IMAGE_TAG}
+
+  post:
+    image: ${IMAGE_REGISTRY}/post:${IMAGE_TAG}
+
+  chat:
+    image: ${IMAGE_REGISTRY}/chat:${IMAGE_TAG}
+
+  support:
+    image: ${IMAGE_REGISTRY}/support:${IMAGE_TAG}
+
+  community:
+    image: ${IMAGE_REGISTRY}/community:${IMAGE_TAG}
+
+  search:
+    image: ${IMAGE_REGISTRY}/search:${IMAGE_TAG}
+
+  game:
+    image: ${IMAGE_REGISTRY}/game:${IMAGE_TAG}
+
+  indexer:
+    image: ${IMAGE_REGISTRY}/indexer:${IMAGE_TAG}
+
   prometheus:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
