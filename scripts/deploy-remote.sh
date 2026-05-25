@@ -8,6 +8,7 @@ set +a
 : "${APP_ENDPOINT:?APP_ENDPOINT is required}"
 
 export COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-2}"
+deploy_nginx_container="${DEPLOY_NGINX_CONTAINER:-1}"
 
 sh scripts/render-service-envs.sh
 sh scripts/render-nginx-server-conf.sh
@@ -27,8 +28,15 @@ compose build chat support
 compose build community search
 compose build game
 
+deploy_services="tarantool auth media user post chat support community search game prometheus grafana node-exporter"
+if [ "$deploy_nginx_container" = "1" ]; then
+  deploy_services="$deploy_services nginx"
+else
+  echo "Skipping Docker nginx service because DEPLOY_NGINX_CONTAINER=$deploy_nginx_container"
+fi
+
 compose up --no-build --force-recreate -d \
-  tarantool auth media user post chat support community search game prometheus grafana node-exporter nginx
+  $deploy_services
 
 sleep 15
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisnet-tarantool .*healthy'
@@ -44,7 +52,9 @@ docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-game-1 .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-prometheus-1 .*Up'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-grafana-1 .*Up'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-node-exporter-1 .*Up'
-docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-nginx-1 .*healthy'
+if [ "$deploy_nginx_container" = "1" ]; then
+  docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-nginx-1 .*healthy'
+fi
 
 BASE_URL="$APP_ENDPOINT"
 
