@@ -34,46 +34,65 @@ func NewClickhouseRecommendationRepo(conn driver.Conn) RecommendationRepo {
 	return &clickhouseRecommendation{conn: conn}
 }
 
+const coldStartThreshold = 20
+
 func (r *clickhouseRecommendation) GetForYouCandidates(ctx context.Context, in ForYouInput) ([]int64, error) {
 	seen := make(map[int64]struct{})
 	var result []int64
 
+	add := func(ids []int64) {
+		for _, id := range ids {
+			if _, ok := seen[id]; !ok {
+				seen[id] = struct{}{}
+				result = append(result, id)
+			}
+		}
+	}
+
 	// 1. Свежие посты от друзей (last 7 days)
 	if len(in.FriendIDs) > 0 {
-		friendPosts, err := r.friendCandidates(ctx, in)
-		if err == nil {
-			for _, id := range friendPosts {
-				if _, ok := seen[id]; !ok {
-					seen[id] = struct{}{}
-					result = append(result, id)
-				}
-			}
+		if posts, err := r.friendCandidates(ctx, in); err == nil {
+			add(posts)
 		}
 	}
 
 	// 2. Посты авторов с высоким affinity (top-50 за 30 дней)
-	affinityPosts, err := r.affinityCandidates(ctx, in)
-	if err == nil {
-		for _, id := range affinityPosts {
-			if _, ok := seen[id]; !ok {
-				seen[id] = struct{}{}
-				result = append(result, id)
-			}
-		}
+	if posts, err := r.affinityCandidates(ctx, in); err == nil {
+		add(posts)
 	}
 
 	// 3. Trending (top-100 за 3 дня)
-	trending, err := r.GetTrendingCandidates(ctx, 100, in.ExcludeAuthorID)
-	if err == nil {
-		for _, id := range trending {
-			if _, ok := seen[id]; !ok {
-				seen[id] = struct{}{}
-				result = append(result, id)
-			}
+	if posts, err := r.GetTrendingCandidates(ctx, 100, in.ExcludeAuthorID); err == nil {
+		add(posts)
+	}
+
+	// 4. Cold-start: свежие активные посты, если кандидатов мало
+	if len(result) < coldStartThreshold {
+		if posts, err := r.coldStartCandidates(ctx, in); err == nil {
+			add(posts)
 		}
 	}
 
 	return result, nil
+}
+
+func (r *clickhouseRecommendation) coldStartCandidates(ctx context.Context, in ForYouInput) ([]int64, error) {
+	rows, err := r.conn.Query(ctx, `
+		SELECT s.post_id
+		FROM post_snapshot AS s FINAL
+		LEFT ANTI JOIN (
+			SELECT post_id FROM user_recent_viewed FINAL WHERE profile_id = ?
+		) AS v ON s.post_id = v.post_id
+		WHERE s.is_active = true
+		  AND s.author_profile_id != ?
+		ORDER BY s.created_at DESC
+		LIMIT ?
+	`, in.ProfileID, in.ExcludeAuthorID, in.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return collectInt64Rows(rows)
 }
 
 func (r *clickhouseRecommendation) friendCandidates(ctx context.Context, in ForYouInput) ([]int64, error) {
