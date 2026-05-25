@@ -25,7 +25,7 @@ if [ -n "${GHCR_TOKEN:-}" ]; then
 fi
 
 echo "Pulling backend images from ${IMAGE_REGISTRY}..."
-compose pull auth media user post chat support community search game indexer
+compose pull auth media user post chat support community search game indexer seed
 
 compose up --no-build --force-recreate -d \
   tarantool auth media user post chat support community search game prometheus grafana node-exporter nginx \

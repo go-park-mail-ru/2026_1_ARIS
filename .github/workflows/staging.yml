@@ -5,6 +5,10 @@ on:
     branches:
       - dev
 
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: false
+
 jobs:
   build-push:
     runs-on: ubuntu-latest
@@ -13,7 +17,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        service: [auth, media, user, post, chat, support, community, search, game, indexer]
+        service: [auth, media, user, post, chat, support, community, search, game, indexer, seed]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

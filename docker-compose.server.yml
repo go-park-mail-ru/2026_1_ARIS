@@ -29,6 +29,10 @@ services:
   indexer:
     image: ${IMAGE_REGISTRY}/indexer:${IMAGE_TAG}
 
+  seed:
+    image: ${IMAGE_REGISTRY}/seed:${IMAGE_TAG}
+    command: ["/app/seed"]
+
   prometheus:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
