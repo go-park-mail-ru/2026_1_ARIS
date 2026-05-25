@@ -89,3 +89,18 @@ func (h *Hub) BroadcastRoomFunc(roomID string, build func(userID int64) []byte) 
 	}
 	h.mu.Unlock()
 }
+
+func (h *Hub) HasUser(roomID string, userID int64) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	clients, ok := h.rooms[roomID]
+	if !ok {
+		return false
+	}
+	for client := range clients {
+		if client.userID == userID {
+			return true
+		}
+	}
+	return false
+}

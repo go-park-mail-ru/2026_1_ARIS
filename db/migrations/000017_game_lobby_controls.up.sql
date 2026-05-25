@@ -1,0 +1,5 @@
+ALTER TABLE game_room
+    ADD COLUMN IF NOT EXISTS password_hash TEXT;
+
+ALTER TABLE game_room_member
+    ADD COLUMN IF NOT EXISTS is_ready BOOLEAN NOT NULL DEFAULT FALSE;

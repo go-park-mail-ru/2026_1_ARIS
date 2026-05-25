@@ -10,11 +10,12 @@ import (
 )
 
 const (
-	writeWait      = 10 * time.Second
-	pongWait       = 60 * time.Second
-	pingPeriod     = (pongWait * 9) / 10
-	maxMessageSize = 4096
-	messageWait    = 5 * time.Second
+	writeWait       = 10 * time.Second
+	pongWait        = 60 * time.Second
+	pingPeriod      = (pongWait * 9) / 10
+	heartbeatPeriod = 5 * time.Second
+	maxMessageSize  = 4096
+	messageWait     = 5 * time.Second
 )
 
 var upgrader = websocket.Upgrader{
@@ -26,15 +27,18 @@ var upgrader = websocket.Upgrader{
 }
 
 type MessageHandler func(ctx context.Context, roomID string, userID int64, payload []byte) ([]byte, error)
+type ConnectionHandler func(ctx context.Context, roomID string, userID int64)
 
 type Client struct {
-	hub       *Hub
-	conn      *websocket.Conn
-	send      chan []byte
-	roomID    string
-	userID    int64
-	initial   []byte
-	onMessage MessageHandler
+	hub          *Hub
+	conn         *websocket.Conn
+	send         chan []byte
+	roomID       string
+	userID       int64
+	initial      []byte
+	onMessage    MessageHandler
+	onDisconnect ConnectionHandler
+	onHeartbeat  ConnectionHandler
 }
 
 func Serve(
@@ -45,19 +49,23 @@ func Serve(
 	userID int64,
 	initial []byte,
 	onMessage MessageHandler,
+	onDisconnect ConnectionHandler,
+	onHeartbeat ConnectionHandler,
 ) error {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return err
 	}
 	client := &Client{
-		hub:       hub,
-		conn:      conn,
-		send:      make(chan []byte, 256),
-		roomID:    roomID,
-		userID:    userID,
-		initial:   initial,
-		onMessage: onMessage,
+		hub:          hub,
+		conn:         conn,
+		send:         make(chan []byte, 256),
+		roomID:       roomID,
+		userID:       userID,
+		initial:      initial,
+		onMessage:    onMessage,
+		onDisconnect: onDisconnect,
+		onHeartbeat:  onHeartbeat,
 	}
 	client.hub.register <- client
 	go client.writePump()
@@ -69,6 +77,11 @@ func (c *Client) readPump() {
 	defer func() {
 		c.hub.unregister <- c
 		c.conn.Close()
+		if c.onDisconnect != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), messageWait)
+			c.onDisconnect(ctx, c.roomID, c.userID)
+			cancel()
+		}
 	}()
 	c.conn.SetReadLimit(maxMessageSize)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -99,8 +112,10 @@ func (c *Client) readPump() {
 
 func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
+	heartbeatTicker := time.NewTicker(heartbeatPeriod)
 	defer func() {
 		ticker.Stop()
+		heartbeatTicker.Stop()
 		c.conn.Close()
 	}()
 	for {
@@ -118,6 +133,12 @@ func (c *Client) writePump() {
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
+			}
+		case <-heartbeatTicker.C:
+			if c.onHeartbeat != nil {
+				ctx, cancel := context.WithTimeout(context.Background(), messageWait)
+				c.onHeartbeat(ctx, c.roomID, c.userID)
+				cancel()
 			}
 		}
 	}

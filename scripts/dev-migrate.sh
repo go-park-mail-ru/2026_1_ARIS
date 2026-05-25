@@ -15,9 +15,15 @@ export PGPASSWORD="$DB_PASSWORD"
 export PATH="$(go env GOPATH)/bin:$PATH"
 
 echo "Waiting for PostgreSQL at ${DB_HOST}:${DB_PORT}..."
-until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1; do
-  sleep 1
-done
+if command -v pg_isready >/dev/null 2>&1; then
+  until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1; do
+    sleep 1
+  done
+else
+  until nc -z "$DB_HOST" "$DB_PORT" >/dev/null 2>&1; do
+    sleep 1
+  done
+fi
 
 if ! command -v migrate >/dev/null 2>&1; then
   echo "Installing golang-migrate..."
