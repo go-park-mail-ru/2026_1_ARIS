@@ -52,7 +52,7 @@ jobs:
           host: ${{ secrets.STAGING_DEPLOY_HOST }}
           username: ${{ secrets.STAGING_DEPLOY_USER }}
           key: ${{ secrets.STAGING_DEPLOY_SSH_KEY }}
-          command_timeout: 10m
+          command_timeout: 25m
           script: |
             set -euo pipefail
 
