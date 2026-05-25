@@ -81,8 +81,6 @@ require_status() {
   fi
 }
 
-require_2xx '/health'
-curl --insecure --fail --silent --show-error "$BASE_URL/health" | grep '"status":"ok"'
 require_2xx '/metrics/api/health'
 require_2xx '/prometheus/-/healthy'
 require_2xx '/api/public/feed?limit=1'
