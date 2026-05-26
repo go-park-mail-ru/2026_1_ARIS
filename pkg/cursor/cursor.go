@@ -4,46 +4,40 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type Cursor struct {
 	CreatedAt time.Time
-	ID        uuid.UUID
+	ID        int64
 }
 
-func Encode(cursor Cursor) string {
-	raw := fmt.Sprintf("%s_%s", cursor.CreatedAt.UTC().Format(time.RFC3339Nano), cursor.ID.String())
+func Encode(c Cursor) string {
+	raw := fmt.Sprintf("%s_%d", c.CreatedAt.UTC().Format(time.RFC3339Nano), c.ID)
 	return base64.StdEncoding.EncodeToString([]byte(raw))
 }
 
 func Decode(str string) (Cursor, error) {
-	c, err := base64.StdEncoding.DecodeString(str)
+	b, err := base64.StdEncoding.DecodeString(str)
 	if err != nil {
-		fmt.Println("Cursor decoding error")
 		return Cursor{}, err
 	}
 
-	parts := strings.SplitN(string(c), "_", 2)
-
+	parts := strings.SplitN(string(b), "_", 2)
 	if len(parts) != 2 {
-		return Cursor{}, errors.New("Can't decode cursor")
+		return Cursor{}, errors.New("invalid cursor format")
 	}
-	fmt.Println("cursor parts = ", parts)
 
 	t, err := time.Parse(time.RFC3339Nano, parts[0])
 	if err != nil {
-		fmt.Println("Can't parse cursor CreatedAt")
-		return Cursor{}, err
+		return Cursor{}, errors.New("invalid cursor timestamp")
 	}
 
-	id, err := uuid.Parse(parts[1])
+	id, err := strconv.ParseInt(parts[1], 10, 64)
 	if err != nil {
-		fmt.Println("Can't parse cursor id")
-		return Cursor{}, err
+		return Cursor{}, errors.New("invalid cursor id")
 	}
 
 	return Cursor{ID: id, CreatedAt: t}, nil

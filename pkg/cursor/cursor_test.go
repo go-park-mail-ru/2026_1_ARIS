@@ -4,14 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEncodeDecode(t *testing.T) {
 	c := Cursor{
 		CreatedAt: time.Now().Truncate(time.Millisecond),
-		ID:        uuid.New(),
+		ID:        42,
 	}
 	encoded := Encode(c)
 	decoded, err := Decode(encoded)

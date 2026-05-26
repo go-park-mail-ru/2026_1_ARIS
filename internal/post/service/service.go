@@ -401,7 +401,7 @@ func (s *Service) getFeed(ctx context.Context, rawCursor string, limit int, publ
 	if cur != nil {
 		start = len(posts)
 		for i, post := range posts {
-			if post.CreatedAt.Before(cur.CreatedAt) || (post.CreatedAt.Equal(cur.CreatedAt) && post.Uid.String() != cur.ID.String()) {
+			if post.CreatedAt.Before(cur.CreatedAt) || (post.CreatedAt.Equal(cur.CreatedAt) && post.ID < cur.ID) {
 				start = i
 				break
 			}
@@ -425,7 +425,7 @@ func (s *Service) getFeed(ctx context.Context, rawCursor string, limit int, publ
 	var nextCursor string
 	if hasMore && len(page) > 0 {
 		last := page[len(page)-1]
-		nextCursor = cursor.Encode(cursor.Cursor{CreatedAt: last.CreatedAt, ID: last.Uid})
+		nextCursor = cursor.Encode(cursor.Cursor{CreatedAt: last.CreatedAt, ID: last.ID})
 	}
 
 	result := make([]FeedPost, 0, len(page))

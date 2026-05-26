@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"html"
-	"math"
 	"sort"
 	"strings"
 	"time"
@@ -790,8 +789,7 @@ func (s *Service) getChronologicalFeed(ctx context.Context, userAccountID int64,
 	if legacyCursor != nil {
 		t := legacyCursor.CreatedAt
 		beforeTime = &t
-		// legacy cursor has uuid, not int64; use a very large ID so we get all posts at this timestamp
-		id := int64(math.MaxInt64)
+		id := legacyCursor.ID
 		beforeID = &id
 	}
 
@@ -815,7 +813,7 @@ func (s *Service) getChronologicalFeed(ctx context.Context, userAccountID int64,
 	var nextCursor string
 	if hasMore && len(posts) > 0 {
 		last := posts[len(posts)-1]
-		nextCursor = cursor.Encode(cursor.Cursor{CreatedAt: last.CreatedAt, ID: last.Uid})
+		nextCursor = cursor.Encode(cursor.Cursor{CreatedAt: last.CreatedAt, ID: last.ID})
 	}
 
 	feedPosts := s.buildFeedBatch(ctx, posts, viewerProfileID)
@@ -1642,6 +1640,6 @@ func NewPost(text *string, authorID int64, isPublicDemo, allowComments bool) *mo
 	return model.NewPost(text, authorID, isPublicDemo, allowComments)
 }
 
-func Cursor(createdAt time.Time, id uuid.UUID) string {
+func Cursor(createdAt time.Time, id int64) string {
 	return cursor.Encode(cursor.Cursor{CreatedAt: createdAt, ID: id})
 }
