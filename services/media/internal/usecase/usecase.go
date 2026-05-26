@@ -83,6 +83,9 @@ func (s *Service) saveFile(ctx context.Context, in SaveFileInput) (*SavedFile, e
 	if in.Size <= 0 || in.File == nil || strings.TrimSpace(in.FileFor) == "" || in.ProfileID <= 0 {
 		return nil, ErrInvalidInput
 	}
+	if maxSize, ok := maxSizeByContext[in.FileFor]; ok && in.Size > maxSize {
+		return nil, ErrInvalidInput
+	}
 
 	mediaUUID := uuid.New()
 	if strings.TrimSpace(in.Name) == "" {
@@ -172,7 +175,21 @@ var allowedByContext = map[string][]string{
 	"support": {"image/"},
 }
 
+var videoNoteMimes = map[string]bool{
+	"video/webm":      true,
+	"video/mp4":       true,
+	"video/quicktime": true,
+}
+
+var maxSizeByContext = map[string]int64{
+	"video_note": 50 << 20,
+	"avatar":     5 << 20,
+}
+
 func isAllowed(mimeType string, fileFor string) bool {
+	if fileFor == "video_note" {
+		return videoNoteMimes[strings.ToLower(strings.TrimSpace(mimeType))]
+	}
 	for _, prefix := range allowedByContext[fileFor] {
 		if strings.HasPrefix(mimeType, prefix) {
 			return true
