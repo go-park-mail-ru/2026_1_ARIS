@@ -51,4 +51,5 @@ services:
       retries: 20
     volumes:
       - ./nginx/config/nginx.container.server.conf:/etc/nginx/nginx.conf:ro
+      - /home/deploy/arisfront/dist:/var/www/arisfront:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
