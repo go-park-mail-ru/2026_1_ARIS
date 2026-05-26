@@ -1,16 +1,36 @@
-name: Deploy Staging
+name: Deploy Space
 concurrency:
-  group: deploy-staging
-  cancel-in-progress: true
+  group: deploy-space
+  cancel-in-progress: false
 
 on:
   push:
     branches:
-      - dev
+      - ARIS-SPACE-BACK
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: go test ./...
+
   build:
     runs-on: ubuntu-latest
+    needs: test
     permissions:
       contents: read
       packages: write
@@ -37,11 +57,11 @@ jobs:
         run: |
           owner=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
           docker buildx build \
-            --cache-from "type=registry,ref=ghcr.io/${owner}/aris-${{ matrix.service }}:staging" \
+            --cache-from "type=registry,ref=ghcr.io/${owner}/aris-${{ matrix.service }}:space" \
             --cache-to "type=inline" \
             --push \
             -t "ghcr.io/${owner}/aris-${{ matrix.service }}:${TAG}" \
-            -t "ghcr.io/${owner}/aris-${{ matrix.service }}:staging" \
+            -t "ghcr.io/${owner}/aris-${{ matrix.service }}:space" \
             -f "services/${{ matrix.service }}/Dockerfile" \
             .
 
@@ -56,14 +76,14 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_ACTOR: ${{ github.actor }}
         with:
-          host: ${{ secrets.STAGING_DEPLOY_HOST }}
-          username: ${{ secrets.STAGING_DEPLOY_USER }}
-          key: ${{ secrets.STAGING_DEPLOY_SSH_KEY }}
+          host: ${{ secrets.SPACE_DEPLOY_HOST }}
+          username: ${{ secrets.SPACE_DEPLOY_USER }}
+          key: ${{ secrets.SPACE_DEPLOY_SSH_KEY }}
           command_timeout: 10m
           envs: IMAGE_TAG,GHCR_TOKEN,GHCR_ACTOR
           script: |
             set -euo pipefail
-            cd ${{ secrets.STAGING_DEPLOY_PATH }}
+            cd ${{ secrets.SPACE_DEPLOY_PATH }}
             git fetch origin
-            git switch -f -C dev origin/dev
+            git switch -f -C ARIS-SPACE-BACK origin/ARIS-SPACE-BACK
             sh scripts/deploy-remote.sh

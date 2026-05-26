@@ -151,6 +151,7 @@ services:
 
   auth:
     profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-auth:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: services/auth/Dockerfile
@@ -184,6 +185,7 @@ services:
 
   media:
     profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-media:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: services/media/Dockerfile
@@ -213,6 +215,7 @@ services:
 
   user:
     profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-user:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: services/user/Dockerfile
@@ -244,6 +247,7 @@ services:
 
   post:
     profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-post:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: services/post/Dockerfile
@@ -281,6 +285,7 @@ services:
 
   chat:
     profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-chat:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: services/chat/Dockerfile
@@ -314,6 +319,7 @@ services:
 
   support:
     profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-support:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: services/support/Dockerfile
@@ -343,6 +349,7 @@ services:
 
   community:
     profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-community:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: services/community/Dockerfile
@@ -374,6 +381,7 @@ services:
 
   search:
     profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-search:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: services/search/Dockerfile
@@ -415,6 +423,7 @@ services:
 
   indexer:
     profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-indexer:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: services/indexer/Dockerfile
@@ -431,6 +440,7 @@ services:
 
   game:
     profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-game:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: services/game/Dockerfile

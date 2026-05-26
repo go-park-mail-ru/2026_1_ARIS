@@ -105,9 +105,9 @@ func (r *FetcherRepo) FetchPost(ctx context.Context, postID int64) (*PostDoc, er
 		       p.is_active, p.is_public_demo, p.created_at,
 		       pr.id, ua.username, up.first_name, up.last_name, pr.avatar_id
 		FROM post p
-		JOIN user_account ua ON ua.id = p.author_id
-		JOIN user_profile up ON up.user_account_id = ua.id
-		JOIN profile pr ON pr.id = up.profile_id
+		JOIN profile pr ON pr.id = p.author_id
+		JOIN user_profile up ON up.profile_id = pr.id
+		JOIN user_account ua ON ua.id = up.user_account_id
 		WHERE p.id = $1
 	`, postID)
 

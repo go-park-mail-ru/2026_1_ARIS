@@ -1,13 +1,41 @@
 #!/usr/bin/env sh
 set -eu
 
+# Preserve IMAGE_TAG passed from CI before .env.server potentially overwrites it
+_IMAGE_TAG="${IMAGE_TAG:-}"
+
 set -a
 . ./.env.server
 set +a
 
-: "${APP_ENDPOINT:?APP_ENDPOINT is required}"
+if [ -n "$_IMAGE_TAG" ]; then
+  export IMAGE_TAG="$_IMAGE_TAG"
+fi
 
-export COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-2}"
+: "${APP_ENDPOINT:?APP_ENDPOINT is required}"
+DEPLOY_LOCK_FILE="${DEPLOY_LOCK_FILE:-/tmp/arisback-deploy.lock}"
+if command -v flock >/dev/null 2>&1; then
+  exec 9>"$DEPLOY_LOCK_FILE"
+  if ! flock -n 9; then
+    echo "Another deploy is already running; exiting." >&2
+    exit 1
+  fi
+else
+  DEPLOY_LOCK_DIR="${DEPLOY_LOCK_DIR:-/tmp/arisback-deploy.lock.d}"
+  if ! mkdir "$DEPLOY_LOCK_DIR" 2>/dev/null; then
+    echo "Another deploy is already running; exiting." >&2
+    exit 1
+  fi
+  trap 'rmdir "$DEPLOY_LOCK_DIR"' EXIT INT TERM
+fi
+
+
+export COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}"
+
+APP_SERVICES="auth media user post chat support community search game indexer"
+INFRA_SERVICES="db redis minio tarantool elasticsearch clickhouse"
+MONITORING_SERVICES="${MONITORING_SERVICES:-prometheus grafana node-exporter}"
+RUN_SEED_ON_DEPLOY="${RUN_SEED_ON_DEPLOY:-0}"
 
 sh scripts/render-service-envs.sh
 sh scripts/render-nginx-server-conf.sh
@@ -20,17 +48,33 @@ compose() {
     "$@"
 }
 
-echo "Building backend services in batches of 2..."
-compose build auth media
-compose build user post
-compose build chat support
-compose build community search
-compose build game
-compose build indexer
+# GHCR_ACTOR приходит из CI; GHCR_USER — старый формат из .env.server (staging)
+_ghcr_user="${GHCR_ACTOR:-${GHCR_USER:-}}"
+if [ -n "${GHCR_TOKEN:-}" ] && [ -n "$_ghcr_user" ]; then
+  echo "Logging in to ghcr.io as ${_ghcr_user}..."
+  echo "$GHCR_TOKEN" | docker login ghcr.io -u "$_ghcr_user" --password-stdin
+fi
 
-compose up --no-build --force-recreate -d \
-  tarantool auth media user post chat support community search game prometheus grafana node-exporter nginx \
-  indexer
+echo "Starting persistent infrastructure..."
+compose up --no-build --no-recreate -d $INFRA_SERVICES
+
+echo "Applying database migrations..."
+compose up --no-build --force-recreate --no-deps migrate
+
+if [ "$RUN_SEED_ON_DEPLOY" = "1" ]; then
+  echo "Running seed data refresh..."
+  compose up --no-build --force-recreate --no-deps seed
+fi
+
+echo "Pulling backend images (tag: ${IMAGE_TAG:-latest})..."
+compose pull $APP_SERVICES
+
+echo "Updating backend runtime services..."
+compose up --no-build --remove-orphans -d $APP_SERVICES
+
+echo "Starting monitoring and edge services..."
+compose up --no-build --no-recreate -d $MONITORING_SERVICES
+compose up --no-build -d nginx
 
 sleep 15
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisnet-tarantool .*healthy'
