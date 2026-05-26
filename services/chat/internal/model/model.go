@@ -14,6 +14,14 @@ const (
 	GroupChat   ChatType = "community"
 )
 
+type MessageType string
+
+const (
+	MessageTypeText      MessageType = "text"
+	MessageTypeVideoNote MessageType = "video_note"
+	MessageTypeSticker   MessageType = "sticker"
+)
+
 type Chat struct {
 	ID        int64     `db:"id"`
 	Uid       uuid.UUID `db:"uid"`
@@ -53,16 +61,17 @@ type ChatMember struct {
 }
 
 type Message struct {
-	ID              int64     `db:"id"`
-	Uid             uuid.UUID `db:"uid"`
-	Text            *string   `db:"message_text"`
-	ParentMessageID *int64    `db:"parent_message_id"`
-	ChatID          int64     `db:"chat_id"`
-	AuthorID        int64     `db:"author_id"`
-	StickerID       *int64    `db:"sticker_id"`
-	IsActive        bool      `db:"is_active"`
-	CreatedAt       time.Time `db:"created_at"`
-	UpdatedAt       time.Time `db:"updated_at"`
+	ID              int64       `db:"id"`
+	Uid             uuid.UUID   `db:"uid"`
+	Text            *string     `db:"message_text"`
+	ParentMessageID *int64      `db:"parent_message_id"`
+	ChatID          int64       `db:"chat_id"`
+	AuthorID        int64       `db:"author_id"`
+	StickerID       *int64      `db:"sticker_id"`
+	Type            MessageType `db:"message_type"`
+	IsActive        bool        `db:"is_active"`
+	CreatedAt       time.Time   `db:"created_at"`
+	UpdatedAt       time.Time   `db:"updated_at"`
 }
 
 type MessageMedia struct {

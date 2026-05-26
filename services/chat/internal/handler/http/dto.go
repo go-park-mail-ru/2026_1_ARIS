@@ -30,6 +30,7 @@ type MessageResponse struct {
 	Files           []AttachmentResponse `json:"files"`
 	Reactions       []ReactionResponse   `json:"reactions"`
 	MyReaction      *string              `json:"myReaction,omitempty"`
+	Type            string               `json:"type"`
 	IsActive        bool                 `json:"isActive"`
 	CreatedAt       string               `json:"createdAt"`
 	UpdatedAt       string               `json:"updatedAt"`
@@ -41,6 +42,7 @@ type messageRequest struct {
 	StickerID       *int64              `json:"stickerId,omitempty"`
 	Media           []attachmentRequest `json:"media"`
 	Files           []attachmentRequest `json:"files"`
+	Type            string              `json:"type"`
 }
 
 type attachmentRequest struct {

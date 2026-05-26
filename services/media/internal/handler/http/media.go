@@ -26,6 +26,8 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/upload", h.SaveFiles)
 }
 
+const maxBodySize = 55 << 20 // 55 МБ с запасом на multipart-overhead
+
 func (h *Handler) SaveFiles(w http.ResponseWriter, r *http.Request) {
 	logg := logger.FromContext(r.Context())
 
@@ -35,8 +37,9 @@ func (h *Handler) SaveFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 	if err := r.ParseMultipartForm(50 << 20); err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, errorResponse{Error: "parsing form error"})
+		utils.WriteJSON(w, http.StatusBadRequest, errorResponse{Error: "request too large"})
 		return
 	}
 
