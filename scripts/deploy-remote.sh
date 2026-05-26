@@ -74,7 +74,12 @@ compose up --no-build --remove-orphans -d $APP_SERVICES
 
 echo "Starting monitoring and edge services..."
 compose up --no-build --no-recreate -d $MONITORING_SERVICES
-compose up --no-build -d nginx
+compose up --no-build --force-recreate -d nginx
+
+if systemctl is-active --quiet arisfront 2>/dev/null || systemctl is-enabled --quiet arisfront 2>/dev/null; then
+  echo "Restarting frontend service..."
+  sudo systemctl restart arisfront
+fi
 
 sleep 15
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisnet-tarantool .*healthy'
