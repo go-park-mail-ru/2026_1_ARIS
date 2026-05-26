@@ -1,7 +1,7 @@
 name: Deploy Space
 concurrency:
   group: deploy-space
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 on:
   push:
@@ -9,8 +9,28 @@ on:
       - ARIS-SPACE-BACK
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: go test ./...
+
   build:
     runs-on: ubuntu-latest
+    needs: test
     permissions:
       contents: read
       packages: write
