@@ -1,8 +1,11 @@
 package http
 
+import "time"
+
 type response struct {
 	Users       []userResult      `json:"users"`
 	Communities []communityResult `json:"communities"`
+	Posts       []postResult      `json:"posts"`
 }
 
 type userResult struct {
@@ -26,6 +29,20 @@ type communityResult struct {
 	AvatarURL    *string `json:"avatarUrl,omitempty"`
 	CoverMediaID *int64  `json:"coverId,omitempty"`
 	CoverURL     *string `json:"coverUrl,omitempty"`
+}
+
+type postResult struct {
+	ID              int64     `json:"id"`
+	Text            string    `json:"text"`
+	AuthorID        int64     `json:"authorId"`
+	AuthorProfileID int64     `json:"authorProfileId"`
+	AuthorUsername  string    `json:"authorUsername"`
+	AuthorFirstName string    `json:"authorFirstName"`
+	AuthorLastName  string    `json:"authorLastName"`
+	AuthorAvatarID  *int64    `json:"authorAvatarId,omitempty"`
+	AuthorAvatarURL *string   `json:"authorAvatarUrl,omitempty"`
+	CommunityID     *int64    `json:"communityId,omitempty"`
+	CreatedAt       time.Time `json:"createdAt"`
 }
 
 type errorResponse struct {
