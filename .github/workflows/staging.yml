@@ -65,5 +65,16 @@ jobs:
             set -euo pipefail
             cd ${{ secrets.STAGING_DEPLOY_PATH }}
             git fetch origin
+            if [ -d db/clickhouse ]; then
+              sudo chown -R "$(id -u):$(id -g)" db/clickhouse
+            fi
+            for mount_file in \
+              db/clickhouse/config.d/allow-default-network.xml \
+              db/clickhouse/001_create_tables.sql
+            do
+              if [ -d "$mount_file" ]; then
+                rm -rf "$mount_file"
+              fi
+            done
             git switch -f -C dev origin/dev
             sh scripts/deploy-remote.sh
