@@ -86,10 +86,12 @@ ws-open:
 	GOCACHE="$(CURDIR)/.cache/go-build" go run ./tools/ws-open/cmd --base-url "$${WS_BASE_URL:-ws://localhost:18080}" --chat-id "$${CHAT_ID:-1}" --cookie-file "$${COOKIE_FILE:-/tmp/aris-cookies.txt}" --duration "$${DURATION:-0}"
 
 microservices-up: local-prepare
-	$(COMPOSE) --profile microservices up -d $(MICROSERVICE_RUNTIME)
+	$(COMPOSE) --profile microservices up --pull never -d $(MICROSERVICE_RUNTIME)
+	$(COMPOSE) --profile microservices up --pull never --force-recreate -d nginx
 
 microservices-rebuild: local-prepare
-	$(COMPOSE) --profile microservices up --build -d $(MICROSERVICE_RUNTIME)
+	$(COMPOSE) --profile microservices up --build --pull never -d $(MICROSERVICE_RUNTIME)
+	$(COMPOSE) --profile microservices up --pull never --force-recreate -d nginx
 
 microservices-monitoring-up:
 	$(COMPOSE) --profile microservices up -d $(MICROSERVICE_MONITORING)

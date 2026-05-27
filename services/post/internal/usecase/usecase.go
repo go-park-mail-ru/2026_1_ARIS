@@ -1101,7 +1101,6 @@ func decodeSessionCursor(raw string) (sessionCursor, error) {
 	return sc, json.Unmarshal(b, &sc)
 }
 
-
 func (s *Service) buildFeedPost(ctx context.Context, post model.Post, viewerProfileID int64) (FeedPost, error) {
 	author, err := s.author(ctx, post.AuthorID)
 	if err != nil {

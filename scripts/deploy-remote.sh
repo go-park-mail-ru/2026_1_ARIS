@@ -29,8 +29,8 @@ else
   trap 'rmdir "$DEPLOY_LOCK_DIR"' EXIT INT TERM
 fi
 
-
 export COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}"
+deploy_nginx_container="${DEPLOY_NGINX_CONTAINER:-1}"
 
 APP_SERVICES="auth media user post chat support community search game indexer"
 INFRA_SERVICES="db redis minio tarantool elasticsearch clickhouse"
@@ -74,7 +74,11 @@ compose up --no-build --remove-orphans -d $APP_SERVICES
 
 echo "Starting monitoring and edge services..."
 compose up --no-build --no-recreate -d $MONITORING_SERVICES
-compose up --no-build --force-recreate -d nginx
+if [ "$deploy_nginx_container" = "1" ]; then
+  compose up --no-build --force-recreate -d nginx
+else
+  echo "Skipping Docker nginx service because DEPLOY_NGINX_CONTAINER=$deploy_nginx_container"
+fi
 
 if systemctl is-active --quiet arisfront 2>/dev/null || systemctl is-enabled --quiet arisfront 2>/dev/null; then
   echo "Restarting frontend service..."
@@ -95,7 +99,9 @@ docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-game-1 .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-prometheus-1 .*Up'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-grafana-1 .*Up'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-node-exporter-1 .*Up'
-docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-nginx-1 .*healthy'
+if [ "$deploy_nginx_container" = "1" ]; then
+  docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-nginx-1 .*healthy'
+fi
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-elasticsearch-1 .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-indexer-1 .*Up'
 

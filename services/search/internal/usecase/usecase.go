@@ -122,12 +122,12 @@ func (s *Service) searchUsers(ctx context.Context, query string, limit int) ([]U
 
 	type hit struct {
 		Source struct {
-			UserAccountID int64   `json:"user_account_id"`
-			ProfileID     int64   `json:"profile_id"`
-			Username      string  `json:"username"`
-			FirstName     string  `json:"first_name"`
-			LastName      string  `json:"last_name"`
-			AvatarID      *int64  `json:"avatar_id"`
+			UserAccountID int64  `json:"user_account_id"`
+			ProfileID     int64  `json:"profile_id"`
+			Username      string `json:"username"`
+			FirstName     string `json:"first_name"`
+			LastName      string `json:"last_name"`
+			AvatarID      *int64 `json:"avatar_id"`
 		} `json:"_source"`
 	}
 	hits, err := esSearch[hit](ctx, s.esClient, esindex.IndexUsers, body)
@@ -234,16 +234,16 @@ func (s *Service) searchPosts(ctx context.Context, query string, limit int) ([]P
 
 	type hit struct {
 		Source struct {
-			PostID          int64   `json:"post_id"`
-			PostText        string  `json:"post_text"`
-			AuthorID        int64   `json:"author_id"`
-			AuthorProfileID int64   `json:"author_profile_id"`
-			AuthorUsername  string  `json:"author_username"`
-			AuthorFirstName string  `json:"author_first_name"`
-			AuthorLastName  string  `json:"author_last_name"`
-			AuthorAvatarID  *int64  `json:"author_avatar_id"`
-			CommunityID     *int64  `json:"community_id"`
-			CreatedAt       string  `json:"created_at"`
+			PostID          int64  `json:"post_id"`
+			PostText        string `json:"post_text"`
+			AuthorID        int64  `json:"author_id"`
+			AuthorProfileID int64  `json:"author_profile_id"`
+			AuthorUsername  string `json:"author_username"`
+			AuthorFirstName string `json:"author_first_name"`
+			AuthorLastName  string `json:"author_last_name"`
+			AuthorAvatarID  *int64 `json:"author_avatar_id"`
+			CommunityID     *int64 `json:"community_id"`
+			CreatedAt       string `json:"created_at"`
 		} `json:"_source"`
 	}
 	hits, err := esSearch[hit](ctx, s.esClient, esindex.IndexPosts, body)

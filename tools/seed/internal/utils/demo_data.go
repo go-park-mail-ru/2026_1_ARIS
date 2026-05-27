@@ -160,7 +160,7 @@ func seedDemoUsers(ctx context.Context, db *pgxpool.Pool) (map[string]demoUserRe
 			Bio:         "Новый тестовый пользователь с полностью заполненным профилем и аватаром.",
 			Town:        "Ростов-на-Дону",
 			Institution: "ЮФУ",
-			AvatarURL:   "https://i.pravatar.cc/400?img=12",
+			AvatarURL:   "https://robohash.org/demofresh?size=400x400",
 		},
 		{
 			Username:    "demofeed",
@@ -173,7 +173,7 @@ func seedDemoUsers(ctx context.Context, db *pgxpool.Pool) (map[string]demoUserRe
 			Bio:         "Пользователь для проверки свежих постов, ленты и карточек профиля.",
 			Town:        "Нижний Новгород",
 			Institution: "ННГУ",
-			AvatarURL:   "https://i.pravatar.cc/400?img=47",
+			AvatarURL:   "https://robohash.org/demofeed?size=400x400",
 		},
 		{
 			Username:    "demochat",
@@ -186,7 +186,7 @@ func seedDemoUsers(ctx context.Context, db *pgxpool.Pool) (map[string]demoUserRe
 			Bio:         "Пользователь для проверки личных сообщений и аватаров в чатах.",
 			Town:        "Самара",
 			Institution: "Самарский университет",
-			AvatarURL:   "https://i.pravatar.cc/400?img=59",
+			AvatarURL:   "https://robohash.org/demochat?size=400x400",
 		},
 		{
 			Username:    "demobackend",
@@ -199,7 +199,7 @@ func seedDemoUsers(ctx context.Context, db *pgxpool.Pool) (map[string]demoUserRe
 			Bio:         "Пользователь с уникальными данными для проверки поиска друзей через backend.",
 			Town:        "Томск",
 			Institution: "ТГУ",
-			AvatarURL:   "https://i.pravatar.cc/400?img=32",
+			AvatarURL:   "https://robohash.org/demobackend?size=400x400",
 		},
 	}
 
@@ -327,11 +327,11 @@ func ensureDemoUser(ctx context.Context, db *pgxpool.Pool, user demoUser) (demoU
 func seedDemoMedia(ctx context.Context, db *pgxpool.Pool, authorID int64) (map[string]int64, error) {
 	items := map[string]string{
 		"campus":    "https://moya-planeta.ru/upload/images/l/eb/e2/ebe21cb5a55a808b104f3d51c3ff96284bae5182.jpg",
-		"frontend":  "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=1200",
-		"community": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1200",
-		"coffee":    "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1200",
-		"diagram":   "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=1200",
-		"cover":     "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=1600",
+		"frontend":  "https://placehold.co/1200x800/0070f3/ffffff.jpg?text=Frontend",
+		"community": "https://placehold.co/1200x800/22c55e/ffffff.jpg?text=Community",
+		"coffee":    "https://placehold.co/1200x800/8b4513/ffffff.jpg?text=Coffee",
+		"diagram":   "https://placehold.co/1200x800/6366f1/ffffff.jpg?text=Diagram",
+		"cover":     "https://placehold.co/1600x900/1e293b/ffffff.jpg?text=Cover",
 	}
 
 	result := make(map[string]int64, len(items))

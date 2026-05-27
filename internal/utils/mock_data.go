@@ -286,7 +286,7 @@ func MakeMock(mediaRepo media.MediaRepo,
 	mediaDesctiption22 := "Media description 22"
 	mediaDesctiption23 := "Media description 23"
 
-	media1 := models.NewMedia("Media name 1", "jpg", uuid.New(), &mediaDesctiption1, "image", "https://img.freepik.com/free-photo/mountains-lake_1398-1150.jpg", 1)
+	media1 := models.NewMedia("Media name 1", "jpg", uuid.New(), &mediaDesctiption1, "image", "https://img.goodfon.com/wallpaper/big/5/e8/gory-ozero-priroda-voda.jpg", 1)
 	media2 := models.NewMedia("Media name 2", "jpg", uuid.New(), &mediaDesctiption2, "image", "https://img51994.kanal-o.ru/img/2024-09-09/fmt_81_24_shutterstock_2141488197.jpg", 1)
 
 	media3 := models.NewMedia("Media name 3", "jpg", uuid.New(), &mediaDesctiption3, "image", "https://moya-planeta.ru/upload/images/l/eb/e2/ebe21cb5a55a808b104f3d51c3ff96284bae5182.jpg", 1)
@@ -296,20 +296,20 @@ func MakeMock(mediaRepo media.MediaRepo,
 	media7 := models.NewMedia("Media name 7", "jpg", uuid.New(), &mediaDesctiption7, "image", "https://img.goodfon.com/wallpaper/big/5/18/italiia-gory-ozero-peizazh-otrazhenie-priroda.webp", 1)
 
 	media8 := models.NewMedia("Media name 8", "jpg", uuid.New(), &mediaDesctiption8, "image", "https://marathonec.ru/wp-content/uploads/2019/07/utrennyaya-probezhka-1.jpg", 1)
-	media9 := models.NewMedia("Media name 9", "png", uuid.New(), &mediaDesctiption9, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlVOAM_1swHsumck2XbdMEeEKauDRDiXn86g&s", 2)
+	media9 := models.NewMedia("Media name 9", "jpg", uuid.New(), &mediaDesctiption9, "image", "https://marathonec.ru/wp-content/uploads/2021/06/beg-na-ulice-1.jpg", 2)
 
-	media10 := models.NewMedia("Media name 10", "jpg", uuid.New(), &mediaDesctiption10, "image", "https://media.licdn.com/dms/image/v2/D5612AQGuHFW9idrbfw/article-cover_image-shrink_720_1280/article-cover_image-shrink_720_1280/0/1714747679466?e=2147483647&v=beta&t=c9gny1mV4A13_niAAW-2wjP9iglUYtsdoXiMzxfoAxo", 2)
+	media10 := models.NewMedia("Media name 10", "jpg", uuid.New(), &mediaDesctiption10, "image", "https://habrastorage.org/r/w1560/getpro/habr/upload_files/de9/f14/c60/de9f14c60cd73c6b7a8b3bfd36dc5f9e.jpg", 2)
 
 	media11 := models.NewMedia("Media name 11", "png", uuid.New(), &mediaDesctiption11, "image", "https://ubifi.net/wp-content/uploads/2025/06/Kinds-of-Internet-Connection.webp", 2)
-	media12 := models.NewMedia("Media name 12", "jpg", uuid.New(), &mediaDesctiption12, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTs3HaWprjBE3nMGKyH-Myd8D3jK0U0EUqTLw&s", 2)
+	media12 := models.NewMedia("Media name 12", "jpg", uuid.New(), &mediaDesctiption12, "image", "https://habrastorage.org/r/w1560/getpro/habr/upload_files/e28/a41/ef9/e28a41ef9dc89f3b5f1d3af19dbb5a7e.jpg", 2)
 	media13 := models.NewMedia("Media name 13", "png", uuid.New(), &mediaDesctiption13, "image", "https://image.geo.de/30140508/t/r4/v4/w1440/r0/-/internetz-f-209777524-jpg--79960-.jpg", 2)
-	media14 := models.NewMedia("Media name 14", "jpg", uuid.New(), &mediaDesctiption14, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS7N25ADdSYwSC-m7qUSqlwPsKd4ALT9F425Q&s", 3)
+	media14 := models.NewMedia("Media name 14", "jpg", uuid.New(), &mediaDesctiption14, "image", "https://images.gastronom.ru/w7V2OKJgfH0aBtnRGR75ZPkmfkYDCPVk_0HxHmAGDGI/pr:article-cover-image/g:ce/rs:auto:0:0:0/L2Ntcy9hbGwtaW1hZ2VzL2ExM2IzOTUxLTgwMDktNGVmOS1hYWNjLTEzNDY4ZTM0MDhjZi5qcGc.webp", 3)
 	media15 := models.NewMedia("Media name 15", "png", uuid.New(), &mediaDesctiption15, "image", "https://www.wiwi.uni-wuerzburg.de/fileadmin/_processed_/3/9/csm_computer-1209641_1920_3a999762b2.jpg", 3)
 	//media16 := models.NewMedia("Media name 16", "jpg", uuid.New(), &mediaDesctiption16, "image", "https://res.cloudinary.com/jerrick/image/upload/v1682443907/64480e82daabca001da8fbbc.jpg", 10246, false)
 
 	media17 := models.NewMedia("Media name 17", "png", uuid.New(), &mediaDesctiption17, "image", "https://fitaliancook.com/wp-content/uploads/2025/07/pasta-e-fagioli-rezept-beitragsbild.jpg", 3)
 	media18 := models.NewMedia("Media name 18", "jpg", uuid.New(), &mediaDesctiption18, "image", "https://eat.de/wp-content/uploads/2025/03/tuerkische-pasta-7014.jpg", 3)
-	media19 := models.NewMedia("Media name 19", "png", uuid.New(), &mediaDesctiption19, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT0kWh_aX8DW5H8BkMJ3xqzXsRXPY2kyZu5ww&s", 3)
+	media19 := models.NewMedia("Media name 19", "jpg", uuid.New(), &mediaDesctiption19, "image", "https://images.gastronom.ru/n9zs3r5VtdQvlbGt9hZ5PnRWqxN0oT3bR4KbwxLe7UU/pr:article-cover-image/g:ce/rs:auto:0:0:0/L2Ntcy9hbGwtaW1hZ2VzL2Q1Y2Q3MzBkLWY3NDQtNDk5OC04YTJjLWU3NzdmOWNkNWQ3Ni5qcGc.webp", 3)
 	media20 := models.NewMedia("Media name 20", "jpg", uuid.New(), &mediaDesctiption20, "image", "https://images.gastronom.ru/TYj7-7529vyMsVom2kYJQl8MFrkWsrOY5hgaQPa1zsk/pr:article-cover-image/g:ce/rs:auto:0:0:0/L2Ntcy9hbGwtaW1hZ2VzL2IzY2RlN2ZjLTgzZjEtNGJlYi1iOGZmLWZhMzM3YzY1ODFlYy5qcGc.webp", 4)
 
 	media21 := models.NewMedia("Media name 21", "png", uuid.New(), &mediaDesctiption21, "image", "https://boxru.ru/upload/resize_cache/iblock/1af/400_400_140cd750bba9870f18aada2478b24840a/q3bxff3vhe8iljlcbpn4jlbx3szt2p1w.jpg", 4)

@@ -33,18 +33,18 @@ type CommunityDoc struct {
 }
 
 type PostDoc struct {
-	PostID           int64
-	PostText         *string
-	AuthorID         int64
-	AuthorProfileID  int64
-	AuthorUsername   string
-	AuthorFirstName  string
-	AuthorLastName   string
-	AuthorAvatarID   *int64
-	CommunityID      *int64
-	IsActive         bool
-	IsPublic         bool
-	CreatedAt        time.Time
+	PostID          int64
+	PostText        *string
+	AuthorID        int64
+	AuthorProfileID int64
+	AuthorUsername  string
+	AuthorFirstName string
+	AuthorLastName  string
+	AuthorAvatarID  *int64
+	CommunityID     *int64
+	IsActive        bool
+	IsPublic        bool
+	CreatedAt       time.Time
 }
 
 type FetcherRepo struct {

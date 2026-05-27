@@ -118,8 +118,8 @@ services:
       - "127.0.0.1:${CLICKHOUSE_NATIVE_PORT:-9009}:9000"
     volumes:
       - aris_clickhouse_data:/var/lib/clickhouse
-      - ./db/clickhouse/config.d/allow-default-network.xml:/etc/clickhouse-server/users.d/allow-default-network.xml:ro
-      - ./db/clickhouse/001_create_tables.sql:/docker-entrypoint-initdb.d/001_create_tables.sql:ro
+      - ./config/clickhouse/config.d/allow-default-network.xml:/etc/clickhouse-server/users.d/allow-default-network.xml:ro
+      - ./config/clickhouse/001_create_tables.sql:/docker-entrypoint-initdb.d/001_create_tables.sql:ro
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
       interval: 5s

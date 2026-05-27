@@ -43,13 +43,23 @@ const (
 	emptyWaitingRoomTTL    = 30 * time.Second
 	staleWaitingMemberTTL  = 15 * time.Second
 	gameStartCountdown     = 10 * time.Second
-	roundResultDuration    = 20 * time.Second
+	roundResultCountdown   = 5 * time.Second
 	gamePauseDuration      = 2 * time.Minute
 	forceResumeCountdown   = 5 * time.Second
 	ratingBaseValue        = 1000
 	ratingKFactor          = 32.0
 	firstRatingSeasonYear  = 2026
 	firstRatingSeasonMonth = time.May
+
+	roundResultFirstCardDelay    = 260 * time.Millisecond
+	roundResultNextCardBaseDelay = 1600 * time.Millisecond
+	roundResultNextCardStepDelay = 1300 * time.Millisecond
+	roundResultAnswerSettle      = 2100 * time.Millisecond
+	roundResultTimesRevealGap    = 600 * time.Millisecond
+	roundResultScoreStartGap     = 650 * time.Millisecond
+	roundResultScoreStepDelay    = 1250 * time.Millisecond
+	roundResultScoreboardSortGap = 650 * time.Millisecond
+	roundResultTimerStartGap     = 850 * time.Millisecond
 )
 
 type Service struct {
@@ -1368,11 +1378,11 @@ func (s *Service) completeActiveQuestion(ctx context.Context, tx repository.Stor
 			return nil, err
 		}
 	}
+	members, err := tx.Members.List(ctx, room.ID)
+	if err != nil {
+		return nil, err
+	}
 	if active.Position >= room.QuestionCount {
-		members, err := tx.Members.List(ctx, room.ID)
-		if err != nil {
-			return nil, err
-		}
 		roomWinner := scoreWinner(members)
 		room.Status = model.RoomStatusFinished
 		room.WinnerProfileID = roomWinner
@@ -1397,7 +1407,7 @@ func (s *Service) completeActiveQuestion(ctx context.Context, tx repository.Stor
 		}
 		return nil, nil
 	}
-	nextQuestionAt := now.Add(roundResultDuration)
+	nextQuestionAt := now.Add(roundResultTransitionDuration(members, answers, active.StartedAt))
 	room.Status = model.RoomStatusActive
 	room.CurrentQuestionIndex = active.Position
 	room.CurrentQuestionID = nil
@@ -1409,6 +1419,121 @@ func (s *Service) completeActiveQuestion(ctx context.Context, tx repository.Stor
 		return nil, err
 	}
 	return &nextQuestionAt, nil
+}
+
+func roundResultCardDelay(revealIndex int) time.Duration {
+	if revealIndex <= 0 {
+		return roundResultFirstCardDelay
+	}
+	return roundResultNextCardBaseDelay + time.Duration(revealIndex-1)*roundResultNextCardStepDelay
+}
+
+func roundResultMemberAnswers(members []model.RoomMember, answers []model.Answer) []model.Answer {
+	memberIDs := make(map[int64]struct{}, len(members))
+	for _, member := range members {
+		memberIDs[member.ProfileID] = struct{}{}
+	}
+	result := make([]model.Answer, 0, len(answers))
+	for _, answer := range answers {
+		if _, ok := memberIDs[answer.ProfileID]; ok {
+			result = append(result, answer)
+		}
+	}
+	return result
+}
+
+func roundResultAnswerGroupKey(value float64) string {
+	if value == 0 {
+		return "0"
+	}
+	return strconv.FormatFloat(value, 'g', -1, 64)
+}
+
+func roundResultMaxRevealIndex(memberCount int, answers []model.Answer) int {
+	if memberCount <= 0 {
+		return 0
+	}
+	answeredProfiles := make(map[int64]struct{}, len(answers))
+	answerGroups := make(map[string]struct{}, len(answers))
+	for _, answer := range answers {
+		answeredProfiles[answer.ProfileID] = struct{}{}
+		answerGroups[roundResultAnswerGroupKey(answer.Answer)] = struct{}{}
+	}
+	groupCount := len(answerGroups)
+	if len(answeredProfiles) < memberCount {
+		groupCount++
+	}
+	return groupCount
+}
+
+func roundResultResponseTimeMs(answer model.Answer, startedAt *time.Time) int64 {
+	if startedAt == nil {
+		return 0
+	}
+	responseTimeMs := answer.AnsweredAt.Sub(*startedAt).Milliseconds()
+	if responseTimeMs < 0 {
+		return 0
+	}
+	return responseTimeMs
+}
+
+func roundResultResponseTimeBucket(answer model.Answer, startedAt *time.Time) int64 {
+	return int64(math.Round(float64(roundResultResponseTimeMs(answer, startedAt)) / 10))
+}
+
+func roundResultAnswersTied(left, right model.Answer, startedAt *time.Time) bool {
+	return left.Distance == right.Distance &&
+		roundResultResponseTimeBucket(left, startedAt) == roundResultResponseTimeBucket(right, startedAt)
+}
+
+func roundResultPositivePointCount(memberCount int, answers []model.Answer, startedAt *time.Time) int {
+	if memberCount <= 0 || len(answers) == 0 {
+		return 0
+	}
+	entries := append([]model.Answer(nil), answers...)
+	sort.SliceStable(entries, func(i, j int) bool {
+		if entries[i].Distance != entries[j].Distance {
+			return entries[i].Distance < entries[j].Distance
+		}
+		leftTime := roundResultResponseTimeMs(entries[i], startedAt)
+		rightTime := roundResultResponseTimeMs(entries[j], startedAt)
+		if leftTime != rightTime {
+			return leftTime < rightTime
+		}
+		return entries[i].ProfileID < entries[j].ProfileID
+	})
+
+	positiveCount := 0
+	for index := 0; index < len(entries); {
+		end := index + 1
+		for end < len(entries) && roundResultAnswersTied(entries[index], entries[end], startedAt) {
+			end++
+		}
+		sum := 0
+		for position := index; position < end; position++ {
+			points := memberCount - position - 1
+			if points > 0 {
+				sum += points
+			}
+		}
+		if sum > 0 {
+			positiveCount += end - index
+		}
+		index = end
+	}
+	return positiveCount
+}
+
+func roundResultTransitionDuration(members []model.RoomMember, answers []model.Answer, startedAt *time.Time) time.Duration {
+	memberAnswers := roundResultMemberAnswers(members, answers)
+	maxRevealIndex := roundResultMaxRevealIndex(len(members), memberAnswers)
+	answersRevealEnd := roundResultCardDelay(maxRevealIndex) + roundResultAnswerSettle
+	timesReveal := answersRevealEnd + roundResultTimesRevealGap
+	scoreStart := timesReveal + roundResultScoreStartGap
+	pointSteps := roundResultPositivePointCount(len(members), memberAnswers, startedAt)
+	sortAt := scoreStart + time.Duration(pointSteps)*roundResultScoreStepDelay + roundResultScoreboardSortGap
+	timerStart := sortAt + roundResultTimerStartGap
+	return timerStart + roundResultCountdown
 }
 
 func answerWinner(answers []model.Answer) *int64 {
