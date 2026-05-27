@@ -12,4 +12,5 @@ RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache
 FROM alpine:3.22
 WORKDIR /app
 COPY --from=build /out/indexer /app/indexer
+EXPOSE 8090
 CMD ["/app/indexer"]

@@ -10,7 +10,7 @@ COMPOSE_SERVER=docker compose --env-file $(COMPOSE_SERVER_ENV_FILE) -f $(COMPOSE
 MICROSERVICE_SERVICES=auth media user post chat support community search game indexer
 MICROSERVICE_INFRA=db redis minio tarantool elasticsearch clickhouse
 MICROSERVICE_EDGE=nginx
-MICROSERVICE_MONITORING=prometheus grafana node-exporter
+MICROSERVICE_MONITORING=prometheus grafana node-exporter nginx-exporter nginxlog-exporter
 MICROSERVICE_INIT=migrate
 MICROSERVICE_ALL=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE) $(MICROSERVICE_MONITORING) $(MICROSERVICE_INFRA)
 MICROSERVICE_RUNTIME=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE)
@@ -112,6 +112,7 @@ microservices-up: local-prepare
 
 microservices-rebuild: local-prepare
 	$(COMPOSE) --profile microservices up --build --pull never -d $(MICROSERVICE_RUNTIME)
+	$(COMPOSE) --profile microservices up -d $(MICROSERVICE_MONITORING)
 	$(COMPOSE) --profile microservices up --pull never --force-recreate -d nginx
 
 microservices-monitoring-up:
