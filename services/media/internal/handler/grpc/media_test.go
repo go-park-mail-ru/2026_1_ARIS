@@ -53,8 +53,8 @@ func TestServerGetMedia(t *testing.T) {
 
 func TestToStatus(t *testing.T) {
 	cases := map[error]codes.Code{
-		usecase.ErrInvalidInput:   codes.InvalidArgument,
-		usecase.ErrMediaNotFound:  codes.NotFound,
+		usecase.ErrInvalidInput:    codes.InvalidArgument,
+		usecase.ErrMediaNotFound:   codes.NotFound,
 		errors.New("storage down"): codes.Internal,
 	}
 	for err, want := range cases {

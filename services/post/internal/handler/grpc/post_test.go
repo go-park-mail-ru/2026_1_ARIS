@@ -14,7 +14,7 @@ func TestToProtoFeed(t *testing.T) {
 		Cursor:  "next",
 		HasMore: true,
 		Posts: []usecase.FeedPost{{
-			ID: 1,
+			ID:   1,
 			Text: "text",
 			Author: usecase.Author{
 				ID: 10, FirstName: "Ann", LastName: "User", Username: "ann", AvatarURL: &avatar,

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	usermock "github.com/go-park-mail-ru/2026_1_ARIS/proto/user/mock"
 	userpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/user"
+	usermock "github.com/go-park-mail-ru/2026_1_ARIS/proto/user/mock"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/post/internal/model"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/post/internal/repository"
 	repomocks "github.com/go-park-mail-ru/2026_1_ARIS/services/post/internal/repository/mocks"

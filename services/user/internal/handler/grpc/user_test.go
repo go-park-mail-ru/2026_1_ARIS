@@ -56,11 +56,11 @@ func TestGenderMapping(t *testing.T) {
 
 func TestToStatus(t *testing.T) {
 	cases := map[error]codes.Code{
-		usecase.ErrUsernameTaken:        codes.AlreadyExists,
-		usecase.ErrInvalidInput:         codes.InvalidArgument,
-		usecase.ErrUserAccountNotFound:  codes.NotFound,
-		usecase.ErrProfileNotFound:      codes.NotFound,
-		usecase.ErrUserProfileNotFound:  codes.NotFound,
+		usecase.ErrUsernameTaken:         codes.AlreadyExists,
+		usecase.ErrInvalidInput:          codes.InvalidArgument,
+		usecase.ErrUserAccountNotFound:   codes.NotFound,
+		usecase.ErrProfileNotFound:       codes.NotFound,
+		usecase.ErrUserProfileNotFound:   codes.NotFound,
 		errors.New("unexpected storage"): codes.Internal,
 	}
 	for err, want := range cases {
