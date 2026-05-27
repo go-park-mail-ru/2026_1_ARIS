@@ -18,6 +18,9 @@ MICROSERVICE_RUNTIME_FULL=$(MICROSERVICE_RUNTIME) $(MICROSERVICE_MONITORING)
 NGINX_SITE_NAME ?= arisnet.ru
 NGINX_SITES_AVAILABLE ?= /etc/nginx/sites-available
 NGINX_SITES_ENABLED ?= /etc/nginx/sites-enabled
+COVER_TEST_PACKAGES ?= ./...
+COVER_PACKAGES ?= ./...
+COVER_EXCLUDE_PATTERN ?= "(/mock/|/mocks/|_mock\.go|_easyjson\.go|\.pb\.go|_grpc\.pb\.go)"
 
 DB_HOST ?= 127.0.0.1
 DB_PORT ?= 5431
@@ -45,9 +48,9 @@ clean:
 	touch ./coverage.out.tmp
 
 coverage: clean
-	go test -count=1 ./... -coverprofile=coverage.out.tmp -coverpkg=./services/...
-	grep -v -E "(/mock/|/mocks/|_mock\.go|_easyjson\.go)" coverage.out.tmp > coverage.out
-	go tool cover -html=coverage.out
+	go test -count=1 $(COVER_TEST_PACKAGES) -coverprofile=coverage.out.tmp -coverpkg=$(COVER_PACKAGES)
+	grep -v -E $(COVER_EXCLUDE_PATTERN) coverage.out.tmp > coverage.out
+	go tool cover -func=coverage.out | grep total
 
 migrate-up:
 	$(MIGRATE) up
@@ -299,6 +302,6 @@ logs-migrate:
 	$(COMPOSE) logs -f migrate
 	
 coverage-excluding-mocks: clean
-	go test -count=1 ./... -coverprofile=coverage.out.tmp -coverpkg=./services/...
-	grep -v -E "(/mock/|/mocks/|_mock\.go|_easyjson\.go)" coverage.out.tmp > coverage.out
+	go test -count=1 $(COVER_TEST_PACKAGES) -coverprofile=coverage.out.tmp -coverpkg=$(COVER_PACKAGES)
+	grep -v -E $(COVER_EXCLUDE_PATTERN) coverage.out.tmp > coverage.out
 	go tool cover -func=coverage.out | grep total
