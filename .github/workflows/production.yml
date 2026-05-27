@@ -10,7 +10,26 @@ on:
       - deploy
 
 jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run lint and tests
+        run: make ci
+
   build:
+    needs: quality
     runs-on: ubuntu-latest
     permissions:
       contents: read

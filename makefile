@@ -1,4 +1,4 @@
-.PHONY: test coverage clean dev down reset-db logs migrate mocks seed tarantool-stats ws-open microservices local-prepare microservices-up microservices-rebuild microservices-monitoring-up microservices-full-up microservices-stop microservices-down microservices-reset local-up local-rebuild local-monitoring-up local-full-up local-stop local-down local-reset server-prepare server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop community-up community-stop search-up search-stop elasticsearch-up elasticsearch-stop indexer-up indexer-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update nginx-recreate logs-auth logs-media logs-user logs-post logs-chat logs-support logs-community logs-search logs-elasticsearch logs-indexer logs-nginx seed-elasticsearch
+.PHONY: test lint ci coverage clean dev down reset-db logs migrate mocks seed tarantool-stats ws-open microservices local-prepare microservices-up microservices-rebuild microservices-monitoring-up microservices-full-up microservices-stop microservices-down microservices-reset local-up local-rebuild local-monitoring-up local-full-up local-stop local-down local-reset server-prepare server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop community-up community-stop search-up search-stop elasticsearch-up elasticsearch-stop indexer-up indexer-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update nginx-recreate logs-auth logs-media logs-user logs-post logs-chat logs-support logs-community logs-search logs-elasticsearch logs-indexer logs-nginx seed-elasticsearch
 
 COMPOSE_FILE=./docker-compose.yml
 COMPOSE_ENV_FILE=./.env
@@ -28,9 +28,21 @@ SSL_MODE ?= disable
 MIGRATIONS_PATH ?= file://./db/migrations
 DATABASE_URL ?= postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(SSL_MODE)
 MIGRATE=migrate -source "$(MIGRATIONS_PATH)" -database "$(DATABASE_URL)"
+GOCACHE ?= $(CURDIR)/.cache/go-build
 
 test:
-	go test -v ./...
+	GOCACHE="$(GOCACHE)" go test -v ./...
+
+lint:
+	@fmt_files="$$(gofmt -l .)"; \
+	if [ -n "$$fmt_files" ]; then \
+		echo "gofmt is required for these files:"; \
+		printf '%s\n' "$$fmt_files"; \
+		exit 1; \
+	fi
+	GOCACHE="$(GOCACHE)" go vet ./...
+
+ci: lint test
 
 mocks:
 	go generate ./...
