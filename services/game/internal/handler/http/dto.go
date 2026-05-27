@@ -1,6 +1,7 @@
 package http
 
 import "encoding/json"
+//go:generate go run github.com/mailru/easyjson/easyjson -all $GOFILE
 
 type createRoomRequest struct {
 	Title            string `json:"title"`

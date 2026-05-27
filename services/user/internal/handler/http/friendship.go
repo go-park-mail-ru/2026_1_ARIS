@@ -1,7 +1,6 @@
 package http
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -61,9 +60,7 @@ func (h *Handler) RequestFriendship(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req friendRequest
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "invalid request body", http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	if err := h.user.RequestFriendship(r.Context(), userAccountID, req.FriendID); err != nil {

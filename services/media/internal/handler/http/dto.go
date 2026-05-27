@@ -1,5 +1,7 @@
 package http
 
+//go:generate go run github.com/mailru/easyjson/easyjson -all $GOFILE
+
 type mediaResponse struct {
 	Index    int    `json:"index"`
 	MediaID  int64  `json:"mediaID"`

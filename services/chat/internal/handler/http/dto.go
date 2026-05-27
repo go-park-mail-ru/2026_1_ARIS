@@ -1,5 +1,7 @@
 package http
 
+//go:generate go run github.com/mailru/easyjson/easyjson -all $GOFILE
+
 type ChatResponse struct {
 	ID                        string  `json:"id"`
 	Uid                       string  `json:"uid"`

@@ -1,7 +1,6 @@
 package http
 
 import (
-	"encoding/json"
 	"errors"
 	"html"
 	"net/http"
@@ -13,10 +12,10 @@ import (
 )
 
 type Handler struct {
-	community *usecase.Service
+	community CommunityService
 }
 
-func New(community *usecase.Service) *Handler {
+func New(community CommunityService) *Handler {
 	return &Handler{community: community}
 }
 
@@ -46,9 +45,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req createCommunityRequest
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "invalid request body", http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	details, err := h.community.Create(r.Context(), userAccountID, usecase.CreateInput{
@@ -117,9 +114,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req updateCommunityRequest
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "invalid request body", http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	details, err := h.community.Update(r.Context(), userAccountID, communityID, usecase.UpdateInput{
@@ -141,9 +136,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) CheckExists(w http.ResponseWriter, r *http.Request) {
 	var req communityExistenceRequest
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "invalid request body", http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	result, err := h.community.CheckExists(r.Context(), usecase.CheckExistsInput{
@@ -262,9 +255,7 @@ func (h *Handler) ChangeMemberRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req updateMemberRoleRequest
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "invalid request body", http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	member, err := h.community.ChangeMemberRole(r.Context(), userAccountID, communityID, memberProfileID, req.Role)
