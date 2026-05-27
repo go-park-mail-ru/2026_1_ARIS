@@ -143,6 +143,7 @@ type FeedPost struct {
 	Comments      int32                  `protobuf:"varint,6,opt,name=comments,proto3" json:"comments,omitempty"`
 	Reposts       int32                  `protobuf:"varint,7,opt,name=reposts,proto3" json:"reposts,omitempty"`
 	Medias        []*Media               `protobuf:"bytes,8,rep,name=medias,proto3" json:"medias,omitempty"`
+	Files         []*Media               `protobuf:"bytes,9,rep,name=files,proto3" json:"files,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -229,6 +230,13 @@ func (x *FeedPost) GetReposts() int32 {
 func (x *FeedPost) GetMedias() []*Media {
 	if x != nil {
 		return x.Medias
+	}
+	return nil
+}
+
+func (x *FeedPost) GetFiles() []*Media {
+	if x != nil {
+		return x.Files
 	}
 	return nil
 }
@@ -381,7 +389,7 @@ const file_proto_post_post_proto_rawDesc = "" +
 	"\x05posts\x18\x01 \x03(\v2\x16.aris.post.v1.FeedPostR\x05posts\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\x12\x19\n" +
-	"\bhas_more\x18\x03 \x01(\bR\ahasMore\"\xf4\x01\n" +
+	"\bhas_more\x18\x03 \x01(\bR\ahasMore\"\x9f\x02\n" +
 	"\bFeedPost\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12,\n" +
@@ -391,7 +399,8 @@ const file_proto_post_post_proto_rawDesc = "" +
 	"\x05likes\x18\x05 \x01(\x05R\x05likes\x12\x1a\n" +
 	"\bcomments\x18\x06 \x01(\x05R\bcomments\x12\x18\n" +
 	"\areposts\x18\a \x01(\x05R\areposts\x12+\n" +
-	"\x06medias\x18\b \x03(\v2\x13.aris.post.v1.MediaR\x06medias\"\x91\x01\n" +
+	"\x06medias\x18\b \x03(\v2\x13.aris.post.v1.MediaR\x06medias\x12)\n" +
+	"\x05files\x18\t \x03(\v2\x13.aris.post.v1.MediaR\x05files\"\x91\x01\n" +
 	"\x06Author\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -433,15 +442,16 @@ var file_proto_post_post_proto_depIdxs = []int32{
 	2, // 0: aris.post.v1.FeedResponse.posts:type_name -> aris.post.v1.FeedPost
 	3, // 1: aris.post.v1.FeedPost.author:type_name -> aris.post.v1.Author
 	4, // 2: aris.post.v1.FeedPost.medias:type_name -> aris.post.v1.Media
-	0, // 3: aris.post.v1.PostService.GetFeed:input_type -> aris.post.v1.GetFeedRequest
-	0, // 4: aris.post.v1.PostService.GetPublicFeed:input_type -> aris.post.v1.GetFeedRequest
-	1, // 5: aris.post.v1.PostService.GetFeed:output_type -> aris.post.v1.FeedResponse
-	1, // 6: aris.post.v1.PostService.GetPublicFeed:output_type -> aris.post.v1.FeedResponse
-	5, // [5:7] is the sub-list for method output_type
-	3, // [3:5] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	4, // 3: aris.post.v1.FeedPost.files:type_name -> aris.post.v1.Media
+	0, // 4: aris.post.v1.PostService.GetFeed:input_type -> aris.post.v1.GetFeedRequest
+	0, // 5: aris.post.v1.PostService.GetPublicFeed:input_type -> aris.post.v1.GetFeedRequest
+	1, // 6: aris.post.v1.PostService.GetFeed:output_type -> aris.post.v1.FeedResponse
+	1, // 7: aris.post.v1.PostService.GetPublicFeed:output_type -> aris.post.v1.FeedResponse
+	6, // [6:8] is the sub-list for method output_type
+	4, // [4:6] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_proto_post_post_proto_init() }

@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package aris.community.v1;
+
+option go_package = "github.com/go-park-mail-ru/2026_1_ARIS/proto/community;communitypb";
+
+service CommunityService {
+  rpc GetCommunity(GetCommunityRequest) returns (CommunityResponse);
+  rpc GetCommunityByProfile(GetCommunityByProfileRequest) returns (CommunityResponse);
+  rpc GetMember(GetMemberRequest) returns (MemberResponse);
+  rpc CanPostByProfile(CanPostByProfileRequest) returns (CanPostResponse);
+  rpc CanPostAsMember(CanPostAsMemberRequest) returns (CanPostResponse);
+  rpc SearchCommunities(SearchCommunitiesRequest) returns (SearchCommunitiesResponse);
+}
+
+message GetCommunityRequest {
+  int64 community_id = 1;
+}
+
+message GetCommunityByProfileRequest {
+  int64 profile_id = 1;
+}
+
+message CommunityResponse {
+  int64 community_id = 1;
+  string uid = 2;
+  string title = 3;
+  optional string bio = 4;
+  string type = 5;
+  int64 profile_id = 6;
+  string username = 7;
+  optional int64 cover_media_id = 8;
+  optional int64 avatar_id = 9;
+  bool is_active = 10;
+  string created_at = 11;
+  string updated_at = 12;
+}
+
+message GetMemberRequest {
+  int64 community_id = 1;
+  int64 profile_id = 2;
+}
+
+message MemberResponse {
+  int64 member_id = 1;
+  int64 community_id = 2;
+  int64 profile_id = 3;
+  string role = 4;
+  bool is_active = 5;
+}
+
+message CanPostByProfileRequest {
+  int64 community_profile_id = 1;
+  int64 actor_profile_id = 2;
+}
+
+message CanPostAsMemberRequest {
+  int64 community_id = 1;
+  int64 actor_profile_id = 2;
+}
+
+message CanPostResponse {
+  bool ok = 1;
+}
+
+message SearchCommunitiesRequest {
+  string query = 1;
+  int32 limit = 2;
+}
+
+message SearchCommunityItem {
+  int64 community_id = 1;
+  int64 profile_id = 2;
+  string username = 3;
+  string title = 4;
+  optional string bio = 5;
+  string type = 6;
+  optional int64 avatar_id = 7;
+  optional int64 cover_media_id = 8;
+}
+
+message SearchCommunitiesResponse {
+  repeated SearchCommunityItem communities = 1;
+}

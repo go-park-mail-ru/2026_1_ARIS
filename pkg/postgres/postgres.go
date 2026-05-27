@@ -3,20 +3,34 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"os"
 
-	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/config"
+	"github.com/go-park-mail-ru/2026_1_ARIS/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func getConnectURL(env config.EnvConfig) (string, error) {
-	if env.DbPassword == "" {
-		return fmt.Sprintf("host=%s port=%s user=%s database=%s pool_max_conns=%s pool_max_conn_lifetime=%s pool_max_conn_idle_time=%s sslmode=%s", env.DbHost, env.DbPort, env.DbUser, env.DbName, env.DbPoolMaxConns, env.DbPoolMaxConnLifetime, env.DbPoolMaxConnIdleTime, env.DbSSLMode), nil
+func getConnectURL() (string, error) {
+	password := os.Getenv("DB_PASSWORD")
+	passwordPart := ""
+	if password != "" {
+		passwordPart = " password=" + password
 	}
-	return fmt.Sprintf("host=%s port=%s user=%s password=%s database=%s pool_max_conns=%s pool_max_conn_lifetime=%s pool_max_conn_idle_time=%s sslmode=%s", env.DbHost, env.DbPort, env.DbUser, env.DbPassword, env.DbName, env.DbPoolMaxConns, env.DbPoolMaxConnLifetime, env.DbPoolMaxConnIdleTime, env.DbSSLMode), nil
+
+	return fmt.Sprintf("host=%s port=%s user=%s%s database=%s pool_max_conns=%s pool_max_conn_lifetime=%s pool_max_conn_idle_time=%s sslmode=%s",
+			utils.EnvString("DB_HOST", "db"),
+			utils.EnvString("DB_PORT", "5432"),
+			os.Getenv("DB_USER"),
+			passwordPart,
+			utils.EnvString("DB_NAME", "ARIS-DB"),
+			utils.EnvString("POOL_MAX_CONNS", "10"),
+			utils.EnvString("POOL_MAX_CONN_LIFETIME", "1h"),
+			utils.EnvString("POOL_MAX_CONN_IDLE_TIME", "30m"),
+			utils.EnvString("SSL_MODE", "disable")),
+		nil
 }
 
-func New(ctx context.Context, envConf config.EnvConfig) (*pgxpool.Pool, error) {
-	confStr, err := getConnectURL(envConf)
+func New(ctx context.Context) (*pgxpool.Pool, error) {
+	confStr, err := getConnectURL()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get db connection string: %w", err)
 	}

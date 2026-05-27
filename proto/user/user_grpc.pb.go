@@ -19,18 +19,34 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	UserService_CheckUsernameAvailable_FullMethodName      = "/aris.user.v1.UserService/CheckUsernameAvailable"
+	UserService_CreateAuthUser_FullMethodName              = "/aris.user.v1.UserService/CreateAuthUser"
+	UserService_GetOrCreateOAuthUser_FullMethodName        = "/aris.user.v1.UserService/GetOrCreateOAuthUser"
+	UserService_GetCredentialsByLogin_FullMethodName       = "/aris.user.v1.UserService/GetCredentialsByLogin"
+	UserService_GetAuthUserByAccount_FullMethodName        = "/aris.user.v1.UserService/GetAuthUserByAccount"
 	UserService_GetProfileByUserAccount_FullMethodName     = "/aris.user.v1.UserService/GetProfileByUserAccount"
 	UserService_GetUserProfileByUserAccount_FullMethodName = "/aris.user.v1.UserService/GetUserProfileByUserAccount"
 	UserService_GetProfileSummary_FullMethodName           = "/aris.user.v1.UserService/GetProfileSummary"
+	UserService_SearchProfiles_FullMethodName              = "/aris.user.v1.UserService/SearchProfiles"
+	UserService_GetFriendProfileIDs_FullMethodName         = "/aris.user.v1.UserService/GetFriendProfileIDs"
+	UserService_UpdatePasswordHash_FullMethodName          = "/aris.user.v1.UserService/UpdatePasswordHash"
 )
 
 // UserServiceClient is the client API for UserService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserServiceClient interface {
+	CheckUsernameAvailable(ctx context.Context, in *CheckUsernameAvailableRequest, opts ...grpc.CallOption) (*CheckUsernameAvailableResponse, error)
+	CreateAuthUser(ctx context.Context, in *CreateAuthUserRequest, opts ...grpc.CallOption) (*AuthUserResponse, error)
+	GetOrCreateOAuthUser(ctx context.Context, in *GetOrCreateOAuthUserRequest, opts ...grpc.CallOption) (*AuthUserResponse, error)
+	GetCredentialsByLogin(ctx context.Context, in *GetCredentialsByLoginRequest, opts ...grpc.CallOption) (*GetCredentialsByLoginResponse, error)
+	GetAuthUserByAccount(ctx context.Context, in *GetAuthUserByAccountRequest, opts ...grpc.CallOption) (*AuthUserResponse, error)
 	GetProfileByUserAccount(ctx context.Context, in *GetProfileByUserAccountRequest, opts ...grpc.CallOption) (*GetProfileByUserAccountResponse, error)
 	GetUserProfileByUserAccount(ctx context.Context, in *GetUserProfileByUserAccountRequest, opts ...grpc.CallOption) (*GetUserProfileByUserAccountResponse, error)
 	GetProfileSummary(ctx context.Context, in *GetProfileSummaryRequest, opts ...grpc.CallOption) (*GetProfileSummaryResponse, error)
+	SearchProfiles(ctx context.Context, in *SearchProfilesRequest, opts ...grpc.CallOption) (*SearchProfilesResponse, error)
+	GetFriendProfileIDs(ctx context.Context, in *GetFriendProfileIDsRequest, opts ...grpc.CallOption) (*GetFriendProfileIDsResponse, error)
+	UpdatePasswordHash(ctx context.Context, in *UpdatePasswordHashRequest, opts ...grpc.CallOption) (*UpdatePasswordHashResponse, error)
 }
 
 type userServiceClient struct {
@@ -39,6 +55,56 @@ type userServiceClient struct {
 
 func NewUserServiceClient(cc grpc.ClientConnInterface) UserServiceClient {
 	return &userServiceClient{cc}
+}
+
+func (c *userServiceClient) CheckUsernameAvailable(ctx context.Context, in *CheckUsernameAvailableRequest, opts ...grpc.CallOption) (*CheckUsernameAvailableResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckUsernameAvailableResponse)
+	err := c.cc.Invoke(ctx, UserService_CheckUsernameAvailable_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) CreateAuthUser(ctx context.Context, in *CreateAuthUserRequest, opts ...grpc.CallOption) (*AuthUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AuthUserResponse)
+	err := c.cc.Invoke(ctx, UserService_CreateAuthUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetOrCreateOAuthUser(ctx context.Context, in *GetOrCreateOAuthUserRequest, opts ...grpc.CallOption) (*AuthUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AuthUserResponse)
+	err := c.cc.Invoke(ctx, UserService_GetOrCreateOAuthUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetCredentialsByLogin(ctx context.Context, in *GetCredentialsByLoginRequest, opts ...grpc.CallOption) (*GetCredentialsByLoginResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCredentialsByLoginResponse)
+	err := c.cc.Invoke(ctx, UserService_GetCredentialsByLogin_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetAuthUserByAccount(ctx context.Context, in *GetAuthUserByAccountRequest, opts ...grpc.CallOption) (*AuthUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AuthUserResponse)
+	err := c.cc.Invoke(ctx, UserService_GetAuthUserByAccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *userServiceClient) GetProfileByUserAccount(ctx context.Context, in *GetProfileByUserAccountRequest, opts ...grpc.CallOption) (*GetProfileByUserAccountResponse, error) {
@@ -71,13 +137,51 @@ func (c *userServiceClient) GetProfileSummary(ctx context.Context, in *GetProfil
 	return out, nil
 }
 
+func (c *userServiceClient) SearchProfiles(ctx context.Context, in *SearchProfilesRequest, opts ...grpc.CallOption) (*SearchProfilesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchProfilesResponse)
+	err := c.cc.Invoke(ctx, UserService_SearchProfiles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetFriendProfileIDs(ctx context.Context, in *GetFriendProfileIDsRequest, opts ...grpc.CallOption) (*GetFriendProfileIDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFriendProfileIDsResponse)
+	err := c.cc.Invoke(ctx, UserService_GetFriendProfileIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) UpdatePasswordHash(ctx context.Context, in *UpdatePasswordHashRequest, opts ...grpc.CallOption) (*UpdatePasswordHashResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdatePasswordHashResponse)
+	err := c.cc.Invoke(ctx, UserService_UpdatePasswordHash_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
 type UserServiceServer interface {
+	CheckUsernameAvailable(context.Context, *CheckUsernameAvailableRequest) (*CheckUsernameAvailableResponse, error)
+	CreateAuthUser(context.Context, *CreateAuthUserRequest) (*AuthUserResponse, error)
+	GetOrCreateOAuthUser(context.Context, *GetOrCreateOAuthUserRequest) (*AuthUserResponse, error)
+	GetCredentialsByLogin(context.Context, *GetCredentialsByLoginRequest) (*GetCredentialsByLoginResponse, error)
+	GetAuthUserByAccount(context.Context, *GetAuthUserByAccountRequest) (*AuthUserResponse, error)
 	GetProfileByUserAccount(context.Context, *GetProfileByUserAccountRequest) (*GetProfileByUserAccountResponse, error)
 	GetUserProfileByUserAccount(context.Context, *GetUserProfileByUserAccountRequest) (*GetUserProfileByUserAccountResponse, error)
 	GetProfileSummary(context.Context, *GetProfileSummaryRequest) (*GetProfileSummaryResponse, error)
+	SearchProfiles(context.Context, *SearchProfilesRequest) (*SearchProfilesResponse, error)
+	GetFriendProfileIDs(context.Context, *GetFriendProfileIDsRequest) (*GetFriendProfileIDsResponse, error)
+	UpdatePasswordHash(context.Context, *UpdatePasswordHashRequest) (*UpdatePasswordHashResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -88,6 +192,21 @@ type UserServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedUserServiceServer struct{}
 
+func (UnimplementedUserServiceServer) CheckUsernameAvailable(context.Context, *CheckUsernameAvailableRequest) (*CheckUsernameAvailableResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CheckUsernameAvailable not implemented")
+}
+func (UnimplementedUserServiceServer) CreateAuthUser(context.Context, *CreateAuthUserRequest) (*AuthUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateAuthUser not implemented")
+}
+func (UnimplementedUserServiceServer) GetOrCreateOAuthUser(context.Context, *GetOrCreateOAuthUserRequest) (*AuthUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetOrCreateOAuthUser not implemented")
+}
+func (UnimplementedUserServiceServer) GetCredentialsByLogin(context.Context, *GetCredentialsByLoginRequest) (*GetCredentialsByLoginResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCredentialsByLogin not implemented")
+}
+func (UnimplementedUserServiceServer) GetAuthUserByAccount(context.Context, *GetAuthUserByAccountRequest) (*AuthUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAuthUserByAccount not implemented")
+}
 func (UnimplementedUserServiceServer) GetProfileByUserAccount(context.Context, *GetProfileByUserAccountRequest) (*GetProfileByUserAccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetProfileByUserAccount not implemented")
 }
@@ -96,6 +215,15 @@ func (UnimplementedUserServiceServer) GetUserProfileByUserAccount(context.Contex
 }
 func (UnimplementedUserServiceServer) GetProfileSummary(context.Context, *GetProfileSummaryRequest) (*GetProfileSummaryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetProfileSummary not implemented")
+}
+func (UnimplementedUserServiceServer) SearchProfiles(context.Context, *SearchProfilesRequest) (*SearchProfilesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchProfiles not implemented")
+}
+func (UnimplementedUserServiceServer) GetFriendProfileIDs(context.Context, *GetFriendProfileIDsRequest) (*GetFriendProfileIDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetFriendProfileIDs not implemented")
+}
+func (UnimplementedUserServiceServer) UpdatePasswordHash(context.Context, *UpdatePasswordHashRequest) (*UpdatePasswordHashResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdatePasswordHash not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -116,6 +244,96 @@ func RegisterUserServiceServer(s grpc.ServiceRegistrar, srv UserServiceServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&UserService_ServiceDesc, srv)
+}
+
+func _UserService_CheckUsernameAvailable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckUsernameAvailableRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CheckUsernameAvailable(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CheckUsernameAvailable_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CheckUsernameAvailable(ctx, req.(*CheckUsernameAvailableRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_CreateAuthUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateAuthUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CreateAuthUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CreateAuthUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CreateAuthUser(ctx, req.(*CreateAuthUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetOrCreateOAuthUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetOrCreateOAuthUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetOrCreateOAuthUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetOrCreateOAuthUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetOrCreateOAuthUser(ctx, req.(*GetOrCreateOAuthUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetCredentialsByLogin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCredentialsByLoginRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetCredentialsByLogin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetCredentialsByLogin_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetCredentialsByLogin(ctx, req.(*GetCredentialsByLoginRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetAuthUserByAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAuthUserByAccountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetAuthUserByAccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetAuthUserByAccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetAuthUserByAccount(ctx, req.(*GetAuthUserByAccountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _UserService_GetProfileByUserAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -172,6 +390,60 @@ func _UserService_GetProfileSummary_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_SearchProfiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchProfilesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SearchProfiles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SearchProfiles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SearchProfiles(ctx, req.(*SearchProfilesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetFriendProfileIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFriendProfileIDsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetFriendProfileIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetFriendProfileIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetFriendProfileIDs(ctx, req.(*GetFriendProfileIDsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_UpdatePasswordHash_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdatePasswordHashRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).UpdatePasswordHash(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_UpdatePasswordHash_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).UpdatePasswordHash(ctx, req.(*UpdatePasswordHashRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -179,6 +451,26 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "aris.user.v1.UserService",
 	HandlerType: (*UserServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CheckUsernameAvailable",
+			Handler:    _UserService_CheckUsernameAvailable_Handler,
+		},
+		{
+			MethodName: "CreateAuthUser",
+			Handler:    _UserService_CreateAuthUser_Handler,
+		},
+		{
+			MethodName: "GetOrCreateOAuthUser",
+			Handler:    _UserService_GetOrCreateOAuthUser_Handler,
+		},
+		{
+			MethodName: "GetCredentialsByLogin",
+			Handler:    _UserService_GetCredentialsByLogin_Handler,
+		},
+		{
+			MethodName: "GetAuthUserByAccount",
+			Handler:    _UserService_GetAuthUserByAccount_Handler,
+		},
 		{
 			MethodName: "GetProfileByUserAccount",
 			Handler:    _UserService_GetProfileByUserAccount_Handler,
@@ -190,6 +482,18 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetProfileSummary",
 			Handler:    _UserService_GetProfileSummary_Handler,
+		},
+		{
+			MethodName: "SearchProfiles",
+			Handler:    _UserService_SearchProfiles_Handler,
+		},
+		{
+			MethodName: "GetFriendProfileIDs",
+			Handler:    _UserService_GetFriendProfileIDs_Handler,
+		},
+		{
+			MethodName: "UpdatePasswordHash",
+			Handler:    _UserService_UpdatePasswordHash_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

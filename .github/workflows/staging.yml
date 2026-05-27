@@ -1,0 +1,89 @@
+name: Deploy Staging
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run lint and tests
+        run: make ci
+
+  build:
+    needs: quality
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: [auth, media, user, post, chat, support, community, search, game, indexer]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push ${{ matrix.service }}
+        env:
+          OWNER: ${{ github.repository_owner }}
+          TAG: ${{ github.sha }}
+        run: |
+          owner=$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')
+          docker buildx build \
+            --cache-from "type=registry,ref=ghcr.io/${owner}/aris-${{ matrix.service }}:staging" \
+            --cache-to "type=inline" \
+            --push \
+            -t "ghcr.io/${owner}/aris-${{ matrix.service }}:${TAG}" \
+            -t "ghcr.io/${owner}/aris-${{ matrix.service }}:staging" \
+            -f "services/${{ matrix.service }}/Dockerfile" \
+            .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_ACTOR: ${{ github.actor }}
+        with:
+          host: ${{ secrets.STAGING_DEPLOY_HOST }}
+          username: ${{ secrets.STAGING_DEPLOY_USER }}
+          key: ${{ secrets.STAGING_DEPLOY_SSH_KEY }}
+          command_timeout: 10m
+          envs: IMAGE_TAG,GHCR_TOKEN,GHCR_ACTOR
+          script: |
+            set -euo pipefail
+            cd ${{ secrets.STAGING_DEPLOY_PATH }}
+            git fetch origin
+            git rm --cached -r --ignore-unmatch db/clickhouse || true
+            git switch -f -C dev origin/dev
+            sh scripts/deploy-remote.sh

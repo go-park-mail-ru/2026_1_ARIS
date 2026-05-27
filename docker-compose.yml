@@ -1,0 +1,616 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "127.0.0.1:${DB_PORT}:5432"
+    volumes:
+      - aris_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+    ports:
+      - "127.0.0.1:${MINIO_PUBLIC_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - aris_minio_data:/data
+
+  migrate:
+    image: golang:alpine
+    working_dir: /workspace/arisback
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      SSL_MODE: disable
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/workspace/arisback
+      - aris_go_bin:/go/bin
+      - aris_go_pkg:/go/pkg
+      - aris_go_build:/root/.cache/go-build
+    command: >
+      sh -c "
+      sh /workspace/arisback/scripts/dev-migrate.sh
+      "
+
+  seed:
+    image: golang:alpine
+    working_dir: /workspace/arisback
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      SSL_MODE: disable
+      POOL_MAX_CONNS: ${POOL_MAX_CONNS}
+      POOL_MAX_CONN_LIFETIME: ${POOL_MAX_CONN_LIFETIME}
+      POOL_MAX_CONN_IDLE_TIME: ${POOL_MAX_CONN_IDLE_TIME}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_HOST: minio
+      MINIO_PORT: "9000"
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_USE_SSL: "false"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      minio:
+        condition: service_started
+    volumes:
+      - .:/workspace/arisback
+      - aris_go_pkg:/go/pkg
+      - aris_go_build:/root/.cache/go-build
+    command: >
+      sh -c "
+      go mod download &&
+      go run ./tools/seed/cmd
+      "
+
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+    container_name: ${REDIS_CONTAINER_NAME:-arisnet-redis}
+    command: ["redis-server", "--requirepass", "${REDIS_USER_PASSWORD:-local-redis-password}", "--appendonly", "yes"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_USER_PASSWORD:-local-redis-password}
+    ports:
+      - "127.0.0.1:${REDIS_PUBLIC_PORT:-6380}:6379"
+    volumes:
+      - aris_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_USER_PASSWORD:-local-redis-password}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.4
+    restart: unless-stopped
+    container_name: ${CLICKHOUSE_CONTAINER_NAME:-arisnet-clickhouse}
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-aris}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+    ports:
+      - "127.0.0.1:${CLICKHOUSE_HTTP_PORT:-8123}:8123"
+      - "127.0.0.1:${CLICKHOUSE_NATIVE_PORT:-9009}:9000"
+    volumes:
+      - aris_clickhouse_data:/var/lib/clickhouse
+      - ./config/clickhouse/config.d/allow-default-network.xml:/etc/clickhouse-server/users.d/allow-default-network.xml:ro
+      - ./config/clickhouse/001_create_tables.sql:/docker-entrypoint-initdb.d/001_create_tables.sql:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  tarantool:
+    image: tarantool/tarantool:2.11
+    restart: unless-stopped
+    container_name: ${TARANTOOL_CONTAINER_NAME:-arisnet-tarantool}
+    command: ["tarantool", "/opt/tarantool/init.lua"]
+    environment:
+      TARANTOOL_LISTEN: 0.0.0.0:3301
+      TARANTOOL_WORK_DIR: /var/lib/tarantool
+      TARANTOOL_USER: ${TARANTOOL_USER:-cache}
+      TARANTOOL_PASSWORD: ${TARANTOOL_PASSWORD:-local-tarantool-password}
+      TARANTOOL_MEMTX_MEMORY: ${TARANTOOL_MEMTX_MEMORY:-134217728}
+      TARANTOOL_WAL_MODE: ${TARANTOOL_WAL_MODE:-write}
+    ports:
+      - "127.0.0.1:${TARANTOOL_PUBLIC_PORT:-3301}:3301"
+    volumes:
+      - aris_tarantool_data:/var/lib/tarantool
+      - ./tarantool/init.lua:/opt/tarantool/init.lua:ro
+    healthcheck:
+      test: ["CMD-SHELL", "tarantool -e \"local net_box=require('net.box'); local c=assert(net_box.connect('127.0.0.1:3301', {user=os.getenv('TARANTOOL_USER') or 'cache', password=os.getenv('TARANTOOL_PASSWORD') or 'local-tarantool-password'})); assert(c:ping()); c:close()\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  auth:
+    profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-auth:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/auth/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+      support:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8002 && nc -z 127.0.0.1 8085"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${AUTH_GRPC_PUBLIC_PORT:-8002}:8002"
+      - "127.0.0.1:${AUTH_HTTP_PUBLIC_PORT:-8085}:8085"
+
+  media:
+    profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-media:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/media/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/media/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8081 && nc -z 127.0.0.1 8003"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${MEDIA_GRPC_PUBLIC_PORT:-8003}:8003"
+      - "127.0.0.1:${MEDIA_HTTP_PUBLIC_PORT:-8081}:8081"
+
+  user:
+    profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-user:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/user/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/user/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      media:
+        condition: service_healthy
+      tarantool:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8004 && nc -z 127.0.0.1 8082"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${USER_GRPC_PUBLIC_PORT:-8004}:8004"
+      - "127.0.0.1:${USER_HTTP_PUBLIC_PORT:-8082}:8082"
+
+  post:
+    profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-post:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/post/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/post/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      auth:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+      community:
+        condition: service_healthy
+      tarantool:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8005 && nc -z 127.0.0.1 8083"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${POST_GRPC_PUBLIC_PORT:-8005}:8005"
+      - "127.0.0.1:${POST_HTTP_PUBLIC_PORT:-8083}:8083"
+
+  chat:
+    profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-chat:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/chat/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/chat/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      auth:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+      tarantool:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8084 && nc -z 127.0.0.1 8006"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${CHAT_GRPC_PUBLIC_PORT:-8006}:8006"
+      - "127.0.0.1:${CHAT_HTTP_PUBLIC_PORT:-8084}:8084"
+
+  support:
+    profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-support:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/support/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/support/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      user:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8007 && nc -z 127.0.0.1 8086"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${SUPPORT_GRPC_PUBLIC_PORT:-8007}:8007"
+      - "127.0.0.1:${SUPPORT_HTTP_PUBLIC_PORT:-8086}:8086"
+
+  community:
+    profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-community:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/community/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/community/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      auth:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8009 && nc -z 127.0.0.1 8087"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${COMMUNITY_GRPC_PUBLIC_PORT:-8009}:8009"
+      - "127.0.0.1:${COMMUNITY_HTTP_PUBLIC_PORT:-8087}:8087"
+
+  search:
+    profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-search:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/search/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/search/.env
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8088"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${SEARCH_HTTP_PUBLIC_PORT:-8088}:8088"
+
+  elasticsearch:
+    profiles: ["microservices"]
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:9200/_cluster/health | grep -qv '\"status\":\"red\"'"]
+      start_period: 60s
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - aris_elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "127.0.0.1:${ELASTICSEARCH_PUBLIC_PORT:-9200}:9200"
+
+  indexer:
+    profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-indexer:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/indexer/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/indexer/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8090/health >/dev/null 2>&1"]
+      start_period: 30s
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  game:
+    profiles: ["microservices"]
+    image: ghcr.io/${GHCR_ORG:-go-park-mail-ru}/aris-game:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/game/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - services/game/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+      auth:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8089"]
+      start_period: 3m
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${GAME_HTTP_PUBLIC_PORT:-8089}:8089"
+
+  prometheus:
+    profiles: ["microservices"]
+    image: prom/prometheus:v2.55.1
+    restart: unless-stopped
+    depends_on:
+      auth:
+        condition: service_started
+      media:
+        condition: service_started
+      user:
+        condition: service_started
+      post:
+        condition: service_started
+      chat:
+        condition: service_started
+      support:
+        condition: service_started
+      community:
+        condition: service_started
+      search:
+        condition: service_started
+      game:
+        condition: service_started
+      indexer:
+        condition: service_started
+      node-exporter:
+        condition: service_started
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - aris_prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+
+  grafana:
+    profiles: ["microservices"]
+    image: grafana/grafana:11.3.0
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_started
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - aris_grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+  node-exporter:
+    profiles: ["microservices"]
+    image: prom/node-exporter:v1.8.2
+    restart: unless-stopped
+    pid: host
+    command:
+      - "--path.rootfs=/host"
+    ports:
+      - "127.0.0.1:${NODE_EXPORTER_PORT:-9100}:9100"
+    volumes:
+      - /:/host:ro,rslave
+
+  nginx-exporter:
+    profiles: ["microservices"]
+    image: nginx/nginx-prometheus-exporter:1.4.1
+    restart: unless-stopped
+    command:
+      - "--nginx.scrape-uri=http://nginx:8080/nginx-status"
+      - "--web.listen-address=:9113"
+    ports:
+      - "127.0.0.1:${NGINX_EXPORTER_PORT:-9113}:9113"
+
+  nginxlog-exporter:
+    profiles: ["microservices"]
+    image: quay.io/martinhelmich/prometheus-nginxlog-exporter:v1.11.0
+    restart: unless-stopped
+    command:
+      - "-config-file"
+      - "/etc/prometheus-nginxlog-exporter/config.hcl"
+    ports:
+      - "127.0.0.1:${NGINXLOG_EXPORTER_PORT:-4040}:4040"
+    volumes:
+      - ./config/nginxlog-exporter/config.hcl:/etc/prometheus-nginxlog-exporter/config.hcl:ro
+      - ./.tmp/nginx-logs:/var/log/nginx:ro
+
+  nginx:
+    profiles: ["microservices"]
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      auth:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+      post:
+        condition: service_healthy
+      chat:
+        condition: service_healthy
+      support:
+        condition: service_healthy
+      community:
+        condition: service_healthy
+      search:
+        condition: service_healthy
+      game:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:${NGINX_PORT:-8080}:8080"
+    volumes:
+      - ./nginx/config/nginx.container.conf:/etc/nginx/nginx.conf:ro
+      - ./.tmp/nginx-logs:/var/log/nginx
+
+volumes:
+  aris_postgres_data:
+  aris_minio_data:
+  aris_clickhouse_data:
+  aris_go_bin:
+  aris_go_pkg:
+  aris_go_build:
+  aris_redis_data:
+  aris_tarantool_data:
+  aris_prometheus_data:
+  aris_grafana_data:
+  aris_elasticsearch_data:

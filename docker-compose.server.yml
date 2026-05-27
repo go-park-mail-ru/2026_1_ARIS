@@ -15,15 +15,47 @@ services:
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
       GF_SECURITY_CSRF_TRUSTED_ORIGINS: ${APP_ENDPOINT:-https://arisnet.ru}
 
+  nginx-exporter:
+    command:
+      - "--nginx.scrape-uri=http://nginx/nginx-status"
+      - "--web.listen-address=:9113"
+
   nginx:
+    depends_on:
+      auth:
+        condition: service_healthy
+      media:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+      post:
+        condition: service_healthy
+      chat:
+        condition: service_healthy
+      support:
+        condition: service_healthy
+      community:
+        condition: service_healthy
+      search:
+        condition: service_healthy
+      game:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      prometheus:
+        condition: service_started
+      grafana:
+        condition: service_started
     ports: !override
       - "80:80"
       - "443:443"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/health >/dev/null 2>&1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1${NGINX_HEALTH_PATH:-/nginx-health} >/dev/null 2>&1"]
       interval: 5s
       timeout: 5s
       retries: 20
     volumes:
-      - ./config/nginx.container.server.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/config/nginx.container.server.conf:/etc/nginx/nginx.conf:ro
+      - ./.tmp/nginx-logs:/var/log/nginx
+      - /home/deploy/arisfront/dist:/var/www/arisfront:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
