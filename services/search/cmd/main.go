@@ -14,6 +14,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/elasticsearch"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/metrics"
 	mediapb "github.com/go-park-mail-ru/2026_1_ARIS/proto/media"
 	searchHTTP "github.com/go-park-mail-ru/2026_1_ARIS/services/search/internal/handler/http"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/search/internal/usecase"
@@ -53,6 +54,7 @@ func main() {
 
 	router := chi.NewRouter()
 	router.Use(chimiddleware.Recoverer)
+	metrics.RegisterHTTP(router, "search")
 	router.Route("/api", func(r chi.Router) {
 		httpHandler.RegisterRoutes(r)
 	})

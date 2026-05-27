@@ -1,5 +1,8 @@
 package repository
 
+//go:generate mockgen -source=repository.go -destination=mocks/repository_mock.go -package=mocks DB,ChatRepo,ChatMemberRepo,MessageRepo,MessageMediaRepo,StickerRepo,ReactionRepo
+//go:generate mockgen -destination=mocks/pgx_mock.go -package=mocks github.com/jackc/pgx/v5 Row,Rows
+
 import (
 	"context"
 	"errors"

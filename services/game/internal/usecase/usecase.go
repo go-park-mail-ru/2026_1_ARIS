@@ -1267,8 +1267,7 @@ func (s *Service) buildRoom(ctx context.Context, room model.Room, meProfileID in
 			current = &CurrentQuestion{
 				Position:   rq.Position,
 				ID:         q.ID,
-				Text:       q.Text,
-				AnswerUnit: q.AnswerUnit,
+				Text:       LocalizedText{RU: q.TextRU, EN: q.TextEN},
 				StartedAt:  timePtrString(rq.StartedAt),
 				DeadlineAt: timePtrString(rq.DeadlineAt),
 			}
@@ -1946,18 +1945,24 @@ func (s *Service) notifyRoom(ctx context.Context, roomID int64) {
 
 func mapQuestionInput(in QuestionInput) (model.Question, error) {
 	gameType := normalizeGameType(in.GameType)
-	text := strings.TrimSpace(in.Text)
-	if text == "" || math.IsNaN(in.CorrectAnswer) || math.IsInf(in.CorrectAnswer, 0) {
+	textRU := strings.TrimSpace(in.Text.RU)
+	textEN := strings.TrimSpace(in.Text.EN)
+	if !validQuestionText(textRU) || !validQuestionText(textEN) || math.IsNaN(in.CorrectAnswer) || math.IsInf(in.CorrectAnswer, 0) {
 		return model.Question{}, ErrInvalidInput
 	}
 	return model.Question{
 		Uid:           uuid.New(),
 		GameType:      gameType,
-		Text:          text,
+		TextRU:        textRU,
+		TextEN:        textEN,
 		CorrectAnswer: in.CorrectAnswer,
-		AnswerUnit:    in.AnswerUnit,
 		IsActive:      in.IsActive,
 	}, nil
+}
+
+func validQuestionText(text string) bool {
+	length := len([]rune(text))
+	return length >= 5 && length <= 512
 }
 
 func mapQuestions(items []model.Question) []Question {
@@ -1971,9 +1976,8 @@ func mapQuestions(items []model.Question) []Question {
 func mapQuestion(item model.Question) Question {
 	return Question{
 		ID:            item.ID,
-		Text:          item.Text,
+		Text:          LocalizedText{RU: item.TextRU, EN: item.TextEN},
 		CorrectAnswer: item.CorrectAnswer,
-		AnswerUnit:    item.AnswerUnit,
 		IsActive:      item.IsActive,
 	}
 }

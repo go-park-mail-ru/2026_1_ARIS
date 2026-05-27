@@ -1,7 +1,6 @@
 package http
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"html"
@@ -19,11 +18,11 @@ import (
 )
 
 type Handler struct {
-	user     *usecase.Service
+	user     UserService
 	validate *validator.Validate
 }
 
-func New(user *usecase.Service) *Handler {
+func New(user UserService) *Handler {
 	return &Handler{user: user, validate: validator.New()}
 }
 
@@ -94,9 +93,7 @@ func (h *Handler) EditProfileMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req updateProfileRequest
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "invalid request body", http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	req = normalizeOptionalEmptyFields(req)
@@ -178,9 +175,7 @@ func (h *Handler) SetSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req settingsUpdateRequest
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "invalid request body", http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	if err := h.validate.Struct(req); err != nil {

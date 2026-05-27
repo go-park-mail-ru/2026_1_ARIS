@@ -22,9 +22,9 @@ type Question struct {
 	ID            int64     `db:"id"`
 	Uid           uuid.UUID `db:"uid"`
 	GameType      string    `db:"game_type"`
-	Text          string    `db:"question_text"`
+	TextRU        string    `db:"question_text_ru"`
+	TextEN        string    `db:"question_text_en"`
 	CorrectAnswer float64   `db:"correct_answer"`
-	AnswerUnit    *string   `db:"answer_unit"`
 	IsActive      bool      `db:"is_active"`
 	CreatedAt     time.Time `db:"created_at"`
 	UpdatedAt     time.Time `db:"updated_at"`

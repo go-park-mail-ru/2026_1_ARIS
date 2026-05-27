@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/metrics"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/redis"
 	authpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/auth"
 	mediapb "github.com/go-park-mail-ru/2026_1_ARIS/proto/media"
@@ -124,6 +125,7 @@ func main() {
 	})
 	router := chi.NewRouter()
 	router.Use(middleware.Recoverer)
+	metrics.RegisterHTTP(router, "auth")
 	router.Route("/api/auth", func(r chi.Router) {
 		httpHandler.RegisterRoutes(r)
 	})

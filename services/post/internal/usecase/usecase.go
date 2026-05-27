@@ -1145,35 +1145,6 @@ func decodeSessionCursor(raw string) (sessionCursor, error) {
 	return sc, json.Unmarshal(b, &sc)
 }
 
-func (s *Service) buildFeedPost(ctx context.Context, post model.Post, viewerProfileID int64) (FeedPost, error) {
-	if err := s.ensureCanViewPost(ctx, post, viewerProfileID); err != nil {
-		return FeedPost{}, err
-	}
-	author, err := s.author(ctx, post.AuthorID)
-	if err != nil {
-		return FeedPost{}, err
-	}
-
-	text := ""
-	if post.Text != nil {
-		text = html.EscapeString(*post.Text)
-	}
-
-	media, files := splitMedia(s.postMedia(ctx, post.ID))
-	return FeedPost{
-		ID:        post.ID,
-		Text:      text,
-		Author:    author,
-		CreatedAt: post.CreatedAt,
-		Likes:     s.postLikeCount(ctx, post.ID),
-		IsLiked:   viewerProfileID > 0 && s.store.Likes.HasActivePostLike(ctx, post.ID, viewerProfileID),
-		Comments:  s.store.Comments.GetCommentCount(ctx, post.ID),
-		Reposts:   s.store.Reposts.GetRepostCount(ctx, post.ID),
-		Medias:    media,
-		Files:     files,
-	}, nil
-}
-
 func (s *Service) buildPostDetails(ctx context.Context, post model.Post, viewerProfileID int64) (*PostDetails, error) {
 	if err := s.ensureCanViewPost(ctx, post, viewerProfileID); err != nil {
 		return nil, err
@@ -1355,27 +1326,6 @@ func (s *Service) postMedia(ctx context.Context, postID int64) []Media {
 		})
 	}
 	return items
-}
-
-func (s *Service) media(ctx context.Context, mediaID int64) *Media {
-	if s.mediaClient == nil || mediaID <= 0 {
-		return nil
-	}
-	resp, err := s.mediaClient.GetMedia(ctx, &mediapb.GetMediaRequest{MediaId: mediaID})
-	if err != nil || resp == nil {
-		return nil
-	}
-
-	url := resp.GetUrl()
-	if !strings.HasPrefix(url, "http") {
-		mediaURL, err := s.mediaClient.GetMediaURL(ctx, &mediapb.GetMediaURLRequest{MediaId: resp.GetMediaId()})
-		if err != nil || mediaURL == nil {
-			return nil
-		}
-		url = mediaURL.GetUrl()
-	}
-
-	return &Media{ID: resp.GetMediaId(), UID: resp.GetUid(), MimeType: resp.GetMimeType(), URL: url}
 }
 
 func (s *Service) absoluteMediaURL(ctx context.Context, mediaID int64, raw string) string {

@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/metrics"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/postgres"
 	authpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/auth"
 	mediapb "github.com/go-park-mail-ru/2026_1_ARIS/proto/media"
@@ -101,6 +102,7 @@ func main() {
 	httpHandler := supportHTTP.NewSupportHandler(ticketService, hub)
 	router := chi.NewRouter()
 	router.Use(chimiddleware.Recoverer)
+	metrics.RegisterHTTP(router, "support")
 	router.Route("/api/support", func(r chi.Router) {
 		httpHandler.RegisterRoutes(r)
 	})

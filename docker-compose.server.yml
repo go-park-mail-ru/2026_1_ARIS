@@ -15,6 +15,11 @@ services:
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
       GF_SECURITY_CSRF_TRUSTED_ORIGINS: ${APP_ENDPOINT:-https://arisnet.ru}
 
+  nginx-exporter:
+    command:
+      - "--nginx.scrape-uri=http://nginx/nginx-status"
+      - "--web.listen-address=:9113"
+
   nginx:
     depends_on:
       auth:
@@ -51,5 +56,6 @@ services:
       retries: 20
     volumes:
       - ./nginx/config/nginx.container.server.conf:/etc/nginx/nginx.conf:ro
+      - ./.tmp/nginx-logs:/var/log/nginx
       - /home/deploy/arisfront/dist:/var/www/arisfront:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro

@@ -1,0 +1,3 @@
+-- Localized question columns may contain the only English version of a
+-- question after deployment. The deprecated answer_unit column is also
+-- intentionally not restored because the game no longer uses units.

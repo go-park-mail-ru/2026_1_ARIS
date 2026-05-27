@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/metrics"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/postgres"
 	tarantoolcache "github.com/go-park-mail-ru/2026_1_ARIS/pkg/tarantool"
 	authpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/auth"
@@ -105,6 +106,7 @@ func main() {
 	authMiddleware := chatMiddleware.AuthMiddleware(authpb.NewAuthServiceClient(authConn))
 	router := chi.NewRouter()
 	router.Use(chimiddleware.Recoverer)
+	metrics.RegisterHTTP(router, "chat")
 	router.Route("/api", func(r chi.Router) {
 		httpHandler.RegisterRoutes(r, authMiddleware)
 	})

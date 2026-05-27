@@ -14,6 +14,7 @@ import (
 
 var ErrSessionNotFound = errors.New("session not found")
 
+//go:generate mockgen -destination=mocks/session_repo_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/services/auth/internal/repository SessionRepo
 type SessionRepo interface {
 	Save(ctx context.Context, session model.Session) error
 	Delete(ctx context.Context, id model.SessionID) error
