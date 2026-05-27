@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -279,7 +278,7 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) setVKIDStateCookie(w http.ResponseWriter, state repository.OAuthState, ttl time.Duration) {
-	payload, _ := json.Marshal(state)
+	payload, _ := utils.MarshalJSON(state)
 	http.SetCookie(w, &http.Cookie{
 		Name:     vkidStateCookieName,
 		Value:    base64.RawURLEncoding.EncodeToString(payload),
@@ -322,7 +321,7 @@ func (h *Handler) readVKIDStateCookie(r *http.Request) (repository.OAuthState, b
 		return repository.OAuthState{}, false
 	}
 	var state repository.OAuthState
-	if err := json.Unmarshal(payload, &state); err != nil {
+	if err := utils.UnmarshalJSON(payload, &state); err != nil {
 		return repository.OAuthState{}, false
 	}
 	return state, true

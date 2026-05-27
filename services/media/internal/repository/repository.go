@@ -36,6 +36,7 @@ func NewStore(media MediaRepo, s3 S3Repo, bucketName string) Store {
 	return Store{Media: media, S3: s3, BucketName: bucketName}
 }
 
+//go:generate mockgen -destination=mocks/media_repo_mock.go -package=mocks github.com/go-park-mail-ru/2026_1_ARIS/services/media/internal/repository MediaRepo,S3Repo
 type MediaRepo interface {
 	Get(ctx context.Context, id int64) (*model.Media, error)
 	Save(ctx context.Context, media model.Media) (int64, error)

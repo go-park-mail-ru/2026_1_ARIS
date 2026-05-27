@@ -1,5 +1,7 @@
 package http
 
+//go:generate go run github.com/mailru/easyjson/easyjson -all $GOFILE
+
 import "time"
 
 type mediaRequestData struct {
