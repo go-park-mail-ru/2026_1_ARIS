@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/requestcontext"
 	userpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/user"
 	usermock "github.com/go-park-mail-ru/2026_1_ARIS/proto/user/mock"
 	handlermocks "github.com/go-park-mail-ru/2026_1_ARIS/services/chat/internal/handler/http/mocks"
@@ -334,7 +335,7 @@ func serveChat(t *testing.T, router *chi.Mux, method, path string, body any, use
 	req := httptest.NewRequest(method, path, &buf)
 	req.Header.Set("Content-Type", "application/json")
 	if userID > 0 {
-		req = req.WithContext(context.WithValue(req.Context(), "user_id", userID))
+		req = req.WithContext(requestcontext.WithUserID(req.Context(), userID))
 	}
 	rr := httptest.NewRecorder()
 	router.ServeHTTP(rr, req)

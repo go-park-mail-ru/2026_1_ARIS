@@ -2,7 +2,6 @@ package http
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/requestcontext"
 	handlermocks "github.com/go-park-mail-ru/2026_1_ARIS/services/user/internal/handler/http/mocks"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/user/internal/model"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/user/internal/repository"
@@ -229,7 +229,7 @@ func serveUser(t *testing.T, router *chi.Mux, method, path string, body any, use
 	req := httptest.NewRequest(method, path, &buf)
 	req.Header.Set("Content-Type", "application/json")
 	if userID > 0 {
-		req = req.WithContext(context.WithValue(req.Context(), "user_id", userID))
+		req = req.WithContext(requestcontext.WithUserID(req.Context(), userID))
 	}
 	rr := httptest.NewRecorder()
 	router.ServeHTTP(rr, req)

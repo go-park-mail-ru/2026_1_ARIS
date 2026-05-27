@@ -2,7 +2,6 @@ package http
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/requestcontext"
 	userpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/user"
 	usermock "github.com/go-park-mail-ru/2026_1_ARIS/proto/user/mock"
 	handlermocks "github.com/go-park-mail-ru/2026_1_ARIS/services/community/internal/handler/http/mocks"
@@ -256,7 +256,7 @@ func serveCommunity(handler *Handler, authMiddleware func(http.Handler) http.Han
 func authUser(userID int64) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), "user_id", userID)))
+			next.ServeHTTP(w, r.WithContext(requestcontext.WithUserID(r.Context(), userID)))
 		})
 	}
 }

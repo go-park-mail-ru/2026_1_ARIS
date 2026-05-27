@@ -138,11 +138,8 @@ func (storage *UserAccountStorage) Delete(ctx context.Context, id int64) error {
 			zap.Duration("duration_ms", time.Since(start)))
 	}
 
-	if res.RowsAffected() == 0 {
-		// ни одна запись не удалилась
-	}
 	if res.RowsAffected() != 1 {
-		// удалилась больше, чем одна запись
+		return errors.New("DELETE affected not on 1 row")
 	}
 
 	return nil

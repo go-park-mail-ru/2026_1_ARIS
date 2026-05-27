@@ -34,6 +34,8 @@ MIGRATIONS_PATH ?= file://./db/migrations
 DATABASE_URL ?= postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(SSL_MODE)
 MIGRATE=migrate -source "$(MIGRATIONS_PATH)" -database "$(DATABASE_URL)"
 GOCACHE ?= $(CURDIR)/.cache/go-build
+STATICCHECK_CACHE ?= $(CURDIR)/.cache/staticcheck
+STATICCHECK ?= go tool staticcheck
 
 test:
 	GOCACHE="$(GOCACHE)" go test -v ./...
@@ -46,6 +48,7 @@ lint:
 		exit 1; \
 	fi
 	GOCACHE="$(GOCACHE)" go vet ./...
+	GOCACHE="$(GOCACHE)" STATICCHECK_CACHE="$(STATICCHECK_CACHE)" $(STATICCHECK) ./...
 
 ci: lint test
 

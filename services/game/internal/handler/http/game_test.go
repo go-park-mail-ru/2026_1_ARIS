@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/requestcontext"
 	handlermocks "github.com/go-park-mail-ru/2026_1_ARIS/services/game/internal/handler/http/mocks"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/game/internal/usecase"
 	"github.com/golang/mock/gomock"
@@ -24,7 +25,7 @@ func TestHandlerRequestHelpers(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	req = req.WithContext(context.WithValue(req.Context(), "user_id", int64(9)))
+	req = req.WithContext(requestcontext.WithUserID(req.Context(), int64(9)))
 	if userID, ok := userIDFromContext(rec, req); !ok || userID != 9 {
 		t.Fatalf("userIDFromContext() = %d, %v", userID, ok)
 	}
@@ -47,7 +48,7 @@ func TestHandlerRequestHelpers(t *testing.T) {
 func TestUserAndRoomID(t *testing.T) {
 	handler := &Handler{}
 	req := httptest.NewRequest(http.MethodGet, "/games/rooms/42", nil)
-	req = req.WithContext(context.WithValue(req.Context(), "user_id", int64(7)))
+	req = req.WithContext(requestcontext.WithUserID(req.Context(), int64(7)))
 	routeCtx := chi.NewRouteContext()
 	routeCtx.URLParams.Add("roomID", "42")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, routeCtx))
@@ -272,7 +273,7 @@ func serveGame(t *testing.T, router *chi.Mux, method, path string, body any, use
 	req := httptest.NewRequest(method, path, &buf)
 	req.Header.Set("Content-Type", "application/json")
 	if userID > 0 {
-		req = req.WithContext(context.WithValue(req.Context(), "user_id", userID))
+		req = req.WithContext(requestcontext.WithUserID(req.Context(), userID))
 	}
 	rr := httptest.NewRecorder()
 	router.ServeHTTP(rr, req)

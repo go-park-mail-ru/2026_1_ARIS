@@ -43,31 +43,6 @@ func newPostService(ctrl *gomock.Controller) (
 	return svc, posts, postMedia, comments, likes, reposts, users
 }
 
-// expectGetPostForViewer sets up all the mocks needed for a full GetPostForViewer call.
-// userAccountID → profileID via GetProfileByUserAccount, then Get post, postMedia, likes, comments.
-// It also expects GetProfileSummary for the author lookup (author() method).
-func expectGetPostForViewer(
-	userAccountID, profileID, postID int64,
-	post *model.Post,
-	users *usermock.MockUserServiceClient,
-	posts *repomocks.MockPostRepo,
-	postMedia *repomocks.MockPostMediaRepo,
-	likes *repomocks.MockLikeRepo,
-	comments *repomocks.MockCommentRepo,
-) {
-	users.EXPECT().
-		GetProfileByUserAccount(gomock.Any(), &userpb.GetProfileByUserAccountRequest{UserAccountId: userAccountID}).
-		Return(&userpb.GetProfileByUserAccountResponse{ProfileId: profileID}, nil)
-	posts.EXPECT().Get(gomock.Any(), postID).Return(post, nil)
-	users.EXPECT().
-		GetProfileSummary(gomock.Any(), &userpb.GetProfileSummaryRequest{ProfileId: post.AuthorID}).
-		Return(&userpb.GetProfileSummaryResponse{ProfileId: post.AuthorID}, nil)
-	postMedia.EXPECT().GetDetailedMediaByPostID(gomock.Any(), postID).Return(nil, nil)
-	likes.EXPECT().GetLikeCountOnPost(gomock.Any(), postID).Return(0)
-	likes.EXPECT().HasActivePostLike(gomock.Any(), postID, profileID).Return(false)
-	comments.EXPECT().GetCommentCount(gomock.Any(), postID).Return(0)
-}
-
 // ---------------------------------------------------------------------------
 // GetPost tests
 // ---------------------------------------------------------------------------
