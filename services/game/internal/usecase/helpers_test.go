@@ -118,14 +118,14 @@ func TestGameHelpersEventsQuestionsAndErrors(t *testing.T) {
 	require.Equal(t, 1, votes)
 	require.Equal(t, 2, required)
 
-	unit := "kg"
-	question, err := mapQuestionInput(QuestionInput{GameType: "  ", Text: " how many? ", CorrectAnswer: 42, AnswerUnit: &unit, IsActive: true})
+	question, err := mapQuestionInput(QuestionInput{GameType: "  ", Text: LocalizedText{RU: " сколько? ", EN: " how many? "}, CorrectAnswer: 42, IsActive: true})
 	require.NoError(t, err)
 	require.Equal(t, model.DefaultGameType, question.GameType)
-	require.Equal(t, "how many?", question.Text)
-	_, err = mapQuestionInput(QuestionInput{Text: " ", CorrectAnswer: 1})
+	require.Equal(t, "сколько?", question.TextRU)
+	require.Equal(t, "how many?", question.TextEN)
+	_, err = mapQuestionInput(QuestionInput{Text: LocalizedText{RU: " ", EN: "valid text"}, CorrectAnswer: 1})
 	require.ErrorIs(t, err, ErrInvalidInput)
-	_, err = mapQuestionInput(QuestionInput{Text: "x", CorrectAnswer: math.Inf(1)})
+	_, err = mapQuestionInput(QuestionInput{Text: LocalizedText{RU: "текст", EN: "text"}, CorrectAnswer: math.Inf(1)})
 	require.ErrorIs(t, err, ErrInvalidInput)
 
 	mapped := mapQuestions([]model.Question{question})

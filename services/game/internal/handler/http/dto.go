@@ -1,6 +1,7 @@
 package http
 
 import "encoding/json"
+
 //go:generate go run github.com/mailru/easyjson/easyjson -all $GOFILE
 
 type createRoomRequest struct {
@@ -47,6 +48,7 @@ type roomMessageRequest struct {
 	Text string `json:"text"`
 }
 
+//easyjson:skip
 type localizedTextPayload struct {
 	RU string `json:"ru"`
 	EN string `json:"en"`

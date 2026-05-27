@@ -29,7 +29,7 @@ func TestGameRepositoriesReturnDBErrors(t *testing.T) {
 	ctx := context.Background()
 	store := newStore(db, nil)
 
-	require.Error(t, store.Questions.Create(ctx, &model.Question{Text: "q", CorrectAnswer: 1}))
+	require.Error(t, store.Questions.Create(ctx, &model.Question{TextRU: "q", TextEN: "q", CorrectAnswer: 1}))
 	require.Error(t, store.Questions.Update(ctx, &model.Question{ID: 1}))
 	require.Error(t, store.Questions.Delete(ctx, 1))
 	_, err := store.Questions.Get(ctx, 1)
