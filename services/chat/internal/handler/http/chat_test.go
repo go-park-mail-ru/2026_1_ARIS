@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	userpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/user"
 	usermock "github.com/go-park-mail-ru/2026_1_ARIS/proto/user/mock"
+	handlermocks "github.com/go-park-mail-ru/2026_1_ARIS/services/chat/internal/handler/http/mocks"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/chat/internal/model"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/chat/internal/repository"
 	repomocks "github.com/go-park-mail-ru/2026_1_ARIS/services/chat/internal/repository/mocks"
@@ -157,6 +158,120 @@ func TestChatHTTPMessageRoutes(t *testing.T) {
 
 		require.Equal(t, http.StatusBadRequest, rr.Code)
 	})
+}
+
+func TestChatHTTPEndpointsWithMockService(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	now := time.Now()
+	text := "hello"
+	packAuthorID := int64(5)
+	packID := int64(20)
+	mediaID := int64(30)
+	mime := "image/png"
+	stickerURL := "/media/30.png"
+	message := usecase.Message{
+		ID:         7,
+		UID:        uuid.NewString(),
+		Text:       &text,
+		AuthorName: "Neo",
+		ChatID:     1,
+		AuthorID:   5,
+		Type:       model.MessageTypeText,
+		IsActive:   true,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+		Reactions:  []usecase.ReactionSummary{{Type: "like", Count: 1}},
+	}
+	chat := usecase.Chat{
+		ID:        1,
+		UID:       uuid.NewString(),
+		Title:     "chat",
+		Type:      model.PrivateChat,
+		IsActive:  true,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	pack := usecase.StickerPack{
+		ID:        packID,
+		UID:       uuid.NewString(),
+		Title:     "pack",
+		AuthorID:  &packAuthorID,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	sticker := usecase.Sticker{
+		ID:       40,
+		UID:      uuid.NewString(),
+		PackID:   &packID,
+		MediaID:  &mediaID,
+		MimeType: &mime,
+		URL:      &stickerURL,
+	}
+
+	svc := handlermocks.NewMockChatService(ctrl)
+	svc.EXPECT().GetUserChats(gomock.Any(), gomock.Any()).Return([]usecase.Chat{chat}, nil).AnyTimes()
+	svc.EXPECT().CreatePrivateChat(gomock.Any(), gomock.Any(), gomock.Any()).Return(chat, nil).AnyTimes()
+	svc.EXPECT().SetPresenceOnline(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	svc.EXPECT().HeartbeatPresence(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	svc.EXPECT().SetPresenceOffline(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	svc.EXPECT().ForcePresenceOffline(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	svc.EXPECT().GetMessages(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]usecase.Message{message}, nil).AnyTimes()
+	svc.EXPECT().GetMessagesAfter(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]usecase.Message{message}, nil).AnyTimes()
+	svc.EXPECT().SendMessage(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(message, nil).AnyTimes()
+	svc.EXPECT().UpdateMessage(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(message, nil).AnyTimes()
+	svc.EXPECT().SetMessageReaction(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(message, nil).AnyTimes()
+	svc.EXPECT().DeleteMessageReaction(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(message, nil).AnyTimes()
+	svc.EXPECT().GetStickerPacks(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]usecase.StickerPack{pack}, nil).AnyTimes()
+	svc.EXPECT().CreateStickerPack(gomock.Any(), gomock.Any(), gomock.Any()).Return(pack, nil).AnyTimes()
+	svc.EXPECT().GetStickersByPack(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]usecase.Sticker{sticker}, nil).AnyTimes()
+	svc.EXPECT().CreateSticker(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(sticker, nil).AnyTimes()
+	svc.EXPECT().CheckUserInChat(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).AnyTimes()
+
+	router := chi.NewRouter()
+	handler := New(svc, nil)
+	handler.RegisterRoutes(router, nil)
+	handler.RegisterWebSocketRoute(router, nil)
+
+	cases := []struct {
+		method string
+		path   string
+		body   any
+		userID int64
+	}{
+		{http.MethodGet, "/chats", nil, 5},
+		{http.MethodPost, "/chats?otherUserId=8", nil, 5},
+		{http.MethodPost, "/presence/online", nil, 5},
+		{http.MethodPost, "/presence/heartbeat", nil, 5},
+		{http.MethodPost, "/presence/offline", nil, 5},
+		{http.MethodPost, "/presence/force-offline", nil, 5},
+		{http.MethodGet, "/chats/1/messages?limit=25", nil, 5},
+		{http.MethodGet, "/chats/1/messages?after=6&limit=25", nil, 5},
+		{http.MethodPost, "/chats/1/messages", map[string]any{"text": "hello", "type": "text"}, 5},
+		{http.MethodPut, "/chats/1/messages/7", map[string]any{"text": "updated"}, 5},
+		{http.MethodPut, "/chats/1/messages/7/reaction", map[string]any{"type": "like"}, 5},
+		{http.MethodDelete, "/chats/1/messages/7/reaction", nil, 5},
+		{http.MethodGet, "/sticker-packs?search=p&my=true&limit=10", nil, 5},
+		{http.MethodPost, "/sticker-packs", map[string]any{"title": "pack"}, 5},
+		{http.MethodGet, "/sticker-packs/20/stickers?limit=10", nil, 5},
+		{http.MethodPost, "/sticker-packs/20/stickers", map[string]any{"mediaID": 30}, 5},
+		{http.MethodGet, "/ws/1", nil, 5},
+	}
+
+	for _, tc := range cases {
+		rr := serveChat(t, router, tc.method, tc.path, tc.body, tc.userID)
+		if rr.Code == 0 || rr.Code >= 500 {
+			t.Fatalf("%s %s returned %d: %s", tc.method, tc.path, rr.Code, rr.Body.String())
+		}
+	}
+
+	payload, err := handler.handleSocketMessage(context.Background(), "1", 5, []byte(`{"text":"from socket","type":"text"}`))
+	require.NoError(t, err)
+	require.Contains(t, string(payload), `"text":"hello"`)
+
+	_, err = handler.handleSocketMessage(context.Background(), "bad", 5, []byte(`{"text":"from socket"}`))
+	require.ErrorIs(t, err, usecase.ErrInvalidInput)
 }
 
 func TestChatHTTPHelpers(t *testing.T) {

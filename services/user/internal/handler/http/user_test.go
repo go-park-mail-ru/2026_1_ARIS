@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	handlermocks "github.com/go-park-mail-ru/2026_1_ARIS/services/user/internal/handler/http/mocks"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/user/internal/model"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/user/internal/repository"
 	repomocks "github.com/go-park-mail-ru/2026_1_ARIS/services/user/internal/repository/mocks"
@@ -108,6 +109,85 @@ func TestUserHTTPHelpersAndErrors(t *testing.T) {
 	require.Nil(t, formatOptionalTime(nil))
 	now := time.Now()
 	require.NotNil(t, formatOptionalTime(&now))
+}
+
+func TestUserHTTPEndpointsWithMockService(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	now := time.Now()
+	profile := &usecase.ProfileDetails{
+		ProfileID:     10,
+		UserAccountID: 5,
+		Username:      "neo",
+		FirstName:     "Neo",
+		LastName:      "Anderson",
+		Gender:        model.Male,
+		BirthdayDate:  time.Date(1999, 3, 31, 0, 0, 0, 0, time.UTC),
+		IsOnline:      true,
+		LastSeenAt:    &now,
+	}
+	cards := []usecase.UserCard{{ID: 10, FirstName: "Neo", LastName: "Anderson", Username: "neo", AvatarLink: "/avatar.png", IsOnline: true, LastSeenAt: &now}}
+	events := []usecase.LatestEvent{{UserCard: cards[0], Type: 1}}
+	friends := []model.Friend{friend(11, "trinity")}
+	settings := &model.UserSettings{UserAccountID: 5, Language: model.LanguageRU, Theme: model.ThemeDark}
+
+	svc := handlermocks.NewMockUserService(ctrl)
+	svc.EXPECT().GetPublicPopularUsers(gomock.Any()).Return(cards, nil).AnyTimes()
+	svc.EXPECT().GetUsersFriends(gomock.Any(), gomock.Any()).Return(friends, nil).AnyTimes()
+	svc.EXPECT().GetSuggestedUsers(gomock.Any(), gomock.Any()).Return(cards, nil).AnyTimes()
+	svc.EXPECT().GetLatestEvents(gomock.Any()).Return(events, nil).AnyTimes()
+	svc.EXPECT().GetProfileMe(gomock.Any(), gomock.Any()).Return(profile, nil).AnyTimes()
+	svc.EXPECT().GetProfileByID(gomock.Any(), gomock.Any()).Return(profile, nil).AnyTimes()
+	svc.EXPECT().UpdateMe(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	svc.EXPECT().GetSettings(gomock.Any(), gomock.Any()).Return(settings, nil).AnyTimes()
+	svc.EXPECT().UpdateSettings(gomock.Any(), gomock.Any(), gomock.Any()).Return(settings, nil).AnyTimes()
+	svc.EXPECT().GetFriends(gomock.Any(), gomock.Any(), gomock.Any()).Return(friends, nil).AnyTimes()
+	svc.EXPECT().DeleteFriend(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	svc.EXPECT().RequestFriendship(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	svc.EXPECT().GetIncomingFriendRequests(gomock.Any(), gomock.Any(), gomock.Any()).Return(friends, nil).AnyTimes()
+	svc.EXPECT().GetOutgoingFriendRequests(gomock.Any(), gomock.Any(), gomock.Any()).Return(friends, nil).AnyTimes()
+	svc.EXPECT().AcceptFriendRequest(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	svc.EXPECT().DeclineFriendRequest(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	svc.EXPECT().RevokeFriendRequest(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	router := chi.NewRouter()
+	New(svc).RegisterRoutes(router, nil)
+
+	cases := []struct {
+		method string
+		path   string
+		body   any
+		userID int64
+	}{
+		{http.MethodGet, "/public/popular-users", nil, 0},
+		{http.MethodGet, "/users/10/friends", nil, 0},
+		{http.MethodGet, "/users/suggested", nil, 5},
+		{http.MethodGet, "/users/latest-events", nil, 5},
+		{http.MethodGet, "/profile/me", nil, 5},
+		{http.MethodGet, "/profile/10", nil, 5},
+		{http.MethodPatch, "/profile/me/edit", map[string]any{"login": "neo2", "firstName": "Neo"}, 5},
+		{http.MethodGet, "/settings/", nil, 5},
+		{http.MethodPost, "/settings/", map[string]any{"language": "RU", "theme": "dark"}, 5},
+		{http.MethodPost, "/friends/request", map[string]any{"friendID": 11}, 5},
+		{http.MethodPost, "/friends/accept/11", nil, 5},
+		{http.MethodPost, "/friends/decline/11", nil, 5},
+		{http.MethodDelete, "/friends/request/11", nil, 5},
+		{http.MethodGet, "/friends/requests/incoming", nil, 5},
+		{http.MethodGet, "/friends/requests/incoming/pending", nil, 5},
+		{http.MethodGet, "/friends/requests/outgoing", nil, 5},
+		{http.MethodGet, "/friends/requests/outgoing/pending", nil, 5},
+		{http.MethodDelete, "/friends/11", nil, 5},
+		{http.MethodGet, "/friends/accepted", nil, 5},
+		{http.MethodGet, "/friends/", nil, 5},
+	}
+
+	for _, tc := range cases {
+		rr := serveUser(t, router, tc.method, tc.path, tc.body, tc.userID)
+		if rr.Code == 0 || rr.Code >= 500 {
+			t.Fatalf("%s %s returned %d: %s", tc.method, tc.path, rr.Code, rr.Body.String())
+		}
+	}
 }
 
 type userRepoMocks struct {

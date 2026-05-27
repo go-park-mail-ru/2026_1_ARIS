@@ -12,10 +12,10 @@ import (
 )
 
 type Handler struct {
-	community *usecase.Service
+	community CommunityService
 }
 
-func New(community *usecase.Service) *Handler {
+func New(community CommunityService) *Handler {
 	return &Handler{community: community}
 }
 

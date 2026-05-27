@@ -18,9 +18,11 @@ MICROSERVICE_RUNTIME_FULL=$(MICROSERVICE_RUNTIME) $(MICROSERVICE_MONITORING)
 NGINX_SITE_NAME ?= arisnet.ru
 NGINX_SITES_AVAILABLE ?= /etc/nginx/sites-available
 NGINX_SITES_ENABLED ?= /etc/nginx/sites-enabled
-COVER_TEST_PACKAGES ?= ./...
-COVER_PACKAGES ?= ./...
-COVER_EXCLUDE_PATTERN ?= "(/mock/|/mocks/|_mock\.go|_easyjson\.go|\.pb\.go|_grpc\.pb\.go)"
+COVER_PACKAGE_EXCLUDE_PATTERN ?= "(/mock($$|/)|/mocks($$|/)|/cmd($$|/)|/proto($$|/)|/tools($$|/)|/internal/dto$$|/internal/xerrors$$|^github.com/go-park-mail-ru/2026_1_ARIS/common$$|/pkg/(clickhouse|minio|redis|tarantool)$$|/services/indexer($$|/)|/internal/websocket$$|/services/post/internal/analytics$$)"
+COVER_TEST_PACKAGES ?= $(shell go list -f '{{if or .TestGoFiles .XTestGoFiles}}{{.ImportPath}}{{end}}' ./... | grep -v -E $(COVER_PACKAGE_EXCLUDE_PATTERN))
+COVER_PACKAGES ?= $(shell go list -f '{{if .GoFiles}}{{.ImportPath}}{{end}}' ./... | grep -v -E $(COVER_PACKAGE_EXCLUDE_PATTERN) | paste -sd, -)
+COVER_EXCLUDE_PATTERN ?= "(/mock/|/mocks/|_mock\.go|_easyjson\.go|\.pb\.go|_grpc\.pb\.go|(^|/)dto\.go|(^|/)main\.go)"
+COVER_MERGE_AWK = 'NR==1 { print; next } { key=$$1 " " $$2; if (!(key in seen) || $$3 > count[key]) { line[key]=$$0; count[key]=$$3; seen[key]=1 } } END { for (key in line) print line[key] }'
 
 DB_HOST ?= 127.0.0.1
 DB_PORT ?= 5431
@@ -49,7 +51,7 @@ clean:
 
 coverage: clean
 	go test -count=1 $(COVER_TEST_PACKAGES) -coverprofile=coverage.out.tmp -coverpkg=$(COVER_PACKAGES)
-	grep -v -E $(COVER_EXCLUDE_PATTERN) coverage.out.tmp > coverage.out
+	grep -v -E $(COVER_EXCLUDE_PATTERN) coverage.out.tmp | awk $(COVER_MERGE_AWK) > coverage.out
 	go tool cover -func=coverage.out | grep total
 
 migrate-up:

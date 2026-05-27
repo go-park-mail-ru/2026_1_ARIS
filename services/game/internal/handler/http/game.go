@@ -16,13 +16,13 @@ import (
 )
 
 type Handler struct {
-	game *usecase.Service
+	game GameService
 	hub  *websocket.Hub
 }
 
 const waitingRoomDisconnectGrace = 3 * time.Second
 
-func New(game *usecase.Service, hub *websocket.Hub) *Handler {
+func New(game GameService, hub *websocket.Hub) *Handler {
 	h := &Handler{game: game, hub: hub}
 	game.SetNotifier(h.broadcastRoom)
 	return h

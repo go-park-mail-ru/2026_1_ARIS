@@ -15,10 +15,10 @@ import (
 )
 
 type Handler struct {
-	post *usecase.Service
+	post PostService
 }
 
-func New(post *usecase.Service) *Handler {
+func New(post PostService) *Handler {
 	return &Handler{post: post}
 }
 

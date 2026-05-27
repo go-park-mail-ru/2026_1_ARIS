@@ -15,11 +15,11 @@ import (
 )
 
 type Handler struct {
-	chat *usecase.Service
+	chat ChatService
 	hub  *websocket.Hub
 }
 
-func New(chat *usecase.Service, hub *websocket.Hub) *Handler {
+func New(chat ChatService, hub *websocket.Hub) *Handler {
 	return &Handler{chat: chat, hub: hub}
 }
 

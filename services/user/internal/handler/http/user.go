@@ -18,11 +18,11 @@ import (
 )
 
 type Handler struct {
-	user     *usecase.Service
+	user     UserService
 	validate *validator.Validate
 }
 
-func New(user *usecase.Service) *Handler {
+func New(user UserService) *Handler {
 	return &Handler{user: user, validate: validator.New()}
 }
 

@@ -3,12 +3,15 @@ package http
 import (
 	"bytes"
 	"context"
+	json "encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
+	handlermocks "github.com/go-park-mail-ru/2026_1_ARIS/services/game/internal/handler/http/mocks"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/game/internal/usecase"
+	"github.com/golang/mock/gomock"
 )
 
 func TestHandlerRequestHelpers(t *testing.T) {
@@ -160,8 +163,8 @@ func TestOtherMappers(t *testing.T) {
 
 	board := mapLeaderboard(usecase.Leaderboard{
 		GameType: "geo",
-		Season:  usecase.RatingSeason{SeasonNumber: 1, Title: "Season", StartsAt: "start", EndsAt: "end"},
-		Entries: []usecase.LeaderboardEntry{{Rank: 1, ProfileID: 10, Player: usecase.Player{ProfileID: 10, Name: "Ann"}, Rating: 1000, GamesPlayed: 3, Wins: 2, Draws: 1}},
+		Season:   usecase.RatingSeason{SeasonNumber: 1, Title: "Season", StartsAt: "start", EndsAt: "end"},
+		Entries:  []usecase.LeaderboardEntry{{Rank: 1, ProfileID: 10, Player: usecase.Player{ProfileID: 10, Name: "Ann"}, Rating: 1000, GamesPlayed: 3, Wins: 2, Draws: 1}},
 	})
 	if board.GameType != "geo" || len(board.Entries) != 1 || board.Entries[0].ProfileID != "10" {
 		t.Fatalf("unexpected leaderboard: %+v", board)
@@ -214,3 +217,143 @@ func TestInt64StringHelpers(t *testing.T) {
 type errGameUnexpected struct{}
 
 func (errGameUnexpected) Error() string { return "unexpected" }
+
+// ---------------------------------------------------------------------------
+// TestGameHandlerEndpoints – HTTP integration smoke tests using a real router
+// ---------------------------------------------------------------------------
+
+func newGameRouter(t *testing.T) (*chi.Mux, *Handler) {
+	t.Helper()
+
+	ctrl := gomock.NewController(t)
+	t.Cleanup(ctrl.Finish)
+
+	svc := handlermocks.NewMockGameService(ctrl)
+	svc.EXPECT().SetNotifier(gomock.Any()).AnyTimes()
+	svc.EXPECT().CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(usecase.Room{}, nil).AnyTimes()
+	svc.EXPECT().JoinRoom(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(usecase.Room{}, nil).AnyTimes()
+	svc.EXPECT().ListRooms(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	svc.EXPECT().GetRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(usecase.Room{}, nil).AnyTimes()
+	svc.EXPECT().DisbandRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	svc.EXPECT().LeaveRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	svc.EXPECT().KickPlayer(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	svc.EXPECT().SetReady(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	svc.EXPECT().SetReplayReady(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(usecase.Room{}, nil).AnyTimes()
+	svc.EXPECT().UpdateRoomPassword(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	svc.EXPECT().UpdateRoomTitle(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	svc.EXPECT().UpdateRoomRanked(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	svc.EXPECT().AssignAdmin(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	svc.EXPECT().StartRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(usecase.Room{}, nil).AnyTimes()
+	svc.EXPECT().SubmitAnswer(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(usecase.Room{}, nil).AnyTimes()
+	svc.EXPECT().PauseRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(usecase.Room{}, nil).AnyTimes()
+	svc.EXPECT().ForceResumeRoom(gomock.Any(), gomock.Any(), gomock.Any()).Return(usecase.Room{}, nil).AnyTimes()
+	svc.EXPECT().ListRoomMessages(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	svc.EXPECT().SendRoomMessage(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(usecase.RoomMessage{}, nil).AnyTimes()
+	svc.EXPECT().History(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	svc.EXPECT().Stats(gomock.Any(), gomock.Any()).Return(usecase.Stats{}, nil).AnyTimes()
+	svc.EXPECT().Leaderboard(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(usecase.Leaderboard{}, nil).AnyTimes()
+	svc.EXPECT().ListQuestions(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+	svc.EXPECT().CreateQuestion(gomock.Any(), gomock.Any(), gomock.Any()).Return(usecase.Question{}, nil).AnyTimes()
+	svc.EXPECT().UpdateQuestion(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(usecase.Question{}, nil).AnyTimes()
+	svc.EXPECT().DeleteQuestion(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	h := New(svc, nil)
+	router := chi.NewRouter()
+	h.RegisterRoutes(router, nil)
+	return router, h
+}
+
+func serveGame(t *testing.T, router *chi.Mux, method, path string, body any, userID int64) *httptest.ResponseRecorder {
+	t.Helper()
+	var buf bytes.Buffer
+	if body != nil {
+		if err := json.NewEncoder(&buf).Encode(body); err != nil {
+			t.Fatalf("encode body: %v", err)
+		}
+	}
+	req := httptest.NewRequest(method, path, &buf)
+	req.Header.Set("Content-Type", "application/json")
+	if userID > 0 {
+		req = req.WithContext(context.WithValue(req.Context(), "user_id", userID))
+	}
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	return rr
+}
+
+func TestGameHandlerEndpoints(t *testing.T) {
+	router, _ := newGameRouter(t)
+
+	const uid = int64(5)
+
+	cases := []struct {
+		name   string
+		method string
+		path   string
+		body   any
+		userID int64
+	}{
+		{"CreateRoom", http.MethodPost, "/games/rooms", map[string]any{"title": "Room1"}, uid},
+		{"ListRooms", http.MethodGet, "/games/rooms", nil, uid},
+		{"GetRoom", http.MethodGet, "/games/rooms/1", nil, uid},
+		{"DisbandRoom", http.MethodDelete, "/games/rooms/1", nil, uid},
+		{"LeaveRoom", http.MethodDelete, "/games/rooms/1/members/me", nil, uid},
+		{"KickPlayer", http.MethodDelete, "/games/rooms/1/members/3", nil, uid},
+		{"SetReady", http.MethodPatch, "/games/rooms/1/ready", map[string]any{"ready": true}, uid},
+		{"SetReplayReady", http.MethodPatch, "/games/rooms/1/replay", map[string]any{"ready": false}, uid},
+		{"UpdateRoomPassword", http.MethodPatch, "/games/rooms/1/password", map[string]any{"password": ""}, uid},
+		{"UpdateRoomTitle", http.MethodPatch, "/games/rooms/1/title", map[string]any{"title": "NewTitle"}, uid},
+		{"UpdateRoomRanked", http.MethodPatch, "/games/rooms/1/ranked", map[string]any{"isRanked": false}, uid},
+		{"AssignAdmin", http.MethodPatch, "/games/rooms/1/admin", map[string]any{"profileId": "3"}, uid},
+		{"StartRoom", http.MethodPost, "/games/rooms/1/start", nil, uid},
+		{"SubmitAnswer", http.MethodPost, "/games/rooms/1/answers", map[string]any{"value": 42}, uid},
+		{"PauseRoom", http.MethodPost, "/games/rooms/1/pause", nil, uid},
+		{"ForceResumeRoom", http.MethodPost, "/games/rooms/1/force-resume", nil, uid},
+		{"ListRoomMessages", http.MethodGet, "/games/rooms/1/messages", nil, uid},
+		{"SendRoomMessage", http.MethodPost, "/games/rooms/1/messages", map[string]any{"text": "hi"}, uid},
+		{"Leaderboard", http.MethodGet, "/games/ratings/geo/leaderboard", nil, uid},
+		{"History", http.MethodGet, "/games/history", nil, uid},
+		{"Stats", http.MethodGet, "/games/stats", nil, uid},
+		{"ListQuestions", http.MethodGet, "/games/questions", nil, uid},
+		{"CreateQuestion", http.MethodPost, "/games/questions", map[string]any{"gameType": "geo", "text": "Q?", "correctAnswer": 100}, uid},
+		{"UpdateQuestion", http.MethodPatch, "/games/questions/1", map[string]any{"gameType": "geo", "text": "Q?", "correctAnswer": 100}, uid},
+		{"DeleteQuestion", http.MethodDelete, "/games/questions/1", nil, uid},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			rr := serveGame(t, router, tc.method, tc.path, tc.body, tc.userID)
+			if rr.Code == 0 {
+				t.Fatalf("%s %s: response code is 0 (handler did not run)", tc.method, tc.path)
+			}
+		})
+	}
+}
+
+func TestGameHandlerUnauthorized(t *testing.T) {
+	router, _ := newGameRouter(t)
+
+	// key endpoints without user_id should return 401
+	unauthPaths := []struct {
+		method string
+		path   string
+	}{
+		{http.MethodGet, "/games/rooms"},
+		{http.MethodPost, "/games/rooms"},
+		{http.MethodGet, "/games/rooms/1"},
+		{http.MethodDelete, "/games/rooms/1"},
+		{http.MethodGet, "/games/history"},
+		{http.MethodGet, "/games/stats"},
+	}
+
+	for _, tc := range unauthPaths {
+		tc := tc
+		t.Run(tc.method+"_"+tc.path, func(t *testing.T) {
+			rr := serveGame(t, router, tc.method, tc.path, nil, 0) // no userID
+			if rr.Code != http.StatusUnauthorized {
+				t.Fatalf("expected 401 without user_id, got %d for %s %s", rr.Code, tc.method, tc.path)
+			}
+		})
+	}
+}
