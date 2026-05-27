@@ -80,7 +80,7 @@ type questionStorage struct {
 }
 
 const questionColumns = `
-	id, uid, game_type, question_text, correct_answer, answer_unit, is_active, created_at, updated_at
+	id, uid, game_type, question_text_ru, question_text_en, correct_answer, is_active, created_at, updated_at
 `
 
 func NewQuestionStorage(db DB) QuestionRepo {
@@ -92,18 +92,24 @@ func (s *questionStorage) Create(ctx context.Context, q *model.Question) error {
 		q.Uid = uuid.New()
 	}
 	return s.db.QueryRow(ctx, `
-		INSERT INTO game_question (uid, game_type, question_text, correct_answer, answer_unit, is_active)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO game_question (uid, game_type, question_text, question_text_ru, question_text_en, correct_answer, is_active)
+		VALUES ($1, $2, $3, $3, $4, $5, $6)
 		RETURNING id, created_at, updated_at
-	`, q.Uid, q.GameType, q.Text, q.CorrectAnswer, q.AnswerUnit, q.IsActive).Scan(&q.ID, &q.CreatedAt, &q.UpdatedAt)
+	`, q.Uid, q.GameType, q.TextRU, q.TextEN, q.CorrectAnswer, q.IsActive).Scan(&q.ID, &q.CreatedAt, &q.UpdatedAt)
 }
 
 func (s *questionStorage) Update(ctx context.Context, q *model.Question) error {
 	tag, err := s.db.Exec(ctx, `
 		UPDATE game_question
-		SET game_type=$1, question_text=$2, correct_answer=$3, answer_unit=$4, is_active=$5, updated_at=NOW()
+		SET game_type=$1,
+		    question_text=$2,
+		    question_text_ru=$2,
+		    question_text_en=$3,
+		    correct_answer=$4,
+		    is_active=$5,
+		    updated_at=NOW()
 		WHERE id=$6
-	`, q.GameType, q.Text, q.CorrectAnswer, q.AnswerUnit, q.IsActive, q.ID)
+	`, q.GameType, q.TextRU, q.TextEN, q.CorrectAnswer, q.IsActive, q.ID)
 	if err != nil {
 		return err
 	}

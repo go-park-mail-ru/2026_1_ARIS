@@ -35,6 +35,7 @@ type Client struct {
 	send         chan []byte
 	roomID       string
 	userID       int64
+	language     string
 	initial      []byte
 	onMessage    MessageHandler
 	onDisconnect ConnectionHandler
@@ -47,6 +48,7 @@ func Serve(
 	r *http.Request,
 	roomID string,
 	userID int64,
+	language string,
 	initial []byte,
 	onMessage MessageHandler,
 	onDisconnect ConnectionHandler,
@@ -62,6 +64,7 @@ func Serve(
 		send:         make(chan []byte, 256),
 		roomID:       roomID,
 		userID:       userID,
+		language:     language,
 		initial:      initial,
 		onMessage:    onMessage,
 		onDisconnect: onDisconnect,

@@ -94,14 +94,14 @@ func (h *Handler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, usecase.ErrActiveCreatedRoom) {
 			utils.WriteJSON(w, http.StatusConflict, map[string]any{
 				"error": "У вас уже есть своя созданная комната.",
-				"room":  mapRoom(room),
+				"room":  mapRoom(room, requestLanguage(r)),
 			})
 			return
 		}
 		writeServiceError(w, err)
 		return
 	}
-	utils.WriteJSON(w, http.StatusCreated, mapRoom(room))
+	utils.WriteJSON(w, http.StatusCreated, mapRoom(room, requestLanguage(r)))
 }
 
 func (h *Handler) JoinRoom(w http.ResponseWriter, r *http.Request) {
@@ -118,7 +118,7 @@ func (h *Handler) JoinRoom(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, err)
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, mapRoom(room))
+	utils.WriteJSON(w, http.StatusOK, mapRoom(room, requestLanguage(r)))
 }
 
 func (h *Handler) ListRooms(w http.ResponseWriter, r *http.Request) {
@@ -133,7 +133,7 @@ func (h *Handler) ListRooms(w http.ResponseWriter, r *http.Request) {
 	}
 	resp := make([]roomResponse, 0, len(rooms))
 	for _, room := range rooms {
-		resp = append(resp, mapRoom(room))
+		resp = append(resp, mapRoom(room, requestLanguage(r)))
 	}
 	utils.WriteJSON(w, http.StatusOK, resp)
 }
@@ -148,7 +148,7 @@ func (h *Handler) GetRoom(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, err)
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, mapRoom(room))
+	utils.WriteJSON(w, http.StatusOK, mapRoom(room, requestLanguage(r)))
 }
 
 func (h *Handler) DisbandRoom(w http.ResponseWriter, r *http.Request) {
@@ -222,7 +222,7 @@ func (h *Handler) SetReplayReady(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, err)
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, mapRoom(room))
+	utils.WriteJSON(w, http.StatusOK, mapRoom(room, requestLanguage(r)))
 }
 
 func (h *Handler) UpdateRoomPassword(w http.ResponseWriter, r *http.Request) {
@@ -304,7 +304,7 @@ func (h *Handler) StartRoom(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, err)
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, mapRoom(room))
+	utils.WriteJSON(w, http.StatusOK, mapRoom(room, requestLanguage(r)))
 }
 
 func (h *Handler) SubmitAnswer(w http.ResponseWriter, r *http.Request) {
@@ -321,7 +321,7 @@ func (h *Handler) SubmitAnswer(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, err)
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, mapRoom(room))
+	utils.WriteJSON(w, http.StatusOK, mapRoom(room, requestLanguage(r)))
 }
 
 func (h *Handler) PauseRoom(w http.ResponseWriter, r *http.Request) {
@@ -334,7 +334,7 @@ func (h *Handler) PauseRoom(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, err)
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, mapRoom(room))
+	utils.WriteJSON(w, http.StatusOK, mapRoom(room, requestLanguage(r)))
 }
 
 func (h *Handler) ForceResumeRoom(w http.ResponseWriter, r *http.Request) {
@@ -347,7 +347,7 @@ func (h *Handler) ForceResumeRoom(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(w, err)
 		return
 	}
-	utils.WriteJSON(w, http.StatusOK, mapRoom(room))
+	utils.WriteJSON(w, http.StatusOK, mapRoom(room, requestLanguage(r)))
 }
 
 func (h *Handler) ListRoomMessages(w http.ResponseWriter, r *http.Request) {
@@ -398,7 +398,7 @@ func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
 	}
 	resp := make([]historyResponse, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, historyResponse{Room: mapRoom(item.Room), MyScore: item.MyScore, OpponentScore: item.OpponentScore})
+		resp = append(resp, historyResponse{Room: mapRoom(item.Room, requestLanguage(r)), MyScore: item.MyScore, OpponentScore: item.OpponentScore})
 	}
 	utils.WriteJSON(w, http.StatusOK, resp)
 }
@@ -509,13 +509,15 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = h.game.TouchWaitingRoomMember(r.Context(), userID, roomID)
-	initial, _ := json.Marshal(socketEvent{Type: "room_state", Room: ptr(mapRoom(room))})
+	language := requestLanguage(r)
+	initial, _ := json.Marshal(socketEvent{Type: "room_state", Room: ptr(mapRoom(room, language))})
 	if err := websocket.Serve(
 		h.hub,
 		w,
 		r,
 		strconv.FormatInt(roomID, 10),
 		userID,
+		language,
 		initial,
 		h.handleSocketMessage,
 		h.handleSocketDisconnect,
@@ -600,12 +602,12 @@ func (h *Handler) broadcastRoom(ctx context.Context, roomID int64) {
 	if h.hub == nil {
 		return
 	}
-	h.hub.BroadcastRoomFunc(strconv.FormatInt(roomID, 10), func(userID int64) []byte {
+	h.hub.BroadcastRoomFunc(strconv.FormatInt(roomID, 10), func(userID int64, language string) []byte {
 		room, err := h.game.GetRoom(ctx, userID, roomID)
 		if err != nil {
 			return marshalEvent(socketEvent{Type: "room_updated"})
 		}
-		return marshalEvent(socketEvent{Type: "room_state", Room: ptr(mapRoom(room))})
+		return marshalEvent(socketEvent{Type: "room_state", Room: ptr(mapRoom(room, language))})
 	})
 }
 
@@ -755,6 +757,43 @@ func marshalEvent(event socketEvent) []byte {
 	return data
 }
 
+func requestLanguage(r *http.Request) string {
+	for _, value := range []string{
+		r.URL.Query().Get("lang"),
+		r.URL.Query().Get("language"),
+		r.Header.Get("X-Interface-Language"),
+		r.Header.Get("Accept-Language"),
+	} {
+		if language := normalizeLanguage(value); language != "" {
+			return language
+		}
+	}
+	return "ru"
+}
+
+func normalizeLanguage(value string) string {
+	for _, part := range strings.Split(value, ",") {
+		part = strings.TrimSpace(strings.ToLower(part))
+		switch {
+		case strings.HasPrefix(part, "en"):
+			return "en"
+		case strings.HasPrefix(part, "ru"):
+			return "ru"
+		}
+	}
+	return ""
+}
+
+func localizedValue(text usecase.LocalizedText, language string) string {
+	if normalizeLanguage(language) == "en" && strings.TrimSpace(text.EN) != "" {
+		return text.EN
+	}
+	if strings.TrimSpace(text.RU) != "" {
+		return text.RU
+	}
+	return text.EN
+}
+
 func mapQuestionInput(req questionRequest) usecase.QuestionInput {
 	active := true
 	if req.IsActive != nil {
@@ -762,14 +801,13 @@ func mapQuestionInput(req questionRequest) usecase.QuestionInput {
 	}
 	return usecase.QuestionInput{
 		GameType:      req.GameType,
-		Text:          req.Text,
+		Text:          usecase.LocalizedText{RU: req.Text.RU, EN: req.Text.EN},
 		CorrectAnswer: req.CorrectAnswer,
-		AnswerUnit:    req.AnswerUnit,
 		IsActive:      active,
 	}
 }
 
-func mapRoom(room usecase.Room) roomResponse {
+func mapRoom(room usecase.Room, language string) roomResponse {
 	resp := roomResponse{
 		ID:                      int64String(room.ID),
 		Title:                   room.Title,
@@ -793,7 +831,7 @@ func mapRoom(room usecase.Room) roomResponse {
 		PauseForceVotes:         room.PauseForceVotes,
 		PauseForceVotesRequired: room.PauseForceVotesRequired,
 		Players:                 mapPlayers(room.Players),
-		Questions:               mapRoomQuestions(room.Questions),
+		Questions:               mapRoomQuestions(room.Questions, language),
 		RatingChanges:           mapRatingChanges(room.RatingChanges),
 		ProfileStats:            statsResponse{Played: room.ProfileStats.Played, Won: room.ProfileStats.Won, Lost: room.ProfileStats.Lost, Drawn: room.ProfileStats.Drawn},
 		CreatedAt:               room.CreatedAt,
@@ -804,8 +842,7 @@ func mapRoom(room usecase.Room) roomResponse {
 		resp.CurrentQuestion = &currentQuestionResponse{
 			Position:    room.CurrentQuestion.Position,
 			ID:          int64String(room.CurrentQuestion.ID),
-			Text:        room.CurrentQuestion.Text,
-			AnswerUnit:  room.CurrentQuestion.AnswerUnit,
+			Text:        localizedValue(room.CurrentQuestion.Text, language),
 			StartedAt:   room.CurrentQuestion.StartedAt,
 			DeadlineAt:  room.CurrentQuestion.DeadlineAt,
 			HasAnswered: room.CurrentQuestion.HasAnswered,
@@ -840,13 +877,13 @@ func mapPlayer(item usecase.Player) playerResponse {
 	}
 }
 
-func mapRoomQuestions(items []usecase.RoomQuestion) []roomQuestionResponse {
+func mapRoomQuestions(items []usecase.RoomQuestion, language string) []roomQuestionResponse {
 	result := make([]roomQuestionResponse, 0, len(items))
 	for _, item := range items {
 		result = append(result, roomQuestionResponse{
 			Position:        item.Position,
 			Status:          item.Status,
-			Question:        mapQuestion(item.Question),
+			Question:        mapRoomQuestionPayload(item.Question, language),
 			WinnerProfileID: int64PtrString(item.WinnerProfileID),
 			StartedAt:       item.StartedAt,
 			DeadlineAt:      item.DeadlineAt,
@@ -860,9 +897,17 @@ func mapRoomQuestions(items []usecase.RoomQuestion) []roomQuestionResponse {
 func mapQuestion(item usecase.Question) questionResponse {
 	return questionResponse{
 		ID:            int64String(item.ID),
-		Text:          item.Text,
+		Text:          localizedTextResponse{RU: item.Text.RU, EN: item.Text.EN},
 		CorrectAnswer: item.CorrectAnswer,
-		AnswerUnit:    item.AnswerUnit,
+		IsActive:      item.IsActive,
+	}
+}
+
+func mapRoomQuestionPayload(item usecase.Question, language string) roomQuestionPayloadResponse {
+	return roomQuestionPayloadResponse{
+		ID:            int64String(item.ID),
+		Text:          localizedValue(item.Text, language),
+		CorrectAnswer: item.CorrectAnswer,
 		IsActive:      item.IsActive,
 	}
 }
