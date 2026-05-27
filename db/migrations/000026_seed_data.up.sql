@@ -115,6 +115,53 @@ DECLARE
     'Фотографии и советы по съёмке'
   ];
 
+  user_avatars TEXT[] := ARRAY[
+    'https://www.rupixel.ru/files/preview/1280x852/13951760165587yonhoep4rqdrxsmhcrzprrwjlknopkgzve2mloni16ts4go31gmm7wnwbbrgkgxmydwsv4yysd10gom1wamezclzr9iwrjsktirs.jpg',
+    'https://www.rupixel.ru/files/preview/960x1436/14201761353608pdmdmhtgz8ha7vydjr1n9aq7060ievaqhvhl8govtewrzpq6w8mlxcuovi4uol92xoftbmu3grj0bi90mdn5iwvzxgmpvhnh1emz.jpeg',
+    'https://www.rupixel.ru/files/preview/1280x853/21723099259wchixlvmshw1swj2znfvj0lldor2lu1uuy9rgempdtgiaiqoskgopmgyasoxp3bxufuhmhzxsrwhltlijynhwuswglabjin4f2si.jpg',
+    'https://www.rupixel.ru/files/preview/1280x1049/21723098980onza7yaq04mo0svrpuk0pwtxwy2ancqzu7nbtqjzbboez7ir7jkjwpx1rt8zujioqys0tszkqxqukcyygvonk1cfaea6uvyion4z.jpg',
+    'https://www.rupixel.ru/files/preview/960x1280/17511777379788lrqzdgs3hbwgzsqb8a1lw8bkvooimelr4jbfmaxn94xh38bdh3y2qmigusfbnxjalq08i1qqhlhxvowjl9cef1oggnxcp872zxpt.jpg',
+    'https://www.rupixel.ru/files/preview/960x1280/17511777201898urfc4djbxgnx4686cnj7yjsiktrz80qqurfzuu8yeues37lepabaawoszhozihaacwkdwes9kxp3e6wxx8yur3hiq9j6vod8fuy9.jpg',
+    'https://www.rupixel.ru/files/preview/960x1440/21725605582yowh8dffoahibmyapnogr4e0ux2qgltoinsbedvsbmv0bjgignh55jmemuvkkeswv1vnuun0f7tfbtgbzlmn5eme8tvg73cafkux.jpg',
+    'https://www.rupixel.ru/files/preview/961x1442/21724309808uevpdo5lvktdz56vnpqmvnvsbxt4t6drbt3q4paolnslziawj5q1veppvrytv8g02nnqvxgnqz0ywr6wbrzfujajlzjejkes2q1m.jpg',
+    'https://www.rupixel.ru/files/preview/960x1200/11761744438610bizxnm2vwyhvh2m2j8v1fiim479i3cnxa0r8poabotxw0svzfof5wwqkoese137q1eascnxn8fiuo7xcmufuqodr4aohzgstw3jh.jpg',
+    'https://www.rupixel.ru/files/preview/960x1200/11761744438483fm8qngjrx6exqk4jolrgmnwxovzvpmm8a8se50qqcpzasnacxwcmxhxahlt9nk5jjwotalgry2wrc5vltpnqbsaz9mmrdu0sfhlg.jpg'
+  ];
+  post_imgs TEXT[] := ARRAY[
+    'https://www.rupixel.ru/files/preview/1280x960/18211779241465k4cyijp9o5qnd5kk2ihjrbzwbytmdupnhkosyqabqefopxqp5qgi4g4peqsclzrfkk5kdahp9bjym64h7fooggyfglw2evuklajb.jpg',
+    'https://www.rupixel.ru/files/preview/1280x853/14471779082642joonevrdgmdx7pbzbrb6z5zljevlchogtegj7jj3tsx4gzir2ety61xyevduqupimyjenpt1a3ql9cswspzlfyx9i6xkxol4vegm.jpg',
+    'https://www.rupixel.ru/files/preview/1280x960/14471779082580mrevakofwhlx9ng30gbpwvvpvomohkqubzbeb8mnxmfm0cif1tvwlj3251lupmaypfrhmjfxnr1yt3cv9deelab355xjbm3z4xpm.jpg',
+    'https://www.rupixel.ru/files/preview/1280x853/14471778865077onj9owr2nwqy8kdmsthbmhbfqidyiup3zlg7tukhgzmfwxjuxcltv0ccmhk663rat005vr7esa6bzbmwa1ebol61efem3e6nneir.jpg',
+    'https://www.rupixel.ru/files/preview/1280x853/14471778831781n0paakgmsporbxyfwnpwlvgcuem5tqcppal7qdocifkjirgq8fnniudrpoihnexjnk0g2nnqjlult5uoghkxwnmnukgva6ag9val.jpg',
+    'https://www.rupixel.ru/files/preview/1280x853/17481777047820jofcv57xwdfmqlmpnch1hghavji4m6gawusuitmclq4a8dxax1tmfuo6sd9g3ge14p5kv4i0wpeup7n78roz2gh6tg4udruz0wkc.jpg',
+    'https://www.rupixel.ru/files/preview/1280x860/13951774200196grlpxh8n53qlxoqlmwyf1puxch2uga8gnwlvmefbkjx66fq8sogqh2cuciwghnzmqtpktolqgegpoxgxrjl82xomzjxgqto0oymo.jpg',
+    'https://www.rupixel.ru/files/preview/1280x721/16471777980761cnnqrkucgfa3quqayv739yll9cepevddgeqn9zbb1hxsfcpxga5pfctjbsahzkj5ncmpdcnyun5a2ytcbovtt4egpvpafjrjoeql.jpg',
+    'https://www.rupixel.ru/files/preview/1280x960/16501772880787ecbkp34riue81kepvxlithtousnbhntujew6invgbdzqcjj7jmhobjvs6nxpwigrnl0evoxqc1d6m3snaf7mwk0b2yduuhgmlkol.jpg',
+    'https://www.rupixel.ru/files/preview/1280x960/16501772878155roujkbukmhrmdyokenrqgqfkrlwvot1cw3ykmplor25ju4blhlumvpzl3ntlb3jymdymaayzyjxz8ogfalqqlpqv6a6e5kmkcqko.jpg',
+    'https://www.rupixel.ru/files/preview/960x1123/15401768566807uyzrbm52kalyuolioiuestxwkovqmxjpnhtbozmfoojzhc9yhvjslpqibemn79wlpx19hbkexej5nkr2u7623snchi3p5lnw0tvm.jpeg',
+    'https://www.rupixel.ru/files/preview/1280x1707/13631758655448jlsd9uspm2u8j1whmteszmmwxgplmwmjnlumzadx4btu62cttshr6ncqnjdvxmikr64flejgnpvmmygzexb2lbskoushih9zo3qq.jpeg',
+    'https://www.rupixel.ru/files/preview/1280x936/13641758005819tztp1owtfof0odh6lptytenglwoc8rqhbbf70yily2u5rcofo2hu4srtdbcuquf7tnil6luvwdlcn6us8q9oxlpniiqs4l0qklbc.jpg',
+    'https://www.rupixel.ru/files/preview/1280x865/13951778488582gc7fgofqkupn5h2mjztqen5ylak9nizq2ia8qzo1q2lwf90tkewss2i84jbtsbqd3wggmv1t9y7uo2es0z9cplame7q4qsafuxcp.jpg',
+    'https://www.rupixel.ru/files/preview/1280x811/13951778298562f2owpqnxh7edgjkkyuvkngpwa0nfojvfcxz22zko86nwmzvu1m4uhtizik1ckzbjvzlcswqw2pthfrnnu87xunfxkqcppyogzaa8.jpg',
+    'https://www.rupixel.ru/files/preview/960x1280/17781778026930apthzpkqbnsrse5secqnqjd4ssicf0s59om4epv7fx3zmoawuqwg65onmurkaowcyuwppvyktvusupuhvyamy8kwamtwdk7mmkux.jpg',
+    'https://www.rupixel.ru/files/preview/1280x721/16471777980142nbtydhdip9bgiop5qp9aclwinjrgnli18w9kpfydnfox0jectudzwosjjvdhawpdjcapvs1zprbbstvavmkqyshxvw03g90rdbtm.jpg',
+    'https://www.rupixel.ru/files/preview/1280x853/16501777193633mzvndfi4bo2n9qzgggh4llnknda7ksdgurji8doj3689e7rio8jtpct7b8enjgqhxqdqzfgpht7wbpjr1dtqpk6unigw8hzp30ry.jpg',
+    'https://www.rupixel.ru/files/preview/1280x852/13951760165587yonhoep4rqdrxsmhcrzprrwjlknopkgzve2mloni16ts4go31gmm7wnwbbrgkgxmydwsv4yysd10gom1wamezclzr9iwrjsktirs.jpg',
+    'https://www.rupixel.ru/files/preview/1280x853/21723099259wchixlvmshw1swj2znfvj0lldor2lu1uuy9rgempdtgiaiqoskgopmgyasoxp3bxufuhmhzxsrwhltlijynhwuswglabjin4f2si.jpg'
+  ];
+  comm_covers TEXT[] := ARRAY[
+    'https://www.rupixel.ru/files/preview/960x2187/17971778601974pvnzm9ncboqsvtqi8nbun61xhk03yi9jgmgtawo5dvqoxfpxnkvd0i02cf314rma3kgwblntkrafwmzu30aluxbwyepjepyx5gea.jpg',
+    'https://www.rupixel.ru/files/preview/1280x865/13951778488582gc7fgofqkupn5h2mjztqen5ylak9nizq2ia8qzo1q2lwf90tkewss2i84jbtsbqd3wggmv1t9y7uo2es0z9cplame7q4qsafuxcp.jpg',
+    'https://www.rupixel.ru/files/preview/1280x960/16501772875198rzfeaqclvaptws8g4im5vdjbcmnetrvma4cv3n3xwt162qetr2ukpbfjvxjntg0flt411d4amilohkvvc4o2kzbjyiy6pdapljla.jpg',
+    'https://www.rupixel.ru/files/preview/960x1280/17781778026930apthzpkqbnsrse5secqnqjd4ssicf0s59om4epv7fx3zmoawuqwg65onmurkaowcyuwppvyktvusupuhvyamy8kwamtwdk7mmkux.jpg',
+    'https://www.rupixel.ru/files/preview/1280x960/18211779241465k4cyijp9o5qnd5kk2ihjrbzwbytmdupnhkosyqabqefopxqp5qgi4g4peqsclzrfkk5kdahp9bjym64h7fooggyfglw2evuklajb.jpg',
+    'https://www.rupixel.ru/files/preview/1280x721/16471777980142nbtydhdip9bgiop5qp9aclwinjrgnli18w9kpfydnfox0jectudzwosjjvdhawpdjcapvs1zprbbstvavmkqyshxvw03g90rdbtm.jpg',
+    'https://www.rupixel.ru/files/preview/1280x853/14471778865077onj9owr2nwqy8kdmsthbmhbfqidyiup3zlg7tukhgzmfwxjuxcltv0ccmhk663rat005vr7esa6bzbmwa1ebol61efem3e6nneir.jpg',
+    'https://www.rupixel.ru/files/preview/960x1123/15401768566807uyzrbm52kalyuolioiuestxwkovqmxjpnhtbozmfoojzhc9yhvjslpqibemn79wlpx19hbkexej5nkr2u7623snchi3p5lnw0tvm.jpeg',
+    'https://www.rupixel.ru/files/preview/1280x936/13641758005819tztp1owtfof0odh6lptytenglwoc8rqhbbf70yily2u5rcofo2hu4srtdbcuquf7tnil6luvwdlcn6us8q9oxlpniiqs4l0qklbc.jpg',
+    'https://www.rupixel.ru/files/preview/1280x721/16471777980761cnnqrkucgfa3quqayv739yll9cepevddgeqn9zbb1hxsfcpxga5pfctjbsahzkj5ncmpdcnyun5a2ytcbovtt4egpvpafjrjoeql.jpg'
+  ];
+
   ptexts TEXT[] := ARRAY[
     'Отличный день! Много работал над новым проектом.',
     'Только что вернулся из похода в горы. Виды потрясающие!',
@@ -196,7 +243,7 @@ BEGIN
       gen_random_uuid(),
       'avatar_seed' || LPAD(i::TEXT, 3, '0'),
       prof_id, 'jpg', 'image/jpeg',
-      'https://robohash.org/user' || i || '?size=300x300',
+      user_avatars[((i - 1) % array_length(user_avatars, 1)) + 1],
       0
     )
     RETURNING id INTO media_id;
@@ -234,7 +281,7 @@ BEGIN
     VALUES (
       gen_random_uuid(), 'comm_avatar_' || cunames[i],
       cprof_id, 'jpg', 'image/jpeg',
-      'https://robohash.org/community' || i || '?size=300x300&set=set1',
+      comm_covers[i],
       0
     )
     RETURNING id INTO media_id;
@@ -245,7 +292,7 @@ BEGIN
     VALUES (
       gen_random_uuid(), 'comm_cover_' || cunames[i],
       cprof_id, 'jpg', 'image/jpeg',
-      'https://placehold.co/1200x400.jpg?text=Community+' || i,
+      comm_covers[i],
       0
     )
     RETURNING id INTO cover_id;
@@ -276,7 +323,7 @@ BEGIN
     VALUES (
       gen_random_uuid(), 'post_img_' || i,
       prof_ids[i], 'jpg', 'image/jpeg',
-      'https://placehold.co/800x600.jpg?text=Post+' || i,
+      post_imgs[((i - 1) % array_length(post_imgs, 1)) + 1],
       0
     )
     RETURNING id INTO media_id;
@@ -310,7 +357,7 @@ BEGIN
         gen_random_uuid(),
         'comm_post_' || i || '_' || j,
         cprof_ids[i], 'jpg', 'image/jpeg',
-        'https://placehold.co/800x600.jpg?text=Post+' || (i * 10 + j),
+        post_imgs[((i * 10 + j - 1) % array_length(post_imgs, 1)) + 1],
         0
       )
       RETURNING id INTO media_id;
