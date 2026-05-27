@@ -13,16 +13,57 @@ scrape_configs:
       - targets:
           - node-exporter:9100
 
+  - job_name: nginx
+    static_configs:
+      - targets:
+          - nginx-exporter:9113
+
+  - job_name: nginx-access
+    static_configs:
+      - targets:
+          - nginxlog-exporter:4040
+
   - job_name: aris-services
+    honor_labels: true
     metrics_path: /metrics
     static_configs:
       - targets:
           - auth:8085
+        labels:
+          service: auth
+      - targets:
           - media:8081
+        labels:
+          service: media
+      - targets:
           - user:8082
+        labels:
+          service: user
+      - targets:
           - post:8083
+        labels:
+          service: post
+      - targets:
           - chat:8084
+        labels:
+          service: chat
+      - targets:
           - support:8086
+        labels:
+          service: support
+      - targets:
           - community:8087
+        labels:
+          service: community
+      - targets:
           - search:8088
+        labels:
+          service: search
+      - targets:
           - game:8089
+        labels:
+          service: game
+      - targets:
+          - indexer:8090
+        labels:
+          service: indexer

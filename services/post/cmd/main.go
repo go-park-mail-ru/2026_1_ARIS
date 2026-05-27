@@ -15,6 +15,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	pkgclickhouse "github.com/go-park-mail-ru/2026_1_ARIS/pkg/clickhouse"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/metrics"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/postgres"
 	tarantoolcache "github.com/go-park-mail-ru/2026_1_ARIS/pkg/tarantool"
 	authpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/auth"
@@ -130,6 +131,7 @@ func main() {
 	httpHandler := postHTTP.New(postUsecase)
 	router := chi.NewRouter()
 	router.Use(chimiddleware.Recoverer)
+	metrics.RegisterHTTP(router, "post")
 	router.Route("/api", func(r chi.Router) {
 		httpHandler.RegisterRoutes(r, postMiddleware.AuthMiddleware(authpb.NewAuthServiceClient(authConn)))
 	})

@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/metrics"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/postgres"
 	authpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/auth"
 	communitypb "github.com/go-park-mail-ru/2026_1_ARIS/proto/community"
@@ -93,6 +94,7 @@ func main() {
 	httpHandler := communityHTTP.New(communityUsecase)
 	router := chi.NewRouter()
 	router.Use(chimiddleware.Recoverer)
+	metrics.RegisterHTTP(router, "community")
 	router.Route("/api", func(r chi.Router) {
 		httpHandler.RegisterRoutes(r, communityMiddleware.AuthMiddleware(authpb.NewAuthServiceClient(authConn)))
 	})

@@ -34,7 +34,7 @@ deploy_nginx_container="${DEPLOY_NGINX_CONTAINER:-1}"
 
 APP_SERVICES="auth media user post chat support community search game indexer"
 INFRA_SERVICES="db redis minio tarantool elasticsearch clickhouse"
-MONITORING_SERVICES="${MONITORING_SERVICES:-prometheus grafana node-exporter}"
+MONITORING_SERVICES="${MONITORING_SERVICES:-prometheus grafana node-exporter nginx-exporter nginxlog-exporter}"
 RUN_SEED_ON_DEPLOY="${RUN_SEED_ON_DEPLOY:-0}"
 
 sh scripts/render-service-envs.sh
@@ -99,6 +99,8 @@ docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-game-1 .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-prometheus-1 .*Up'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-grafana-1 .*Up'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-node-exporter-1 .*Up'
+docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-nginx-exporter-1 .*Up'
+docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-nginxlog-exporter-1 .*Up'
 if [ "$deploy_nginx_container" = "1" ]; then
   docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-nginx-1 .*healthy'
 fi
