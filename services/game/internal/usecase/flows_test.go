@@ -21,16 +21,15 @@ func TestServiceListQuestions(t *testing.T) {
 	questions := repositorymock.NewMockQuestionRepo(ctrl)
 	service := New(repository.Store{Questions: questions}, nil)
 
-	unit := "km"
 	questions.EXPECT().
 		List(gomock.Any(), model.DefaultGameType, true, 100, 0).
-		Return([]model.Question{{ID: 1, Text: "Question", CorrectAnswer: 42, AnswerUnit: &unit, IsActive: true}}, nil)
+		Return([]model.Question{{ID: 1, TextRU: "Вопрос", TextEN: "Question", CorrectAnswer: 42, IsActive: true}}, nil)
 
 	result, err := service.ListQuestions(ctx, " ", true, 0, -10)
 	if err != nil {
 		t.Fatalf("ListQuestions() error = %v", err)
 	}
-	if len(result) != 1 || result[0].ID != 1 || result[0].AnswerUnit == nil || *result[0].AnswerUnit != "km" {
+	if len(result) != 1 || result[0].ID != 1 || result[0].Text.EN != "Question" {
 		t.Fatalf("unexpected questions: %+v", result)
 	}
 }

@@ -1,0 +1,1 @@
+-- Seed question translations are intentionally preserved on rollback.

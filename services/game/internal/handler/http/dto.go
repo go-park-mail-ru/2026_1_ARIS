@@ -1,5 +1,7 @@
 package http
 
+import "encoding/json"
+
 //go:generate go run github.com/mailru/easyjson/easyjson -all $GOFILE
 
 type createRoomRequest struct {
@@ -46,12 +48,34 @@ type roomMessageRequest struct {
 	Text string `json:"text"`
 }
 
+//easyjson:skip
+type localizedTextPayload struct {
+	RU string `json:"ru"`
+	EN string `json:"en"`
+}
+
+func (p *localizedTextPayload) UnmarshalJSON(data []byte) error {
+	var text string
+	if err := json.Unmarshal(data, &text); err == nil {
+		p.RU = text
+		p.EN = text
+		return nil
+	}
+	type alias localizedTextPayload
+	var parsed alias
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		return err
+	}
+	p.RU = parsed.RU
+	p.EN = parsed.EN
+	return nil
+}
+
 type questionRequest struct {
-	GameType      string  `json:"gameType"`
-	Text          string  `json:"text"`
-	CorrectAnswer float64 `json:"correctAnswer"`
-	AnswerUnit    *string `json:"answerUnit,omitempty"`
-	IsActive      *bool   `json:"isActive,omitempty"`
+	GameType      string               `json:"gameType"`
+	Text          localizedTextPayload `json:"text"`
+	CorrectAnswer float64              `json:"correctAnswer"`
+	IsActive      *bool                `json:"isActive,omitempty"`
 }
 
 type playerResponse struct {
@@ -71,10 +95,21 @@ type playerResponse struct {
 }
 
 type questionResponse struct {
+	ID            string                `json:"id"`
+	Text          localizedTextResponse `json:"text"`
+	CorrectAnswer float64               `json:"correctAnswer,omitempty"`
+	IsActive      bool                  `json:"isActive"`
+}
+
+type localizedTextResponse struct {
+	RU string `json:"ru"`
+	EN string `json:"en"`
+}
+
+type roomQuestionPayloadResponse struct {
 	ID            string  `json:"id"`
 	Text          string  `json:"text"`
 	CorrectAnswer float64 `json:"correctAnswer,omitempty"`
-	AnswerUnit    *string `json:"answerUnit,omitempty"`
 	IsActive      bool    `json:"isActive"`
 }
 
@@ -113,21 +148,20 @@ type roomMessageResponse struct {
 }
 
 type roomQuestionResponse struct {
-	Position        int              `json:"position"`
-	Status          string           `json:"status"`
-	Question        questionResponse `json:"question"`
-	WinnerProfileID *string          `json:"winnerProfileId,omitempty"`
-	StartedAt       *string          `json:"startedAt,omitempty"`
-	DeadlineAt      *string          `json:"deadlineAt,omitempty"`
-	CompletedAt     *string          `json:"completedAt,omitempty"`
-	Answers         []answerResponse `json:"answers"`
+	Position        int                         `json:"position"`
+	Status          string                      `json:"status"`
+	Question        roomQuestionPayloadResponse `json:"question"`
+	WinnerProfileID *string                     `json:"winnerProfileId,omitempty"`
+	StartedAt       *string                     `json:"startedAt,omitempty"`
+	DeadlineAt      *string                     `json:"deadlineAt,omitempty"`
+	CompletedAt     *string                     `json:"completedAt,omitempty"`
+	Answers         []answerResponse            `json:"answers"`
 }
 
 type currentQuestionResponse struct {
 	Position    int     `json:"position"`
 	ID          string  `json:"id"`
 	Text        string  `json:"text"`
-	AnswerUnit  *string `json:"answerUnit,omitempty"`
 	StartedAt   *string `json:"startedAt,omitempty"`
 	DeadlineAt  *string `json:"deadlineAt,omitempty"`
 	HasAnswered bool    `json:"hasAnswered"`

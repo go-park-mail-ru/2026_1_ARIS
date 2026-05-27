@@ -1,0 +1,3 @@
+-- This migration repairs databases where older game migrations had already
+-- been applied before lobby columns were added to those migration files.
+-- Rollback is intentionally a no-op to avoid dropping live lobby data.

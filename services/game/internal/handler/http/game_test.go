@@ -93,7 +93,6 @@ func TestServiceErrorMapping(t *testing.T) {
 }
 
 func TestMapRoom(t *testing.T) {
-	answerUnit := "km"
 	winnerID := int64(10)
 	pausedBy := int64(11)
 	nextAt := "2026-05-27T10:00:00Z"
@@ -122,11 +121,11 @@ func TestMapRoom(t *testing.T) {
 		PauseForceVotes:         1,
 		PauseForceVotesRequired: 2,
 		CurrentQuestion: &usecase.CurrentQuestion{
-			Position: 2, ID: 30, Text: "Question", AnswerUnit: &answerUnit, StartedAt: &nextAt, DeadlineAt: &nextAt, HasAnswered: true,
+			Position: 2, ID: 30, Text: usecase.LocalizedText{RU: "Вопрос", EN: "Question"}, StartedAt: &nextAt, DeadlineAt: &nextAt, HasAnswered: true,
 		},
 		Players: []usecase.Player{{ProfileID: 10, UserAccountID: 20, Name: "Creator", IsMe: true}},
 		Questions: []usecase.RoomQuestion{{
-			Position: 1, Status: "done", Question: usecase.Question{ID: 31, Text: "Q", CorrectAnswer: 42, AnswerUnit: &answerUnit, IsActive: true}, WinnerProfileID: &winnerID, StartedAt: &nextAt, DeadlineAt: &nextAt, CompletedAt: &nextAt, Answers: []usecase.Answer{{ProfileID: 10, Answer: 42, Distance: 0, AnsweredAt: nextAt, ResponseTimeMs: 100}},
+			Position: 1, Status: "done", Question: usecase.Question{ID: 31, Text: usecase.LocalizedText{RU: "Вопрос", EN: "Question"}, CorrectAnswer: 42, IsActive: true}, WinnerProfileID: &winnerID, StartedAt: &nextAt, DeadlineAt: &nextAt, CompletedAt: &nextAt, Answers: []usecase.Answer{{ProfileID: 10, Answer: 42, Distance: 0, AnsweredAt: nextAt, ResponseTimeMs: 100}},
 		}},
 		RatingChanges: []usecase.RatingChange{{ProfileID: 10, Score: 5, Place: 1, BeforeRating: 1000, AfterRating: 1010, RatingDelta: 10, RatingWeight: 1, SeasonNumber: 1, SeasonTitle: "Season"}},
 		ProfileStats:  usecase.Stats{Played: 1, Won: 1},
@@ -135,7 +134,7 @@ func TestMapRoom(t *testing.T) {
 		FinishedAt:    &nextAt,
 	}
 
-	resp := mapRoom(room)
+	resp := mapRoom(room, "ru")
 	if resp.ID != "1" || resp.CreatedByProfileID != "10" || resp.WinnerProfileID == nil || *resp.WinnerProfileID != "10" {
 		t.Fatalf("unexpected room ids: %+v", resp)
 	}
@@ -152,9 +151,8 @@ func TestMapRoom(t *testing.T) {
 
 func TestOtherMappers(t *testing.T) {
 	active := false
-	unit := "km"
-	input := mapQuestionInput(questionRequest{GameType: "geo", Text: "Q", CorrectAnswer: 42, AnswerUnit: &unit, IsActive: &active})
-	if input.IsActive || input.AnswerUnit == nil || *input.AnswerUnit != "km" {
+	input := mapQuestionInput(questionRequest{GameType: "geo", Text: localizedTextPayload{RU: "Вопрос", EN: "Question"}, CorrectAnswer: 42, IsActive: &active})
+	if input.IsActive || input.Text.RU != "Вопрос" || input.Text.EN != "Question" {
 		t.Fatalf("unexpected question input: %+v", input)
 	}
 	if mapQuestionInput(questionRequest{}).IsActive != true {

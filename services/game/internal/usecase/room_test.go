@@ -486,7 +486,7 @@ func TestCreateQuestion_EmptyText_ReturnsError(t *testing.T) {
 	svc, _, _, _, _, _, _, _ := newGameService(ctrl)
 	ctx := context.Background()
 
-	_, err := svc.CreateQuestion(ctx, 5, QuestionInput{Text: ""})
+	_, err := svc.CreateQuestion(ctx, 5, QuestionInput{Text: LocalizedText{}})
 	if !errors.Is(err, ErrForbidden) {
 		t.Fatalf("expected ErrForbidden (no support client), got %v", err)
 	}
@@ -503,7 +503,7 @@ func TestUpdateQuestion_NoSupportClient_ReturnsForbidden(t *testing.T) {
 	svc, _, _, _, _, _, _, _ := newGameService(ctrl)
 	ctx := context.Background()
 
-	_, err := svc.UpdateQuestion(ctx, 5, 1, QuestionInput{Text: "Q?", CorrectAnswer: 42})
+	_, err := svc.UpdateQuestion(ctx, 5, 1, QuestionInput{Text: LocalizedText{RU: "Вопрос?", EN: "Question?"}, CorrectAnswer: 42})
 	if !errors.Is(err, ErrForbidden) {
 		t.Fatalf("expected ErrForbidden (no support client), got %v", err)
 	}
