@@ -1066,6 +1066,6 @@
   "timezone": "browser",
   "title": "ARIS / Gateway",
   "uid": "aris-gateway",
-  "version": 1,
+  "version": 100,
   "weekStart": ""
 }

@@ -1025,6 +1025,6 @@
   "timezone": "browser",
   "title": "ARIS / Post",
   "uid": "aris-service-post",
-  "version": 1,
+  "version": 100,
   "weekStart": ""
 }

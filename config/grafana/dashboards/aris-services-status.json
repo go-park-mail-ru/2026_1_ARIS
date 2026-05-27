@@ -686,6 +686,6 @@
   "timezone": "browser",
   "title": "ARIS / Services Status",
   "uid": "aris-services-status",
-  "version": 1,
+  "version": 100,
   "weekStart": ""
 }

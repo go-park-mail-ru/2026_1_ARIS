@@ -1025,6 +1025,6 @@
   "timezone": "browser",
   "title": "ARIS / Game",
   "uid": "aris-service-game",
-  "version": 1,
+  "version": 100,
   "weekStart": ""
 }
