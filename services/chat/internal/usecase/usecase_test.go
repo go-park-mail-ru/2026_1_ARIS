@@ -54,13 +54,6 @@ func expectProfileByAccount(client *usermock.MockUserServiceClient, accountID, p
 		Return(&userpb.GetProfileByUserAccountResponse{ProfileId: profileID}, nil)
 }
 
-// expectProfileByAccountErr sets up the mock user client to return an error for accountID.
-func expectProfileByAccountErr(client *usermock.MockUserServiceClient, accountID int64, err error) {
-	client.EXPECT().
-		GetProfileByUserAccount(gomock.Any(), &userpb.GetProfileByUserAccountRequest{UserAccountId: accountID}).
-		Return(nil, err)
-}
-
 // ---------------------------------------------------------------------------
 // Presence methods (no gRPC required)
 // ---------------------------------------------------------------------------

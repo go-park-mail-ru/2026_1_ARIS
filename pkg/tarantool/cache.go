@@ -27,6 +27,7 @@ const (
 )
 
 type payloadTuple struct {
+	//lint:ignore U1000 msgpack asArray marker
 	_msgpack  struct{} `msgpack:",asArray"`
 	ID        uint64
 	Payload   string
@@ -34,6 +35,7 @@ type payloadTuple struct {
 }
 
 type profileIDTuple struct {
+	//lint:ignore U1000 msgpack asArray marker
 	_msgpack      struct{} `msgpack:",asArray"`
 	UserAccountID uint64
 	ProfileID     uint64
@@ -41,6 +43,7 @@ type profileIDTuple struct {
 }
 
 type likeCountTuple struct {
+	//lint:ignore U1000 msgpack asArray marker
 	_msgpack  struct{} `msgpack:",asArray"`
 	PostID    uint64
 	Count     uint64
@@ -48,6 +51,7 @@ type likeCountTuple struct {
 }
 
 type presenceTuple struct {
+	//lint:ignore U1000 msgpack asArray marker
 	_msgpack      struct{} `msgpack:",asArray"`
 	UserAccountID uint64
 	IsOnline      bool
@@ -267,6 +271,7 @@ func (c *Client) GetPresence(ctx context.Context, userAccountID int64) (*Presenc
 }
 
 type feedSessionTuple struct {
+	//lint:ignore U1000 msgpack asArray marker
 	_msgpack  struct{} `msgpack:",asArray"`
 	SessionID string
 	PostIDs   string

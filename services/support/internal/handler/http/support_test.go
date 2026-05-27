@@ -2,7 +2,6 @@ package http
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/requestcontext"
 	models "github.com/go-park-mail-ru/2026_1_ARIS/services/support/internal/model"
 	tickets "github.com/go-park-mail-ru/2026_1_ARIS/services/support/internal/usecase"
 	ticketmocks "github.com/go-park-mail-ru/2026_1_ARIS/services/support/internal/usecase/mocks"
@@ -269,7 +269,7 @@ func supportRequest(t *testing.T, method, path string, body any) *http.Request {
 	}
 	req := httptest.NewRequest(method, path, reader)
 	req.Header.Set("Content-Type", "application/json")
-	ctx := context.WithValue(req.Context(), "user_id", int64(5))
+	ctx := requestcontext.WithUserID(req.Context(), int64(5))
 	return req.WithContext(ctx)
 }
 

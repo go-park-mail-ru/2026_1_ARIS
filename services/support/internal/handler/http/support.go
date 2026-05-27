@@ -224,13 +224,10 @@ func (h *SupportHandler) SendTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mediaResponse := make([]MediaRequestData, 0)
 	if request.Medias != nil {
 		mediaRefs := make([]tickets.MediaRef, 0, len(*request.Medias))
-		mediaResponse = make([]MediaRequestData, 0, len(*request.Medias))
 		for _, media := range *request.Medias {
 			mediaRefs = append(mediaRefs, tickets.MediaRef{MediaID: media.MediaID, MediaURL: media.MediaURL})
-			mediaResponse = append(mediaResponse, media)
 		}
 		mediaErrors := h.ticketService.AttachMedia(r.Context(), ticketID, mediaRefs)
 		if len(mediaErrors.Errs) != 0 {

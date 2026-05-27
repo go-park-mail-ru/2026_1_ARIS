@@ -120,7 +120,3 @@ func TestUserRepositoriesNoRowsAffected(t *testing.T) {
 	require.ErrorIs(t, store.Friendships.RevokeFriendRequest(ctx, 2, 3), repository.ErrNoRowsAffected)
 	require.ErrorIs(t, store.Friendships.DeleteFriend(ctx, 2, 3), repository.ErrNoRowsAffected)
 }
-
-func stringPtr(value string) *string {
-	return &value
-}

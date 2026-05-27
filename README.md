@@ -26,7 +26,7 @@ Backend проверяется и деплоится через GitHub Actions. 
 
 Обязательный gate для CI/CD:
 
-- `make lint` - проверяет `gofmt` и `go vet`.
+- `make lint` - проверяет `gofmt`, `go vet` и `staticcheck`.
 - `make test` - запускает `go test -v ./...`.
 - `make ci` - запускает lint и тесты; deploy jobs стартуют только после успешного `make ci`.
 
