@@ -163,12 +163,12 @@ func NewMessageStorage(db DB) MessageRepo {
 func (s *messageStorage) Save(ctx context.Context, msg *model.Message) error {
 	start := time.Now()
 	query := `
-		INSERT INTO message (uid, message_text, parent_message_id, chat_id, sticker_id, author_id)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO message (uid, message_text, parent_message_id, chat_id, sticker_id, author_id, message_type)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id
 	`
 	var id int64
-	err := s.db.QueryRow(ctx, query, msg.Uid, msg.Text, msg.ParentMessageID, msg.ChatID, msg.StickerID, msg.AuthorID).Scan(&id)
+	err := s.db.QueryRow(ctx, query, msg.Uid, msg.Text, msg.ParentMessageID, msg.ChatID, msg.StickerID, msg.AuthorID, msg.Type).Scan(&id)
 	logQuery(ctx, "messageStorage.Save", start)
 	if err != nil {
 		return err
@@ -181,7 +181,7 @@ func (s *messageStorage) GetByID(ctx context.Context, id int64) (*model.Message,
 	start := time.Now()
 	var msg model.Message
 	err := pgxscan.Get(ctx, s.db, &msg, `
-		SELECT id, uid, message_text, parent_message_id, chat_id, author_id, sticker_id, is_active, created_at, updated_at
+		SELECT id, uid, message_text, parent_message_id, chat_id, author_id, sticker_id, message_type, is_active, created_at, updated_at
 		FROM message
 		WHERE id=$1 AND is_active=true
 	`, id)
@@ -199,9 +199,9 @@ func (s *messageStorage) GetByChatID(ctx context.Context, chatID int64, limit, o
 	start := time.Now()
 	var messages []model.Message
 	err := pgxscan.Select(ctx, s.db, &messages, `
-		SELECT id, uid, message_text, parent_message_id, chat_id, author_id, sticker_id, is_active, created_at, updated_at
+		SELECT id, uid, message_text, parent_message_id, chat_id, author_id, sticker_id, message_type, is_active, created_at, updated_at
 		FROM (
-			SELECT id, uid, message_text, parent_message_id, chat_id, author_id, sticker_id, is_active, created_at, updated_at
+			SELECT id, uid, message_text, parent_message_id, chat_id, author_id, sticker_id, message_type, is_active, created_at, updated_at
 			FROM message
 			WHERE chat_id=$1 AND is_active=true
 			ORDER BY created_at DESC
@@ -221,7 +221,7 @@ func (s *messageStorage) GetByChatIDAfter(ctx context.Context, chatID, afterID i
 	start := time.Now()
 	var messages []model.Message
 	err := pgxscan.Select(ctx, s.db, &messages, `
-		SELECT id, uid, message_text, parent_message_id, chat_id, author_id, sticker_id, is_active, created_at, updated_at
+		SELECT id, uid, message_text, parent_message_id, chat_id, author_id, sticker_id, message_type, is_active, created_at, updated_at
 		FROM message
 		WHERE chat_id=$1 AND id>$2 AND is_active=true
 		ORDER BY id ASC
@@ -253,6 +253,7 @@ type MessageMediaRepo interface {
 	Save(ctx context.Context, item model.MessageMedia) error
 	GetByMessageIDs(ctx context.Context, messageIDs []int64) (map[int64][]model.MessageMedia, error)
 	GetMediaAuthorID(ctx context.Context, mediaID int64) (int64, error)
+	GetMediaInfo(ctx context.Context, mediaID int64) (*model.MediaInfo, error)
 	DeleteByMessageID(ctx context.Context, messageID int64) error
 }
 
@@ -329,6 +330,24 @@ func (s *messageMediaStorage) DeleteByMessageID(ctx context.Context, messageID i
 	_, err := s.db.Exec(ctx, `DELETE FROM message_with_media WHERE message_id=$1`, messageID)
 	logQuery(ctx, "messageMediaStorage.DeleteByMessageID", start)
 	return err
+}
+
+func (s *messageMediaStorage) GetMediaInfo(ctx context.Context, mediaID int64) (*model.MediaInfo, error) {
+	start := time.Now()
+	var media model.MediaInfo
+	err := pgxscan.Get(ctx, s.db, &media, `
+		SELECT id, author_id, mime_type, link, size
+		FROM media
+		WHERE id=$1 AND is_active=TRUE
+	`, mediaID)
+	logQuery(ctx, "messageMediaStorage.GetMediaInfo", start)
+	if err != nil {
+		if pgxscan.NotFound(err) {
+			return nil, errors.New("media not found")
+		}
+		return nil, err
+	}
+	return &media, nil
 }
 
 type StickerRepo interface {

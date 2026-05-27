@@ -21,6 +21,7 @@ type PostRepo interface {
 	Save(ctx context.Context, post models.Post) (int64, error)
 	Delete(ctx context.Context, id int64) error
 	Update(ctx context.Context, post models.Post) error
+	SetOnlyPublicDemo(ctx context.Context, ids []int64) error
 
 	GetByAuthorID(ctx context.Context, authorID int64) ([]models.Post, error)
 	GetByCommunityID(ctx context.Context, communityID int64) ([]models.Post, error)
@@ -64,6 +65,28 @@ func (storage *postStorage) Save(ctx context.Context, post models.Post) (int64, 
 	}
 
 	return postID, nil
+}
+
+func (storage *postStorage) SetOnlyPublicDemo(ctx context.Context, ids []int64) error {
+	logger := logger.FromContext(ctx)
+	query := `
+		UPDATE post
+		SET is_public_demo = (id = ANY($1)),
+		    updated_at = CASE WHEN is_public_demo <> (id = ANY($1)) THEN NOW() ELSE updated_at END
+	`
+
+	start := time.Now()
+	_, err := storage.db.Exec(ctx, query, ids)
+	if logger != nil {
+		logger.Debug("db query",
+			zap.String("query", "PostStorage.SetOnlyPublicDemo"),
+			zap.Duration("duration_ms", time.Since(start)))
+	}
+	if err != nil {
+		return pgerrors.MapPgError(err)
+	}
+
+	return nil
 }
 
 func (storage *postStorage) Delete(ctx context.Context, id int64) error {

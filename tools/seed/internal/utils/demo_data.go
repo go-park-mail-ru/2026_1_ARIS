@@ -683,7 +683,7 @@ func ensureDemoPost(
 	} else {
 		_, err = db.Exec(ctx, `
 			UPDATE post
-			SET post_text=$1, author_id=$2, community_id=$3, is_active=TRUE, created_at=$4, updated_at=$4
+			SET post_text=$1, author_id=$2, community_id=$3, is_public_demo=FALSE, is_active=TRUE, created_at=$4, updated_at=$4
 			WHERE id=$5
 		`, text, authorID, communityID, createdAt, postID)
 		if err != nil {

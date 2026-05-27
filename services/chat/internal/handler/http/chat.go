@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-park-mail-ru/2026_1_ARIS/services/chat/internal/model"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/chat/internal/usecase"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/chat/internal/websocket"
 	"github.com/go-park-mail-ru/2026_1_ARIS/utils"
@@ -505,6 +506,7 @@ func mapMessage(message usecase.Message) MessageResponse {
 		Files:           mapAttachments(message.Files),
 		Reactions:       mapReactions(message.Reactions),
 		MyReaction:      message.MyReaction,
+		Type:            string(message.Type),
 		IsActive:        message.IsActive,
 		CreatedAt:       message.CreatedAt.Format(time.RFC3339Nano),
 		UpdatedAt:       message.UpdatedAt.Format(time.RFC3339Nano),
@@ -518,6 +520,7 @@ func mapMessageInput(req messageRequest) usecase.MessageInput {
 		StickerID:       req.StickerID,
 		Media:           mapAttachmentInputs(req.Media),
 		Files:           mapAttachmentInputs(req.Files),
+		Type:            model.MessageType(req.Type),
 	}
 }
 

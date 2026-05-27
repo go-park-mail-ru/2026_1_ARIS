@@ -30,6 +30,7 @@ type DB interface {
 	Query(context.Context, string, ...any) (pgx.Rows, error)
 	QueryRow(context.Context, string, ...any) pgx.Row
 	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+	Begin(context.Context) (pgx.Tx, error)
 }
 
 type Store struct {
@@ -277,8 +278,14 @@ func (s *profileStorage) GetByUserAccountID(ctx context.Context, userAccountID i
 }
 
 func (s *profileStorage) UpdateAvatar(ctx context.Context, profileID int64, avatarID *int64) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
 	start := time.Now()
-	tag, err := s.db.Exec(ctx, `UPDATE profile SET avatar_id=$1, updated_at=NOW() WHERE id=$2`, avatarID, profileID)
+	tag, err := tx.Exec(ctx, `UPDATE profile SET avatar_id=$1, updated_at=NOW() WHERE id=$2`, avatarID, profileID)
 	logQuery(ctx, "profileStorage.UpdateAvatar", start)
 	if err != nil {
 		return err
@@ -286,7 +293,23 @@ func (s *profileStorage) UpdateAvatar(ctx context.Context, profileID int64, avat
 	if tag.RowsAffected() == 0 {
 		return ErrProfileNotFound
 	}
-	return nil
+
+	var userAccountID int64
+	if err := tx.QueryRow(ctx, `SELECT user_account_id FROM user_profile WHERE profile_id=$1`, profileID).Scan(&userAccountID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return tx.Commit(ctx)
+		}
+		return err
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO search_outbox (entity_type, entity_id, operation)
+		VALUES ('user', $1, 'upsert')
+	`, userAccountID); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
 
 type UserProfileRepo interface {
@@ -338,8 +361,14 @@ func NewUserProfileStorage(db DB) UserProfileRepo {
 }
 
 func (s *userProfileStorage) Save(ctx context.Context, userProfile model.UserProfile) (int64, error) {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
 	start := time.Now()
-	row := s.db.QueryRow(ctx, `
+	row := tx.QueryRow(ctx, `
 		INSERT INTO user_profile (uid, user_account_id, profile_id, first_name, last_name, bio, birthday_date, gender)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id
@@ -348,6 +377,17 @@ func (s *userProfileStorage) Save(ctx context.Context, userProfile model.UserPro
 
 	var id int64
 	if err := row.Scan(&id); err != nil {
+		return 0, err
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO search_outbox (entity_type, entity_id, operation)
+		VALUES ('user', $1, 'upsert')
+	`, userProfile.UserAccountID); err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
 		return 0, err
 	}
 	return id, nil
@@ -430,10 +470,17 @@ func (s *userProfileStorage) Update(ctx context.Context, update UserProfileUpdat
 	if len(set) == 0 {
 		return nil
 	}
+
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
 	args = append(args, update.ID)
 	query := `UPDATE user_profile SET ` + strings.Join(set, ", ") + `, updated_at=NOW() WHERE id=$` + strconv.Itoa(len(args))
 	start := time.Now()
-	tag, err := s.db.Exec(ctx, query, args...)
+	tag, err := tx.Exec(ctx, query, args...)
 	logQuery(ctx, "userProfileStorage.Update", start)
 	if err != nil {
 		return err
@@ -441,7 +488,15 @@ func (s *userProfileStorage) Update(ctx context.Context, update UserProfileUpdat
 	if tag.RowsAffected() == 0 {
 		return ErrUserProfileNotFound
 	}
-	return nil
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO search_outbox (entity_type, entity_id, operation)
+		VALUES ('user', (SELECT user_account_id FROM user_profile WHERE id=$1), 'upsert')
+	`, update.ID); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (s *userProfileStorage) Search(ctx context.Context, query string, limit int) ([]SearchProfileResult, error) {

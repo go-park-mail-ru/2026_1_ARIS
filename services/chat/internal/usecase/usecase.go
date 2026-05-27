@@ -252,18 +252,42 @@ func (s *Service) GetMessagesAfter(ctx context.Context, userAccountID, chatID, a
 	return s.mapMessages(ctx, messages, profileID)
 }
 
+var videoNoteMimes = map[string]bool{
+	"video/webm":      true,
+	"video/mp4":       true,
+	"video/quicktime": true,
+}
+
+func isAllowedVideoNoteMime(mime string) bool {
+	return videoNoteMimes[strings.ToLower(strings.TrimSpace(mime))]
+}
+
 func (s *Service) SendMessage(ctx context.Context, userAccountID, chatID int64, input MessageInput) (Message, error) {
 	text := strings.TrimSpace(input.Text)
 	attachments := appendAttachmentInputs(input.Media, input.Files)
 	if chatID <= 0 || userAccountID <= 0 {
 		return Message{}, ErrInvalidInput
 	}
-	if input.StickerID != nil {
+
+	// Нормализация типа
+	msgType := input.Type
+	switch {
+	case input.StickerID != nil:
+		msgType = model.MessageTypeSticker
+	case msgType != model.MessageTypeVideoNote:
+		msgType = model.MessageTypeText
+	}
+
+	if msgType == model.MessageTypeSticker {
 		if *input.StickerID <= 0 || text != "" || len(attachments) != 0 {
 			return Message{}, ErrInvalidInput
 		}
 		if _, err := s.store.Stickers.Get(ctx, *input.StickerID); err != nil {
 			return Message{}, ErrNotFound
+		}
+	} else if msgType == model.MessageTypeVideoNote {
+		if text != "" || input.StickerID != nil || len(input.Files) != 0 || len(input.Media) != 1 {
+			return Message{}, ErrInvalidInput
 		}
 	} else if text == "" && len(attachments) == 0 {
 		return Message{}, ErrInvalidInput
@@ -288,8 +312,25 @@ func (s *Service) SendMessage(ctx context.Context, userAccountID, chatID int64, 
 	if err != nil {
 		return Message{}, err
 	}
-	if err := s.validateAttachments(ctx, profileID, attachments); err != nil {
-		return Message{}, err
+	if msgType == model.MessageTypeVideoNote {
+		mediaInfo, err := s.store.MessageMedia.GetMediaInfo(ctx, input.Media[0].MediaID)
+		if err != nil {
+			return Message{}, ErrNotFound
+		}
+		if mediaInfo.AuthorID != profileID {
+			return Message{}, ErrForbidden
+		}
+		if !isAllowedVideoNoteMime(mediaInfo.MimeType) {
+			return Message{}, ErrInvalidInput
+		}
+		const maxVideoNoteSize = 50 << 20
+		if mediaInfo.Size > maxVideoNoteSize {
+			return Message{}, ErrInvalidInput
+		}
+	} else {
+		if err := s.validateAttachments(ctx, profileID, attachments); err != nil {
+			return Message{}, err
+		}
 	}
 	var textPtr *string
 	if text != "" {
@@ -302,6 +343,7 @@ func (s *Service) SendMessage(ctx context.Context, userAccountID, chatID int64, 
 		ChatID:          chatID,
 		AuthorID:        profileID,
 		StickerID:       input.StickerID,
+		Type:            msgType,
 		IsActive:        true,
 		CreatedAt:       time.Now(),
 		UpdatedAt:       time.Now(),
@@ -346,7 +388,7 @@ func (s *Service) UpdateMessage(ctx context.Context, userAccountID, chatID, mess
 	if msg.AuthorID != profileID {
 		return Message{}, ErrForbidden
 	}
-	if msg.StickerID != nil {
+	if msg.StickerID != nil || msg.Type == model.MessageTypeVideoNote {
 		return Message{}, ErrInvalidInput
 	}
 	msg.Text = &text
@@ -461,6 +503,7 @@ func (s *Service) mapMessage(ctx context.Context, message model.Message, attachm
 		Files:           files,
 		Reactions:       mapReactionSummaries(reactions),
 		MyReaction:      myReactionPtr,
+		Type:            message.Type,
 		IsActive:        message.IsActive,
 		CreatedAt:       message.CreatedAt,
 		UpdatedAt:       message.UpdatedAt,
