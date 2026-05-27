@@ -1025,6 +1025,6 @@
   "timezone": "browser",
   "title": "ARIS / Auth",
   "uid": "aris-service-auth",
-  "version": 1,
+  "version": 100,
   "weekStart": ""
 }

@@ -1025,6 +1025,6 @@
   "timezone": "browser",
   "title": "ARIS / Chat",
   "uid": "aris-service-chat",
-  "version": 1,
+  "version": 100,
   "weekStart": ""
 }

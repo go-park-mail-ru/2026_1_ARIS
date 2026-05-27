@@ -1025,6 +1025,6 @@
   "timezone": "browser",
   "title": "ARIS / Indexer",
   "uid": "aris-service-indexer",
-  "version": 1,
+  "version": 100,
   "weekStart": ""
 }

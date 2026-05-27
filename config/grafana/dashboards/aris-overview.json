@@ -1413,6 +1413,6 @@
   "timezone": "browser",
   "title": "ARIS / All Metrics",
   "uid": "aris-overview",
-  "version": 1,
+  "version": 100,
   "weekStart": ""
 }

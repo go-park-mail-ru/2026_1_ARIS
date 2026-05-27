@@ -73,7 +73,7 @@ echo "Updating backend runtime services..."
 compose up --no-build --remove-orphans -d $APP_SERVICES
 
 echo "Starting monitoring and edge services..."
-compose up --no-build --no-recreate -d $MONITORING_SERVICES
+compose up --no-build --force-recreate -d $MONITORING_SERVICES
 if [ "$deploy_nginx_container" = "1" ]; then
   compose up --no-build --force-recreate -d nginx
 else

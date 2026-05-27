@@ -1025,6 +1025,6 @@
   "timezone": "browser",
   "title": "ARIS / User",
   "uid": "aris-service-user",
-  "version": 1,
+  "version": 100,
   "weekStart": ""
 }
