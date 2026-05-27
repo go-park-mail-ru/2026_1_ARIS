@@ -396,10 +396,13 @@ func (s *Service) LikePost(ctx context.Context, userAccountID, postID int64) (*P
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.store.Posts.Get(ctx, postID); err != nil {
+	likedPost, err := s.store.Posts.Get(ctx, postID)
+	if err != nil {
 		return nil, normalizePostError(err)
 	}
-	likedPost, err2 := s.store.Posts.Get(ctx, postID)
+	if err := s.ensureCanViewPost(ctx, *likedPost, profileID); err != nil {
+		return nil, err
+	}
 	existing, err := s.store.Likes.GetPostLikeByAuthor(ctx, postID, profileID)
 	if err == nil {
 		if !existing.IsActive {
@@ -407,9 +410,7 @@ func (s *Service) LikePost(ctx context.Context, userAccountID, postID int64) (*P
 				return nil, err
 			}
 			s.refreshPostLikeCount(ctx, postID)
-			if err2 == nil {
-				s.emitEvent(profileID, postID, likedPost.AuthorID, likedPost.CommunityID, analytics.EventPostLike)
-			}
+			s.emitEvent(profileID, postID, likedPost.AuthorID, likedPost.CommunityID, analytics.EventPostLike)
 		}
 		return s.GetPostForViewer(ctx, postID, userAccountID)
 	}
@@ -417,9 +418,7 @@ func (s *Service) LikePost(ctx context.Context, userAccountID, postID int64) (*P
 		return nil, err
 	}
 	s.refreshPostLikeCount(ctx, postID)
-	if err2 == nil {
-		s.emitEvent(profileID, postID, likedPost.AuthorID, likedPost.CommunityID, analytics.EventPostLike)
-	}
+	s.emitEvent(profileID, postID, likedPost.AuthorID, likedPost.CommunityID, analytics.EventPostLike)
 	return s.GetPostForViewer(ctx, postID, userAccountID)
 }
 
@@ -431,19 +430,20 @@ func (s *Service) UnlikePost(ctx context.Context, userAccountID, postID int64) (
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.store.Posts.Get(ctx, postID); err != nil {
+	unlikedPost, err := s.store.Posts.Get(ctx, postID)
+	if err != nil {
 		return nil, normalizePostError(err)
 	}
-	unlikedPost, unlikedErr := s.store.Posts.Get(ctx, postID)
+	if err := s.ensureCanViewPost(ctx, *unlikedPost, profileID); err != nil {
+		return nil, err
+	}
 	existing, err := s.store.Likes.GetPostLikeByAuthor(ctx, postID, profileID)
 	if err == nil && existing.IsActive {
 		if err := s.store.Likes.SetActive(ctx, existing.ID, false); err != nil {
 			return nil, err
 		}
 		s.refreshPostLikeCount(ctx, postID)
-		if unlikedErr == nil {
-			s.emitEvent(profileID, postID, unlikedPost.AuthorID, unlikedPost.CommunityID, analytics.EventPostUnlike)
-		}
+		s.emitEvent(profileID, postID, unlikedPost.AuthorID, unlikedPost.CommunityID, analytics.EventPostUnlike)
 	}
 	return s.GetPostForViewer(ctx, postID, userAccountID)
 }
@@ -456,8 +456,12 @@ func (s *Service) GetPostComments(ctx context.Context, userAccountID, postID int
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.store.Posts.Get(ctx, postID); err != nil {
+	post, err := s.store.Posts.Get(ctx, postID)
+	if err != nil {
 		return nil, normalizePostError(err)
+	}
+	if err := s.ensureCanViewPost(ctx, *post, profileID); err != nil {
+		return nil, err
 	}
 	limit, offset = normalizeListBounds(limit, offset)
 	comments, err := s.store.Comments.GetTopLevelByPostID(ctx, postID, limit, offset)
@@ -473,6 +477,13 @@ func (s *Service) GetCommentReplies(ctx context.Context, userAccountID, postID, 
 	}
 	profileID, err := s.profileIDByUserAccount(ctx, userAccountID)
 	if err != nil {
+		return nil, err
+	}
+	post, err := s.store.Posts.Get(ctx, postID)
+	if err != nil {
+		return nil, normalizePostError(err)
+	}
+	if err := s.ensureCanViewPost(ctx, *post, profileID); err != nil {
 		return nil, err
 	}
 	parent, err := s.store.Comments.Get(ctx, commentID)
@@ -498,8 +509,12 @@ func (s *Service) GetCommentRepliesBatch(ctx context.Context, userAccountID, pos
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.store.Posts.Get(ctx, postID); err != nil {
+	post, err := s.store.Posts.Get(ctx, postID)
+	if err != nil {
 		return nil, normalizePostError(err)
+	}
+	if err := s.ensureCanViewPost(ctx, *post, profileID); err != nil {
+		return nil, err
 	}
 	seen := make(map[int64]struct{}, len(parentCommentIDs))
 	ids := make([]int64, 0, len(parentCommentIDs))
@@ -554,9 +569,8 @@ func (s *Service) CreateComment(ctx context.Context, userAccountID, postID int64
 		return nil, err
 	}
 	if post.CommunityID != nil {
-		member, err := s.communityMember(ctx, *post.CommunityID, profileID)
-		if err != nil || !member.IsActive {
-			return nil, ErrForbidden
+		if err := s.ensureCanCommentCommunityPost(ctx, *post.CommunityID, profileID); err != nil {
+			return nil, err
 		}
 	}
 	comment := model.NewComment(&text, postID, parentCommentID, profileID)
@@ -637,8 +651,12 @@ func (s *Service) LikeComment(ctx context.Context, userAccountID, postID, commen
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.store.Posts.Get(ctx, postID); err != nil {
+	post, err := s.store.Posts.Get(ctx, postID)
+	if err != nil {
 		return nil, normalizePostError(err)
+	}
+	if err := s.ensureCanViewPost(ctx, *post, profileID); err != nil {
+		return nil, err
 	}
 	comment, err := s.store.Comments.Get(ctx, commentID)
 	if err != nil {
@@ -675,8 +693,12 @@ func (s *Service) UnlikeComment(ctx context.Context, userAccountID, postID, comm
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.store.Posts.Get(ctx, postID); err != nil {
+	post, err := s.store.Posts.Get(ctx, postID)
+	if err != nil {
 		return nil, normalizePostError(err)
+	}
+	if err := s.ensureCanViewPost(ctx, *post, profileID); err != nil {
+		return nil, err
 	}
 	comment, err := s.store.Comments.Get(ctx, commentID)
 	if err != nil {
@@ -930,6 +952,20 @@ func (s *Service) buildCandidates(ctx context.Context, profileID, userAccountID 
 		}{p.AuthorID, cid}
 	}
 
+	blockedCommunitySet := make(map[int64]struct{})
+	for _, meta := range postMeta {
+		if meta.communityID == 0 {
+			continue
+		}
+		if _, seen := blockedCommunitySet[meta.communityID]; seen {
+			continue
+		}
+		blocked, err := s.isBlockedFromCommunity(ctx, meta.communityID, profileID)
+		if err != nil || blocked {
+			blockedCommunitySet[meta.communityID] = struct{}{}
+		}
+	}
+
 	friendSet := make(map[int64]struct{}, len(friendIDs))
 	for _, id := range friendIDs {
 		friendSet[id] = struct{}{}
@@ -948,6 +984,11 @@ func (s *Service) buildCandidates(ctx context.Context, profileID, userAccountID 
 	scored := make([]scoredPost, 0, len(candidateIDs))
 	for _, id := range candidateIDs {
 		meta := postMeta[id]
+		if meta.communityID != 0 {
+			if _, blocked := blockedCommunitySet[meta.communityID]; blocked {
+				continue
+			}
+		}
 		_, isFriend := friendSet[meta.authorID]
 		_, isMemberCommunity := memberCommunitySet[meta.communityID]
 		if meta.communityID == 0 {
@@ -1036,6 +1077,9 @@ func (s *Service) buildFeedBatch(ctx context.Context, posts []model.Post, viewer
 
 	result := make([]FeedPost, 0, len(posts))
 	for _, post := range posts {
+		if err := s.ensureCanViewPost(ctx, post, viewerProfileID); err != nil {
+			continue
+		}
 		author, err := s.author(ctx, post.AuthorID)
 		if err != nil {
 			continue
@@ -1102,6 +1146,9 @@ func decodeSessionCursor(raw string) (sessionCursor, error) {
 }
 
 func (s *Service) buildFeedPost(ctx context.Context, post model.Post, viewerProfileID int64) (FeedPost, error) {
+	if err := s.ensureCanViewPost(ctx, post, viewerProfileID); err != nil {
+		return FeedPost{}, err
+	}
 	author, err := s.author(ctx, post.AuthorID)
 	if err != nil {
 		return FeedPost{}, err
@@ -1128,6 +1175,9 @@ func (s *Service) buildFeedPost(ctx context.Context, post model.Post, viewerProf
 }
 
 func (s *Service) buildPostDetails(ctx context.Context, post model.Post, viewerProfileID int64) (*PostDetails, error) {
+	if err := s.ensureCanViewPost(ctx, post, viewerProfileID); err != nil {
+		return nil, err
+	}
 	author, err := s.author(ctx, post.AuthorID)
 	if err != nil {
 		return nil, err
@@ -1465,6 +1515,45 @@ func (s *Service) canPostAsMember(ctx context.Context, communityID, actorProfile
 		return false
 	}
 	return resp.GetOk()
+}
+
+func (s *Service) ensureCanViewPost(ctx context.Context, post model.Post, viewerProfileID int64) error {
+	if post.CommunityID == nil || viewerProfileID <= 0 {
+		return nil
+	}
+	blocked, err := s.isBlockedFromCommunity(ctx, *post.CommunityID, viewerProfileID)
+	if err != nil {
+		return ErrForbidden
+	}
+	if blocked {
+		return ErrPostNotFound
+	}
+	return nil
+}
+
+func (s *Service) ensureCanCommentCommunityPost(ctx context.Context, communityID, actorProfileID int64) error {
+	blocked, err := s.isBlockedFromCommunity(ctx, communityID, actorProfileID)
+	if err != nil {
+		return ErrForbidden
+	}
+	if blocked {
+		return ErrForbidden
+	}
+	return nil
+}
+
+func (s *Service) isBlockedFromCommunity(ctx context.Context, communityID, actorProfileID int64) (bool, error) {
+	member, err := s.communityMember(ctx, communityID, actorProfileID)
+	if err != nil {
+		if errors.Is(err, ErrCommunityNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	if member != nil && member.IsActive && normalizeCommunityRole(member.Role) == "blocked" {
+		return true, nil
+	}
+	return false, nil
 }
 
 func (s *Service) communityByID(ctx context.Context, communityID int64) (*communityInfo, error) {
