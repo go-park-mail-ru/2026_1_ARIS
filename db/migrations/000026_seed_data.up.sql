@@ -196,7 +196,7 @@ BEGIN
       gen_random_uuid(),
       'avatar_seed' || LPAD(i::TEXT, 3, '0'),
       prof_id, 'jpg', 'image/jpeg',
-      'https://i.pravatar.cc/300?img=' || i,
+      'https://robohash.org/user' || i || '?size=300x300',
       0
     )
     RETURNING id INTO media_id;
@@ -234,7 +234,7 @@ BEGIN
     VALUES (
       gen_random_uuid(), 'comm_avatar_' || cunames[i],
       cprof_id, 'jpg', 'image/jpeg',
-      'https://picsum.photos/seed/comav' || i || '/300/300',
+      'https://robohash.org/community' || i || '?size=300x300&set=set1',
       0
     )
     RETURNING id INTO media_id;
@@ -245,7 +245,7 @@ BEGIN
     VALUES (
       gen_random_uuid(), 'comm_cover_' || cunames[i],
       cprof_id, 'jpg', 'image/jpeg',
-      'https://picsum.photos/seed/comcov' || i || '/1200/400',
+      'https://placehold.co/1200x400.jpg?text=Community+' || i,
       0
     )
     RETURNING id INTO cover_id;
@@ -276,7 +276,7 @@ BEGIN
     VALUES (
       gen_random_uuid(), 'post_img_' || i,
       prof_ids[i], 'jpg', 'image/jpeg',
-      'https://picsum.photos/seed/post' || i || '/800/600',
+      'https://placehold.co/800x600.jpg?text=Post+' || i,
       0
     )
     RETURNING id INTO media_id;
@@ -310,7 +310,7 @@ BEGIN
         gen_random_uuid(),
         'comm_post_' || i || '_' || j,
         cprof_ids[i], 'jpg', 'image/jpeg',
-        'https://picsum.photos/seed/cpost' || (i * 10 + j) || '/800/600',
+        'https://placehold.co/800x600.jpg?text=Post+' || (i * 10 + j),
         0
       )
       RETURNING id INTO media_id;
