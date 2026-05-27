@@ -191,11 +191,9 @@ func (h *SupportHandler) SendTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request SupportRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		utils.WriteError(w, xerrors.InvalidRequestBody, http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &request) {
 		return
 	}
-	defer r.Body.Close()
 
 	request.Title = strings.TrimSpace(request.Title)
 	request.Login = strings.TrimSpace(request.Login)
@@ -248,9 +246,7 @@ func (h *SupportHandler) SendTicket(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(h.buildSupportTicketResponse(r, ticket))
+	utils.WriteJSON(w, http.StatusCreated, h.buildSupportTicketResponse(r, ticket))
 }
 
 func (h *SupportHandler) GetMyTickets(w http.ResponseWriter, r *http.Request) {
@@ -267,8 +263,7 @@ func (h *SupportHandler) GetMyTickets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(h.buildSupportTicketResponses(r, ticketsList))
+	utils.WriteJSON(w, http.StatusOK, h.buildSupportTicketResponses(r, ticketsList))
 }
 
 func (h *SupportHandler) GetAllTickets(w http.ResponseWriter, r *http.Request) {
@@ -290,8 +285,7 @@ func (h *SupportHandler) GetAllTickets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(SupportTicketListResponse{Tickets: h.buildSupportTicketResponses(r, ticketsList)})
+	utils.WriteJSON(w, http.StatusOK, SupportTicketListResponse{Tickets: h.buildSupportTicketResponses(r, ticketsList)})
 }
 
 func (h *SupportHandler) GetTicket(w http.ResponseWriter, r *http.Request) {
@@ -320,8 +314,7 @@ func (h *SupportHandler) GetTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(h.buildSupportTicketResponse(r, ticket))
+	utils.WriteJSON(w, http.StatusOK, h.buildSupportTicketResponse(r, ticket))
 }
 
 func (h *SupportHandler) UpdateTicket(w http.ResponseWriter, r *http.Request) {
@@ -336,11 +329,9 @@ func (h *SupportHandler) UpdateTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request SupportUpdateRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		utils.WriteError(w, xerrors.InvalidRequestBody, http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &request) {
 		return
 	}
-	defer r.Body.Close()
 
 	upd := tickets.TicketUpdate{Title: normalizeOptionalString(request.Title), Description: normalizeOptionalString(request.Description)}
 	if request.Category != nil {
@@ -362,8 +353,7 @@ func (h *SupportHandler) UpdateTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(h.buildSupportTicketResponse(r, ticket))
+	utils.WriteJSON(w, http.StatusOK, h.buildSupportTicketResponse(r, ticket))
 }
 
 func (h *SupportHandler) UpdateTicketStatus(w http.ResponseWriter, r *http.Request) {
@@ -378,11 +368,9 @@ func (h *SupportHandler) UpdateTicketStatus(w http.ResponseWriter, r *http.Reque
 	}
 
 	var request SupportStatusUpdateRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		utils.WriteError(w, xerrors.InvalidRequestBody, http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &request) {
 		return
 	}
-	defer r.Body.Close()
 	if request.Status == nil {
 		utils.WriteError(w, xerrors.InvalidRequest, http.StatusBadRequest)
 		return
@@ -408,8 +396,7 @@ func (h *SupportHandler) UpdateTicketStatus(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(h.buildSupportTicketResponse(r, ticket))
+	utils.WriteJSON(w, http.StatusOK, h.buildSupportTicketResponse(r, ticket))
 }
 
 func (h *SupportHandler) AssignTicket(w http.ResponseWriter, r *http.Request) {
@@ -424,11 +411,9 @@ func (h *SupportHandler) AssignTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request SupportAssignRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		utils.WriteError(w, xerrors.InvalidRequestBody, http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &request) {
 		return
 	}
-	defer r.Body.Close()
 
 	agentID, err := strconv.ParseInt(strings.TrimSpace(request.AgentID), 10, 64)
 	if err != nil || agentID <= 0 {
@@ -464,8 +449,7 @@ func (h *SupportHandler) AssignTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(h.buildSupportTicketResponse(r, ticket))
+	utils.WriteJSON(w, http.StatusOK, h.buildSupportTicketResponse(r, ticket))
 }
 
 func (h *SupportHandler) EscalateTicket(w http.ResponseWriter, r *http.Request) {
@@ -482,10 +466,6 @@ func (h *SupportHandler) EscalateTicket(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	var request SupportEscalateRequest
-	_ = json.NewDecoder(r.Body).Decode(&request)
-	defer r.Body.Close()
-
 	currentTicket, err := h.ticketService.GetByIDForAgent(r.Context(), ticketID)
 	if err != nil {
 		handleTicketAccessError(w, log, err, ticketID, 0)
@@ -502,8 +482,7 @@ func (h *SupportHandler) EscalateTicket(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(h.buildSupportTicketResponse(r, ticket))
+	utils.WriteJSON(w, http.StatusOK, h.buildSupportTicketResponse(r, ticket))
 }
 
 func (h *SupportHandler) RateTicket(w http.ResponseWriter, r *http.Request) {
@@ -518,11 +497,9 @@ func (h *SupportHandler) RateTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request SupportRatingRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		utils.WriteError(w, xerrors.InvalidRequestBody, http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &request) {
 		return
 	}
-	defer r.Body.Close()
 
 	ticket, err := h.ticketService.Rate(r.Context(), ticketID, profile.ID, request.Rating)
 	if err != nil {
@@ -534,8 +511,7 @@ func (h *SupportHandler) RateTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]int{"rating": *ticket.Rating})
+	utils.WriteJSON(w, http.StatusOK, map[string]int{"rating": *ticket.Rating})
 }
 
 func (h *SupportHandler) GetStats(w http.ResponseWriter, r *http.Request) {
@@ -551,8 +527,7 @@ func (h *SupportHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(stats)
+	utils.WriteJSON(w, http.StatusOK, stats)
 }
 
 func (h *SupportHandler) GetTicketMessages(w http.ResponseWriter, r *http.Request) {
@@ -573,8 +548,7 @@ func (h *SupportHandler) GetTicketMessages(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(h.buildMessageResponses(r, messages))
+	utils.WriteJSON(w, http.StatusOK, h.buildMessageResponses(r, messages))
 }
 
 func (h *SupportHandler) SendTicketMessage(w http.ResponseWriter, r *http.Request) {
@@ -589,11 +563,9 @@ func (h *SupportHandler) SendTicketMessage(w http.ResponseWriter, r *http.Reques
 	}
 
 	var request SupportMessageRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		utils.WriteError(w, xerrors.InvalidRequestBody, http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &request) {
 		return
 	}
-	defer r.Body.Close()
 	if strings.TrimSpace(request.Text) == "" {
 		utils.WriteError(w, xerrors.InvalidRequest, http.StatusBadRequest)
 		return
@@ -608,15 +580,13 @@ func (h *SupportHandler) SendTicketMessage(w http.ResponseWriter, r *http.Reques
 	response := h.buildMessageResponse(r, *message)
 
 	if h.hub != nil {
-		payload, err := json.Marshal(response)
+		payload, err := utils.MarshalJSON(response)
 		if err == nil {
 			h.hub.BroadcastToChat(supportRoomID(ticket.ID), payload)
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(response)
+	utils.WriteJSON(w, http.StatusCreated, response)
 }
 
 func (h *SupportHandler) HandleTicketWebSocket(w http.ResponseWriter, r *http.Request) {

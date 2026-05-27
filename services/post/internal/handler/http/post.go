@@ -1,7 +1,6 @@
 package http
 
 import (
-	"encoding/json"
 	"errors"
 	"html"
 	"math/rand"
@@ -67,9 +66,7 @@ func (h *Handler) PostFeedEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req feedEventsRequest
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, errorResponse{Error: "bad request"})
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	if len(req.Events) > 50 {
@@ -196,9 +193,7 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req postCreationRequest
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid request body"})
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	created, err := h.post.CreatePost(r.Context(), userAccountID, createInput(req))
@@ -316,9 +311,7 @@ func (h *Handler) UpdatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req postCreationRequest
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid request body"})
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	updated, err := h.post.UpdatePost(r.Context(), userAccountID, postID, createInput(req))
@@ -422,9 +415,7 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req commentRequest
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid request body"})
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	comment, err := h.post.CreateComment(r.Context(), userAccountID, postID, req.Text, req.ParentCommentID)
@@ -445,9 +436,7 @@ func (h *Handler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req commentRequest
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid request body"})
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	comment, err := h.post.UpdateComment(r.Context(), userAccountID, postID, commentID, req.Text)

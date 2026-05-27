@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -78,7 +77,7 @@ func (h *Handler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req createRoomRequest
-	if !decodeJSON(w, r, &req) {
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	room, err := h.game.CreateRoom(r.Context(), userID, usecase.CreateRoomInput{
@@ -110,7 +109,7 @@ func (h *Handler) JoinRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req joinRoomRequest
-	if !decodeJSON(w, r, &req) {
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	room, err := h.game.JoinRoom(r.Context(), userID, req.InviteCode, req.RoomID, req.Password)
@@ -198,7 +197,7 @@ func (h *Handler) SetReady(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req readyRequest
-	if !decodeJSON(w, r, &req) {
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	if err := h.game.SetReady(r.Context(), userID, roomID, req.IsReady); err != nil {
@@ -214,7 +213,7 @@ func (h *Handler) SetReplayReady(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req readyRequest
-	if !decodeJSON(w, r, &req) {
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	room, err := h.game.SetReplayReady(r.Context(), userID, roomID, req.IsReady)
@@ -231,7 +230,7 @@ func (h *Handler) UpdateRoomPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req passwordRequest
-	if !decodeJSON(w, r, &req) {
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	if err := h.game.UpdateRoomPassword(r.Context(), userID, roomID, req.Password); err != nil {
@@ -247,7 +246,7 @@ func (h *Handler) UpdateRoomTitle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req titleRequest
-	if !decodeJSON(w, r, &req) {
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	if err := h.game.UpdateRoomTitle(r.Context(), userID, roomID, req.Title); err != nil {
@@ -263,7 +262,7 @@ func (h *Handler) UpdateRoomRanked(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req rankedRequest
-	if !decodeJSON(w, r, &req) {
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	if err := h.game.UpdateRoomRanked(r.Context(), userID, roomID, req.IsRanked); err != nil {
@@ -279,7 +278,7 @@ func (h *Handler) AssignAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req adminRequest
-	if !decodeJSON(w, r, &req) {
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	profileID, err := strconv.ParseInt(req.ProfileID, 10, 64)
@@ -313,7 +312,7 @@ func (h *Handler) SubmitAnswer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req submitAnswerRequest
-	if !decodeJSON(w, r, &req) {
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	room, err := h.game.SubmitAnswer(r.Context(), userID, roomID, req.Answer)
@@ -373,7 +372,7 @@ func (h *Handler) SendRoomMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req roomMessageRequest
-	if !decodeJSON(w, r, &req) {
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	message, err := h.game.SendRoomMessage(r.Context(), userID, roomID, req.Text)
@@ -450,7 +449,7 @@ func (h *Handler) CreateQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req questionRequest
-	if !decodeJSON(w, r, &req) {
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	question, err := h.game.CreateQuestion(r.Context(), userID, mapQuestionInput(req))
@@ -471,7 +470,7 @@ func (h *Handler) UpdateQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req questionRequest
-	if !decodeJSON(w, r, &req) {
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	question, err := h.game.UpdateQuestion(r.Context(), userID, questionID, mapQuestionInput(req))
@@ -509,7 +508,7 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = h.game.TouchWaitingRoomMember(r.Context(), userID, roomID)
-	initial, _ := json.Marshal(socketEvent{Type: "room_state", Room: ptr(mapRoom(room))})
+	initial, _ := utils.MarshalJSON(socketEvent{Type: "room_state", Room: ptr(mapRoom(room))})
 	if err := websocket.Serve(
 		h.hub,
 		w,
@@ -531,7 +530,7 @@ func (h *Handler) handleSocketMessage(ctx context.Context, roomIDRaw string, use
 		return nil, usecase.ErrInvalidInput
 	}
 	var msg socketMessage
-	if err := json.Unmarshal(payload, &msg); err != nil {
+	if err := utils.UnmarshalJSON(payload, &msg); err != nil {
 		return marshalEvent(socketEvent{Type: "error", Error: "неверный формат сообщения"}), nil
 	}
 	if msg.Type == "room_message" || msg.Type == "room_chat_message" {
@@ -674,15 +673,6 @@ func userIDFromContext(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	return userID, true
 }
 
-func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(dst); err != nil {
-		writeError(w, "неверный формат запроса", http.StatusBadRequest)
-		return false
-	}
-	return true
-}
-
 func parsePathID(w http.ResponseWriter, raw string, message string) (int64, bool) {
 	id, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil || id <= 0 {
@@ -751,7 +741,7 @@ func writeError(w http.ResponseWriter, message string, status int) {
 }
 
 func marshalEvent(event socketEvent) []byte {
-	data, _ := json.Marshal(event)
+	data, _ := utils.MarshalJSON(event)
 	return data
 }
 

@@ -1,5 +1,7 @@
 package http
 
+//go:generate go run github.com/mailru/easyjson/easyjson -all $GOFILE
+
 type registerStepOneRequest struct {
 	Login     string `json:"login" validate:"required,alphanumunicode"`
 	Password1 string `json:"password1" validate:"required,min=6,max=72,printascii"`

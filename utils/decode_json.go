@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"encoding/json"
+	"io"
 	"net/http"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/common"
@@ -9,7 +9,12 @@ import (
 
 func DecodeJSON(w http.ResponseWriter, r *http.Request, out any) bool {
 	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(out); err != nil {
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		WriteJSON(w, http.StatusBadRequest, common.ErrorResponse{Error: "invalid JSON body"})
+		return false
+	}
+	if err := UnmarshalJSON(data, out); err != nil {
 		WriteJSON(w, http.StatusBadRequest, common.ErrorResponse{Error: "invalid JSON body"})
 		return false
 	}

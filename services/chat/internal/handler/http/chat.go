@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -174,9 +173,7 @@ func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req messageRequest
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "неверный формат запроса", http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	msg, err := h.chat.SendMessage(r.Context(), userID, chatID, mapMessageInput(req))
@@ -199,9 +196,7 @@ func (h *Handler) UpdateMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req messageRequest
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "неверный формат запроса", http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	msg, err := h.chat.UpdateMessage(r.Context(), userID, chatID, messageID, req.Text)
@@ -240,9 +235,7 @@ func (h *Handler) CreateStickerPack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req stickerPackRequest
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "неверный формат запроса", http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	pack, err := h.chat.CreateStickerPack(r.Context(), userID, usecase.StickerPackInput{Title: req.Title})
@@ -263,9 +256,7 @@ func (h *Handler) SetMessageReaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req reactionRequest
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "неверный формат запроса", http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	msg, err := h.chat.SetMessageReaction(r.Context(), userID, chatID, messageID, req.Type)
@@ -333,9 +324,7 @@ func (h *Handler) CreateSticker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req stickerRequest
-	defer r.Body.Close()
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "неверный формат запроса", http.StatusBadRequest)
+	if !utils.DecodeJSON(w, r, &req) {
 		return
 	}
 	sticker, err := h.chat.CreateSticker(r.Context(), userID, packID, usecase.StickerInput{MediaID: req.MediaID, SortOrder: req.SortOrder})
@@ -450,7 +439,7 @@ func (h *Handler) broadcast(chatID int64, msg MessageResponse) {
 	if h.hub == nil {
 		return
 	}
-	msgBytes, _ := json.Marshal(msg)
+	msgBytes, _ := utils.MarshalJSON(msg)
 	h.hub.BroadcastToChat(strconv.FormatInt(chatID, 10), msgBytes)
 }
 
@@ -461,7 +450,7 @@ func (h *Handler) handleSocketMessage(ctx context.Context, chatIDRaw string, use
 	}
 
 	var req messageRequest
-	if err := json.Unmarshal(payload, &req); err != nil {
+	if err := utils.UnmarshalJSON(payload, &req); err != nil {
 		return nil, err
 	}
 
@@ -470,7 +459,7 @@ func (h *Handler) handleSocketMessage(ctx context.Context, chatIDRaw string, use
 		return nil, err
 	}
 
-	return json.Marshal(mapMessage(msg))
+	return utils.MarshalJSON(mapMessage(msg))
 }
 
 func mapChat(chat usecase.Chat) ChatResponse {

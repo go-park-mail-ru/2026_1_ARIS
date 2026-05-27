@@ -1,5 +1,7 @@
 package http
 
+//go:generate go run github.com/mailru/easyjson/easyjson -all $GOFILE
+
 type createRoomRequest struct {
 	Title            string `json:"title"`
 	GameType         string `json:"gameType"`

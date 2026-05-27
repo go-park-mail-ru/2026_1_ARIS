@@ -1,4 +1,4 @@
-.PHONY: test coverage clean dev down reset-db logs migrate mocks seed tarantool-stats ws-open microservices local-prepare microservices-up microservices-rebuild microservices-monitoring-up microservices-full-up microservices-stop microservices-down microservices-reset local-up local-rebuild local-monitoring-up local-full-up local-stop local-down local-reset server-prepare server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop community-up community-stop search-up search-stop elasticsearch-up elasticsearch-stop indexer-up indexer-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update nginx-recreate logs-auth logs-media logs-user logs-post logs-chat logs-support logs-community logs-search logs-elasticsearch logs-indexer logs-nginx seed-elasticsearch
+.PHONY: test coverage coverage-excluding-mocks clean dev down reset-db logs migrate generate mocks seed tarantool-stats ws-open microservices local-prepare microservices-up microservices-rebuild microservices-monitoring-up microservices-full-up microservices-stop microservices-down microservices-reset local-up local-rebuild local-monitoring-up local-full-up local-stop local-down local-reset server-prepare server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop community-up community-stop search-up search-stop elasticsearch-up elasticsearch-stop indexer-up indexer-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update nginx-recreate logs-auth logs-media logs-user logs-post logs-chat logs-support logs-community logs-search logs-elasticsearch logs-indexer logs-nginx seed-elasticsearch
 
 COMPOSE_FILE=./docker-compose.yml
 COMPOSE_ENV_FILE=./.env
@@ -32,6 +32,9 @@ MIGRATE=migrate -source "$(MIGRATIONS_PATH)" -database "$(DATABASE_URL)"
 test:
 	go test -v ./...
 
+generate:
+	go generate ./...
+
 mocks:
 	go generate ./...
 
@@ -42,7 +45,8 @@ clean:
 	touch ./coverage.out.tmp
 
 coverage: clean
-	go test -coverprofile=coverage.out -coverpkg=./internal/... ./...
+	go test -count=1 ./... -coverprofile=coverage.out.tmp -coverpkg=./services/...
+	grep -v -E "(/mock/|/mocks/|_mock\.go|_easyjson\.go)" coverage.out.tmp > coverage.out
 	go tool cover -html=coverage.out
 
 migrate-up:
@@ -295,6 +299,6 @@ logs-migrate:
 	$(COMPOSE) logs -f migrate
 	
 coverage-excluding-mocks: clean
-	go test -count=1 ./... -coverprofile=coverage.out.tmp -coverpkg=./internal/...
-	cat coverage.out.tmp | grep -v -E "(/mock/|/mocks/|_mock\.go)" > coverage.out
+	go test -count=1 ./... -coverprofile=coverage.out.tmp -coverpkg=./services/...
+	grep -v -E "(/mock/|/mocks/|_mock\.go|_easyjson\.go)" coverage.out.tmp > coverage.out
 	go tool cover -func=coverage.out | grep total
