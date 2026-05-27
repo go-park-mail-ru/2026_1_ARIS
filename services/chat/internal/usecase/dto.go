@@ -36,6 +36,7 @@ type Message struct {
 	Files           []Attachment
 	Reactions       []ReactionSummary
 	MyReaction      *string
+	Type            model.MessageType
 	IsActive        bool
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
@@ -47,6 +48,7 @@ type MessageInput struct {
 	StickerID       *int64
 	Media           []AttachmentInput
 	Files           []AttachmentInput
+	Type            model.MessageType
 }
 
 type AttachmentInput struct {

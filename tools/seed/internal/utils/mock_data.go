@@ -586,6 +586,10 @@ func MakeMock(mediaRepo media.MediaRepo,
 		return
 	}
 
+	if err := postRepo.SetOnlyPublicDemo(context.Background(), []int64{post1ID, post2ID}); err != nil {
+		return
+	}
+
 	post3ID, err := postRepo.Save(context.Background(), *post3)
 	if err != nil {
 		// logger.Info("faild saving", zap.Error(err))

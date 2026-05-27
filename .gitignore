@@ -18,3 +18,5 @@ nginx/nginx-runtime/
 nginx/nginx-runtime
 
 docs/
+.claude/
+claude/

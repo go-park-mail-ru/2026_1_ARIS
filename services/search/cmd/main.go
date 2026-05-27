@@ -12,10 +12,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/elasticsearch"
 	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/logger"
-	communitypb "github.com/go-park-mail-ru/2026_1_ARIS/proto/community"
 	mediapb "github.com/go-park-mail-ru/2026_1_ARIS/proto/media"
-	userpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/user"
 	searchHTTP "github.com/go-park-mail-ru/2026_1_ARIS/services/search/internal/handler/http"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/search/internal/usecase"
 	"github.com/go-park-mail-ru/2026_1_ARIS/utils"
@@ -38,17 +37,10 @@ func main() {
 		}
 	}()
 
-	userConn, err := grpc.NewClient(utils.EnvString("USER_GRPC_ADDR", "localhost:8004"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	esClient, err := elasticsearch.New()
 	if err != nil {
-		logg.Fatal("failed to connect user grpc", zap.Error(err))
+		logg.Fatal("failed to create elasticsearch client", zap.Error(err))
 	}
-	defer userConn.Close()
-
-	communityConn, err := grpc.NewClient(utils.EnvString("COMMUNITY_GRPC_ADDR", "localhost:8009"), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		logg.Fatal("failed to connect community grpc", zap.Error(err))
-	}
-	defer communityConn.Close()
 
 	mediaConn, err := grpc.NewClient(utils.EnvString("MEDIA_GRPC_ADDR", "localhost:8003"), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -56,12 +48,8 @@ func main() {
 	}
 	defer mediaConn.Close()
 
-	searchUsecase := usecase.New(
-		userpb.NewUserServiceClient(userConn),
-		communitypb.NewCommunityServiceClient(communityConn),
-		mediapb.NewMediaServiceClient(mediaConn),
-	)
-	httpHandler := searchHTTP.New(searchUsecase)
+	searchUsecase := usecase.New(esClient, mediapb.NewMediaServiceClient(mediaConn))
+	httpHandler := searchHTTP.New(searchUsecase, logg)
 
 	router := chi.NewRouter()
 	router.Use(chimiddleware.Recoverer)

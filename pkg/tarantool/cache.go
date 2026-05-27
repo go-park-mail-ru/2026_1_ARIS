@@ -10,6 +10,8 @@ import (
 	tnt "github.com/tarantool/go-tarantool/v2"
 )
 
+const spaceFeedSessions = "feed_sessions"
+
 var (
 	ErrCacheMiss   = errors.New("tarantool cache miss")
 	ErrUnavailable = errors.New("tarantool unavailable")
@@ -262,6 +264,82 @@ func (c *Client) GetPresence(ctx context.Context, userAccountID int64) (*Presenc
 		return nil, ErrCacheMiss
 	}
 	return rows[0].toStatus(), nil
+}
+
+type feedSessionTuple struct {
+	_msgpack  struct{} `msgpack:",asArray"`
+	SessionID string
+	PostIDs   string
+	ExpiresAt float64
+}
+
+func (c *Client) SaveFeedSession(ctx context.Context, sessionID string, postIDs []int64, ttl time.Duration) error {
+	if err := c.ensure(); err != nil {
+		return err
+	}
+	payload, err := json.Marshal(postIDs)
+	if err != nil {
+		return err
+	}
+	expiresAt := float64(time.Now().Add(ttl).UnixNano()) / float64(time.Second)
+
+	reqCtx, cancel := c.withTimeout(ctx)
+	defer cancel()
+
+	_, err = c.conn.Do(tnt.NewReplaceRequest(spaceFeedSessions).
+		Tuple([]interface{}{sessionID, string(payload), expiresAt}).
+		Context(reqCtx),
+	).Get()
+	return err
+}
+
+func (c *Client) GetFeedSession(ctx context.Context, sessionID string) ([]int64, error) {
+	if err := c.ensure(); err != nil {
+		return nil, err
+	}
+
+	reqCtx, cancel := c.withTimeout(ctx)
+	defer cancel()
+
+	var rows []feedSessionTuple
+	err := c.conn.Do(tnt.NewSelectRequest(spaceFeedSessions).
+		Index("primary").
+		Limit(1).
+		Key(tnt.StringKey{S: sessionID}).
+		Context(reqCtx),
+	).GetTyped(&rows)
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, ErrCacheMiss
+	}
+	row := rows[0]
+	expiresAt := unixFloat(row.ExpiresAt)
+	if time.Now().After(expiresAt) {
+		_ = c.DeleteFeedSession(ctx, sessionID)
+		return nil, ErrCacheMiss
+	}
+	var postIDs []int64
+	if err := json.Unmarshal([]byte(row.PostIDs), &postIDs); err != nil {
+		return nil, err
+	}
+	return postIDs, nil
+}
+
+func (c *Client) DeleteFeedSession(ctx context.Context, sessionID string) error {
+	if err := c.ensure(); err != nil {
+		return err
+	}
+	reqCtx, cancel := c.withTimeout(ctx)
+	defer cancel()
+
+	_, err := c.conn.Do(tnt.NewDeleteRequest(spaceFeedSessions).
+		Index("primary").
+		Key(tnt.StringKey{S: sessionID}).
+		Context(reqCtx),
+	).Get()
+	return err
 }
 
 func (c *Client) getJSON(ctx context.Context, space string, id int64, out interface{}) error {

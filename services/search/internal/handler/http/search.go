@@ -9,14 +9,16 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/search/internal/usecase"
 	"github.com/go-park-mail-ru/2026_1_ARIS/utils"
+	"go.uber.org/zap"
 )
 
 type Handler struct {
 	search *usecase.Service
+	log    *zap.Logger
 }
 
-func New(search *usecase.Service) *Handler {
-	return &Handler{search: search}
+func New(search *usecase.Service, log *zap.Logger) *Handler {
+	return &Handler{search: search, log: log}
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
@@ -32,6 +34,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.search.Search(r.Context(), query, limit)
 	if err != nil {
+		h.log.Error("search failed", zap.Error(err))
 		writeServiceError(w, err)
 		return
 	}
@@ -64,6 +67,7 @@ func mapResult(result *usecase.Result) response {
 	resp := response{
 		Users:       make([]userResult, 0, len(result.Users)),
 		Communities: make([]communityResult, 0, len(result.Communities)),
+		Posts:       make([]postResult, 0, len(result.Posts)),
 	}
 
 	for _, user := range result.Users {
@@ -90,6 +94,22 @@ func mapResult(result *usecase.Result) response {
 			AvatarURL:    community.AvatarURL,
 			CoverMediaID: community.CoverMediaID,
 			CoverURL:     community.CoverURL,
+		})
+	}
+
+	for _, post := range result.Posts {
+		resp.Posts = append(resp.Posts, postResult{
+			ID:              post.ID,
+			Text:            html.EscapeString(post.Text),
+			AuthorID:        post.AuthorID,
+			AuthorProfileID: post.AuthorProfileID,
+			AuthorUsername:  html.EscapeString(post.AuthorUsername),
+			AuthorFirstName: html.EscapeString(post.AuthorFirstName),
+			AuthorLastName:  html.EscapeString(post.AuthorLastName),
+			AuthorAvatarID:  post.AuthorAvatarID,
+			AuthorAvatarURL: post.AuthorAvatarURL,
+			CommunityID:     post.CommunityID,
+			CreatedAt:       post.CreatedAt,
 		})
 	}
 
