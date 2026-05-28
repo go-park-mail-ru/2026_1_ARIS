@@ -23,6 +23,11 @@ scrape_configs:
       - targets:
           - nginxlog-exporter:4040
 
+  - job_name: postgres
+    static_configs:
+      - targets:
+          - postgres-exporter:9187
+
   - job_name: aris-services
     honor_labels: true
     metrics_path: /metrics

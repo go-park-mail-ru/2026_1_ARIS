@@ -4,17 +4,103 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_ADMIN_USER:-${DB_USER}}
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:-${DB_PASSWORD}}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_MIGRATOR_USER: ${DB_MIGRATOR_USER:-aris_migrator}
+      DB_MIGRATOR_PASSWORD: ${DB_MIGRATOR_PASSWORD:-${DB_PASSWORD}}
+      DB_MONITOR_USER: ${DB_MONITOR_USER:-aris_monitor}
+      DB_MONITOR_PASSWORD: ${DB_MONITOR_PASSWORD:-${DB_PASSWORD}}
+      DB_AUTH_USER: ${DB_AUTH_USER:-aris_auth}
+      DB_AUTH_PASSWORD: ${DB_AUTH_PASSWORD:-${DB_PASSWORD}}
+      DB_MEDIA_USER: ${DB_MEDIA_USER:-aris_media}
+      DB_MEDIA_PASSWORD: ${DB_MEDIA_PASSWORD:-${DB_PASSWORD}}
+      DB_USER_SERVICE_USER: ${DB_USER_SERVICE_USER:-aris_user}
+      DB_USER_SERVICE_PASSWORD: ${DB_USER_SERVICE_PASSWORD:-${DB_PASSWORD}}
+      DB_POST_USER: ${DB_POST_USER:-aris_post}
+      DB_POST_PASSWORD: ${DB_POST_PASSWORD:-${DB_PASSWORD}}
+      DB_CHAT_USER: ${DB_CHAT_USER:-aris_chat}
+      DB_CHAT_PASSWORD: ${DB_CHAT_PASSWORD:-${DB_PASSWORD}}
+      DB_SUPPORT_USER: ${DB_SUPPORT_USER:-aris_support}
+      DB_SUPPORT_PASSWORD: ${DB_SUPPORT_PASSWORD:-${DB_PASSWORD}}
+      DB_COMMUNITY_USER: ${DB_COMMUNITY_USER:-aris_community}
+      DB_COMMUNITY_PASSWORD: ${DB_COMMUNITY_PASSWORD:-${DB_PASSWORD}}
+      DB_SEARCH_USER: ${DB_SEARCH_USER:-aris_search}
+      DB_SEARCH_PASSWORD: ${DB_SEARCH_PASSWORD:-${DB_PASSWORD}}
+      DB_GAME_USER: ${DB_GAME_USER:-aris_game}
+      DB_GAME_PASSWORD: ${DB_GAME_PASSWORD:-${DB_PASSWORD}}
+    command:
+      - postgres
+      - -c
+      - config_file=/etc/postgresql/postgresql.conf
     ports:
       - "127.0.0.1:${DB_PORT}:5432"
     volumes:
       - aris_postgres_data:/var/lib/postgresql/data
+      - ./config/postgres:/etc/postgresql:ro
+      - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 20
+
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.24.1-p1
+    restart: unless-stopped
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_ADMIN_USER: ${DB_ADMIN_USER:-${DB_USER}}
+      DB_ADMIN_PASSWORD: ${DB_ADMIN_PASSWORD:-${DB_PASSWORD}}
+      DB_MIGRATOR_USER: ${DB_MIGRATOR_USER:-aris_migrator}
+      DB_MIGRATOR_PASSWORD: ${DB_MIGRATOR_PASSWORD:-${DB_PASSWORD}}
+      DB_MONITOR_USER: ${DB_MONITOR_USER:-aris_monitor}
+      DB_MONITOR_PASSWORD: ${DB_MONITOR_PASSWORD:-${DB_PASSWORD}}
+      DB_AUTH_USER: ${DB_AUTH_USER:-aris_auth}
+      DB_AUTH_PASSWORD: ${DB_AUTH_PASSWORD:-${DB_PASSWORD}}
+      DB_MEDIA_USER: ${DB_MEDIA_USER:-aris_media}
+      DB_MEDIA_PASSWORD: ${DB_MEDIA_PASSWORD:-${DB_PASSWORD}}
+      DB_USER_SERVICE_USER: ${DB_USER_SERVICE_USER:-aris_user}
+      DB_USER_SERVICE_PASSWORD: ${DB_USER_SERVICE_PASSWORD:-${DB_PASSWORD}}
+      DB_POST_USER: ${DB_POST_USER:-aris_post}
+      DB_POST_PASSWORD: ${DB_POST_PASSWORD:-${DB_PASSWORD}}
+      DB_CHAT_USER: ${DB_CHAT_USER:-aris_chat}
+      DB_CHAT_PASSWORD: ${DB_CHAT_PASSWORD:-${DB_PASSWORD}}
+      DB_SUPPORT_USER: ${DB_SUPPORT_USER:-aris_support}
+      DB_SUPPORT_PASSWORD: ${DB_SUPPORT_PASSWORD:-${DB_PASSWORD}}
+      DB_COMMUNITY_USER: ${DB_COMMUNITY_USER:-aris_community}
+      DB_COMMUNITY_PASSWORD: ${DB_COMMUNITY_PASSWORD:-${DB_PASSWORD}}
+      DB_SEARCH_USER: ${DB_SEARCH_USER:-aris_search}
+      DB_SEARCH_PASSWORD: ${DB_SEARCH_PASSWORD:-${DB_PASSWORD}}
+      DB_GAME_USER: ${DB_GAME_USER:-aris_game}
+      DB_GAME_PASSWORD: ${DB_GAME_PASSWORD:-${DB_PASSWORD}}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${PGBOUNCER_PORT:-6432}:6432"
+    volumes:
+      - ./config/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        mkdir -p /tmp/pgbouncer
+        {
+          printf '"%s" "%s"\n' "$$DB_ADMIN_USER" "$$DB_ADMIN_PASSWORD"
+          printf '"%s" "%s"\n' "$$DB_MIGRATOR_USER" "$$DB_MIGRATOR_PASSWORD"
+          printf '"%s" "%s"\n' "$$DB_MONITOR_USER" "$$DB_MONITOR_PASSWORD"
+          printf '"%s" "%s"\n' "$$DB_AUTH_USER" "$$DB_AUTH_PASSWORD"
+          printf '"%s" "%s"\n' "$$DB_MEDIA_USER" "$$DB_MEDIA_PASSWORD"
+          printf '"%s" "%s"\n' "$$DB_USER_SERVICE_USER" "$$DB_USER_SERVICE_PASSWORD"
+          printf '"%s" "%s"\n' "$$DB_POST_USER" "$$DB_POST_PASSWORD"
+          printf '"%s" "%s"\n' "$$DB_CHAT_USER" "$$DB_CHAT_PASSWORD"
+          printf '"%s" "%s"\n' "$$DB_SUPPORT_USER" "$$DB_SUPPORT_PASSWORD"
+          printf '"%s" "%s"\n' "$$DB_COMMUNITY_USER" "$$DB_COMMUNITY_PASSWORD"
+          printf '"%s" "%s"\n' "$$DB_SEARCH_USER" "$$DB_SEARCH_PASSWORD"
+          printf '"%s" "%s"\n' "$$DB_GAME_USER" "$$DB_GAME_PASSWORD"
+        } > /tmp/pgbouncer/userlist.txt
+        exec pgbouncer /etc/pgbouncer/pgbouncer.ini
 
   minio:
     image: minio/minio:latest
@@ -36,8 +122,8 @@ services:
     environment:
       DB_HOST: db
       DB_PORT: "5432"
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
+      DB_USER: ${DB_MIGRATOR_USER:-${DB_USER}}
+      DB_PASSWORD: ${DB_MIGRATOR_PASSWORD:-${DB_PASSWORD}}
       DB_NAME: ${DB_NAME}
       SSL_MODE: disable
     depends_on:
@@ -59,8 +145,8 @@ services:
     environment:
       DB_HOST: db
       DB_PORT: "5432"
-      DB_USER: ${DB_USER}
-      DB_PASSWORD: ${DB_PASSWORD}
+      DB_USER: ${DB_MIGRATOR_USER:-${DB_USER}}
+      DB_PASSWORD: ${DB_MIGRATOR_PASSWORD:-${DB_PASSWORD}}
       DB_NAME: ${DB_NAME}
       SSL_MODE: disable
       POOL_MAX_CONNS: ${POOL_MAX_CONNS}
@@ -195,6 +281,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       minio:
         condition: service_started
       migrate:
@@ -225,6 +313,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       minio:
         condition: service_started
       migrate:
@@ -257,6 +347,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
       seed:
@@ -295,6 +387,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
       seed:
@@ -329,6 +423,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
       seed:
@@ -359,6 +455,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
       seed:
@@ -456,6 +554,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      pgbouncer:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
       seed:
@@ -500,6 +600,8 @@ services:
         condition: service_started
       node-exporter:
         condition: service_started
+      postgres-exporter:
+        condition: service_started
     ports:
       - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
     volumes:
@@ -510,6 +612,20 @@ services:
       - "--storage.tsdb.path=/prometheus"
       - "--web.console.libraries=/usr/share/prometheus/console_libraries"
       - "--web.console.templates=/usr/share/prometheus/consoles"
+
+  postgres-exporter:
+    profiles: ["microservices"]
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_URI: db:5432/${DB_NAME}?sslmode=disable
+      DATA_SOURCE_USER: ${DB_MONITOR_USER:-aris_monitor}
+      DATA_SOURCE_PASS: ${DB_MONITOR_PASSWORD:-${DB_PASSWORD}}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${POSTGRES_EXPORTER_PORT:-9187}:9187"
 
   grafana:
     profiles: ["microservices"]
