@@ -1,4 +1,4 @@
-.PHONY: test coverage clean dev down reset-db logs migrate mocks seed tarantool-stats ws-open microservices local-prepare microservices-up microservices-rebuild microservices-monitoring-up microservices-full-up microservices-stop microservices-down microservices-reset local-up local-rebuild local-monitoring-up local-full-up local-stop local-down local-reset server-prepare server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop community-up community-stop search-up search-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update logs-auth logs-media logs-user logs-post logs-chat logs-support logs-community logs-search logs-nginx
+.PHONY: test coverage clean dev down reset-db logs migrate mocks seed tarantool-stats ws-open db-apply-security db-pgbadger microservices local-prepare microservices-up microservices-rebuild microservices-monitoring-up microservices-full-up microservices-stop microservices-down microservices-reset local-up local-rebuild local-monitoring-up local-full-up local-stop local-down local-reset server-prepare server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop community-up community-stop search-up search-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update logs-auth logs-media logs-user logs-post logs-chat logs-support logs-community logs-search logs-nginx
 
 COMPOSE_FILE=./docker-compose.yml
 COMPOSE_ENV_FILE=./.env
@@ -8,9 +8,9 @@ COMPOSE_SERVER_FILE=./docker-compose.server.yml
 COMPOSE_SERVER_ENV_FILE=./.env.server
 COMPOSE_SERVER=docker compose --env-file $(COMPOSE_SERVER_ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_SERVER_FILE)
 MICROSERVICE_SERVICES=auth media user post chat support community search game
-MICROSERVICE_INFRA=db redis minio tarantool
+MICROSERVICE_INFRA=db pgbouncer redis minio tarantool
 MICROSERVICE_EDGE=nginx
-MICROSERVICE_MONITORING=prometheus grafana node-exporter
+MICROSERVICE_MONITORING=prometheus grafana node-exporter postgres-exporter
 MICROSERVICE_INIT=migrate
 MICROSERVICE_ALL=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE) $(MICROSERVICE_MONITORING) $(MICROSERVICE_INFRA)
 MICROSERVICE_RUNTIME=$(MICROSERVICE_SERVICES) $(MICROSERVICE_EDGE)
@@ -78,6 +78,12 @@ seed: local-prepare
 
 tarantool-stats:
 	sh scripts/tarantool-stats.sh
+
+db-apply-security:
+	$(COMPOSE) exec -T db sh /docker-entrypoint-initdb.d/01_roles_and_observability.sh
+
+db-pgbadger:
+	sh scripts/db-pgbadger.sh
 
 ws-open:
 	GOCACHE="$(CURDIR)/.cache/go-build" go run ./tools/ws-open/cmd --base-url "$${WS_BASE_URL:-ws://localhost:18080}" --chat-id "$${CHAT_ID:-1}" --cookie-file "$${COOKIE_FILE:-/tmp/aris-cookies.txt}" --duration "$${DURATION:-0}"
