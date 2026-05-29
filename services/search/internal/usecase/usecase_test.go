@@ -87,6 +87,58 @@ func TestSearch(t *testing.T) {
 	}
 }
 
+func TestUserSearchBodyPrioritizesFirstName(t *testing.T) {
+	body := userSearchBody("Иван", 10)
+	boolQuery := body["query"].(map[string]any)["bool"].(map[string]any)
+	should := boolQuery["should"].([]map[string]any)
+
+	firstNameBoost := clauseBoost(t, should, "match_phrase", "first_name")
+	lastNameBoost := clauseBoost(t, should, "match_phrase", "last_name")
+	fuzzyBoost := clauseBoost(t, should, "multi_match", "")
+	if firstNameBoost <= lastNameBoost {
+		t.Fatalf("expected first_name boost %.1f to be greater than last_name boost %.1f", firstNameBoost, lastNameBoost)
+	}
+	if fuzzyBoost >= lastNameBoost {
+		t.Fatalf("expected fuzzy fallback boost %.1f to be lower than last_name boost %.1f", fuzzyBoost, lastNameBoost)
+	}
+	if got := boolQuery["minimum_should_match"]; got != 1 {
+		t.Fatalf("expected minimum_should_match=1, got %#v", got)
+	}
+}
+
+func clauseBoost(t *testing.T, clauses []map[string]any, queryType, field string) float64 {
+	t.Helper()
+	for _, clause := range clauses {
+		query, ok := clause[queryType].(map[string]any)
+		if !ok {
+			continue
+		}
+		if field == "" {
+			return numberAsFloat(t, query["boost"])
+		}
+		fieldQuery, ok := query[field].(map[string]any)
+		if !ok {
+			continue
+		}
+		return numberAsFloat(t, fieldQuery["boost"])
+	}
+	t.Fatalf("missing %s clause for %s", queryType, field)
+	return 0
+}
+
+func numberAsFloat(t *testing.T, value any) float64 {
+	t.Helper()
+	switch v := value.(type) {
+	case int:
+		return float64(v)
+	case float64:
+		return v
+	default:
+		t.Fatalf("expected numeric boost, got %#v", value)
+		return 0
+	}
+}
+
 func TestSearchInvalidInput(t *testing.T) {
 	if _, err := New(nil, nil).Search(context.Background(), "   ", 10); !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("expected invalid input, got %v", err)

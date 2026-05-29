@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,6 +13,38 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/require"
 )
+
+type feedFriendsQueryMatcher struct{}
+
+func (feedFriendsQueryMatcher) Matches(value any) bool {
+	query, ok := value.(string)
+	if !ok {
+		return false
+	}
+	normalized := strings.ToLower(query)
+	return strings.Contains(normalized, "author_id = any") && !strings.Contains(normalized, "community")
+}
+
+func (feedFriendsQueryMatcher) String() string {
+	return "friends feed SQL without community posts"
+}
+
+func TestGetFeedPageWithAuthorsDoesNotIncludeCommunityPosts(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	db := repomocks.NewMockDB(ctrl)
+	dbErr := errors.New("stop after query assertion")
+	authorIDs := []int64{10, 11}
+
+	db.EXPECT().
+		Query(gomock.Any(), feedFriendsQueryMatcher{}, false, authorIDs, 21).
+		Return(nil, dbErr)
+
+	store := NewStore(db)
+	_, err := store.Posts.GetFeedPage(context.Background(), authorIDs, nil, nil, 21, false)
+	require.ErrorIs(t, err, dbErr)
+}
 
 func TestPostRepositoriesReturnDBErrors(t *testing.T) {
 	t.Parallel()

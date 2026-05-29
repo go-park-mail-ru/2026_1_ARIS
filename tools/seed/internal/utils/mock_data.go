@@ -3,7 +3,11 @@ package utils
 import (
 	"bytes"
 	"context"
+	"crypto/sha1"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"net/http"
 	"strings"
@@ -1024,17 +1028,17 @@ func downloadSeedImage(ctx context.Context, sourceURL string) ([]byte, string, s
 	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, "", "", err
+		return fallbackSeedImage(sourceURL)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return nil, "", "", fmt.Errorf("download %s: unexpected status %s", sourceURL, resp.Status)
+		return fallbackSeedImage(sourceURL)
 	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxSeedImageSize+1))
 	if err != nil {
-		return nil, "", "", err
+		return fallbackSeedImage(sourceURL)
 	}
 	if len(body) > maxSeedImageSize {
 		return nil, "", "", fmt.Errorf("download %s: image is larger than %d bytes", sourceURL, maxSeedImageSize)
@@ -1042,8 +1046,30 @@ func downloadSeedImage(ctx context.Context, sourceURL string) ([]byte, string, s
 
 	detected := mimetype.Detect(body)
 	if !strings.HasPrefix(detected.String(), "image/") {
-		return nil, "", "", fmt.Errorf("download %s: unsupported mime type %s", sourceURL, detected.String())
+		return fallbackSeedImage(sourceURL)
 	}
 
 	return body, detected.String(), detected.Extension(), nil
+}
+
+func fallbackSeedImage(sourceURL string) ([]byte, string, string, error) {
+	sum := sha1.Sum([]byte(sourceURL))
+	img := image.NewRGBA(image.Rect(0, 0, 64, 64))
+	base := color.RGBA{R: sum[0], G: sum[1], B: sum[2], A: 255}
+	accent := color.RGBA{R: 255 - sum[0], G: 255 - sum[1], B: 255 - sum[2], A: 255}
+	for y := 0; y < 64; y++ {
+		for x := 0; x < 64; x++ {
+			if (x+y)%17 == 0 || x == y || x == 63-y {
+				img.Set(x, y, accent)
+			} else {
+				img.Set(x, y, base)
+			}
+		}
+	}
+
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return nil, "", "", err
+	}
+	return buf.Bytes(), "image/png", ".png", nil
 }

@@ -794,8 +794,8 @@ func (s *Service) getChronologicalFeed(ctx context.Context, userAccountID int64,
 	}
 
 	if !publicOnly && len(friendIDs) == 0 {
-		// Keep the author filter non-empty so the repository can still include
-		// public community posts without falling back to all personal posts.
+		// Keep the author filter non-empty so an empty friends list does not
+		// fall back to all personal posts.
 		friendIDs = []int64{-1}
 	}
 

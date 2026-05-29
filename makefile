@@ -3,7 +3,7 @@
 COMPOSE_FILE=./docker-compose.yml
 COMPOSE_ENV_FILE=./.env
 COMPOSE_PARALLEL_LIMIT ?= 2
-COMPOSE=COMPOSE_PARALLEL_LIMIT=$(COMPOSE_PARALLEL_LIMIT) docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE)
+COMPOSE=COMPOSE_PARALLEL_LIMIT=$(COMPOSE_PARALLEL_LIMIT) COMPOSE_PROGRESS=plain BUILDKIT_PROGRESS=plain docker compose --env-file $(COMPOSE_ENV_FILE) -f $(COMPOSE_FILE)
 COMPOSE_SERVER_FILE=./docker-compose.server.yml
 COMPOSE_SERVER_ENV_FILE=./.env.server
 COMPOSE_SERVER=docker compose --env-file $(COMPOSE_SERVER_ENV_FILE) -f $(COMPOSE_FILE) -f $(COMPOSE_SERVER_FILE)
@@ -115,17 +115,20 @@ ws-open:
 microservices-up: local-prepare
 	$(COMPOSE) --profile microservices up --pull never -d $(MICROSERVICE_RUNTIME)
 	$(COMPOSE) --profile microservices up --pull never --force-recreate -d nginx
+	$(MAKE) seed-elasticsearch
 
 microservices-rebuild: local-prepare
 	$(COMPOSE) --profile microservices up --build --pull never -d $(MICROSERVICE_RUNTIME)
 	$(COMPOSE) --profile microservices up -d $(MICROSERVICE_MONITORING)
 	$(COMPOSE) --profile microservices up --pull never --force-recreate -d nginx
+	$(MAKE) seed-elasticsearch
 
 microservices-monitoring-up:
 	$(COMPOSE) --profile microservices up -d $(MICROSERVICE_MONITORING)
 
 microservices-full-up: local-prepare
 	$(COMPOSE) --profile microservices up -d $(MICROSERVICE_RUNTIME_FULL)
+	$(MAKE) seed-elasticsearch
 
 microservices-stop:
 	$(COMPOSE) stop $(MICROSERVICE_ALL)

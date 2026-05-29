@@ -52,7 +52,7 @@ BEGIN
   RETURNING id INTO post_id;
 
   INSERT INTO search_outbox (entity_type, entity_id, operation)
-  VALUES ('user', prof_id, 'upsert');
+  VALUES ('user', acc_id, 'upsert');
 
   INSERT INTO search_outbox (entity_type, entity_id, operation)
   VALUES ('post', post_id, 'upsert');

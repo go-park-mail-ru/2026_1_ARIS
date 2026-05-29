@@ -26,7 +26,7 @@ import (
 func main() {
 	_ = godotenv.Load()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), globalutils.EnvDuration("SEED_TIMEOUT", 10*time.Minute))
 	defer cancel()
 
 	db, err := postgres.New(ctx)

@@ -13,6 +13,7 @@ DECLARE
   cprof_id  BIGINT;
 
   prof_ids     BIGINT[] := '{}';
+  acc_ids      BIGINT[] := '{}';
   cprof_ids    BIGINT[] := '{}';
   comm_ids     BIGINT[] := '{}';
   post_ids     BIGINT[] := '{}';
@@ -324,7 +325,9 @@ BEGIN
       (DATE '1995-01-01' + ((i * 173 + 31) % 3652) * INTERVAL '1 day')::DATE
     );
 
+    acc_ids := acc_ids || acc_id;
     prof_ids := prof_ids || prof_id;
+
   END LOOP;
 
   -- ── Phase 2: Friendships (50 × 8 = 400) ──────────────────────────────────
@@ -510,7 +513,7 @@ BEGIN
   -- ── Phase 8: Search outbox ────────────────────────────────────────────────
   FOR i IN 1..50 LOOP
     INSERT INTO search_outbox (entity_type, entity_id, operation)
-    VALUES ('user', prof_ids[i], 'upsert');
+    VALUES ('user', acc_ids[i], 'upsert');
   END LOOP;
 
   FOR i IN 1..10 LOOP

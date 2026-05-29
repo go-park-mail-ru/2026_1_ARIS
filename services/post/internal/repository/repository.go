@@ -272,27 +272,19 @@ func (s *postStorage) GetFeedPage(ctx context.Context, authorIDs []int64, before
 	} else {
 		if beforeTime != nil && beforeID != nil {
 			rows, err = s.db.Query(ctx, `
-				SELECT p.* FROM post p
-				LEFT JOIN community c ON c.id = p.community_id
-				WHERE p.is_active = TRUE AND p.is_public_demo = $1
-				  AND (
-				    p.author_id = ANY($2)
-				    OR (p.community_id IS NOT NULL AND c.is_active = TRUE AND c.community_type = 'public')
-				  )
-				  AND (p.created_at, p.id) < ($3, $4)
-				ORDER BY p.created_at DESC, p.id DESC
+				SELECT * FROM post
+				WHERE is_active = TRUE AND is_public_demo = $1
+				  AND author_id = ANY($2)
+				  AND (created_at, id) < ($3, $4)
+				ORDER BY created_at DESC, id DESC
 				LIMIT $5
 			`, publicOnly, authorIDs, *beforeTime, *beforeID, limit)
 		} else {
 			rows, err = s.db.Query(ctx, `
-				SELECT p.* FROM post p
-				LEFT JOIN community c ON c.id = p.community_id
-				WHERE p.is_active = TRUE AND p.is_public_demo = $1
-				  AND (
-				    p.author_id = ANY($2)
-				    OR (p.community_id IS NOT NULL AND c.is_active = TRUE AND c.community_type = 'public')
-				  )
-				ORDER BY p.created_at DESC, p.id DESC
+				SELECT * FROM post
+				WHERE is_active = TRUE AND is_public_demo = $1
+				  AND author_id = ANY($2)
+				ORDER BY created_at DESC, id DESC
 				LIMIT $3
 			`, publicOnly, authorIDs, limit)
 		}
