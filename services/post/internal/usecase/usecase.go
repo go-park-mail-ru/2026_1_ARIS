@@ -77,16 +77,17 @@ type Media struct {
 }
 
 type FeedPost struct {
-	ID        int64
-	Text      string
-	Author    Author
-	CreatedAt time.Time
-	Likes     int
-	Comments  int
-	Reposts   int
-	IsLiked   bool
-	Medias    []Media
-	Files     []Media
+	ID          int64
+	Text        string
+	Author      Author
+	CommunityID *int64
+	CreatedAt   time.Time
+	Likes       int
+	Comments    int
+	Reposts     int
+	IsLiked     bool
+	Medias      []Media
+	Files       []Media
 }
 
 type FeedResult struct {
@@ -793,7 +794,9 @@ func (s *Service) getChronologicalFeed(ctx context.Context, userAccountID int64,
 	}
 
 	if !publicOnly && len(friendIDs) == 0 {
-		return FeedResult{Posts: []FeedPost{}}, nil
+		// Keep the author filter non-empty so an empty friends list does not
+		// fall back to all personal posts.
+		friendIDs = []int64{-1}
 	}
 
 	var beforeTime *time.Time
@@ -925,10 +928,35 @@ func (s *Service) buildCandidates(ctx context.Context, profileID, userAccountID 
 		Limit:           200,
 		ExcludeAuthorID: profileID,
 	})
+	recommendationErr := err
 	if err != nil {
-		return nil, err
+		candidateIDs = nil
 	}
+	recentCommunityIDs, _ := s.store.Posts.GetRecentPublicCommunityPostIDs(ctx, profileID, 100)
+	if len(recentCommunityIDs) > 0 {
+		seen := make(map[int64]struct{}, len(candidateIDs)+len(recentCommunityIDs))
+		merged := make([]int64, 0, len(candidateIDs)+len(recentCommunityIDs))
+		for _, id := range recentCommunityIDs {
+			if _, ok := seen[id]; ok {
+				continue
+			}
+			seen[id] = struct{}{}
+			merged = append(merged, id)
+		}
+		for _, id := range candidateIDs {
+			if _, ok := seen[id]; ok {
+				continue
+			}
+			seen[id] = struct{}{}
+			merged = append(merged, id)
+		}
+		candidateIDs = merged
+	}
+
 	if len(candidateIDs) == 0 {
+		if recommendationErr != nil {
+			return nil, recommendationErr
+		}
 		return nil, nil
 	}
 
@@ -1108,16 +1136,17 @@ func (s *Service) buildFeedBatch(ctx context.Context, posts []model.Post, viewer
 		}
 
 		result = append(result, FeedPost{
-			ID:        post.ID,
-			Text:      text,
-			Author:    author,
-			CreatedAt: post.CreatedAt,
-			Likes:     likeCount,
-			IsLiked:   bd.isLiked[post.ID],
-			Comments:  bd.commentCounts[post.ID],
-			Reposts:   bd.repostCounts[post.ID],
-			Medias:    media,
-			Files:     files,
+			ID:          post.ID,
+			Text:        text,
+			Author:      author,
+			CommunityID: post.CommunityID,
+			CreatedAt:   post.CreatedAt,
+			Likes:       likeCount,
+			IsLiked:     bd.isLiked[post.ID],
+			Comments:    bd.commentCounts[post.ID],
+			Reposts:     bd.repostCounts[post.ID],
+			Medias:      media,
+			Files:       files,
 		})
 	}
 	return result

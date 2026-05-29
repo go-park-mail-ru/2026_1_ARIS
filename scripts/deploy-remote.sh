@@ -8,6 +8,9 @@ set -a
 . ./.env.server
 set +a
 
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=${XDG_RUNTIME_DIR}/bus}"
+
 if [ -n "$_IMAGE_TAG" ]; then
   export IMAGE_TAG="$_IMAGE_TAG"
 fi
@@ -36,6 +39,7 @@ APP_SERVICES="auth media user post chat support community search game indexer"
 INFRA_SERVICES="db redis minio tarantool elasticsearch clickhouse"
 MONITORING_SERVICES="${MONITORING_SERVICES:-prometheus grafana node-exporter nginx-exporter nginxlog-exporter}"
 RUN_SEED_ON_DEPLOY="${RUN_SEED_ON_DEPLOY:-0}"
+AUTO_SEED_ON_EMPTY="${AUTO_SEED_ON_EMPTY:-1}"
 
 sh scripts/render-service-envs.sh
 sh scripts/render-nginx-server-conf.sh
@@ -61,7 +65,64 @@ compose up --no-build --no-recreate -d $INFRA_SERVICES
 echo "Applying database migrations..."
 compose up --no-build --force-recreate --no-deps migrate
 
-if [ "$RUN_SEED_ON_DEPLOY" = "1" ]; then
+seed_marker_count() {
+  compose exec -T db sh -c "psql -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -Atqc \"SELECT COUNT(*) FROM user_account WHERE username IN ('demoowner', 'komandaaris');\""
+}
+
+refresh_search_outbox() {
+  compose exec -T db sh -c "psql -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -c \"
+INSERT INTO search_outbox (entity_type, entity_id, operation)
+SELECT 'user', id, 'upsert'
+FROM user_account
+WHERE is_active = TRUE;
+
+INSERT INTO search_outbox (entity_type, entity_id, operation)
+SELECT 'community', id, 'upsert'
+FROM community
+WHERE is_active = TRUE;
+
+INSERT INTO search_outbox (entity_type, entity_id, operation)
+SELECT 'post', id, 'upsert'
+FROM post
+WHERE is_active = TRUE;
+\""
+}
+
+wait_search_outbox_drained() {
+  attempts="${SEARCH_OUTBOX_WAIT_ATTEMPTS:-24}"
+  while [ "$attempts" -gt 0 ]; do
+    pending="$(compose exec -T db sh -c "psql -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -Atqc \"SELECT COUNT(*) FROM search_outbox;\"")"
+    if [ "$pending" = "0" ]; then
+      echo "Search outbox processed."
+      return 0
+    fi
+    echo "Waiting for search outbox to be processed (${pending} pending)..."
+    attempts=$((attempts - 1))
+    sleep 5
+  done
+
+  echo "Search outbox was not fully processed in time." >&2
+  return 1
+}
+
+should_run_seed="$RUN_SEED_ON_DEPLOY"
+if [ "$should_run_seed" != "1" ] && [ "$AUTO_SEED_ON_EMPTY" = "1" ]; then
+  marker_count="$(seed_marker_count || printf '0')"
+  case "$marker_count" in
+    ''|*[!0-9]*)
+      echo "Could not determine seed marker count (${marker_count}); skipping automatic seed."
+      ;;
+    0)
+      echo "Seed marker users are absent; seed will run automatically."
+      should_run_seed="1"
+      ;;
+    *)
+      echo "Seed marker users found (${marker_count}); skipping seed."
+      ;;
+  esac
+fi
+
+if [ "$should_run_seed" = "1" ]; then
   echo "Running seed data refresh..."
   compose up --no-build --force-recreate --no-deps seed
 fi
@@ -80,9 +141,9 @@ else
   echo "Skipping Docker nginx service because DEPLOY_NGINX_CONTAINER=$deploy_nginx_container"
 fi
 
-if systemctl is-active --quiet arisfront 2>/dev/null || systemctl is-enabled --quiet arisfront 2>/dev/null; then
+if systemctl --user is-active --quiet arisfront 2>/dev/null || systemctl --user is-enabled --quiet arisfront 2>/dev/null; then
   echo "Restarting frontend service..."
-  sudo systemctl restart arisfront
+  systemctl --user restart arisfront
 fi
 
 sleep 15
@@ -106,6 +167,10 @@ if [ "$deploy_nginx_container" = "1" ]; then
 fi
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-elasticsearch-1 .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-indexer-1 .*Up'
+
+echo "Refreshing Elasticsearch index queue..."
+refresh_search_outbox
+wait_search_outbox_drained
 
 BASE_URL="$APP_ENDPOINT"
 

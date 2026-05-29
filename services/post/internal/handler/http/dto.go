@@ -62,16 +62,17 @@ type feedResponse struct {
 }
 
 type postFeedDTO struct {
-	ID        int64          `json:"id"`
-	Text      string         `json:"text"`
-	Author    authorFeedDTO  `json:"author"`
-	CreatedAt time.Time      `json:"createdAt"`
-	Likes     int            `json:"likes"`
-	IsLiked   bool           `json:"isLiked"`
-	Comments  int            `json:"comments"`
-	Reposts   int            `json:"reposts"`
-	Medias    []mediaFeedDTO `json:"medias"`
-	Files     []mediaFeedDTO `json:"files"`
+	ID          int64          `json:"id"`
+	Text        string         `json:"text"`
+	Author      authorFeedDTO  `json:"author"`
+	CommunityID *int64         `json:"communityId,omitempty"`
+	CreatedAt   time.Time      `json:"createdAt"`
+	Likes       int            `json:"likes"`
+	IsLiked     bool           `json:"isLiked"`
+	Comments    int            `json:"comments"`
+	Reposts     int            `json:"reposts"`
+	Medias      []mediaFeedDTO `json:"medias"`
+	Files       []mediaFeedDTO `json:"files"`
 }
 
 type commentRequest struct {

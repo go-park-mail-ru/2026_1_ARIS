@@ -11,7 +11,6 @@ import (
 	"github.com/go-park-mail-ru/2026_1_ARIS/tools/seed/internal/models"
 	"github.com/go-park-mail-ru/2026_1_ARIS/tools/seed/internal/models/xerrors"
 	pgerrors "github.com/go-park-mail-ru/2026_1_ARIS/tools/seed/internal/utils/pg_errors"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
@@ -49,10 +48,26 @@ func NewPostStorage(db postDB) PostRepo {
 
 func (storage *postStorage) Save(ctx context.Context, post models.Post) (int64, error) {
 	logger := logger.FromContext(ctx)
-	query := `INSERT INTO post (uid, post_text, author_id, community_id, is_public_demo, allow_comments) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
+	query := `
+		INSERT INTO post (
+			uid, post_text, author_id, community_id,
+			is_public_demo, allow_comments, created_at, updated_at
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id
+	`
 
 	start := time.Now()
-	row := storage.db.QueryRow(ctx, query, uuid.New(), post.Text, post.AuthorID, post.CommunityID, post.IsPublicDemo, post.AllowComments)
+	row := storage.db.QueryRow(ctx, query,
+		post.Uid,
+		post.Text,
+		post.AuthorID,
+		post.CommunityID,
+		post.IsPublicDemo,
+		post.AllowComments,
+		post.CreatedAt,
+		post.UpdatedAt,
+	)
 	if logger != nil {
 		logger.Debug("db query",
 			zap.String("query", "PostStorage.Save"),
