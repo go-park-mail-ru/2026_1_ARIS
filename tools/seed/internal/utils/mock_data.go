@@ -25,7 +25,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const maxSeedImageSize = 10 << 20
+const (
+	maxSeedImageSize = 10 << 20
+	seedUserAgent    = "ARIS tools/seed/1.0"
+)
 
 func createRealUserProfile(
 	ctx context.Context,
@@ -293,32 +296,32 @@ func MakeMock(mediaRepo media.MediaRepo,
 		return seedMedia
 	}
 
-	media1 := createSeedMedia("Media name 1", &mediaDesctiption1, "https://picsum.photos/seed/aris-nature-1/1280/720", 1)
-	media2 := createSeedMedia("Media name 2", &mediaDesctiption2, "https://img51994.kanal-o.ru/img/2024-09-09/fmt_81_24_shutterstock_2141488197.jpg", 1)
-	media3 := createSeedMedia("Media name 3", &mediaDesctiption3, "https://moya-planeta.ru/upload/images/l/eb/e2/ebe21cb5a55a808b104f3d51c3ff96284bae5182.jpg", 1)
-	media5 := createSeedMedia("Media name 5", &mediaDesctiption5, "https://oboitd.ru/images/goods/big/20200125110231_Priroda_10-344.jpg", 1)
-	media6 := createSeedMedia("Media name 6", &mediaDesctiption6, "https://www.advantour.com/img/kazakhstan/images/nature.jpg", 1)
-	media7 := createSeedMedia("Media name 7", &mediaDesctiption7, "https://img.goodfon.com/wallpaper/big/5/18/italiia-gory-ozero-peizazh-otrazhenie-priroda.webp", 1)
+	media1 := createSeedMedia("Media name 1", &mediaDesctiption1, "https://www.rupixel.ru/files/preview/1280x878/21665130373sttvwtvwyjsszkxrv264yzejkkrqqj3cboksg0lfyikllxdre1ktpcaq3chdhajtqb6v7mpjyudueg3s2mik2zkjbqnbzjhn1fyz.jpg", 1)
+	media2 := createSeedMedia("Media name 2", &mediaDesctiption2, "https://www.rupixel.ru/files/preview/1280x853/21670435645hrzpmb7ulbwsywskhbqqshmnvj6k3dvdsdudpdh3f5q53cxpgz76iddddralyvwzmvozsjezysyrtellba6aarbigxdbkt3f4k87.jpg", 1)
+	media3 := createSeedMedia("Media name 3", &mediaDesctiption3, "https://www.rupixel.ru/files/preview/1280x853/21670435519xwxdww8x2j4cr5xoyqw9tt7npmaxrdgdxwzxzay29k83ue9nvpbbruqdlomxgcrmpoioff3wle88542i16tctedyk8vqerdqz2yk.jpg", 1)
+	media5 := createSeedMedia("Media name 5", &mediaDesctiption5, "https://www.rupixel.ru/files/preview/1280x853/21665040006ns9arjilitihgyiijhu6dxyyodg591qo6no4ndk1grnsebylbss4jy55qgip9kl4xdzx2qp9rc1c41sxpdtlk2azzspv7jhjc5zh.jpg", 1)
+	media6 := createSeedMedia("Media name 6", &mediaDesctiption6, "https://www.rupixel.ru/files/preview/1280x853/21670435645hrzpmb7ulbwsywskhbqqshmnvj6k3dvdsdudpdh3f5q53cxpgz76iddddralyvwzmvozsjezysyrtellba6aarbigxdbkt3f4k87.jpg", 1)
+	media7 := createSeedMedia("Media name 7", &mediaDesctiption7, "https://www.rupixel.ru/files/preview/1280x670/216650346699wr1lhom4dz8cd4mkcobjyt0yhc8bdu8bpxx9pkbxbehzsgg1ghdbhrnmhjs5kdeiofrfamgb9smyazet26h85ypyustpukknvoi.jpg", 1)
 
-	media8 := createSeedMedia("Media name 8", &mediaDesctiption8, "https://marathonec.ru/wp-content/uploads/2019/07/utrennyaya-probezhka-1.jpg", 1)
-	media9 := createSeedMedia("Media name 9", &mediaDesctiption9, "https://picsum.photos/seed/aris-running-2/1280/720", 2)
+	media8 := createSeedMedia("Media name 8", &mediaDesctiption8, "https://www.rupixel.ru/files/preview/1280x853/217230968551lplpuobd3oixqyxjqoa4kvwj2ygtmtw1uc7e7q8tbj1fxj07njdgwcl8f9qvs3iv71jzhxzlcfkfawafeuh91ngzzt8ylgmzcrf.jpg", 1)
+	media9 := createSeedMedia("Media name 9", &mediaDesctiption9, "https://www.rupixel.ru/files/preview/1280x853/14471778865077onj9owr2nwqy8kdmsthbmhbfqidyiup3zlg7tukhgzmfwxjuxcltv0ccmhk663rat005vr7esa6bzbmwa1ebol61efem3e6nneir.jpg", 2)
 
-	media10 := createSeedMedia("Media name 10", &mediaDesctiption10, "https://picsum.photos/seed/aris-tech-1/1280/720", 2)
+	media10 := createSeedMedia("Media name 10", &mediaDesctiption10, "https://www.rupixel.ru/files/preview/1280x670/216650346699wr1lhom4dz8cd4mkcobjyt0yhc8bdu8bpxx9pkbxbehzsgg1ghdbhrnmhjs5kdeiofrfamgb9smyazet26h85ypyustpukknvoi.jpg", 2)
 
-	media11 := createSeedMedia("Media name 11", &mediaDesctiption11, "https://ubifi.net/wp-content/uploads/2025/06/Kinds-of-Internet-Connection.webp", 2)
-	media12 := createSeedMedia("Media name 12", &mediaDesctiption12, "https://picsum.photos/seed/aris-tech-2/1280/720", 2)
-	media13 := createSeedMedia("Media name 13", &mediaDesctiption13, "https://image.geo.de/30140508/t/r4/v4/w1440/r0/-/internetz-f-209777524-jpg--79960-.jpg", 2)
-	media14 := createSeedMedia("Media name 14", &mediaDesctiption14, "https://picsum.photos/seed/aris-food-1/1280/720", 3)
-	media15 := createSeedMedia("Media name 15", &mediaDesctiption15, "https://www.wiwi.uni-wuerzburg.de/fileadmin/_processed_/3/9/csm_computer-1209641_1920_3a999762b2.jpg", 3)
-	media17 := createSeedMedia("Media name 17", &mediaDesctiption17, "https://fitaliancook.com/wp-content/uploads/2025/07/pasta-e-fagioli-rezept-beitragsbild.jpg", 3)
-	media18 := createSeedMedia("Media name 18", &mediaDesctiption18, "https://eat.de/wp-content/uploads/2025/03/tuerkische-pasta-7014.jpg", 3)
-	media19 := createSeedMedia("Media name 19", &mediaDesctiption19, "https://picsum.photos/seed/aris-food-2/1280/720", 3)
-	media20 := createSeedMedia("Media name 20", &mediaDesctiption20, "https://images.gastronom.ru/TYj7-7529vyMsVom2kYJQl8MFrkWsrOY5hgaQPa1zsk/pr:article-cover-image/g:ce/rs:auto:0:0:0/L2Ntcy9hbGwtaW1hZ2VzL2IzY2RlN2ZjLTgzZjEtNGJlYi1iOGZmLWZhMzM3YzY1ODFlYy5qcGc.webp", 4)
+	media11 := createSeedMedia("Media name 11", &mediaDesctiption11, "https://www.rupixel.ru/files/preview/1280x878/21665130373sttvwtvwyjsszkxrv264yzejkkrqqj3cboksg0lfyikllxdre1ktpcaq3chdhajtqb6v7mpjyudueg3s2mik2zkjbqnbzjhn1fyz.jpg", 2)
+	media12 := createSeedMedia("Media name 12", &mediaDesctiption12, "https://www.rupixel.ru/files/preview/1280x853/21670435645hrzpmb7ulbwsywskhbqqshmnvj6k3dvdsdudpdh3f5q53cxpgz76iddddralyvwzmvozsjezysyrtellba6aarbigxdbkt3f4k87.jpg", 2)
+	media13 := createSeedMedia("Media name 13", &mediaDesctiption13, "https://www.rupixel.ru/files/preview/1280x853/21670435519xwxdww8x2j4cr5xoyqw9tt7npmaxrdgdxwzxzay29k83ue9nvpbbruqdlomxgcrmpoioff3wle88542i16tctedyk8vqerdqz2yk.jpg", 2)
+	media14 := createSeedMedia("Media name 14", &mediaDesctiption14, "https://www.rupixel.ru/files/preview/1280x853/21665040006ns9arjilitihgyiijhu6dxyyodg591qo6no4ndk1grnsebylbss4jy55qgip9kl4xdzx2qp9rc1c41sxpdtlk2azzspv7jhjc5zh.jpg", 3)
+	media15 := createSeedMedia("Media name 15", &mediaDesctiption15, "https://www.rupixel.ru/files/preview/1280x853/21670434247qj8u3gr5ogc9wzrzyconf5ghv3uwcedo6gxibqslogfm538wsgajyqqpse2vzvgmuqrhhukfzs1jpbiup0octekedb2xywkst1l2.jpg", 3)
+	media17 := createSeedMedia("Media name 17", &mediaDesctiption17, "https://www.rupixel.ru/files/preview/960x1280/11641743181889ylsprp5b2mnkwugzqarkiytrc0dblr9vit6jcdfln2anyjynushfbkmkubflwitrjpneb2w5fcn46zbwwkoxyy6rwo6gsij2dil4.jpg", 3)
+	media18 := createSeedMedia("Media name 18", &mediaDesctiption18, "https://www.rupixel.ru/files/preview/960x2081/11621743631669vznbleovv6zissbpp63sfwi1tkubthbgz8gpqgnu7xb4vjy6nicdppcivc7ks9gynlyrmylfoiyxifstr0tptng7mv7jz5asvcab.jpg", 3)
+	media19 := createSeedMedia("Media name 19", &mediaDesctiption19, "https://www.rupixel.ru/files/preview/1280x720/17551777355335f5nffqmi6idiyirjqggs8nmw4cvpw9nsdjtl3al1xbdh1jbogjwrq19noaggrukvqwz6wbz6oai4xwgtsdotuflvi8ykx7nwpxas.jpeg", 3)
+	media20 := createSeedMedia("Media name 20", &mediaDesctiption20, "https://www.rupixel.ru/files/preview/960x1105/116217525246396yvf93f9vp9xlbclvlolpqwkhrvmvf3ytcgmokyfq97ydv3pa4caniui9ousiultv05hxxgifgbp0godtwciyneachcnceo8xrvb.jpg", 4)
 
-	media21 := createSeedMedia("Media name 21", &mediaDesctiption21, "https://boxru.ru/upload/resize_cache/iblock/1af/400_400_140cd750bba9870f18aada2478b24840a/q3bxff3vhe8iljlcbpn4jlbx3szt2p1w.jpg", 4)
-	media22 := createSeedMedia("Media name 22", &mediaDesctiption22, "https://s1.stc.all.kpcdn.net/putevoditel/projectid_346574/images/tild3037-3837-4461-a261-663863336336__photo.jpg", 4)
+	media21 := createSeedMedia("Media name 21", &mediaDesctiption21, "https://www.rupixel.ru/files/preview/1280x853/21665134519fvkxxpn5v7oisahsojvuamkhmbxyblkgx8tzrreadxkdbyf8z16fhmzb9so30rvjyjyqftkmg2pfa81msu2ksb9dzbalmeiyargz.jpg", 4)
+	media22 := createSeedMedia("Media name 22", &mediaDesctiption22, "https://www.rupixel.ru/files/preview/1280x853/216651343549gt059kkcwux8ysufnsypezbyeu3zuhxblsyc5lumaz13vb4gskt9x0rqzb5dnma0f3myl8whc5xtqk9ro5v84zeygrs2n0rdbgb.jpg", 4)
 
-	media23 := createSeedMedia("Media name 23", &mediaDesctiption23, "https://space-pm.ru/uploads/market/stati/small/1719495934.jpg", 4)
+	media23 := createSeedMedia("Media name 23", &mediaDesctiption23, "https://www.rupixel.ru/files/preview/1280x854/21664949471delppmwiei3nutzlj0k3r7vfwydwqeumqifxsm57rlacpihruwgrcnncdbbdbt0thgvywlxoui1pbxvpbphjhdsbuajuytzdhoso.jpg", 4)
 	if err != nil {
 		return
 	}
@@ -1012,6 +1015,10 @@ func downloadSeedImage(ctx context.Context, sourceURL string) ([]byte, string, s
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sourceURL, nil)
 	if err != nil {
 		return nil, "", "", err
+	}
+	req.Header.Set("User-Agent", seedUserAgent)
+	if strings.Contains(sourceURL, "rupixel.ru/") {
+		req.Header.Set("Referer", "https://www.rupixel.ru/")
 	}
 
 	client := &http.Client{Timeout: 15 * time.Second}
