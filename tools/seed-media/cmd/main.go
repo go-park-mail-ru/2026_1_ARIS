@@ -144,6 +144,9 @@ func downloadImage(ctx context.Context, client *http.Client, sourceURL string, m
 		return downloadedImage{}, err
 	}
 	req.Header.Set("User-Agent", userAgent)
+	if strings.Contains(sourceURL, "rupixel.ru/") {
+		req.Header.Set("Referer", "https://www.rupixel.ru/")
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {
