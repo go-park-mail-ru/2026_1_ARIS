@@ -77,16 +77,17 @@ type Media struct {
 }
 
 type FeedPost struct {
-	ID        int64
-	Text      string
-	Author    Author
-	CreatedAt time.Time
-	Likes     int
-	Comments  int
-	Reposts   int
-	IsLiked   bool
-	Medias    []Media
-	Files     []Media
+	ID          int64
+	Text        string
+	Author      Author
+	CommunityID *int64
+	CreatedAt   time.Time
+	Likes       int
+	Comments    int
+	Reposts     int
+	IsLiked     bool
+	Medias      []Media
+	Files       []Media
 }
 
 type FeedResult struct {
@@ -1135,16 +1136,17 @@ func (s *Service) buildFeedBatch(ctx context.Context, posts []model.Post, viewer
 		}
 
 		result = append(result, FeedPost{
-			ID:        post.ID,
-			Text:      text,
-			Author:    author,
-			CreatedAt: post.CreatedAt,
-			Likes:     likeCount,
-			IsLiked:   bd.isLiked[post.ID],
-			Comments:  bd.commentCounts[post.ID],
-			Reposts:   bd.repostCounts[post.ID],
-			Medias:    media,
-			Files:     files,
+			ID:          post.ID,
+			Text:        text,
+			Author:      author,
+			CommunityID: post.CommunityID,
+			CreatedAt:   post.CreatedAt,
+			Likes:       likeCount,
+			IsLiked:     bd.isLiked[post.ID],
+			Comments:    bd.commentCounts[post.ID],
+			Reposts:     bd.repostCounts[post.ID],
+			Medias:      media,
+			Files:       files,
 		})
 	}
 	return result

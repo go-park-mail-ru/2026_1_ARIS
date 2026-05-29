@@ -320,6 +320,20 @@ func easyjson56de76c1DecodeGithubComGoParkMailRu20261ARISServicesPostInternalHan
 			} else {
 				(out.Author).UnmarshalEasyJSON(in)
 			}
+		case "communityId":
+			if in.IsNull() {
+				in.Skip()
+				out.CommunityID = nil
+			} else {
+				if out.CommunityID == nil {
+					out.CommunityID = new(int64)
+				}
+				if in.IsNull() {
+					in.Skip()
+				} else {
+					*out.CommunityID = int64(in.Int64())
+				}
+			}
 		case "createdAt":
 			if in.IsNull() {
 				in.Skip()
@@ -434,6 +448,11 @@ func easyjson56de76c1EncodeGithubComGoParkMailRu20261ARISServicesPostInternalHan
 		const prefix string = ",\"author\":"
 		out.RawString(prefix)
 		(in.Author).MarshalEasyJSON(out)
+	}
+	if in.CommunityID != nil {
+		const prefix string = ",\"communityId\":"
+		out.RawString(prefix)
+		out.Int64(int64(*in.CommunityID))
 	}
 	{
 		const prefix string = ",\"createdAt\":"
