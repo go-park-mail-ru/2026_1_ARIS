@@ -36,6 +36,7 @@ APP_SERVICES="auth media user post chat support community search game indexer"
 INFRA_SERVICES="db redis minio tarantool elasticsearch clickhouse"
 MONITORING_SERVICES="${MONITORING_SERVICES:-prometheus grafana node-exporter nginx-exporter nginxlog-exporter}"
 RUN_SEED_ON_DEPLOY="${RUN_SEED_ON_DEPLOY:-0}"
+AUTO_SEED_ON_EMPTY="${AUTO_SEED_ON_EMPTY:-1}"
 
 sh scripts/render-service-envs.sh
 sh scripts/render-nginx-server-conf.sh
@@ -61,7 +62,28 @@ compose up --no-build --no-recreate -d $INFRA_SERVICES
 echo "Applying database migrations..."
 compose up --no-build --force-recreate --no-deps migrate
 
-if [ "$RUN_SEED_ON_DEPLOY" = "1" ]; then
+seed_marker_count() {
+  compose exec -T db sh -c "psql -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -Atqc \"SELECT COUNT(*) FROM user_account WHERE username IN ('demoowner', 'komandaaris');\""
+}
+
+should_run_seed="$RUN_SEED_ON_DEPLOY"
+if [ "$should_run_seed" != "1" ] && [ "$AUTO_SEED_ON_EMPTY" = "1" ]; then
+  marker_count="$(seed_marker_count || printf '0')"
+  case "$marker_count" in
+    ''|*[!0-9]*)
+      echo "Could not determine seed marker count (${marker_count}); skipping automatic seed."
+      ;;
+    0)
+      echo "Seed marker users are absent; seed will run automatically."
+      should_run_seed="1"
+      ;;
+    *)
+      echo "Seed marker users found (${marker_count}); skipping seed."
+      ;;
+  esac
+fi
+
+if [ "$should_run_seed" = "1" ]; then
   echo "Running seed data refresh..."
   compose up --no-build --force-recreate --no-deps seed
 fi
