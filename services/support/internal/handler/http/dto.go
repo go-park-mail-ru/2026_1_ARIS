@@ -1,5 +1,7 @@
 package http
 
+//go:generate go run github.com/mailru/easyjson/easyjson -all $GOFILE
+
 import (
 	"time"
 
@@ -77,6 +79,7 @@ type SupportMessageRequest struct {
 	Text string `json:"text"`
 }
 
+//easyjson:skip
 type TicketCategoryValue struct {
 	Value models.TicketCategory
 }
@@ -90,6 +93,7 @@ func (v *TicketCategoryValue) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+//easyjson:skip
 type TicketStatusValue struct {
 	Value models.TicketStatus
 }

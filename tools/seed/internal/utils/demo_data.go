@@ -7,8 +7,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/go-park-mail-ru/2026_1_ARIS/tools/seed/internal/repository/media"
 )
 
 const demoPassword = "password"
@@ -39,13 +42,13 @@ type demoUserRecord struct {
 }
 
 // MakeDemoData creates a repeatable dataset for manual review and demos.
-func MakeDemoData(ctx context.Context, db *pgxpool.Pool) error {
-	users, err := seedDemoUsers(ctx, db)
+func MakeDemoData(ctx context.Context, db *pgxpool.Pool, s3Repo media.S3Repo, bucketName string) error {
+	users, err := seedDemoUsers(ctx, db, s3Repo, bucketName)
 	if err != nil {
 		return err
 	}
 
-	media, err := seedDemoMedia(ctx, db, users["demoowner"].ProfileID)
+	media, err := seedDemoMedia(ctx, db, s3Repo, bucketName, users["demoowner"].ProfileID)
 	if err != nil {
 		return err
 	}
@@ -69,7 +72,7 @@ func MakeDemoData(ctx context.Context, db *pgxpool.Pool) error {
 	return nil
 }
 
-func seedDemoUsers(ctx context.Context, db *pgxpool.Pool) (map[string]demoUserRecord, error) {
+func seedDemoUsers(ctx context.Context, db *pgxpool.Pool, s3Repo media.S3Repo, bucketName string) (map[string]demoUserRecord, error) {
 	people := []demoUser{
 		{
 			Username:    "demoowner",
@@ -205,7 +208,7 @@ func seedDemoUsers(ctx context.Context, db *pgxpool.Pool) (map[string]demoUserRe
 
 	result := make(map[string]demoUserRecord, len(people))
 	for _, person := range people {
-		record, err := ensureDemoUser(ctx, db, person)
+		record, err := ensureDemoUser(ctx, db, s3Repo, bucketName, person)
 		if err != nil {
 			return nil, err
 		}
@@ -215,7 +218,7 @@ func seedDemoUsers(ctx context.Context, db *pgxpool.Pool) (map[string]demoUserRe
 	return result, nil
 }
 
-func ensureDemoUser(ctx context.Context, db *pgxpool.Pool, user demoUser) (demoUserRecord, error) {
+func ensureDemoUser(ctx context.Context, db *pgxpool.Pool, s3Repo media.S3Repo, bucketName string, user demoUser) (demoUserRecord, error) {
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(demoPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return demoUserRecord{}, fmt.Errorf("hash demo password: %w", err)
@@ -313,7 +316,7 @@ func ensureDemoUser(ctx context.Context, db *pgxpool.Pool, user demoUser) (demoU
 		return demoUserRecord{}, fmt.Errorf("upsert user profile %s: %w", user.Username, err)
 	}
 
-	avatarID, err := ensureDemoMedia(ctx, db, "demo-avatar-"+user.Username, "jpg", "image/jpeg", user.AvatarURL, profileID)
+	avatarID, err := ensureDemoMedia(ctx, db, s3Repo, bucketName, "demo-avatar-"+user.Username, user.AvatarURL, profileID)
 	if err != nil {
 		return demoUserRecord{}, err
 	}
@@ -324,7 +327,7 @@ func ensureDemoUser(ctx context.Context, db *pgxpool.Pool, user demoUser) (demoU
 	return demoUserRecord{AccountID: accountID, ProfileID: profileID}, nil
 }
 
-func seedDemoMedia(ctx context.Context, db *pgxpool.Pool, authorID int64) (map[string]int64, error) {
+func seedDemoMedia(ctx context.Context, db *pgxpool.Pool, s3Repo media.S3Repo, bucketName string, authorID int64) (map[string]int64, error) {
 	items := map[string]string{
 		"campus":    "https://moya-planeta.ru/upload/images/l/eb/e2/ebe21cb5a55a808b104f3d51c3ff96284bae5182.jpg",
 		"frontend":  "https://placehold.co/1200x800/0070f3/ffffff.jpg?text=Frontend",
@@ -336,7 +339,7 @@ func seedDemoMedia(ctx context.Context, db *pgxpool.Pool, authorID int64) (map[s
 
 	result := make(map[string]int64, len(items))
 	for key, link := range items {
-		id, err := ensureDemoMedia(ctx, db, "demo-"+key, "jpg", "image/jpeg", link, authorID)
+		id, err := ensureDemoMedia(ctx, db, s3Repo, bucketName, "demo-"+key, link, authorID)
 		if err != nil {
 			return nil, err
 		}
@@ -346,15 +349,30 @@ func seedDemoMedia(ctx context.Context, db *pgxpool.Pool, authorID int64) (map[s
 	return result, nil
 }
 
-func ensureDemoMedia(ctx context.Context, db *pgxpool.Pool, name, extension, mimeType, link string, authorID int64) (int64, error) {
+func ensureDemoMedia(ctx context.Context, db *pgxpool.Pool, s3Repo media.S3Repo, bucketName, name, sourceURL string, authorID int64) (int64, error) {
 	var id int64
-	err := db.QueryRow(ctx, `SELECT id FROM media WHERE media_name=$1 LIMIT 1`, name).Scan(&id)
+	var existingLink string
+	err := db.QueryRow(ctx, `SELECT id, link FROM media WHERE media_name=$1 LIMIT 1`, name).Scan(&id, &existingLink)
 	if err == nil {
+		lowerLink := strings.ToLower(existingLink)
+		if !strings.HasPrefix(lowerLink, "http://") && !strings.HasPrefix(lowerLink, "https://") {
+			return id, nil
+		}
+	} else if err != pgx.ErrNoRows {
+		return 0, fmt.Errorf("find media %s: %w", name, err)
+	}
+
+	seedMedia, err := newSeedMediaFromURL(ctx, s3Repo, bucketName, name, nil, sourceURL, authorID)
+	if err != nil {
+		return 0, fmt.Errorf("create media %s from %s: %w", name, sourceURL, err)
+	}
+
+	if id != 0 {
 		_, err = db.Exec(ctx, `
 			UPDATE media
-			SET extension=$1, mime_type=$2, link=$3, author_id=$4, is_active=TRUE, updated_at=NOW()
-			WHERE id=$5
-		`, extension, mimeType, link, authorID, id)
+			SET uid=$1, extension=$2, mime_type=$3, link=$4, author_id=$5, is_active=TRUE, updated_at=NOW()
+			WHERE id=$6
+		`, seedMedia.Uid, seedMedia.Extension, seedMedia.MimeType, seedMedia.Link, authorID, id)
 		return id, err
 	}
 
@@ -362,7 +380,7 @@ func ensureDemoMedia(ctx context.Context, db *pgxpool.Pool, name, extension, mim
 		INSERT INTO media (uid, media_name, extension, mime_type, size, link, author_id, is_active)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
 		RETURNING id
-	`, uuid.New(), name, extension, mimeType, int64(1), link, authorID).Scan(&id)
+	`, seedMedia.Uid, name, seedMedia.Extension, seedMedia.MimeType, int64(seedMedia.Size), seedMedia.Link, authorID).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("create media %s: %w", name, err)
 	}

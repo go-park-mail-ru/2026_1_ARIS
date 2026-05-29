@@ -128,7 +128,7 @@ func (storage *mediaStorage) GetLink(ctx context.Context, id int64) (string, err
 
 func (storage *mediaStorage) UpdateLink(ctx context.Context, id int64, newLink string) error {
 	logger := logger.FromContext(ctx)
-	query := `UPDATE table media SET link=$1 WHERE id=$2`
+	query := `UPDATE media SET link=$1 WHERE id=$2`
 
 	start := time.Now()
 	res, err := storage.db.Exec(ctx, query, newLink, id)

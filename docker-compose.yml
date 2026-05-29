@@ -85,7 +85,8 @@ services:
     command: >
       sh -c "
       go mod download &&
-      go run ./tools/seed/cmd
+      go run ./tools/seed/cmd &&
+      go run ./tools/seed-media/cmd
       "
 
   redis:
@@ -437,6 +438,12 @@ services:
         condition: service_completed_successfully
       elasticsearch:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8090/health >/dev/null 2>&1"]
+      start_period: 30s
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   game:
     profiles: ["microservices"]
@@ -473,23 +480,25 @@ services:
     restart: unless-stopped
     depends_on:
       auth:
-        condition: service_healthy
+        condition: service_started
       media:
-        condition: service_healthy
+        condition: service_started
       user:
-        condition: service_healthy
+        condition: service_started
       post:
-        condition: service_healthy
+        condition: service_started
       chat:
-        condition: service_healthy
+        condition: service_started
       support:
-        condition: service_healthy
+        condition: service_started
       community:
-        condition: service_healthy
+        condition: service_started
       search:
-        condition: service_healthy
+        condition: service_started
       game:
-        condition: service_healthy
+        condition: service_started
+      indexer:
+        condition: service_started
       node-exporter:
         condition: service_started
     ports:
@@ -533,6 +542,29 @@ services:
     volumes:
       - /:/host:ro,rslave
 
+  nginx-exporter:
+    profiles: ["microservices"]
+    image: nginx/nginx-prometheus-exporter:1.4.1
+    restart: unless-stopped
+    command:
+      - "--nginx.scrape-uri=http://nginx:8080/nginx-status"
+      - "--web.listen-address=:9113"
+    ports:
+      - "127.0.0.1:${NGINX_EXPORTER_PORT:-9113}:9113"
+
+  nginxlog-exporter:
+    profiles: ["microservices"]
+    image: quay.io/martinhelmich/prometheus-nginxlog-exporter:v1.11.0
+    restart: unless-stopped
+    command:
+      - "-config-file"
+      - "/etc/prometheus-nginxlog-exporter/config.hcl"
+    ports:
+      - "127.0.0.1:${NGINXLOG_EXPORTER_PORT:-4040}:4040"
+    volumes:
+      - ./config/nginxlog-exporter/config.hcl:/etc/prometheus-nginxlog-exporter/config.hcl:ro
+      - ./.tmp/nginx-logs:/var/log/nginx:ro
+
   nginx:
     profiles: ["microservices"]
     image: nginx:1.27-alpine
@@ -569,6 +601,7 @@ services:
       - "127.0.0.1:${NGINX_PORT:-8080}:8080"
     volumes:
       - ./nginx/config/nginx.container.conf:/etc/nginx/nginx.conf:ro
+      - ./.tmp/nginx-logs:/var/log/nginx
 
 volumes:
   aris_postgres_data:

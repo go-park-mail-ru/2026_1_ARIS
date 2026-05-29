@@ -1,9 +1,9 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 
+	"github.com/go-park-mail-ru/2026_1_ARIS/pkg/requestcontext"
 	authpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/auth"
 	"github.com/go-park-mail-ru/2026_1_ARIS/utils"
 )
@@ -21,7 +21,7 @@ func AuthMiddleware(authClient authpb.AuthServiceClient) func(http.Handler) http
 				utils.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "session is invalid or expired"})
 				return
 			}
-			ctx := context.WithValue(r.Context(), "user_id", session.GetUserAccountId())
+			ctx := requestcontext.WithUserID(r.Context(), session.GetUserAccountId())
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

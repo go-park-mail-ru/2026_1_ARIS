@@ -10,11 +10,15 @@ type CreateRoomInput struct {
 	AnswerTimeoutSec int
 }
 
+type LocalizedText struct {
+	RU string
+	EN string
+}
+
 type QuestionInput struct {
 	GameType      string
-	Text          string
+	Text          LocalizedText
 	CorrectAnswer float64
-	AnswerUnit    *string
 	IsActive      bool
 }
 
@@ -36,9 +40,8 @@ type Player struct {
 
 type Question struct {
 	ID            int64
-	Text          string
+	Text          LocalizedText
 	CorrectAnswer float64
-	AnswerUnit    *string
 	IsActive      bool
 }
 
@@ -73,8 +76,7 @@ type RoomQuestion struct {
 type CurrentQuestion struct {
 	Position    int
 	ID          int64
-	Text        string
-	AnswerUnit  *string
+	Text        LocalizedText
 	StartedAt   *string
 	DeadlineAt  *string
 	HasAnswered bool

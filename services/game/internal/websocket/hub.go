@@ -61,7 +61,7 @@ func (h *Hub) BroadcastToRoom(roomID string, message []byte) {
 	}
 }
 
-func (h *Hub) BroadcastRoomFunc(roomID string, build func(userID int64) []byte) {
+func (h *Hub) BroadcastRoomFunc(roomID string, build func(userID int64, language string) []byte) {
 	h.mu.Lock()
 	if clients, ok := h.rooms[roomID]; ok {
 		snapshot := make([]*Client, 0, len(clients))
@@ -70,7 +70,7 @@ func (h *Hub) BroadcastRoomFunc(roomID string, build func(userID int64) []byte) 
 		}
 		h.mu.Unlock()
 		for _, client := range snapshot {
-			message := build(client.userID)
+			message := build(client.userID, client.language)
 			h.mu.Lock()
 			currentClients, ok := h.rooms[roomID]
 			if !ok || !currentClients[client] || len(message) == 0 {

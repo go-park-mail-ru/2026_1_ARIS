@@ -57,6 +57,9 @@ func (storage *postWithMediaStorage) GetMediaByPostID(ctx context.Context, postI
 		err := row.Scan(&mediaID)
 		return mediaID, err
 	})
+	if err != nil {
+		return nil
+	}
 
 	return medias
 }

@@ -1,5 +1,7 @@
 package usecase
 
+//go:generate mockgen -destination=mocks/round_tripper_mock.go -package=mocks net/http RoundTripper
+
 import (
 	"bytes"
 	"context"
