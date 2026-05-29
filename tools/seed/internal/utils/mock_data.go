@@ -293,7 +293,7 @@ func MakeMock(mediaRepo media.MediaRepo,
 		return seedMedia
 	}
 
-	media1 := createSeedMedia("Media name 1", &mediaDesctiption1, "https://img.goodfon.com/wallpaper/big/5/e8/gory-ozero-priroda-voda.jpg", 1)
+	media1 := createSeedMedia("Media name 1", &mediaDesctiption1, "https://picsum.photos/seed/aris-nature-1/1280/720", 1)
 	media2 := createSeedMedia("Media name 2", &mediaDesctiption2, "https://img51994.kanal-o.ru/img/2024-09-09/fmt_81_24_shutterstock_2141488197.jpg", 1)
 	media3 := createSeedMedia("Media name 3", &mediaDesctiption3, "https://moya-planeta.ru/upload/images/l/eb/e2/ebe21cb5a55a808b104f3d51c3ff96284bae5182.jpg", 1)
 	media5 := createSeedMedia("Media name 5", &mediaDesctiption5, "https://oboitd.ru/images/goods/big/20200125110231_Priroda_10-344.jpg", 1)
@@ -301,18 +301,18 @@ func MakeMock(mediaRepo media.MediaRepo,
 	media7 := createSeedMedia("Media name 7", &mediaDesctiption7, "https://img.goodfon.com/wallpaper/big/5/18/italiia-gory-ozero-peizazh-otrazhenie-priroda.webp", 1)
 
 	media8 := createSeedMedia("Media name 8", &mediaDesctiption8, "https://marathonec.ru/wp-content/uploads/2019/07/utrennyaya-probezhka-1.jpg", 1)
-	media9 := createSeedMedia("Media name 9", &mediaDesctiption9, "https://marathonec.ru/wp-content/uploads/2021/06/beg-na-ulice-1.jpg", 2)
+	media9 := createSeedMedia("Media name 9", &mediaDesctiption9, "https://picsum.photos/seed/aris-running-2/1280/720", 2)
 
-	media10 := createSeedMedia("Media name 10", &mediaDesctiption10, "https://habrastorage.org/r/w1560/getpro/habr/upload_files/de9/f14/c60/de9f14c60cd73c6b7a8b3bfd36dc5f9e.jpg", 2)
+	media10 := createSeedMedia("Media name 10", &mediaDesctiption10, "https://picsum.photos/seed/aris-tech-1/1280/720", 2)
 
 	media11 := createSeedMedia("Media name 11", &mediaDesctiption11, "https://ubifi.net/wp-content/uploads/2025/06/Kinds-of-Internet-Connection.webp", 2)
-	media12 := createSeedMedia("Media name 12", &mediaDesctiption12, "https://habrastorage.org/r/w1560/getpro/habr/upload_files/e28/a41/ef9/e28a41ef9dc89f3b5f1d3af19dbb5a7e.jpg", 2)
+	media12 := createSeedMedia("Media name 12", &mediaDesctiption12, "https://picsum.photos/seed/aris-tech-2/1280/720", 2)
 	media13 := createSeedMedia("Media name 13", &mediaDesctiption13, "https://image.geo.de/30140508/t/r4/v4/w1440/r0/-/internetz-f-209777524-jpg--79960-.jpg", 2)
-	media14 := createSeedMedia("Media name 14", &mediaDesctiption14, "https://images.gastronom.ru/w7V2OKJgfH0aBtnRGR75ZPkmfkYDCPVk_0HxHmAGDGI/pr:article-cover-image/g:ce/rs:auto:0:0:0/L2Ntcy9hbGwtaW1hZ2VzL2ExM2IzOTUxLTgwMDktNGVmOS1hYWNjLTEzNDY4ZTM0MDhjZi5qcGc.webp", 3)
+	media14 := createSeedMedia("Media name 14", &mediaDesctiption14, "https://picsum.photos/seed/aris-food-1/1280/720", 3)
 	media15 := createSeedMedia("Media name 15", &mediaDesctiption15, "https://www.wiwi.uni-wuerzburg.de/fileadmin/_processed_/3/9/csm_computer-1209641_1920_3a999762b2.jpg", 3)
 	media17 := createSeedMedia("Media name 17", &mediaDesctiption17, "https://fitaliancook.com/wp-content/uploads/2025/07/pasta-e-fagioli-rezept-beitragsbild.jpg", 3)
 	media18 := createSeedMedia("Media name 18", &mediaDesctiption18, "https://eat.de/wp-content/uploads/2025/03/tuerkische-pasta-7014.jpg", 3)
-	media19 := createSeedMedia("Media name 19", &mediaDesctiption19, "https://images.gastronom.ru/n9zs3r5VtdQvlbGt9hZ5PnRWqxN0oT3bR4KbwxLe7UU/pr:article-cover-image/g:ce/rs:auto:0:0:0/L2Ntcy9hbGwtaW1hZ2VzL2Q1Y2Q3MzBkLWY3NDQtNDk5OC04YTJjLWU3NzdmOWNkNWQ3Ni5qcGc.webp", 3)
+	media19 := createSeedMedia("Media name 19", &mediaDesctiption19, "https://picsum.photos/seed/aris-food-2/1280/720", 3)
 	media20 := createSeedMedia("Media name 20", &mediaDesctiption20, "https://images.gastronom.ru/TYj7-7529vyMsVom2kYJQl8MFrkWsrOY5hgaQPa1zsk/pr:article-cover-image/g:ce/rs:auto:0:0:0/L2Ntcy9hbGwtaW1hZ2VzL2IzY2RlN2ZjLTgzZjEtNGJlYi1iOGZmLWZhMzM3YzY1ODFlYy5qcGc.webp", 4)
 
 	media21 := createSeedMedia("Media name 21", &mediaDesctiption21, "https://boxru.ru/upload/resize_cache/iblock/1af/400_400_140cd750bba9870f18aada2478b24840a/q3bxff3vhe8iljlcbpn4jlbx3szt2p1w.jpg", 4)
