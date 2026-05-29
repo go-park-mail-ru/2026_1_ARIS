@@ -85,7 +85,7 @@ func seedDemoUsers(ctx context.Context, db *pgxpool.Pool, s3Repo media.S3Repo, b
 			Bio:         "Проверяет роли владельца, публикации и управление сообществами.",
 			Town:        "Москва",
 			Institution: "МГТУ им. Н. Э. Баумана",
-			AvatarURL:   "https://i.ibb.co/C3c6HCjb/pop-User1.png",
+			AvatarURL:   "https://s10.iimage.su/s/29/ul7FT4jxzfXz8eIcyYIv05rRqSIA1oZtYTSHITpuw.jpg",
 		},
 		{
 			Username:    "demoadmin",
@@ -98,7 +98,7 @@ func seedDemoUsers(ctx context.Context, db *pgxpool.Pool, s3Repo media.S3Repo, b
 			Bio:         "Администратор демо-сообщества.",
 			Town:        "Санкт-Петербург",
 			Institution: "ИТМО",
-			AvatarURL:   "https://i.ibb.co/mQvfkNY/pop-User2.png",
+			AvatarURL:   "https://s10.iimage.su/s/29/uf33rcFxPEqdNQ6n29d6iED7GpzwFJBpljitb32H1.jpg",
 		},
 		{
 			Username:    "demomoderator",
@@ -111,7 +111,7 @@ func seedDemoUsers(ctx context.Context, db *pgxpool.Pool, s3Repo media.S3Repo, b
 			Bio:         "Модератор, которому можно менять права и проверять редактирование постов.",
 			Town:        "Казань",
 			Institution: "КФУ",
-			AvatarURL:   "https://i.ibb.co/6RS96KC7/pop-User3.png",
+			AvatarURL:   "https://s10.iimage.su/s/29/uWpgCsXxfuVuBUBG6aDz1TtBRIKAFa7yvhldZoMGi.jpg",
 		},
 		{
 			Username:    "demomember",
@@ -124,7 +124,7 @@ func seedDemoUsers(ctx context.Context, db *pgxpool.Pool, s3Repo media.S3Repo, b
 			Bio:         "Обычный участник для проверки заявок, друзей и чатов.",
 			Town:        "Екатеринбург",
 			Institution: "УрФУ",
-			AvatarURL:   "https://i.ibb.co/mCpKjmxK/pop-User4.png",
+			AvatarURL:   "https://s10.iimage.su/s/29/ub4eRhAxcWBK1oPzIM3eTq8ARnYdy39FT3m5VPNV3.jpg",
 		},
 		{
 			Username:    "demoblocked",
@@ -137,7 +137,7 @@ func seedDemoUsers(ctx context.Context, db *pgxpool.Pool, s3Repo media.S3Repo, b
 			Bio:         "Пользователь для проверки блокировки в сообществе.",
 			Town:        "Новосибирск",
 			Institution: "НГУ",
-			AvatarURL:   "https://i.ibb.co/60HMXYh6/6.jpg",
+			AvatarURL:   "https://s10.iimage.su/s/29/uvl5sN4xlYLrVsblrK2yR4KwuipsfNVY4u6Qrb0wZ.jpg",
 		},
 		{
 			Username:    "demosearch",
@@ -150,7 +150,7 @@ func seedDemoUsers(ctx context.Context, db *pgxpool.Pool, s3Repo media.S3Repo, b
 			Bio:         "Пользователь с редким именем для проверки backend-поиска.",
 			Town:        "Пермь",
 			Institution: "ПНИПУ",
-			AvatarURL:   "https://i.ibb.co/s9rN3qD9/7.jpg",
+			AvatarURL:   "https://s10.iimage.su/s/29/ug4QI7VxyS2pHgrwKnOG3jyL7ADI7UGwzr6sB9UnN.jpg",
 		},
 		{
 			Username:    "demofresh",

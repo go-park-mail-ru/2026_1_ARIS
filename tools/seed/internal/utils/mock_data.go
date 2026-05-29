@@ -130,37 +130,37 @@ func MakeMock(mediaRepo media.MediaRepo,
 	userAvatar7 := "user avatar 7 description"
 	userAvatar8 := "user avatar 8 description"
 
-	avatar2, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_2_name", &userAvatar2, "https://i.ibb.co/C3c6HCjb/pop-User1.png", 1)
+	avatar2, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_2_name", &userAvatar2, "https://s10.iimage.su/s/29/ul7FT4jxzfXz8eIcyYIv05rRqSIA1oZtYTSHITpuw.jpg", 1)
 	if err != nil {
 		fmt.Println("failed to create avatar media:", err)
 		return
 	}
-	avatar3, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_3_name", &userAvatar3, "https://i.ibb.co/mQvfkNY/pop-User2.png", 1)
+	avatar3, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_3_name", &userAvatar3, "https://s10.iimage.su/s/29/uf33rcFxPEqdNQ6n29d6iED7GpzwFJBpljitb32H1.jpg", 1)
 	if err != nil {
 		fmt.Println("failed to create avatar media:", err)
 		return
 	}
-	avatar4, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_4_name", &userAvatar4, "https://i.ibb.co/6RS96KC7/pop-User3.png", 1)
+	avatar4, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_4_name", &userAvatar4, "https://s10.iimage.su/s/29/uWpgCsXxfuVuBUBG6aDz1TtBRIKAFa7yvhldZoMGi.jpg", 1)
 	if err != nil {
 		fmt.Println("failed to create avatar media:", err)
 		return
 	}
-	avatar5, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_5_name", &userAvatar5, "https://i.ibb.co/mCpKjmxK/pop-User4.png", 1)
+	avatar5, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_5_name", &userAvatar5, "https://s10.iimage.su/s/29/ub4eRhAxcWBK1oPzIM3eTq8ARnYdy39FT3m5VPNV3.jpg", 1)
 	if err != nil {
 		fmt.Println("failed to create avatar media:", err)
 		return
 	}
-	avatar6, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_6_name", &userAvatar6, "https://i.ibb.co/60HMXYh6/6.jpg", 1)
+	avatar6, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_6_name", &userAvatar6, "https://s10.iimage.su/s/29/uvl5sN4xlYLrVsblrK2yR4KwuipsfNVY4u6Qrb0wZ.jpg", 1)
 	if err != nil {
 		fmt.Println("failed to create avatar media:", err)
 		return
 	}
-	avatar7, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_7_name", &userAvatar7, "https://i.ibb.co/s9rN3qD9/7.jpg", 1)
+	avatar7, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_7_name", &userAvatar7, "https://s10.iimage.su/s/29/ug4QI7VxyS2pHgrwKnOG3jyL7ADI7UGwzr6sB9UnN.jpg", 1)
 	if err != nil {
 		fmt.Println("failed to create avatar media:", err)
 		return
 	}
-	avatar8, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_8_name", &userAvatar8, "https://sun9-5.userapi.com/s/v1/ig2/uGYEtsdSK4QHpAyiRnb5vCasxGZy7dR-MYECGzReWIivHlfmnfQP2DaVY6_UOJHzPG4yzjnVbty6aWqM8kjydEAS.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640&from=bu&cs=640x0", 1)
+	avatar8, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_8_name", &userAvatar8, "https://s10.iimage.su/s/29/u6sKCE3xwwYaDPRHJBfqulV1w8zby4ZjKFm2z7n3s.jpg", 1)
 	if err != nil {
 		fmt.Println("failed to create avatar media:", err)
 		return
