@@ -1,4 +1,4 @@
-.PHONY: test lint ci coverage coverage-excluding-mocks clean dev down reset-db logs migrate generate mocks seed tarantool-stats ws-open microservices local-prepare microservices-up microservices-rebuild microservices-monitoring-up microservices-full-up microservices-stop microservices-down microservices-reset local-up local-rebuild local-monitoring-up local-full-up local-stop local-down local-reset server-prepare server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop community-up community-stop search-up search-stop elasticsearch-up elasticsearch-stop indexer-up indexer-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update nginx-recreate logs-auth logs-media logs-user logs-post logs-chat logs-support logs-community logs-search logs-elasticsearch logs-indexer logs-nginx seed-elasticsearch
+.PHONY: test lint ci coverage coverage-excluding-mocks clean dev down reset-db logs migrate generate mocks seed seed-media-minio tarantool-stats ws-open microservices local-prepare microservices-up microservices-rebuild microservices-monitoring-up microservices-full-up microservices-stop microservices-down microservices-reset local-up local-rebuild local-monitoring-up local-full-up local-stop local-down local-reset server-prepare server-up server-stop server-down server-reset server-logs server-nginx-up server-nginx-stop server-nginx-test server-nginx-reload server-nginx-update server-nginx-install server-host-nginx-test server-host-nginx-reload auth-up auth-stop media-up media-stop user-up user-stop post-up post-stop chat-up chat-stop support-up support-stop community-up community-stop search-up search-stop elasticsearch-up elasticsearch-stop indexer-up indexer-stop nginx-up nginx-stop nginx-test nginx-reload nginx-update nginx-recreate logs-auth logs-media logs-user logs-post logs-chat logs-support logs-community logs-search logs-elasticsearch logs-indexer logs-nginx seed-elasticsearch
 
 COMPOSE_FILE=./docker-compose.yml
 COMPOSE_ENV_FILE=./.env
@@ -99,6 +99,9 @@ local-reset: microservices-reset
 
 seed: local-prepare
 	$(COMPOSE) up seed
+
+seed-media-minio: local-prepare
+	$(COMPOSE) run --rm seed sh scripts/seed-media-minio.sh
 
 seed-elasticsearch:
 	set -a; . $(COMPOSE_ENV_FILE); set +a; sh scripts/seed-elasticsearch.sh
