@@ -296,12 +296,12 @@ func MakeMock(mediaRepo media.MediaRepo,
 		return seedMedia
 	}
 
-	media1 := createSeedMedia("Media name 1", &mediaDesctiption1, "https://www.rupixel.ru/files/preview/1280x878/21665130373sttvwtvwyjsszkxrv264yzejkkrqqj3cboksg0lfyikllxdre1ktpcaq3chdhajtqb6v7mpjyudueg3s2mik2zkjbqnbzjhn1fyz.jpg", 1)
-	media2 := createSeedMedia("Media name 2", &mediaDesctiption2, "https://www.rupixel.ru/files/preview/1280x853/21670435645hrzpmb7ulbwsywskhbqqshmnvj6k3dvdsdudpdh3f5q53cxpgz76iddddralyvwzmvozsjezysyrtellba6aarbigxdbkt3f4k87.jpg", 1)
-	media3 := createSeedMedia("Media name 3", &mediaDesctiption3, "https://www.rupixel.ru/files/preview/1280x853/21670435519xwxdww8x2j4cr5xoyqw9tt7npmaxrdgdxwzxzay29k83ue9nvpbbruqdlomxgcrmpoioff3wle88542i16tctedyk8vqerdqz2yk.jpg", 1)
-	media5 := createSeedMedia("Media name 5", &mediaDesctiption5, "https://www.rupixel.ru/files/preview/1280x853/21665040006ns9arjilitihgyiijhu6dxyyodg591qo6no4ndk1grnsebylbss4jy55qgip9kl4xdzx2qp9rc1c41sxpdtlk2azzspv7jhjc5zh.jpg", 1)
-	media6 := createSeedMedia("Media name 6", &mediaDesctiption6, "https://www.rupixel.ru/files/preview/1280x853/21670435645hrzpmb7ulbwsywskhbqqshmnvj6k3dvdsdudpdh3f5q53cxpgz76iddddralyvwzmvozsjezysyrtellba6aarbigxdbkt3f4k87.jpg", 1)
-	media7 := createSeedMedia("Media name 7", &mediaDesctiption7, "https://www.rupixel.ru/files/preview/1280x670/216650346699wr1lhom4dz8cd4mkcobjyt0yhc8bdu8bpxx9pkbxbehzsgg1ghdbhrnmhjs5kdeiofrfamgb9smyazet26h85ypyustpukknvoi.jpg", 1)
+	media1 := createSeedMedia("Media name 1", &mediaDesctiption1, "https://www.rupixel.ru/files/preview/1280x853/14471778755322jwkvoeqg7htrfgr7lqfjlqiy5utrfsbxzm8hf9qihb2nbvxobprtqxunalp8mhr6quwpqu8v9zrkqbcntoauvskkonudr0kvcsgh.jpg", 1)
+	media2 := createSeedMedia("Media name 2", &mediaDesctiption2, "https://www.rupixel.ru/files/preview/1280x853/62717317703048aamfqrxo9dwfoma7g9mprpbhu9sq8myslw29i2eebxyuuv9cqajtphejfk3khkg8bxgnnaffv05mhoel0hqgfohvqseagwrkogj.jpg", 1)
+	media3 := createSeedMedia("Media name 3", &mediaDesctiption3, "https://www.rupixel.ru/files/preview/1280x854/2591746624152loflcmihadg616jc4zjcn1gblvuaameqgwuu9kwkd88jbaaosuonzkajx8rnkh8teekrsghq6kgnu4ng5odch9njx2ekoh9n8clo.jpg", 1)
+	media5 := createSeedMedia("Media name 5", &mediaDesctiption5, "https://www.rupixel.ru/files/preview/1280x853/62717083466735u3jxa0xn7q0ur9kxuiwndnzm6bicywrgi6xby8ccqvvfu8pugfh1xhg1fdzrnisf9m4xtr0hnhhioulkhzzncalzw1ebz3snk0d.jpg", 1)
+	media6 := createSeedMedia("Media name 6", &mediaDesctiption6, "https://www.rupixel.ru/files/preview/1280x853/6271724173201m1knngwe1bgdpp7kscv8anfadgzx4yrpu505avsr4oawsbazue5hnlcwobfgfuzvfcjesogtke5nmn5dxfjdkgh44krbmvf1iljr.jpg", 1)
+	media7 := createSeedMedia("Media name 7", &mediaDesctiption7, "https://www.rupixel.ru/files/preview/1280x853/6271708346796udtn2qttiq7k39be4ed13wopsk2iewxcingt6vkugak5kc5smdylcpcj0qyrquggjmrvtr77sdjzwlk9rtdinpqoq7ikuvsnuyos.jpg", 1)
 
 	media8 := createSeedMedia("Media name 8", &mediaDesctiption8, "https://www.rupixel.ru/files/preview/1280x853/217230968551lplpuobd3oixqyxjqoa4kvwj2ygtmtw1uc7e7q8tbj1fxj07njdgwcl8f9qvs3iv71jzhxzlcfkfawafeuh91ngzzt8ylgmzcrf.jpg", 1)
 	media9 := createSeedMedia("Media name 9", &mediaDesctiption9, "https://www.rupixel.ru/files/preview/1280x853/14471778865077onj9owr2nwqy8kdmsthbmhbfqidyiup3zlg7tukhgzmfwxjuxcltv0ccmhk663rat005vr7esa6bzbmwa1ebol61efem3e6nneir.jpg", 2)
