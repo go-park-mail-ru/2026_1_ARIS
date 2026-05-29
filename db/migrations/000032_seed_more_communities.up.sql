@@ -5,9 +5,15 @@ DECLARE
   comm RECORD;
   post_rec RECORD;
   media_urls TEXT[];
+  fallback_media_urls TEXT[];
+  has_post_media BOOLEAN;
   media_count INT;
   sort_idx INT;
+  candidate_idx INT;
+  selected_count INT;
+  candidate_count INT;
   url TEXT;
+  used_media_urls TEXT[] := ARRAY[]::TEXT[];
   cprof_id BIGINT;
   comm_id BIGINT;
   cover_id BIGINT;
@@ -30,6 +36,13 @@ BEGIN
     urls TEXT[] NOT NULL
   ) ON COMMIT DROP;
 
+  CREATE TEMP TABLE seed_more_community_post_media (
+    username TEXT NOT NULL,
+    post_idx INT NOT NULL,
+    urls TEXT[] NOT NULL,
+    PRIMARY KEY (username, post_idx)
+  ) ON COMMIT DROP;
+
   CREATE TEMP TABLE seed_more_community_post (
     username TEXT NOT NULL,
     post_idx INT NOT NULL,
@@ -41,14 +54,14 @@ BEGIN
   VALUES
     (1, 'seeddevlife', 'Программирование', 'Практика разработки без пафоса: код, ревью, архитектура и рабочие находки.', 'https://www.rupixel.ru/files/preview/1280x876/21670431258pisyrxmi2sxdpfkn8vxztxsbrctvdzm1xiqi7x6e80xcx0tc9xl0neocmgt9p663lfhfkp0too1hmhpbm9rspdbyfbydu12eryhm.jpg'),
     (2, 'seedcareer', 'Работа и карьера', 'Рабочие будни, переговоры, резюме, собеседования и спокойный рост без выгорания.', 'https://www.rupixel.ru/files/preview/1280x853/21665035039ab7cjegrtymuiez7xe3srgn8pbnwilpsbzlbpfkmf36cs6kxg0zrulddjiojhks2xgancm4nzym8i18rumcgauh1qzkszlvpvgem.jpg'),
-    (3, 'seedsportlife', 'Спорт каждый день', 'Тренировки для обычных людей: режим, восстановление, экипировка и маленькие победы.', 'https://www.rupixel.ru/files/preview/1280x853/217230968551lplpuobd3oixqyxjqoa4kvwj2ygtmtw1uc7e7q8tbj1fxj07njdgwcl8f9qvs3iv71jzhxzlcfkfawafeuh91ngzzt8ylgmzcrf.jpg'),
-    (4, 'seedrunclub', 'Беговой клуб', 'Утренние пробежки, маршруты, старты выходного дня и честные отчеты без рекордов ради рекордов.', 'https://www.rupixel.ru/files/preview/1280x853/217230968551lplpuobd3oixqyxjqoa4kvwj2ygtmtw1uc7e7q8tbj1fxj07njdgwcl8f9qvs3iv71jzhxzlcfkfawafeuh91ngzzt8ylgmzcrf.jpg'),
+    (3, 'seedsportlife', 'Спорт каждый день', 'Тренировки для обычных людей: режим, восстановление, экипировка и маленькие победы.', 'https://www.rupixel.ru/files/preview/1280x853/21723096975spa3zy4faagfxmc1hm8kghlcxe6acw6sqgsmgyku5kv4fg1rgheswy37tyo0qenxgvusrrzhx2hi9cjakcm28dctwx8np2kzvnie.jpg'),
+    (4, 'seedrunclub', 'Беговой клуб', 'Утренние пробежки, маршруты, старты выходного дня и честные отчеты без рекордов ради рекордов.', 'https://www.rupixel.ru/files/preview/960x1280/2168127336041s503zi7taav7juesrmaof2uwkrpqggzdzqguozo742vkwopwpghfr2fimxpp5c7cdwsplscx5tqqy5guusffhwy2rcpsompztn.jpg'),
     (5, 'seedanimals', 'Животные рядом', 'Наблюдения за животными, забота о питомцах и простые истории, которые делают день теплее.', 'https://www.rupixel.ru/files/preview/1280x721/16471777980761cnnqrkucgfa3quqayv739yll9cepevddgeqn9zbb1hxsfcpxga5pfctjbsahzkj5ncmpdcnyun5a2ytcbovtt4egpvpafjrjoeql.jpg'),
     (6, 'seedpets', 'Домашние питомцы', 'Питомцы, привычки, уход, забавные моменты и вопросы к тем, кто уже проходил похожее.', 'https://www.rupixel.ru/files/preview/960x1440/21670524465wcbe1d2mprvdplru9jvqatq94q4h2mp6stmw0sodcszvlke0cepqbo7mc7wiweb08hhh5ezrdacvr1jaensyf69csbz0wpub4cjl.jpg'),
-    (7, 'seedcookbook', 'Домашняя кухня', 'Рецепты без сложных ингредиентов, удачные эксперименты и честные заметки после готовки.', 'https://www.rupixel.ru/files/preview/1280x720/175517773530247ehds5bhu98wo7jh9dh3yglqzulrdzugs1rven2sm0plibez6hwavholvhbnhokhfpo8k7n6r8nib0thigpemu5pdwsz2mjzfroz.jpeg'),
-    (8, 'seedcoffee', 'Кофейни и город', 'Кофейни, тихие места для работы, городские маршруты и маленькие остановки в течение дня.', 'https://www.rupixel.ru/files/preview/1280x853/21665034003dt7hcbz1xsreudc33ge5hetjuxrcjprjf3bqrjshy5suvpp0mp3z7sbbrlveu2h93ftw9e7a741gdq4zv7db3u0qczexnqjjhptp.jpg'),
+    (7, 'seedcookbook', 'Домашняя кухня', 'Рецепты без сложных ингредиентов, удачные эксперименты и честные заметки после готовки.', 'https://www.rupixel.ru/files/preview/961x1281/136317582121263lbktozpnifddjvb3ic50x7015qf3dwnskekht9jb4rprtyplrp9wnwndhvovevjw4hrktzsy3rv5y5e533md4a5frnrgy0owb2s.jpeg'),
+    (8, 'seedcoffee', 'Кофейни и город', 'Кофейни, тихие места для работы, городские маршруты и маленькие остановки в течение дня.', 'https://www.rupixel.ru/files/preview/1280x854/21670483253c5pwfbcjrofvcr6ys5al7juubalakgmgizmrvdys1n6s0rlawipngmy6x9jkc7xi3zah6d2xdjtlgnfqwgf4dmo0jrlhx8wx8rd2.jpg'),
     (9, 'seedtravelers', 'Путешествия рядом', 'Маршруты на выходные, поездки без суеты, полезные детали и впечатления после дороги.', 'https://www.rupixel.ru/files/preview/960x1440/13331755855798xkpgv4hz5zzk2emyijvycbshjmszckhekvfhxxcosoq8qkxaacecgrx1lyueexk17ai65o9k1kcv4vvgqnewb2mrrqlybx6netr0.jpg'),
-    (10, 'seedwildspace', 'Природа и просторы', 'Горы, вода, леса, тропы и красивые места, куда хочется возвращаться хотя бы мысленно.', 'https://www.rupixel.ru/files/preview/1280x853/14471778755322jwkvoeqg7htrfgr7lqfjlqiy5utrfsbxzm8hf9qihb2nbvxobprtqxunalp8mhr6quwpqu8v9zrkqbcntoauvskkonudr0kvcsgh.jpg'),
+    (10, 'seedwildspace', 'Природа и просторы', 'Горы, вода, леса, тропы и красивые места, куда хочется возвращаться хотя бы мысленно.', 'https://www.rupixel.ru/files/preview/1280x854/216923631121kkjpvtcly1wyblecfzuglbwot2hny7fvqm29cstwg1tpy6w2fiqjlha5alat36oenm7mun0cwcyhbezzdirl9o0qakrfjissquq.jpg'),
     (11, 'seedreaders', 'Книжный угол', 'Книги, заметки на полях, читательские привычки и разговоры без соревнования в списках.', 'https://www.rupixel.ru/files/preview/1281x854/21665134214lt83cbzqwwhimhbmpdecfxbmd2olfdx396teysopb7mjktuaqlqlbbpu0198ofzflbnflmsfflri7s30kcunpcpsnellgdedr9ck.jpg'),
     (12, 'seedcinema', 'Кино после работы', 'Фильмы, сериалы, сцены, которые не отпускают, и спокойные обсуждения без спойлеров в лоб.', 'https://www.rupixel.ru/files/preview/1280x849/21665040050uqdqp7v5qhhzuclikawj5m1v2vxztl8cipumvhr2nfyqdk4zduryie9ylai0af401xadpugdao3jphrd6y0zgrxugamj0einkslm.jpg'),
     (13, 'seedmusicroom', 'Музыка в наушниках', 'Альбомы, плейлисты, концерты, первые инструменты и песни, которые вытаскивают день.', 'https://www.rupixel.ru/files/preview/1280x854/2591698235989nizn8afw3pvgbd2kclwc0emt1hdmijmlft7n50p7lyp3hhqtwtxreg7g1yjwuxnhjruowjqtq2lygigs542z6ndfrjpzlnj7dwdg.jpg'),
@@ -82,6 +95,45 @@ BEGIN
     ('seedvolunteers', ARRAY['https://www.rupixel.ru/files/preview/1280x853/21665041028hugmur83xvshwjfylotgqa7qrrmnanrcec9qhjmvt29ajsxukvsnofafi1w7gftsediiqq4y8fhnwtribydqhajwyan35adp3bms.jpg', 'https://www.rupixel.ru/files/preview/1280x853/21664953420j2q0kdd1usggogchzbyd2ej4od899dlwbe4tqkqnzfafdhkcubiukrhf1yvkgesxnseteiaolno8qv2fzzqkmutox0tk5xqxdd0i.jpg', 'https://www.rupixel.ru/files/preview/1280x853/21665130615gyagf2hlswqbmv4mchxfuac68ew1jibwwuytakw4ppdpfvthflkt1ewhqzuzpl0vjcfiy3n1vpehdgmjazaug9mxce1dsurxaaoy.jpg', 'https://www.rupixel.ru/files/preview/1280x960/216650410833ck3ih9hzxcfdmp4oelwvlfmnjsggh4tweu4oje5ohmgt1kclt156tvnetfpuw2jcvkg1ml1h7dz1vehqxoqmr4wua99ia2h9ljh.jpg', 'https://www.rupixel.ru/files/preview/1280x773/21670427826ltip2j7rvrbof9ncf6sc5oged4dyjqxmbfahfiw5ko0byzf2t5rfstgjs1y5yclutcdkplhhny0vwkqh3g76ylgb76p0haivfzb7.jpg']::TEXT[]),
     ('seedsciencehub', ARRAY['https://www.rupixel.ru/files/preview/1280x853/21670412529wqjrtoivojkzypuykk5dpxqk4lzrekranbf7vfsukoepimtrlyw72qeh7wkyvkzeymxcregi3japikynmxjfymwygsywjaked85g.jpg', 'https://www.rupixel.ru/files/preview/1280x849/21678102010ulktskgbrunj0g2ywnnrfv0l31nfoo2udyfw08by0orgu25yvyw65ftgbndzmfmuroj3ierk1kfrrityvphh5b64jee3zo7h4k1b.jpg', 'https://www.rupixel.ru/files/preview/1280x853/21670417021hdsbrgtxeexzmiuxfv5zty02g5m0atxgicadzmnrvwqjtelh1oysldiobcvtlbwiisyrqi9ymjv0mvsu55t5nfhyhyithmnml952.jpg', 'https://www.rupixel.ru/files/preview/1280x853/21670412520vmn8jyeswoos8mdqggwwusoi2rwdodb1jfwhlx2sjatl3tduteqipkf7zmc9qur4slrsuwbmwzpeyspx1sbcn1wai2ybsehodzcl.jpg', 'https://www.rupixel.ru/files/preview/1280x853/21670483067wvcx7xvrzudy7hbovfwfbfdanpufyibgou08eiisxpczd8sgpjogob3swcv92zy7gqygkqahvn0wccz8ckryfv1grxdmqmozvcoy.jpg']::TEXT[]),
     ('seedhomegarden', ARRAY['https://www.rupixel.ru/files/preview/1280x960/21670572996yyxj2wx3e9o7vvvphvkpzd7mociw7uvegqr4v7ncjnthfi9pbst3ifktcz5af1s1a3aiwi6fyesgssdjgbprgglh1vzjflc9moua.jpg', 'https://www.rupixel.ru/files/preview/1280x853/21723540870u7n70aoqnbh3pvtkpoxbfmtmb9ee3io2gwua5niufnxsgummtmh53r0ytlpsqdk1b6mjudplrggbc7iwaj1cmbksgcf1mfdg5cnf.jpg', 'https://www.rupixel.ru/files/preview/960x1280/16501773375643nltwsy15gjuwrz1bzgquzanlvqb6awctlgl0xoc5y3sdjlx6umnwhhogoc2xieigxixepafcrmekwiimfjixvdrrajkk10c5tufc.jpg', 'https://www.rupixel.ru/files/preview/1280x853/16501777193633mzvndfi4bo2n9qzgggh4llnknda7ksdgurji8doj3689e7rio8jtpct7b8enjgqhxqdqzfgpht7wbpjr1dtqpk6unigw8hzp30ry.jpg', 'https://www.rupixel.ru/files/preview/1280x853/14471778831781n0paakgmsporbxyfwnpwlvgcuem5tqcppal7qdocifkjirgq8fnniudrpoihnexjnk0g2nnqjlult5uoghkxwnmnukgva6ag9val.jpg']::TEXT[]);
+
+  INSERT INTO seed_more_community_post_media (username, post_idx, urls)
+  VALUES
+    ('seedanimals', 1, ARRAY['https://www.rupixel.ru/files/preview/1280x721/16471772457932bjqwq1wi9pjtcv4s9xwzsqmzeyfxxdetoewnvvsbmunvfdbkelamnwz02f83aysm1sbcude33pd5jvxcupfneqgpfk6xbcwxkivs.jpg', 'https://www.rupixel.ru/files/preview/960x1266/16471772457999m5obqct4qeexidthyns4kpqchoszuxl8dbdipgnzwstzljgl8zi8kfovb9ptuswzoyrqvcpj92rsiocmyb2c7whgbw4xfsasyjpt.jpg', 'https://www.rupixel.ru/files/preview/1280x721/16471777980761cnnqrkucgfa3quqayv739yll9cepevddgeqn9zbb1hxsfcpxga5pfctjbsahzkj5ncmpdcnyun5a2ytcbovtt4egpvpafjrjoeql.jpg']::TEXT[]),
+    ('seedanimals', 2, ARRAY['https://www.rupixel.ru/files/preview/900x600/13251755273887harlylmxl66urkhy52wp17vpsxrkvfos6v0wa52w49cxaf4tkgsstpfqfnfnpj5wbwnicmuslixa9woc30tovmlrdmticjmhyn0s.jpg', 'https://www.rupixel.ru/files/preview/900x600/13251755273819ebc2fikywrp0qtpvqv59lfhhmvocz4c8iwah4y8rbt6ujk1irpxffa8hgm3jqkwu6kujuaut1ixxqisblx1hwtfzs2off0weixfr.jpg']::TEXT[]),
+    ('seedanimals', 3, ARRAY['https://www.rupixel.ru/files/preview/960x1445/13571765780053ms32fb96sl2nucj7m1jong7pugnmppxwvporvtw1lmacmbiyjn9zsq5tzwubxhtpwh6jva8vg5omfxef2mb5wn7rt52uanbei6kv.jpg', 'https://www.rupixel.ru/files/preview/1280x960/14551762698645vn6oreippbpxaqkf4h2smmhhfrjv2i99a6rifz72ai6wchwhtgs58hi8prh9nuw2ttsntjiobs2xpfc0qlw0rgnd05tkqg3jxbgo.jpg']::TEXT[]),
+    ('seedanimals', 4, ARRAY['https://www.rupixel.ru/files/preview/1280x1707/16321772033578pvhrd7fj79fhy4wq2udykdjhpnyha5ctpnwbyj0t8vrzpelkdwue1q6jhny6orpvzfdnxjmeubp8yvhnuqjjhusfa7gjphq9moiv.jpg', 'https://www.rupixel.ru/files/preview/1280x860/13951761068620wjri19ebl1pdtkxormrkui4mi8gaglvgkcfi25r5yrzqn9fsdnfrdsmxzuakiofyv7tq6npyorhvzviazykwjo0jt1jq0jndryb5.jpg']::TEXT[]),
+    ('seedanimals', 5, ARRAY['https://www.rupixel.ru/files/preview/1280x828/13951761754927snh7jxockv37uo1kztjzqe7jy0tmyjdri5svz2i02g8lnhvl1rn1oanq9p7mpt74leqhhch21sdhzjerlmfjwtxr96l6qxqihhkz.jpg', 'https://www.rupixel.ru/files/preview/960x1438/13951763484112gh2zt8blqlngjjdtrjfa7j1y8fa6d3xs7icoumkderimw2rgugkz5ngdcngtttgclp3itxy1za3wrco9eowd8kqjz3l34ao8eofu.jpg']::TEXT[]),
+    ('seedanimals', 6, ARRAY['https://www.rupixel.ru/files/preview/1280x853/15431770967627t2gy49dr9bchk26maxmra2iwzm9y92svbtuqpvjpboshejcljwmih5g7ynqawq0hgy0mcgiwefmhn8btaavkic9fqbnzeshhwrfl.jpg', 'https://www.rupixel.ru/files/preview/1280x960/102017526437765dkffp6fm2kq4feki4onmols9t0mfukvtwnjhee6zrkprw8yp7igiutezoe7uhkeaptc24hgt2ctihe5zai366zndodokgke2lke.jpg', 'https://www.rupixel.ru/files/preview/960x1440/15431771824322orfpgq6eedy7azjh7hme6jbp4sz6wjd9fcluwr2ymxrjb1frq6zvqtrbiwoksr5wv2kiyutucnk312rd1mcafgkelm2zxzwt8hqb.jpg']::TEXT[]),
+    ('seedcoffee', 1, ARRAY['https://www.rupixel.ru/files/preview/1280x960/11641747397162jabrssbdrcpg8ssduat1uzp3cz1l6tud1jndjyy6ohie9wubiousupwyquaxu46rogfl6xov4iejwoyueker5l1l6cuuzc0cotp8.jpg', 'https://www.rupixel.ru/files/preview/1280x853/21694269626w8hoifjmquptouyl9q8b30cp5tvtaxvkdiwftlcgrh0grupb3pb2ja1el7l5zqaszsaqrxtwz1k4dbnxvm761e2ju3gocgxqxh39.jpg']::TEXT[]),
+    ('seedcoffee', 2, ARRAY['https://www.rupixel.ru/files/preview/1280x960/21670485789ptlhr4eh2qeuwle5ic31ygodikd9ullk3mbj1qs57knbg8ewhosfd68ccrglu1rua6frj944ytdx49qmywka8vvwohdrbgzfc0lf.jpg']::TEXT[]),
+    ('seedcoffee', 3, ARRAY['https://www.rupixel.ru/files/preview/1280x854/21670485249o4cjsq0t1eqyac559scnq40j1t3ydumeuihxhuplwkjbtkhhors6qqtgoo1exiqbzridom5g98po8d2k8ndy7o7kyca6zta2a6sa.jpg', 'https://www.rupixel.ru/files/preview/1280x853/21670485606dqwaagnd6qlzjbnga3figojd7fus2h81jnz2tpqkxjenruaecpvkjlxhfhjlzi2nnzz7etvxu7opxg7md1rm8yy6h9bf7pqrcx0f.jpg']::TEXT[]),
+    ('seedcoffee', 4, ARRAY['https://www.rupixel.ru/files/preview/1280x960/216942693755rc03iq6avo1wamj3005tzdxbdbos5qtrj4uijf5fqspwfoovoxspihlblxtdzd9xykarowcf2lylnioczk4zoxx3guosfejttwz.jpg', 'https://www.rupixel.ru/files/preview/960x960/21694261911daswveombhtu8xfsrfmyfrxblrxf8neotlr99aq4ctqdsjiut6pkpdpydnvl6scncf6e3z25w20bvzopewcacderdoirg83rouq6.jpg']::TEXT[]),
+    ('seedcoffee', 5, ARRAY['https://www.rupixel.ru/files/preview/960x1280/11641747665588kdywzql112jszu6ekcavo15ywkeimefiixyo7zjwt3bb65d4rl6ttjsi0kidbio7fwr18xwxi6z8dgkwjmxhhqpklezetgwybzpg.jpg', 'https://www.rupixel.ru/files/preview/960x1280/11641743080510sdidsq6wan1tf17jslg32o8seuk2ci5k6yhwnpdc4dyt4eewj9zyfccoaomjbcihyqzqvgsqn0xahr1qj776ck5pkb7dmwpzvayw.jpg']::TEXT[]),
+    ('seedcoffee', 6, ARRAY['https://www.rupixel.ru/files/preview/1280x848/21670485807pnk6r4pxa4iao6gvseftqvcjmhcn2mxmattyxjnmhga81vlrl971bmqc3sgbfydjabpeprybdqmzorwa5l1mjtwwmjpxywukic1j.jpg']::TEXT[]),
+    ('seedcookbook', 1, ARRAY['https://www.rupixel.ru/files/preview/1280x880/21726132926vytyhulqgvqdjinekc63pzfrnzk8tgnopehu62um89xvucknapbw6omc0338g7sa7dbzjqkcytnhvuyhgcrtfbdvitvygvhnbtp1.jpg']::TEXT[]),
+    ('seedcookbook', 2, ARRAY['https://www.rupixel.ru/files/preview/1280x853/109417343670489sspwnvlazsxjwj9fx0ifljwg3i2jaiez3jmruapeifzkenefgkxslyq6smhhi8a01mlnwgyddlhsyrc0j5cljg20wefxmwewydf.jpg', 'https://www.rupixel.ru/files/preview/1280x853/10941734366420chublukdbvcpdkhifynvrexaaeyajt0ic84eowx7wi1xkcw1uywubc428aaiq6naj0l0uiojdyj0hnxx6upozq0mw83hcohvnelb.jpg', 'https://www.rupixel.ru/files/preview/1280x853/10941734140050prplzkalsjb7nksl7soub9nzwpi6yzueqpuqebhvb1hlasjihryf3sz2swiuy4ixwdkzqknwojqealhod74nvws18s7ualfelmsv.jpg']::TEXT[]),
+    ('seedcookbook', 3, ARRAY['https://www.rupixel.ru/files/preview/1280x1707/12271748650976gm4ael2sv50nwtu8ppfavtshmqj7sbd4oito5je7jn1ergqsl1tkeii0li5jkeijfe5t1p0ounh3yrtqwou3q3bxgaswzodixffl.jpg', 'https://www.rupixel.ru/files/preview/1280x853/14441763665751vs7n3ake5iuieynaxzdehlvtft5tzuj9jrafsn9zcqykytkohpesu1fsv9j5tu3bz2r5up8hkbviitwvbze5gfq04pkytbr67skg.jpg']::TEXT[]),
+    ('seedcookbook', 4, ARRAY['https://www.rupixel.ru/files/preview/960x1280/11641743181889ylsprp5b2mnkwugzqarkiytrc0dblr9vit6jcdfln2anyjynushfbkmkubflwitrjpneb2w5fcn46zbwwkoxyy6rwo6gsij2dil4.jpg', 'https://www.rupixel.ru/files/preview/960x2081/11621743631669vznbleovv6zissbpp63sfwi1tkubthbgz8gpqgnu7xb4vjy6nicdppcivc7ks9gynlyrmylfoiyxifstr0tptng7mv7jz5asvcab.jpg']::TEXT[]),
+    ('seedcookbook', 5, ARRAY['https://www.rupixel.ru/files/preview/1280x720/175517773530247ehds5bhu98wo7jh9dh3yglqzulrdzugs1rven2sm0plibez6hwavholvhbnhokhfpo8k7n6r8nib0thigpemu5pdwsz2mjzfroz.jpeg', 'https://www.rupixel.ru/files/preview/960x1266/11341740382668hvby6sjblk4rrekiiuh06tdsyatekin53lcp3eiknlvdk3eckzr8ucuegqpiezgjdr8vb9v9ray4e2bxe60nl7yepon7k9qa1bp0.jpeg', 'https://www.rupixel.ru/files/preview/961x1281/13631758211879bolkuq7zrczrxa01pl29fys1vx1sch5undx1ugyx4mpq3kzpzdtqbc9vcxpf8k8vxqd2ecsnmurdegisd4omzfvyykh5thl3f2xj.jpeg']::TEXT[]),
+    ('seedcookbook', 6, ARRAY['https://www.rupixel.ru/files/preview/961x1252/217243104697hlri6ktrxglzynwoyflpraaurv9pxdmf7hjgxjc9olg90xzlypp1cixppo5cf93y9xixh8rxbyct8w1j80tlymjvvtldasulcmq.jpg', 'https://www.rupixel.ru/files/preview/960x1280/11621751837030lflky4g7bfxl99lwnqvomyth0k9u1fxhweaqtgfs4q3yl7ur5vzetantxjso3z66zp5x9dtyrxaa5geibxnoqd65htihj5lnry17.jpg']::TEXT[]),
+    ('seedrunclub', 1, ARRAY['https://www.rupixel.ru/files/preview/960x1280/2168127336041s503zi7taav7juesrmaof2uwkrpqggzdzqguozo742vkwopwpghfr2fimxpp5c7cdwsplscx5tqqy5guusffhwy2rcpsompztn.jpg', 'https://www.rupixel.ru/files/preview/1280x853/21723096975spa3zy4faagfxmc1hm8kghlcxe6acw6sqgsmgyku5kv4fg1rgheswy37tyo0qenxgvusrrzhx2hi9cjakcm28dctwx8np2kzvnie.jpg']::TEXT[]),
+    ('seedrunclub', 2, ARRAY['https://www.rupixel.ru/files/preview/1280x852/16711774547747z422y5wvssstn5hhrhl7bty2xms8mfwmllco1szv07nydycmsxbpfo5lurmdsnhws6zb2k3iqcgioizotpgtj5dalzdhvfvizto4.jpeg', 'https://www.rupixel.ru/files/preview/1280x853/217230968551lplpuobd3oixqyxjqoa4kvwj2ygtmtw1uc7e7q8tbj1fxj07njdgwcl8f9qvs3iv71jzhxzlcfkfawafeuh91ngzzt8ylgmzcrf.jpg']::TEXT[]),
+    ('seedrunclub', 3, ARRAY['https://www.rupixel.ru/files/preview/1280x852/21694748062jfjizjmkzqnxwbcqmtunyqqvrllia1qfzig3g6zbc6xuhomjpjnld4tphc5isssqqgstj8e1on0gip6xqv3b7suetkbspu2ua144.jpg']::TEXT[]),
+    ('seedrunclub', 4, ARRAY['https://www.rupixel.ru/files/preview/960x1280/2168127336041s503zi7taav7juesrmaof2uwkrpqggzdzqguozo742vkwopwpghfr2fimxpp5c7cdwsplscx5tqqy5guusffhwy2rcpsompztn.jpg', 'https://www.rupixel.ru/files/preview/1280x852/21694748062jfjizjmkzqnxwbcqmtunyqqvrllia1qfzig3g6zbc6xuhomjpjnld4tphc5isssqqgstj8e1on0gip6xqv3b7suetkbspu2ua144.jpg']::TEXT[]),
+    ('seedrunclub', 5, ARRAY['https://www.rupixel.ru/files/preview/1280x853/217230968551lplpuobd3oixqyxjqoa4kvwj2ygtmtw1uc7e7q8tbj1fxj07njdgwcl8f9qvs3iv71jzhxzlcfkfawafeuh91ngzzt8ylgmzcrf.jpg', 'https://www.rupixel.ru/files/preview/1280x852/16711774547747z422y5wvssstn5hhrhl7bty2xms8mfwmllco1szv07nydycmsxbpfo5lurmdsnhws6zb2k3iqcgioizotpgtj5dalzdhvfvizto4.jpeg']::TEXT[]),
+    ('seedrunclub', 6, ARRAY['https://www.rupixel.ru/files/preview/1280x853/21723096975spa3zy4faagfxmc1hm8kghlcxe6acw6sqgsmgyku5kv4fg1rgheswy37tyo0qenxgvusrrzhx2hi9cjakcm28dctwx8np2kzvnie.jpg', 'https://www.rupixel.ru/files/preview/1280x852/21694748062jfjizjmkzqnxwbcqmtunyqqvrllia1qfzig3g6zbc6xuhomjpjnld4tphc5isssqqgstj8e1on0gip6xqv3b7suetkbspu2ua144.jpg']::TEXT[]),
+    ('seedsportlife', 1, ARRAY['https://www.rupixel.ru/files/preview/960x1440/21727329667mpyvqooqwxwvsu1xits8dm0vrlfhwsbsqnthgdmonrggnl4gvyq2ynapztiuxzfhdqevbsozemngzqhfdu0xjyshziarhhg28tvo.jpg', 'https://www.rupixel.ru/files/preview/1280x905/21727329892zpdeejltwfqbyq8wn3yz01yuoc3aqlewbzyvg0yivi4ukarq7krqjlznbalkzloost7tggfq2ygmhq2kosbjy43kgto1ui2xbire.jpg']::TEXT[]),
+    ('seedsportlife', 2, ARRAY['https://www.rupixel.ru/files/preview/1280x853/21723096975spa3zy4faagfxmc1hm8kghlcxe6acw6sqgsmgyku5kv4fg1rgheswy37tyo0qenxgvusrrzhx2hi9cjakcm28dctwx8np2kzvnie.jpg']::TEXT[]),
+    ('seedsportlife', 3, ARRAY['https://www.rupixel.ru/files/preview/1280x854/1931688985998vontqu7cvpapft9mgvgx2ugkxncwwekkwgvusjxrc1nyeenerpbzgfql7bcngix83dkplssni8kvxcgiqpbqhn47ojwx749xhnjm.jpg']::TEXT[]),
+    ('seedsportlife', 4, ARRAY['https://www.rupixel.ru/files/preview/960x1440/21727329667mpyvqooqwxwvsu1xits8dm0vrlfhwsbsqnthgdmonrggnl4gvyq2ynapztiuxzfhdqevbsozemngzqhfdu0xjyshziarhhg28tvo.jpg']::TEXT[]),
+    ('seedsportlife', 5, ARRAY['https://www.rupixel.ru/files/preview/1280x720/175517773530247ehds5bhu98wo7jh9dh3yglqzulrdzugs1rven2sm0plibez6hwavholvhbnhokhfpo8k7n6r8nib0thigpemu5pdwsz2mjzfroz.jpeg', 'https://www.rupixel.ru/files/preview/1280x720/17551777355335f5nffqmi6idiyirjqggs8nmw4cvpw9nsdjtl3al1xbdh1jbogjwrq19noaggrukvqwz6wbz6oai4xwgtsdotuflvi8ykx7nwpxas.jpeg']::TEXT[]),
+    ('seedsportlife', 6, ARRAY['https://www.rupixel.ru/files/preview/1280x853/217230968551lplpuobd3oixqyxjqoa4kvwj2ygtmtw1uc7e7q8tbj1fxj07njdgwcl8f9qvs3iv71jzhxzlcfkfawafeuh91ngzzt8ylgmzcrf.jpg', 'https://www.rupixel.ru/files/preview/1280x797/21694343045uzusznwxj19pcgvttjdpovbj25a2gw4pfw1yvoz22u4dk8f2fqukuzjbcek6ltjfdmrmma23zd4ldmd5spsulii811v2ubnrdsru.jpg']::TEXT[]),
+    ('seedwildspace', 1, ARRAY['https://www.rupixel.ru/files/preview/1280x854/1131676876825xq6moieglh4uqkjzhlcb4sh9zzqlowcwshbfjjkxzosfx5ejdgwnyvzysqphw2dhbftegkkguec5fonpx0grtljtmxbdynqceyhp.jpg', 'https://www.rupixel.ru/files/preview/1280x960/216704292899pdzpvdpfpt5k57psnj5e3yqna2hjqgm1p3tdfvsww1z0corqfdorwtefdu2wzksnpfjisp5pjyckldynx3jiwm897i0d220cyrq.jpg', 'https://www.rupixel.ru/files/preview/1280x853/6271708241936wizytyug2lmb2myfwulnt1svyp1drdgsumksi4y2x9qsr2ntofwsosjslkvypzr1z1f8mtmj6zvvgashye7xyslw09mzs9oaeox3.jpg']::TEXT[]),
+    ('seedwildspace', 2, ARRAY['https://www.rupixel.ru/files/preview/1280x960/1041761619438zuiqasyxpteykonj9mymjz454s2y0ktuy240pzk7s1ymhfqhi6nnr441pd7sa4ldgi6ihpjvyirkepmqxo1dovm1fkgojjwuymsr.jpg']::TEXT[]),
+    ('seedwildspace', 3, ARRAY['https://www.rupixel.ru/files/preview/1280x853/1131676878999vpxzl7pw7rj5jmd1uehmfkxfufktopupbjcscdjbts5w7gs2ncao2bkw8inbjbvhial3gd8e73hvu4ilhl2n0hq22jzggha7xbbm.jpg', 'https://www.rupixel.ru/files/preview/1280x853/1131676891842osvtiai4zycmmvd2xjjrhqhk7cv6cengcr8lpxyduvt4dswohxgbkv0xyqv1tzjfhdv6y4pzkp00dsxzy9q5ga1zthrzq5f9g9c4.jpg', 'https://www.rupixel.ru/files/preview/1280x848/1131676879256pf4untjpao03xxmylkycrockyjiwmxzad9kiiugbs8yagnymqzc5p6yakvpjhfysc5eracmijpv2kyfaqka3gm7n3tthiymhsrll.jpg']::TEXT[]),
+    ('seedwildspace', 4, ARRAY['https://www.rupixel.ru/files/preview/1280x852/13951776792752md3crxhbgyyuykz6a79gbpsmuiz4aabaezfhpqbvrbqt8pfgo3jc6vznahrkfgcmicrb8cyzw911xrlgoxpylezo0pnm0zl4oy0y.jpg', 'https://www.rupixel.ru/files/preview/1280x809/21694342934mxwhkp4kbcdclhiawvmhsgbguausknmrwugsxppfeelzvddj0l4dwhks38rtig4mtcztmjucjvmbh7txvgvjetfpr6hs8snwxlph.jpg', 'https://www.rupixel.ru/files/preview/1280x854/21670418467399stjo40ncj4esac9uzrehvroqezslv1xwbcbjoktej9lng1co4a01xpvylmixovq6orh5uvj8nzrbqlsr1ishhl7lohzbpmmsv.jpg']::TEXT[]),
+    ('seedwildspace', 5, ARRAY['https://www.rupixel.ru/files/preview/960x1440/13641758003125ywxxtinwansvxztqctwgykti9f9wozodvgvtn2jgl8gn8jwbdzlvfd0zncaubhlnms3hmq8u7f0nm77iocwwoeobf68semesd1ya.jpg', 'https://www.rupixel.ru/files/preview/1280x797/13641758003720avxjztgjr2yng3rvnvsirmswksjxnmdar770nkbihi68esqpsrlnvktqeouxj8welzrkqjfdp93ywrbzxjy81dvpu7owus46fdsm.jpg', 'https://www.rupixel.ru/files/preview/1280x848/1131676869004f7327lxdhjx1ipvpfcfwj0jgocdu01yoqxu4lqvciwfhfk8kvzrwko0mjcrf3sc18yovcfi2eczvzvujpcejmsu4yjrpsw7diga5.jpg']::TEXT[]),
+    ('seedwildspace', 6, ARRAY['https://www.rupixel.ru/files/preview/1280x853/6271731770719unf11zjqbuqetskut9e5d71ji50qdoanuwnd40lssfmzkwipjz5hhc6lka8zg38w3i4f0zvz0ytuhdavtdtp5e8sgquprx2yu066.jpg', 'https://www.rupixel.ru/files/preview/1280x853/62717082419839zrz3eftngdb6bwnahrvqjokqotoxufb0ht7bkabamkgey96wavnxoeawyle7fsxh49kssuw6tliso0mhtmeleevqabcla65ftys.jpg', 'https://www.rupixel.ru/files/preview/1280x853/6271708241624vvp6ndw8svhse4kse8vytcnwsuydzfrq4ets71r9cwp2res66nnujipprzvzutxdnq0gefavwkjehnbrumvjmc08lpafypeeir2h.jpg']::TEXT[]);
 
   INSERT INTO seed_more_community_post (username, post_idx, post_text)
   VALUES
@@ -262,7 +314,7 @@ BEGIN
       ON CONFLICT (profile_id, community_id) DO NOTHING;
     END LOOP;
 
-    SELECT urls INTO media_urls
+    SELECT urls INTO fallback_media_urls
     FROM seed_more_community_media
     WHERE username = comm.username;
 
@@ -283,15 +335,75 @@ BEGIN
       RETURNING id INTO post_id;
 
       post_ids := post_ids || post_id;
-      media_count := CASE WHEN ((comm.ord + post_rec.post_idx) % 4 = 0) THEN 2 ELSE 1 END;
 
-      FOR sort_idx IN 0..(media_count - 1) LOOP
-        url := media_urls[((post_rec.post_idx + sort_idx - 1) % array_length(media_urls, 1)) + 1];
+      SELECT urls INTO media_urls
+      FROM seed_more_community_post_media
+      WHERE username = comm.username AND post_idx = post_rec.post_idx;
+
+      has_post_media := media_urls IS NOT NULL;
+      IF has_post_media THEN
+        media_urls := media_urls || fallback_media_urls;
+      ELSE
+        media_urls := fallback_media_urls;
+      END IF;
+
+      media_count := LEAST(
+        array_length(media_urls, 1),
+        CASE
+          WHEN has_post_media AND array_length(media_urls, 1) >= 3 AND ((comm.ord + post_rec.post_idx) % 4 = 0) THEN 3
+          WHEN has_post_media AND array_length(media_urls, 1) >= 2 THEN 2
+          WHEN ((comm.ord + post_rec.post_idx) % 4 = 0) THEN 2
+          ELSE 1
+        END
+      );
+
+      selected_count := 0;
+      candidate_count := array_length(media_urls, 1);
+
+      FOR candidate_idx IN 0..(candidate_count - 1) LOOP
+        EXIT WHEN selected_count >= media_count;
+
+        IF has_post_media THEN
+          url := media_urls[candidate_idx + 1];
+        ELSE
+          url := media_urls[((post_rec.post_idx + candidate_idx - 1) % candidate_count) + 1];
+        END IF;
+
+        IF url = ANY(used_media_urls) THEN
+          CONTINUE;
+        END IF;
 
         INSERT INTO media (uid, media_name, author_id, extension, mime_type, link, size)
         VALUES (
           gen_random_uuid(),
-          comm.username || '_post_' || post_rec.post_idx || '_' || sort_idx,
+          comm.username || '_post_' || post_rec.post_idx || '_' || selected_count,
+          cprof_id,
+          CASE WHEN url LIKE '%.png' THEN 'png' WHEN url LIKE '%.jpeg' THEN 'jpeg' ELSE 'jpg' END,
+          CASE WHEN url LIKE '%.png' THEN 'image/png' ELSE 'image/jpeg' END,
+          url,
+          0
+        )
+        RETURNING id INTO media_id;
+
+        used_media_urls := used_media_urls || url;
+
+        INSERT INTO post_with_media (post_id, media_id, sort_order)
+        VALUES (post_id, media_id, selected_count);
+
+        selected_count := selected_count + 1;
+      END LOOP;
+
+      IF selected_count = 0 AND candidate_count > 0 THEN
+        IF has_post_media THEN
+          url := media_urls[1];
+        ELSE
+          url := media_urls[((post_rec.post_idx - 1) % candidate_count) + 1];
+        END IF;
+
+        INSERT INTO media (uid, media_name, author_id, extension, mime_type, link, size)
+        VALUES (
+          gen_random_uuid(),
+          comm.username || '_post_' || post_rec.post_idx || '_0',
           cprof_id,
           CASE WHEN url LIKE '%.png' THEN 'png' WHEN url LIKE '%.jpeg' THEN 'jpeg' ELSE 'jpg' END,
           CASE WHEN url LIKE '%.png' THEN 'image/png' ELSE 'image/jpeg' END,
@@ -301,8 +413,8 @@ BEGIN
         RETURNING id INTO media_id;
 
         INSERT INTO post_with_media (post_id, media_id, sort_order)
-        VALUES (post_id, media_id, sort_idx);
-      END LOOP;
+        VALUES (post_id, media_id, 0);
+      END IF;
     END LOOP;
   END LOOP;
 
