@@ -8,6 +8,9 @@ set -a
 . ./.env.server
 set +a
 
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=${XDG_RUNTIME_DIR}/bus}"
+
 if [ -n "$_IMAGE_TAG" ]; then
   export IMAGE_TAG="$_IMAGE_TAG"
 fi
@@ -102,9 +105,9 @@ else
   echo "Skipping Docker nginx service because DEPLOY_NGINX_CONTAINER=$deploy_nginx_container"
 fi
 
-if systemctl is-active --quiet arisfront 2>/dev/null || systemctl is-enabled --quiet arisfront 2>/dev/null; then
+if systemctl --user is-active --quiet arisfront 2>/dev/null || systemctl --user is-enabled --quiet arisfront 2>/dev/null; then
   echo "Restarting frontend service..."
-  sudo systemctl restart arisfront
+  systemctl --user restart arisfront
 fi
 
 sleep 15
