@@ -793,7 +793,9 @@ func (s *Service) getChronologicalFeed(ctx context.Context, userAccountID int64,
 	}
 
 	if !publicOnly && len(friendIDs) == 0 {
-		return FeedResult{Posts: []FeedPost{}}, nil
+		// Keep the author filter non-empty so the repository can still include
+		// public community posts without falling back to all personal posts.
+		friendIDs = []int64{-1}
 	}
 
 	var beforeTime *time.Time
@@ -925,10 +927,35 @@ func (s *Service) buildCandidates(ctx context.Context, profileID, userAccountID 
 		Limit:           200,
 		ExcludeAuthorID: profileID,
 	})
+	recommendationErr := err
 	if err != nil {
-		return nil, err
+		candidateIDs = nil
 	}
+	recentCommunityIDs, _ := s.store.Posts.GetRecentPublicCommunityPostIDs(ctx, profileID, 100)
+	if len(recentCommunityIDs) > 0 {
+		seen := make(map[int64]struct{}, len(candidateIDs)+len(recentCommunityIDs))
+		merged := make([]int64, 0, len(candidateIDs)+len(recentCommunityIDs))
+		for _, id := range recentCommunityIDs {
+			if _, ok := seen[id]; ok {
+				continue
+			}
+			seen[id] = struct{}{}
+			merged = append(merged, id)
+		}
+		for _, id := range candidateIDs {
+			if _, ok := seen[id]; ok {
+				continue
+			}
+			seen[id] = struct{}{}
+			merged = append(merged, id)
+		}
+		candidateIDs = merged
+	}
+
 	if len(candidateIDs) == 0 {
+		if recommendationErr != nil {
+			return nil, recommendationErr
+		}
 		return nil, nil
 	}
 

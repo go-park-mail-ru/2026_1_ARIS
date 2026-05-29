@@ -283,7 +283,7 @@ BEGIN
       RETURNING id INTO post_id;
 
       post_ids := post_ids || post_id;
-      media_count := 2 + ((comm.ord + post_rec.post_idx) % 4);
+      media_count := CASE WHEN ((comm.ord + post_rec.post_idx) % 4 = 0) THEN 2 ELSE 1 END;
 
       FOR sort_idx IN 0..(media_count - 1) LOOP
         url := media_urls[((post_rec.post_idx + sort_idx - 1) % array_length(media_urls, 1)) + 1];
