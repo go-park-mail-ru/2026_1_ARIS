@@ -69,6 +69,42 @@ seed_marker_count() {
   compose exec -T db sh -c "psql -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -Atqc \"SELECT COUNT(*) FROM user_account WHERE username IN ('demoowner', 'komandaaris');\""
 }
 
+refresh_search_outbox() {
+  compose exec -T db sh -c "psql -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -c \"
+INSERT INTO search_outbox (entity_type, entity_id, operation)
+SELECT 'user', id, 'upsert'
+FROM user_account
+WHERE is_active = TRUE;
+
+INSERT INTO search_outbox (entity_type, entity_id, operation)
+SELECT 'community', id, 'upsert'
+FROM community
+WHERE is_active = TRUE;
+
+INSERT INTO search_outbox (entity_type, entity_id, operation)
+SELECT 'post', id, 'upsert'
+FROM post
+WHERE is_active = TRUE;
+\""
+}
+
+wait_search_outbox_drained() {
+  attempts="${SEARCH_OUTBOX_WAIT_ATTEMPTS:-24}"
+  while [ "$attempts" -gt 0 ]; do
+    pending="$(compose exec -T db sh -c "psql -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -Atqc \"SELECT COUNT(*) FROM search_outbox;\"")"
+    if [ "$pending" = "0" ]; then
+      echo "Search outbox processed."
+      return 0
+    fi
+    echo "Waiting for search outbox to be processed (${pending} pending)..."
+    attempts=$((attempts - 1))
+    sleep 5
+  done
+
+  echo "Search outbox was not fully processed in time." >&2
+  return 1
+}
+
 should_run_seed="$RUN_SEED_ON_DEPLOY"
 if [ "$should_run_seed" != "1" ] && [ "$AUTO_SEED_ON_EMPTY" = "1" ]; then
   marker_count="$(seed_marker_count || printf '0')"
@@ -131,6 +167,10 @@ if [ "$deploy_nginx_container" = "1" ]; then
 fi
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-elasticsearch-1 .*healthy'
 docker ps --format '{{.Names}} {{.Status}}' | grep 'arisback-indexer-1 .*Up'
+
+echo "Refreshing Elasticsearch index queue..."
+refresh_search_outbox
+wait_search_outbox_drained
 
 BASE_URL="$APP_ENDPOINT"
 

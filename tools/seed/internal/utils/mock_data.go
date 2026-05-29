@@ -583,13 +583,13 @@ func MakeMock(mediaRepo media.MediaRepo,
 	post8.CreatedAt = now.Add(-48 * time.Hour)
 	post8.UpdatedAt = post8.CreatedAt
 
-	post1ID, err := postRepo.Save(context.Background(), *post1)
+	post2ID, err := postRepo.Save(context.Background(), *post2)
 	if err != nil {
 		// logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
-	post2ID, err := postRepo.Save(context.Background(), *post2)
+	post1ID, err := postRepo.Save(context.Background(), *post1)
 	if err != nil {
 		// logger.Info("faild saving", zap.Error(err))
 		return
