@@ -80,6 +80,7 @@ func main() {
 		},
 	)
 	seedSupportAdmins(ctx, logg, ticketService, 1, 2, 3, 4)
+	seedSupportAdminByUsername(ctx, logg, ticketService, db, "sergeyshulginenko")
 
 	grpcServer := grpc.NewServer()
 	supportpb.RegisterSupportServiceServer(grpcServer, supportGRPC.New(ticketService))
@@ -146,4 +147,21 @@ func seedSupportAdmins(ctx context.Context, logg *zap.Logger, service supportsvc
 			logg.Warn("failed to seed support admin", zap.Int64("profile_id", profileID), zap.Error(err))
 		}
 	}
+}
+
+func seedSupportAdminByUsername(ctx context.Context, logg *zap.Logger, service supportsvc.TicketService, db supportrepo.DB, username string) {
+	var profileID int64
+	err := db.QueryRow(ctx, `
+		SELECT up.profile_id
+		FROM user_profile up
+		JOIN user_account ua ON ua.id = up.user_account_id
+		WHERE lower(ua.username) = lower($1)
+		LIMIT 1
+	`, username).Scan(&profileID)
+	if err != nil {
+		logg.Warn("failed to resolve support admin username", zap.String("username", username), zap.Error(err))
+		return
+	}
+
+	seedSupportAdmins(ctx, logg, service, profileID)
 }
