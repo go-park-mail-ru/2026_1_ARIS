@@ -53,9 +53,6 @@ const (
 	firstRatingSeasonYear  = 2026
 	firstRatingSeasonMonth = time.May
 
-	roundResultFirstCardDelay    = 260 * time.Millisecond
-	roundResultNextCardBaseDelay = 1600 * time.Millisecond
-	roundResultNextCardStepDelay = 1300 * time.Millisecond
 	roundResultAnswerSettle      = 2100 * time.Millisecond
 	roundResultTimesRevealGap    = 600 * time.Millisecond
 	roundResultScoreStartGap     = 650 * time.Millisecond
@@ -1435,23 +1432,6 @@ func (s *Service) profileIDByAccount(ctx context.Context, userAccountID int64) (
 	return resp.GetProfileId(), nil
 }
 
-func (s *Service) ensureRoomMember(ctx context.Context, roomID, profileID int64) error {
-	if roomID <= 0 || profileID <= 0 {
-		return ErrInvalidInput
-	}
-	if _, err := s.store.Rooms.Get(ctx, roomID); err != nil {
-		return mapRepoErr(err)
-	}
-	ok, err := s.store.Members.IsMember(ctx, roomID, profileID)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return ErrForbidden
-	}
-	return nil
-}
-
 func (s *Service) ensureRoomChatAccess(ctx context.Context, roomID, profileID int64) error {
 	if roomID <= 0 || profileID <= 0 {
 		return ErrInvalidInput
@@ -1691,27 +1671,6 @@ func (s *Service) completeActiveQuestion(ctx context.Context, tx repository.Stor
 		return nil, err
 	}
 	return &nextQuestionAt, nil
-}
-
-func roundResultCardDelay(revealIndex int) time.Duration {
-	if revealIndex <= 0 {
-		return roundResultFirstCardDelay
-	}
-	return roundResultNextCardBaseDelay + time.Duration(revealIndex-1)*roundResultNextCardStepDelay
-}
-
-func roundResultMemberAnswers(members []model.RoomMember, answers []model.Answer) []model.Answer {
-	memberIDs := make(map[int64]struct{}, len(members))
-	for _, member := range members {
-		memberIDs[member.ProfileID] = struct{}{}
-	}
-	result := make([]model.Answer, 0, len(answers))
-	for _, answer := range answers {
-		if _, ok := memberIDs[answer.ProfileID]; ok {
-			result = append(result, answer)
-		}
-	}
-	return result
 }
 
 func publicRoomPlayableMembers(room model.Room, members []model.RoomMember) []model.RoomMember {
