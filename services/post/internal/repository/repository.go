@@ -87,6 +87,7 @@ type PostRepo interface {
 	GetByCommunityID(ctx context.Context, communityID int64) ([]model.Post, error)
 	GetByIDs(ctx context.Context, ids []int64) ([]model.Post, error)
 	GetFeedPage(ctx context.Context, authorIDs []int64, beforeTime *time.Time, beforeID *int64, limit int, publicOnly bool) ([]model.Post, error)
+	GetRecentPublicCommunityPostIDs(ctx context.Context, excludeAuthorID int64, limit int) ([]int64, error)
 }
 
 type postStorage struct {
@@ -293,6 +294,37 @@ func (s *postStorage) GetFeedPage(ctx context.Context, authorIDs []int64, before
 		return nil, err
 	}
 	return pgx.CollectRows(rows, pgx.RowToStructByName[model.Post])
+}
+
+func (s *postStorage) GetRecentPublicCommunityPostIDs(ctx context.Context, excludeAuthorID int64, limit int) ([]int64, error) {
+	start := time.Now()
+	rows, err := s.db.Query(ctx, `
+		SELECT p.id
+		FROM post p
+		JOIN community c ON c.id = p.community_id
+		WHERE p.is_active = TRUE
+		  AND p.is_public_demo = FALSE
+		  AND c.is_active = TRUE
+		  AND c.community_type = 'public'
+		  AND ($1::bigint <= 0 OR p.author_id <> $1)
+		ORDER BY p.created_at DESC, p.id DESC
+		LIMIT $2
+	`, excludeAuthorID, limit)
+	logQuery(ctx, "postStorage.GetRecentPublicCommunityPostIDs", start)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	ids := make([]int64, 0, limit)
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 type PostMediaRepo interface {

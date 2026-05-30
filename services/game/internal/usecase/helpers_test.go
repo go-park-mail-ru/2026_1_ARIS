@@ -17,13 +17,14 @@ import (
 func TestGameHelpersNormalizeAndPassword(t *testing.T) {
 	t.Parallel()
 
-	in := CreateRoomInput{Title: " Room ", GameType: "", MaxPlayers: 99, QuestionCount: -1, AnswerTimeoutSec: 1}
+	in := CreateRoomInput{Title: " Room ", GameType: "", MaxPlayers: 99, QuestionCount: -1, AnswerTimeoutSec: 1, RoundPauseSec: 99}
 	require.NoError(t, normalizeCreateInput(&in))
 	require.Equal(t, "Room", in.Title)
 	require.Equal(t, model.DefaultGameType, in.GameType)
 	require.Equal(t, 8, in.MaxPlayers)
 	require.Equal(t, 5, in.QuestionCount)
 	require.Equal(t, 3, in.AnswerTimeoutSec)
+	require.Equal(t, 60, in.RoundPauseSec)
 
 	_, err := normalizeRoomTitle("")
 	require.ErrorIs(t, err, ErrInvalidInput)
@@ -83,6 +84,10 @@ func TestGameHelpersRatingAndWinners(t *testing.T) {
 	require.InDelta(t, 0.5, ratingExpectedScore(1000, 1000), 0.0001)
 	require.Equal(t, map[int]int{0: 1, 3: 1, 5: 1}, ratingScoreCounts(members))
 	require.Equal(t, 1, ratingPlaces(members)[1])
+	require.Equal(t, []int64{1, 2}, memberProfileIDs(publicRoomPlayableMembers(
+		model.Room{IsPublicLobby: true, CreatedByProfileID: 3},
+		members,
+	)))
 
 	deltas := ratingDeltas(members, map[int64]int{1: 1000, 2: 1000, 3: 1000}, 1)
 	require.Positive(t, deltas[1])

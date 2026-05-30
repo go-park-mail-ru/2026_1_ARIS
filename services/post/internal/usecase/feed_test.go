@@ -82,13 +82,14 @@ func TestGetFeedWithoutFriendsReturnsEmpty(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	svc, _, _, _, _, _, _, users := newFeedPostService(ctrl)
+	svc, posts, _, _, _, _, _, users := newFeedPostService(ctrl)
 	ctx := context.Background()
 
 	users.EXPECT().GetFriendProfileIDs(gomock.Any(), &userpb.GetFriendProfileIDsRequest{UserAccountId: int64(5)}).
 		Return(&userpb.GetFriendProfileIDsResponse{}, nil)
 	users.EXPECT().GetProfileByUserAccount(gomock.Any(), &userpb.GetProfileByUserAccountRequest{UserAccountId: int64(5)}).
 		Return(&userpb.GetProfileByUserAccountResponse{ProfileId: 50}, nil)
+	posts.EXPECT().GetFeedPage(gomock.Any(), []int64{-1}, nil, nil, 21, false).Return([]model.Post{}, nil)
 
 	feed, err := svc.GetFeed(ctx, 5, "", "by-time", 20)
 	if err != nil {

@@ -277,6 +277,21 @@ func (mr *MockPostRepoMockRecorder) GetFeedPage(ctx, authorIDs, beforeTime, befo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFeedPage", reflect.TypeOf((*MockPostRepo)(nil).GetFeedPage), ctx, authorIDs, beforeTime, beforeID, limit, publicOnly)
 }
 
+// GetRecentPublicCommunityPostIDs mocks base method.
+func (m *MockPostRepo) GetRecentPublicCommunityPostIDs(ctx context.Context, excludeAuthorID int64, limit int) ([]int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRecentPublicCommunityPostIDs", ctx, excludeAuthorID, limit)
+	ret0, _ := ret[0].([]int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRecentPublicCommunityPostIDs indicates an expected call of GetRecentPublicCommunityPostIDs.
+func (mr *MockPostRepoMockRecorder) GetRecentPublicCommunityPostIDs(ctx, excludeAuthorID, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecentPublicCommunityPostIDs", reflect.TypeOf((*MockPostRepo)(nil).GetRecentPublicCommunityPostIDs), ctx, excludeAuthorID, limit)
+}
+
 // Save mocks base method.
 func (m *MockPostRepo) Save(ctx context.Context, post model.Post) (int64, error) {
 	m.ctrl.T.Helper()

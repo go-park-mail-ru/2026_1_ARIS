@@ -138,4 +138,42 @@ func TestServiceRoomMessages(t *testing.T) {
 	if sent.ID != 2 || sent.Text != "hello" || sent.Author.Name != "ann" {
 		t.Fatalf("unexpected sent message: %+v", sent)
 	}
+
+	rooms.EXPECT().Get(gomock.Any(), int64(5)).Return(&model.Room{ID: 5}, nil)
+	members.EXPECT().IsMember(gomock.Any(), int64(5), int64(90)).Return(true, nil)
+	messages.EXPECT().Add(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, message *model.RoomMessage) error {
+		message.ID = 3
+		message.CreatedAt = createdAt.Add(2 * time.Minute)
+		return nil
+	})
+	users.EXPECT().GetProfileSummary(gomock.Any(), &userpb.GetProfileSummaryRequest{ProfileId: 90}).Return(&userpb.GetProfileSummaryResponse{
+		ProfileId: 90, UserAccountId: 9, FirstName: "Public", LastName: "Guest",
+	}, nil)
+
+	publicSent, err := service.SendRoomMessageByProfile(ctx, 90, 5, " public hello ")
+	if err != nil {
+		t.Fatalf("SendRoomMessageByProfile() error = %v", err)
+	}
+	if publicSent.ID != 3 || publicSent.Text != "public hello" || publicSent.Author.Name != "Public Guest" {
+		t.Fatalf("unexpected public sent message: %+v", publicSent)
+	}
+
+	users.EXPECT().GetProfileByUserAccount(gomock.Any(), &userpb.GetProfileByUserAccountRequest{UserAccountId: 10}).Return(&userpb.GetProfileByUserAccountResponse{ProfileId: 100}, nil)
+	rooms.EXPECT().Get(gomock.Any(), int64(6)).Return(&model.Room{ID: 6, IsPublicLobby: true, CreatedByProfileID: 100}, nil)
+	messages.EXPECT().Add(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, message *model.RoomMessage) error {
+		message.ID = 4
+		message.CreatedAt = createdAt.Add(3 * time.Minute)
+		return nil
+	})
+	users.EXPECT().GetProfileSummary(gomock.Any(), &userpb.GetProfileSummaryRequest{ProfileId: 100}).Return(&userpb.GetProfileSummaryResponse{
+		ProfileId: 100, UserAccountId: 10, FirstName: "Admin", LastName: "Host",
+	}, nil)
+
+	adminSent, err := service.SendRoomMessage(ctx, 10, 6, " admin hello ")
+	if err != nil {
+		t.Fatalf("SendRoomMessage() public creator error = %v", err)
+	}
+	if adminSent.ID != 4 || adminSent.Text != "admin hello" || adminSent.Author.Name != "Admin Host" {
+		t.Fatalf("unexpected public admin message: %+v", adminSent)
+	}
 }

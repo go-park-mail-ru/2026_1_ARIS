@@ -43,8 +43,10 @@ type Room struct {
 	PasswordHash         *string    `db:"password_hash"`
 	PasswordValue        *string    `db:"password_value"`
 	IsRanked             bool       `db:"is_ranked"`
+	IsPublicLobby        bool       `db:"is_public_lobby"`
 	QuestionCount        int        `db:"question_count"`
 	AnswerTimeoutSec     int        `db:"answer_timeout_sec"`
+	RoundPauseSec        int        `db:"round_pause_sec"`
 	CurrentQuestionIndex int        `db:"current_question_index"`
 	CurrentQuestionID    *int64     `db:"current_question_id"`
 	QuestionStartedAt    *time.Time `db:"question_started_at"`
@@ -107,6 +109,19 @@ type RoomMessage struct {
 	ProfileID int64     `db:"profile_id"`
 	Text      string    `db:"message_text"`
 	CreatedAt time.Time `db:"created_at"`
+}
+
+type PublicParticipant struct {
+	ID        int64     `db:"id"`
+	Uid       uuid.UUID `db:"uid"`
+	RoomID    int64     `db:"room_id"`
+	ProfileID int64     `db:"profile_id"`
+	TokenHash string    `db:"token_hash"`
+	FirstName string    `db:"first_name"`
+	LastName  string    `db:"last_name"`
+	IsActive  bool      `db:"is_active"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 }
 
 type HistoryRoom struct {

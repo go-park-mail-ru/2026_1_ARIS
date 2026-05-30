@@ -85,7 +85,8 @@ services:
     command: >
       sh -c "
       go mod download &&
-      go run ./tools/seed/cmd
+      go run ./tools/seed/cmd &&
+      go run ./tools/seed-media/cmd
       "
 
   redis:
