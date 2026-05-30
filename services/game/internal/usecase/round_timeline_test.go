@@ -18,10 +18,10 @@ func TestRoundResultTransitionDuration(t *testing.T) {
 		{ProfileID: 2, Answer: 4, Distance: 2, AnsweredAt: startedAt.Add(800 * time.Millisecond)},
 	}
 
-	got := roundResultTransitionDuration(members, answers, &startedAt)
+	got := roundResultTransitionDuration(7, members, answers, &startedAt)
 
-	if got != 14*time.Second {
-		t.Fatalf("roundResultTransitionDuration() = %s, want 14s", got)
+	if got != 7*time.Second {
+		t.Fatalf("roundResultTransitionDuration() = %s, want 7s", got)
 	}
 }
 
@@ -32,9 +32,31 @@ func TestRoundResultTransitionDurationWithMissingAnswers(t *testing.T) {
 		{ProfileID: 2},
 	}
 
-	got := roundResultTransitionDuration(members, nil, &startedAt)
+	got := roundResultTransitionDuration(0, members, nil, &startedAt)
 
-	if got != 11450*time.Millisecond {
-		t.Fatalf("roundResultTransitionDuration() = %s, want 11.45s", got)
+	if got != 5*time.Second {
+		t.Fatalf("roundResultTransitionDuration() = %s, want 5s", got)
+	}
+}
+
+func TestRoundResultTransitionDurationWithManyPlayers(t *testing.T) {
+	startedAt := time.Date(2026, time.May, 25, 0, 0, 0, 0, time.UTC)
+	members := make([]model.RoomMember, 20)
+	answers := make([]model.Answer, 20)
+	for index := range members {
+		profileID := int64(index + 1)
+		members[index] = model.RoomMember{ProfileID: profileID}
+		answers[index] = model.Answer{
+			ProfileID:  profileID,
+			Answer:     float64(index),
+			Distance:   float64(index),
+			AnsweredAt: startedAt.Add(time.Duration(index) * 100 * time.Millisecond),
+		}
+	}
+
+	got := roundResultTransitionDuration(90, members, answers, &startedAt)
+
+	if got != 60*time.Second {
+		t.Fatalf("roundResultTransitionDuration() = %s, want 60s", got)
 	}
 }

@@ -1,0 +1,1 @@
+-- Keep the requested public lobby question set on rollback.

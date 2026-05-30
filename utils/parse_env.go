@@ -3,6 +3,7 @@ package utils
 import (
 	"os"
 	"strconv"
+	"time"
 )
 
 func EnvInt(name string, fallback int) int {
@@ -11,6 +12,18 @@ func EnvInt(name string, fallback int) int {
 		return fallback
 	}
 	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return fallback
+	}
+	return parsed
+}
+
+func EnvDuration(name string, fallback time.Duration) time.Duration {
+	value := os.Getenv(name)
+	if value == "" {
+		return fallback
+	}
+	parsed, err := time.ParseDuration(value)
 	if err != nil {
 		return fallback
 	}

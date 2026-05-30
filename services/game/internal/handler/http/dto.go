@@ -12,12 +12,23 @@ type createRoomRequest struct {
 	IsRanked         bool   `json:"isRanked"`
 	QuestionCount    int    `json:"questionCount"`
 	AnswerTimeoutSec int    `json:"answerTimeoutSec"`
+	RoundPauseSec    int    `json:"roundPauseSec"`
+}
+
+type createPublicRoomRequest struct {
+	AnswerTimeoutSec int `json:"answerTimeoutSec"`
+	RoundPauseSec    int `json:"roundPauseSec"`
 }
 
 type joinRoomRequest struct {
 	InviteCode string `json:"inviteCode"`
 	RoomID     string `json:"roomId"`
 	Password   string `json:"password"`
+}
+
+type publicJoinRoomRequest struct {
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
 }
 
 type readyRequest struct {
@@ -97,7 +108,7 @@ type playerResponse struct {
 type questionResponse struct {
 	ID            string                `json:"id"`
 	Text          localizedTextResponse `json:"text"`
-	CorrectAnswer float64               `json:"correctAnswer,omitempty"`
+	CorrectAnswer float64               `json:"correctAnswer"`
 	IsActive      bool                  `json:"isActive"`
 }
 
@@ -107,10 +118,10 @@ type localizedTextResponse struct {
 }
 
 type roomQuestionPayloadResponse struct {
-	ID            string  `json:"id"`
-	Text          string  `json:"text"`
-	CorrectAnswer float64 `json:"correctAnswer,omitempty"`
-	IsActive      bool    `json:"isActive"`
+	ID            string   `json:"id"`
+	Text          string   `json:"text"`
+	CorrectAnswer *float64 `json:"correctAnswer,omitempty"`
+	IsActive      bool     `json:"isActive"`
 }
 
 type answerResponse struct {
@@ -179,8 +190,10 @@ type roomResponse struct {
 	HasPassword             bool                     `json:"hasPassword"`
 	Password                string                   `json:"password,omitempty"`
 	IsRanked                bool                     `json:"isRanked"`
+	IsPublicLobby           bool                     `json:"isPublicLobby"`
 	QuestionCount           int                      `json:"questionCount"`
 	AnswerTimeoutSec        int                      `json:"answerTimeoutSec"`
+	RoundPauseSec           int                      `json:"roundPauseSec"`
 	Creator                 playerResponse           `json:"creator"`
 	CurrentQuestionIndex    int                      `json:"currentQuestionIndex"`
 	NextQuestionAt          *string                  `json:"nextQuestionAt,omitempty"`
@@ -197,6 +210,11 @@ type roomResponse struct {
 	CreatedAt               string                   `json:"createdAt"`
 	UpdatedAt               string                   `json:"updatedAt"`
 	FinishedAt              *string                  `json:"finishedAt,omitempty"`
+}
+
+type publicJoinRoomResponse struct {
+	Token string       `json:"token"`
+	Room  roomResponse `json:"room"`
 }
 
 type historyResponse struct {

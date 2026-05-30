@@ -3,7 +3,11 @@ package utils
 import (
 	"bytes"
 	"context"
+	"crypto/sha1"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"net/http"
 	"strings"
@@ -25,7 +29,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const maxSeedImageSize = 10 << 20
+const (
+	maxSeedImageSize = 10 << 20
+	seedUserAgent    = "ARIS tools/seed/1.0"
+)
 
 func createRealUserProfile(
 	ctx context.Context,
@@ -127,44 +134,41 @@ func MakeMock(mediaRepo media.MediaRepo,
 	userAvatar7 := "user avatar 7 description"
 	userAvatar8 := "user avatar 8 description"
 
-	//avatar1 := models.NewMedia("avatar_1_name", "jpg", uuid.New(), &userAvatar1, "image", "https://forum.stitch.su/uploads/monthly_2017_10/A.png.b16d1fa2bd3bb388f2122a0c87fbcf5f.png", 1)
-	avatar2, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_2_name", &userAvatar2, "https://i.ibb.co/C3c6HCjb/pop-User1.png", 1)
+	avatar2, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_2_name", &userAvatar2, "https://s10.iimage.su/s/29/ul7FT4jxzfXz8eIcyYIv05rRqSIA1oZtYTSHITpuw.jpg", 1)
 	if err != nil {
 		fmt.Println("failed to create avatar media:", err)
 		return
 	}
-	avatar3, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_3_name", &userAvatar3, "https://i.ibb.co/mQvfkNY/pop-User2.png", 1)
+	avatar3, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_3_name", &userAvatar3, "https://s10.iimage.su/s/29/uf33rcFxPEqdNQ6n29d6iED7GpzwFJBpljitb32H1.jpg", 1)
 	if err != nil {
 		fmt.Println("failed to create avatar media:", err)
 		return
 	}
-	avatar4, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_4_name", &userAvatar4, "https://i.ibb.co/6RS96KC7/pop-User3.png", 1)
+	avatar4, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_4_name", &userAvatar4, "https://s10.iimage.su/s/29/uWpgCsXxfuVuBUBG6aDz1TtBRIKAFa7yvhldZoMGi.jpg", 1)
 	if err != nil {
 		fmt.Println("failed to create avatar media:", err)
 		return
 	}
-	avatar5, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_5_name", &userAvatar5, "https://i.ibb.co/mCpKjmxK/pop-User4.png", 1)
+	avatar5, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_5_name", &userAvatar5, "https://s10.iimage.su/s/29/ub4eRhAxcWBK1oPzIM3eTq8ARnYdy39FT3m5VPNV3.jpg", 1)
 	if err != nil {
 		fmt.Println("failed to create avatar media:", err)
 		return
 	}
-	avatar6, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_6_name", &userAvatar6, "https://i.ibb.co/60HMXYh6/6.jpg", 1)
+	avatar6, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_6_name", &userAvatar6, "https://s10.iimage.su/s/29/uvl5sN4xlYLrVsblrK2yR4KwuipsfNVY4u6Qrb0wZ.jpg", 1)
 	if err != nil {
 		fmt.Println("failed to create avatar media:", err)
 		return
 	}
-	avatar7, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_7_name", &userAvatar7, "https://i.ibb.co/s9rN3qD9/7.jpg", 1)
+	avatar7, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_7_name", &userAvatar7, "https://s10.iimage.su/s/29/ug4QI7VxyS2pHgrwKnOG3jyL7ADI7UGwzr6sB9UnN.jpg", 1)
 	if err != nil {
 		fmt.Println("failed to create avatar media:", err)
 		return
 	}
-	avatar8, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_8_name", &userAvatar8, "https://sun9-5.userapi.com/s/v1/ig2/uGYEtsdSK4QHpAyiRnb5vCasxGZy7dR-MYECGzReWIivHlfmnfQP2DaVY6_UOJHzPG4yzjnVbty6aWqM8kjydEAS.jpg?quality=95&as=32x32,48x48,72x72,108x108,160x160,240x240,360x360,480x480,540x540,640x640&from=bu&cs=640x0", 1)
+	avatar8, err := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, "avatar_8_name", &userAvatar8, "https://s10.iimage.su/s/29/u6sKCE3xwwYaDPRHJBfqulV1w8zby4ZjKFm2z7n3s.jpg", 1)
 	if err != nil {
 		fmt.Println("failed to create avatar media:", err)
 		return
 	}
-
-	//avatar9 := models.NewMedia("avatar_9_name", "jpg", &userAvatar9, "image", "https://i.ibb.co/s9rN3qD9/7.jpg", 4000, false)
 
 	// avatar1ID, err := mediaRepo.Save(context.Background(), *avatar1)
 	// if err != nil {
@@ -286,36 +290,45 @@ func MakeMock(mediaRepo media.MediaRepo,
 	mediaDesctiption22 := "Media description 22"
 	mediaDesctiption23 := "Media description 23"
 
-	media1 := models.NewMedia("Media name 1", "jpg", uuid.New(), &mediaDesctiption1, "image", "https://img.freepik.com/free-photo/mountains-lake_1398-1150.jpg", 1)
-	media2 := models.NewMedia("Media name 2", "jpg", uuid.New(), &mediaDesctiption2, "image", "https://img51994.kanal-o.ru/img/2024-09-09/fmt_81_24_shutterstock_2141488197.jpg", 1)
+	createSeedMedia := func(name string, description *string, sourceURL string, authorID int64) *models.Media {
+		seedMedia, createErr := newSeedMediaFromURL(context.Background(), s3Repo, bucketName, name, description, sourceURL, authorID)
+		if createErr != nil {
+			err = createErr
+			fmt.Println("failed to create media:", createErr)
+			return nil
+		}
+		return seedMedia
+	}
 
-	media3 := models.NewMedia("Media name 3", "jpg", uuid.New(), &mediaDesctiption3, "image", "https://moya-planeta.ru/upload/images/l/eb/e2/ebe21cb5a55a808b104f3d51c3ff96284bae5182.jpg", 1)
-	//media4 := models.NewMedia("Media name 4", "jpg", uuid.New(), &mediaDesctiption4, "image", "https://www.svitstyle.com.ua/wp-content/uploads/2025/09/pryroda-svitu.jpg", 10242, false)
-	media5 := models.NewMedia("Media name 5", "jpg", uuid.New(), &mediaDesctiption5, "image", "https://oboitd.ru/images/goods/big/20200125110231_Priroda_10-344.jpg", 1)
-	media6 := models.NewMedia("Media name 6", "jpg", uuid.New(), &mediaDesctiption6, "image", "https://www.advantour.com/img/kazakhstan/images/nature.jpg", 1)
-	media7 := models.NewMedia("Media name 7", "jpg", uuid.New(), &mediaDesctiption7, "image", "https://img.goodfon.com/wallpaper/big/5/18/italiia-gory-ozero-peizazh-otrazhenie-priroda.webp", 1)
+	media1 := createSeedMedia("Media name 1", &mediaDesctiption1, "https://www.rupixel.ru/files/preview/1280x853/14471778755322jwkvoeqg7htrfgr7lqfjlqiy5utrfsbxzm8hf9qihb2nbvxobprtqxunalp8mhr6quwpqu8v9zrkqbcntoauvskkonudr0kvcsgh.jpg", 1)
+	media2 := createSeedMedia("Media name 2", &mediaDesctiption2, "https://www.rupixel.ru/files/preview/1280x853/62717317703048aamfqrxo9dwfoma7g9mprpbhu9sq8myslw29i2eebxyuuv9cqajtphejfk3khkg8bxgnnaffv05mhoel0hqgfohvqseagwrkogj.jpg", 1)
+	media3 := createSeedMedia("Media name 3", &mediaDesctiption3, "https://www.rupixel.ru/files/preview/1280x854/2591746624152loflcmihadg616jc4zjcn1gblvuaameqgwuu9kwkd88jbaaosuonzkajx8rnkh8teekrsghq6kgnu4ng5odch9njx2ekoh9n8clo.jpg", 1)
+	media5 := createSeedMedia("Media name 5", &mediaDesctiption5, "https://www.rupixel.ru/files/preview/1280x853/62717083466735u3jxa0xn7q0ur9kxuiwndnzm6bicywrgi6xby8ccqvvfu8pugfh1xhg1fdzrnisf9m4xtr0hnhhioulkhzzncalzw1ebz3snk0d.jpg", 1)
+	media6 := createSeedMedia("Media name 6", &mediaDesctiption6, "https://www.rupixel.ru/files/preview/1280x853/6271724173201m1knngwe1bgdpp7kscv8anfadgzx4yrpu505avsr4oawsbazue5hnlcwobfgfuzvfcjesogtke5nmn5dxfjdkgh44krbmvf1iljr.jpg", 1)
+	media7 := createSeedMedia("Media name 7", &mediaDesctiption7, "https://www.rupixel.ru/files/preview/1280x853/6271708346796udtn2qttiq7k39be4ed13wopsk2iewxcingt6vkugak5kc5smdylcpcj0qyrquggjmrvtr77sdjzwlk9rtdinpqoq7ikuvsnuyos.jpg", 1)
 
-	media8 := models.NewMedia("Media name 8", "jpg", uuid.New(), &mediaDesctiption8, "image", "https://marathonec.ru/wp-content/uploads/2019/07/utrennyaya-probezhka-1.jpg", 1)
-	media9 := models.NewMedia("Media name 9", "png", uuid.New(), &mediaDesctiption9, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQlVOAM_1swHsumck2XbdMEeEKauDRDiXn86g&s", 2)
+	media8 := createSeedMedia("Media name 8", &mediaDesctiption8, "https://www.rupixel.ru/files/preview/1280x853/217230968551lplpuobd3oixqyxjqoa4kvwj2ygtmtw1uc7e7q8tbj1fxj07njdgwcl8f9qvs3iv71jzhxzlcfkfawafeuh91ngzzt8ylgmzcrf.jpg", 1)
+	media9 := createSeedMedia("Media name 9", &mediaDesctiption9, "https://www.rupixel.ru/files/preview/1280x853/14471778865077onj9owr2nwqy8kdmsthbmhbfqidyiup3zlg7tukhgzmfwxjuxcltv0ccmhk663rat005vr7esa6bzbmwa1ebol61efem3e6nneir.jpg", 2)
 
-	media10 := models.NewMedia("Media name 10", "jpg", uuid.New(), &mediaDesctiption10, "image", "https://media.licdn.com/dms/image/v2/D5612AQGuHFW9idrbfw/article-cover_image-shrink_720_1280/article-cover_image-shrink_720_1280/0/1714747679466?e=2147483647&v=beta&t=c9gny1mV4A13_niAAW-2wjP9iglUYtsdoXiMzxfoAxo", 2)
+	media10 := createSeedMedia("Media name 10", &mediaDesctiption10, "https://www.rupixel.ru/files/preview/1280x670/216650346699wr1lhom4dz8cd4mkcobjyt0yhc8bdu8bpxx9pkbxbehzsgg1ghdbhrnmhjs5kdeiofrfamgb9smyazet26h85ypyustpukknvoi.jpg", 2)
 
-	media11 := models.NewMedia("Media name 11", "png", uuid.New(), &mediaDesctiption11, "image", "https://ubifi.net/wp-content/uploads/2025/06/Kinds-of-Internet-Connection.webp", 2)
-	media12 := models.NewMedia("Media name 12", "jpg", uuid.New(), &mediaDesctiption12, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTs3HaWprjBE3nMGKyH-Myd8D3jK0U0EUqTLw&s", 2)
-	media13 := models.NewMedia("Media name 13", "png", uuid.New(), &mediaDesctiption13, "image", "https://image.geo.de/30140508/t/r4/v4/w1440/r0/-/internetz-f-209777524-jpg--79960-.jpg", 2)
-	media14 := models.NewMedia("Media name 14", "jpg", uuid.New(), &mediaDesctiption14, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS7N25ADdSYwSC-m7qUSqlwPsKd4ALT9F425Q&s", 3)
-	media15 := models.NewMedia("Media name 15", "png", uuid.New(), &mediaDesctiption15, "image", "https://www.wiwi.uni-wuerzburg.de/fileadmin/_processed_/3/9/csm_computer-1209641_1920_3a999762b2.jpg", 3)
-	//media16 := models.NewMedia("Media name 16", "jpg", uuid.New(), &mediaDesctiption16, "image", "https://res.cloudinary.com/jerrick/image/upload/v1682443907/64480e82daabca001da8fbbc.jpg", 10246, false)
+	media11 := createSeedMedia("Media name 11", &mediaDesctiption11, "https://www.rupixel.ru/files/preview/1280x878/21665130373sttvwtvwyjsszkxrv264yzejkkrqqj3cboksg0lfyikllxdre1ktpcaq3chdhajtqb6v7mpjyudueg3s2mik2zkjbqnbzjhn1fyz.jpg", 2)
+	media12 := createSeedMedia("Media name 12", &mediaDesctiption12, "https://www.rupixel.ru/files/preview/1280x853/21670435645hrzpmb7ulbwsywskhbqqshmnvj6k3dvdsdudpdh3f5q53cxpgz76iddddralyvwzmvozsjezysyrtellba6aarbigxdbkt3f4k87.jpg", 2)
+	media13 := createSeedMedia("Media name 13", &mediaDesctiption13, "https://www.rupixel.ru/files/preview/1280x853/21670435519xwxdww8x2j4cr5xoyqw9tt7npmaxrdgdxwzxzay29k83ue9nvpbbruqdlomxgcrmpoioff3wle88542i16tctedyk8vqerdqz2yk.jpg", 2)
+	media14 := createSeedMedia("Media name 14", &mediaDesctiption14, "https://www.rupixel.ru/files/preview/1280x853/21665040006ns9arjilitihgyiijhu6dxyyodg591qo6no4ndk1grnsebylbss4jy55qgip9kl4xdzx2qp9rc1c41sxpdtlk2azzspv7jhjc5zh.jpg", 3)
+	media15 := createSeedMedia("Media name 15", &mediaDesctiption15, "https://www.rupixel.ru/files/preview/1280x853/21670434247qj8u3gr5ogc9wzrzyconf5ghv3uwcedo6gxibqslogfm538wsgajyqqpse2vzvgmuqrhhukfzs1jpbiup0octekedb2xywkst1l2.jpg", 3)
+	media17 := createSeedMedia("Media name 17", &mediaDesctiption17, "https://www.rupixel.ru/files/preview/960x1280/11641743181889ylsprp5b2mnkwugzqarkiytrc0dblr9vit6jcdfln2anyjynushfbkmkubflwitrjpneb2w5fcn46zbwwkoxyy6rwo6gsij2dil4.jpg", 3)
+	media18 := createSeedMedia("Media name 18", &mediaDesctiption18, "https://www.rupixel.ru/files/preview/960x2081/11621743631669vznbleovv6zissbpp63sfwi1tkubthbgz8gpqgnu7xb4vjy6nicdppcivc7ks9gynlyrmylfoiyxifstr0tptng7mv7jz5asvcab.jpg", 3)
+	media19 := createSeedMedia("Media name 19", &mediaDesctiption19, "https://www.rupixel.ru/files/preview/1280x720/17551777355335f5nffqmi6idiyirjqggs8nmw4cvpw9nsdjtl3al1xbdh1jbogjwrq19noaggrukvqwz6wbz6oai4xwgtsdotuflvi8ykx7nwpxas.jpeg", 3)
+	media20 := createSeedMedia("Media name 20", &mediaDesctiption20, "https://www.rupixel.ru/files/preview/960x1105/116217525246396yvf93f9vp9xlbclvlolpqwkhrvmvf3ytcgmokyfq97ydv3pa4caniui9ousiultv05hxxgifgbp0godtwciyneachcnceo8xrvb.jpg", 4)
 
-	media17 := models.NewMedia("Media name 17", "png", uuid.New(), &mediaDesctiption17, "image", "https://fitaliancook.com/wp-content/uploads/2025/07/pasta-e-fagioli-rezept-beitragsbild.jpg", 3)
-	media18 := models.NewMedia("Media name 18", "jpg", uuid.New(), &mediaDesctiption18, "image", "https://eat.de/wp-content/uploads/2025/03/tuerkische-pasta-7014.jpg", 3)
-	media19 := models.NewMedia("Media name 19", "png", uuid.New(), &mediaDesctiption19, "image", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT0kWh_aX8DW5H8BkMJ3xqzXsRXPY2kyZu5ww&s", 3)
-	media20 := models.NewMedia("Media name 20", "jpg", uuid.New(), &mediaDesctiption20, "image", "https://images.gastronom.ru/TYj7-7529vyMsVom2kYJQl8MFrkWsrOY5hgaQPa1zsk/pr:article-cover-image/g:ce/rs:auto:0:0:0/L2Ntcy9hbGwtaW1hZ2VzL2IzY2RlN2ZjLTgzZjEtNGJlYi1iOGZmLWZhMzM3YzY1ODFlYy5qcGc.webp", 4)
+	media21 := createSeedMedia("Media name 21", &mediaDesctiption21, "https://www.rupixel.ru/files/preview/1280x853/21665134519fvkxxpn5v7oisahsojvuamkhmbxyblkgx8tzrreadxkdbyf8z16fhmzb9so30rvjyjyqftkmg2pfa81msu2ksb9dzbalmeiyargz.jpg", 4)
+	media22 := createSeedMedia("Media name 22", &mediaDesctiption22, "https://www.rupixel.ru/files/preview/1280x853/216651343549gt059kkcwux8ysufnsypezbyeu3zuhxblsyc5lumaz13vb4gskt9x0rqzb5dnma0f3myl8whc5xtqk9ro5v84zeygrs2n0rdbgb.jpg", 4)
 
-	media21 := models.NewMedia("Media name 21", "png", uuid.New(), &mediaDesctiption21, "image", "https://boxru.ru/upload/resize_cache/iblock/1af/400_400_140cd750bba9870f18aada2478b24840a/q3bxff3vhe8iljlcbpn4jlbx3szt2p1w.jpg", 4)
-	media22 := models.NewMedia("Media name 22", "jpg", uuid.New(), &mediaDesctiption22, "image", "https://s1.stc.all.kpcdn.net/putevoditel/projectid_346574/images/tild3037-3837-4461-a261-663863336336__photo.jpg", 4)
-
-	media23 := models.NewMedia("Media name 23", "png", uuid.New(), &mediaDesctiption23, "image", "https://space-pm.ru/uploads/market/stati/small/1719495934.jpg", 4)
+	media23 := createSeedMedia("Media name 23", &mediaDesctiption23, "https://www.rupixel.ru/files/preview/1280x854/21664949471delppmwiei3nutzlj0k3r7vfwydwqeumqifxsm57rlacpihruwgrcnncdbbdbt0thgvywlxoui1pbxvpbphjhdsbuajuytzdhoso.jpg", 4)
+	if err != nil {
+		return
+	}
 
 	media1ID, err := mediaRepo.Save(context.Background(), *media1)
 	if err != nil {
@@ -574,13 +587,13 @@ func MakeMock(mediaRepo media.MediaRepo,
 	post8.CreatedAt = now.Add(-48 * time.Hour)
 	post8.UpdatedAt = post8.CreatedAt
 
-	post1ID, err := postRepo.Save(context.Background(), *post1)
+	post2ID, err := postRepo.Save(context.Background(), *post2)
 	if err != nil {
 		// logger.Info("faild saving", zap.Error(err))
 		return
 	}
 
-	post2ID, err := postRepo.Save(context.Background(), *post2)
+	post1ID, err := postRepo.Save(context.Background(), *post1)
 	if err != nil {
 		// logger.Info("faild saving", zap.Error(err))
 		return
@@ -996,7 +1009,10 @@ func newSeedMediaFromURL(
 		return nil, err
 	}
 
-	return models.NewMedia(name, strings.TrimPrefix(extension, "."), mediaUUID, description, mimeType, link, authorID), nil
+	seedMedia := models.NewMedia(name, strings.TrimPrefix(extension, "."), mediaUUID, description, mimeType, link, authorID)
+	seedMedia.Size = len(body)
+
+	return seedMedia, nil
 }
 
 func downloadSeedImage(ctx context.Context, sourceURL string) ([]byte, string, string, error) {
@@ -1004,21 +1020,25 @@ func downloadSeedImage(ctx context.Context, sourceURL string) ([]byte, string, s
 	if err != nil {
 		return nil, "", "", err
 	}
+	req.Header.Set("User-Agent", seedUserAgent)
+	if strings.Contains(sourceURL, "rupixel.ru/") {
+		req.Header.Set("Referer", "https://www.rupixel.ru/")
+	}
 
 	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, "", "", err
+		return fallbackSeedImage(sourceURL)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return nil, "", "", fmt.Errorf("download %s: unexpected status %s", sourceURL, resp.Status)
+		return fallbackSeedImage(sourceURL)
 	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxSeedImageSize+1))
 	if err != nil {
-		return nil, "", "", err
+		return fallbackSeedImage(sourceURL)
 	}
 	if len(body) > maxSeedImageSize {
 		return nil, "", "", fmt.Errorf("download %s: image is larger than %d bytes", sourceURL, maxSeedImageSize)
@@ -1026,8 +1046,30 @@ func downloadSeedImage(ctx context.Context, sourceURL string) ([]byte, string, s
 
 	detected := mimetype.Detect(body)
 	if !strings.HasPrefix(detected.String(), "image/") {
-		return nil, "", "", fmt.Errorf("download %s: unsupported mime type %s", sourceURL, detected.String())
+		return fallbackSeedImage(sourceURL)
 	}
 
 	return body, detected.String(), detected.Extension(), nil
+}
+
+func fallbackSeedImage(sourceURL string) ([]byte, string, string, error) {
+	sum := sha1.Sum([]byte(sourceURL))
+	img := image.NewRGBA(image.Rect(0, 0, 64, 64))
+	base := color.RGBA{R: sum[0], G: sum[1], B: sum[2], A: 255}
+	accent := color.RGBA{R: 255 - sum[0], G: 255 - sum[1], B: 255 - sum[2], A: 255}
+	for y := 0; y < 64; y++ {
+		for x := 0; x < 64; x++ {
+			if (x+y)%17 == 0 || x == y || x == 63-y {
+				img.Set(x, y, accent)
+			} else {
+				img.Set(x, y, base)
+			}
+		}
+	}
+
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return nil, "", "", err
+	}
+	return buf.Bytes(), "image/png", ".png", nil
 }

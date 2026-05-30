@@ -1,6 +1,6 @@
 package repository
 
-//go:generate mockgen -source=repository.go -destination=mocks/repository_mock.go -package=mocks DB,QuestionRepo,RoomRepo,MemberRepo,RoomQuestionRepo,AnswerRepo,MessageRepo,RatingRepo
+//go:generate mockgen -source=repository.go -destination=mocks/repository_mock.go -package=mocks DB,QuestionRepo,RoomRepo,MemberRepo,RoomQuestionRepo,AnswerRepo,MessageRepo,RatingRepo,PublicParticipantRepo
 //go:generate mockgen -destination=mocks/pgx_mock.go -package=mocks github.com/jackc/pgx/v5 Row,Rows
 
 import (
@@ -25,15 +25,16 @@ type DB interface {
 }
 
 type Store struct {
-	db        DB
-	pool      *pgxpool.Pool
-	Questions QuestionRepo
-	Rooms     RoomRepo
-	Members   MemberRepo
-	RoomQs    RoomQuestionRepo
-	Answers   AnswerRepo
-	Messages  MessageRepo
-	Ratings   RatingRepo
+	db                 DB
+	pool               *pgxpool.Pool
+	Questions          QuestionRepo
+	Rooms              RoomRepo
+	Members            MemberRepo
+	RoomQs             RoomQuestionRepo
+	Answers            AnswerRepo
+	Messages           MessageRepo
+	Ratings            RatingRepo
+	PublicParticipants PublicParticipantRepo
 }
 
 func NewStore(db *pgxpool.Pool) Store {
@@ -42,15 +43,16 @@ func NewStore(db *pgxpool.Pool) Store {
 
 func newStore(db DB, pool *pgxpool.Pool) Store {
 	return Store{
-		db:        db,
-		pool:      pool,
-		Questions: NewQuestionStorage(db),
-		Rooms:     NewRoomStorage(db),
-		Members:   NewMemberStorage(db),
-		RoomQs:    NewRoomQuestionStorage(db),
-		Answers:   NewAnswerStorage(db),
-		Messages:  NewMessageStorage(db),
-		Ratings:   NewRatingStorage(db),
+		db:                 db,
+		pool:               pool,
+		Questions:          NewQuestionStorage(db),
+		Rooms:              NewRoomStorage(db),
+		Members:            NewMemberStorage(db),
+		RoomQs:             NewRoomQuestionStorage(db),
+		Answers:            NewAnswerStorage(db),
+		Messages:           NewMessageStorage(db),
+		Ratings:            NewRatingStorage(db),
+		PublicParticipants: NewPublicParticipantStorage(db),
 	}
 }
 
@@ -76,6 +78,7 @@ type QuestionRepo interface {
 	Get(ctx context.Context, id int64) (*model.Question, error)
 	List(ctx context.Context, gameType string, includeInactive bool, limit, offset int) ([]model.Question, error)
 	Random(ctx context.Context, gameType string, limit int) ([]model.Question, error)
+	PublicLobby(ctx context.Context) ([]model.Question, error)
 }
 
 type questionStorage struct {
@@ -179,10 +182,28 @@ func (s *questionStorage) Random(ctx context.Context, gameType string, limit int
 	return questions, nil
 }
 
+func (s *questionStorage) PublicLobby(ctx context.Context) ([]model.Question, error) {
+	var questions []model.Question
+	err := pgxscan.Select(ctx, s.db, &questions, `
+		SELECT
+			q.id, q.uid, q.game_type, q.question_text_ru, q.question_text_en,
+			q.correct_answer, q.is_active, q.created_at, q.updated_at
+		FROM game_public_lobby_question plq
+		JOIN game_question q ON q.id = plq.question_id
+		WHERE q.is_active=true
+		ORDER BY plq.position ASC
+	`)
+	if err != nil && !pgxscan.NotFound(err) {
+		return nil, err
+	}
+	return questions, nil
+}
+
 type RoomRepo interface {
 	Create(ctx context.Context, room *model.Room) error
 	Get(ctx context.Context, id int64) (*model.Room, error)
 	GetByInviteCode(ctx context.Context, code string) (*model.Room, error)
+	GetByInviteCodeForUpdate(ctx context.Context, code string) (*model.Room, error)
 	GetForUpdate(ctx context.Context, id int64) (*model.Room, error)
 	GetWaitingCreatedByProfile(ctx context.Context, profileID int64) (*model.Room, error)
 	ListForProfile(ctx context.Context, profileID int64, limit, offset int) ([]model.Room, error)
@@ -209,10 +230,10 @@ func (s *roomStorage) Create(ctx context.Context, room *model.Room) error {
 		room.Uid = uuid.New()
 	}
 	return s.db.QueryRow(ctx, `
-		INSERT INTO game_room (uid, title, invite_code, game_type, status, created_by_profile_id, max_players, password_hash, password_value, is_ranked, question_count, answer_timeout_sec)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		INSERT INTO game_room (uid, title, invite_code, game_type, status, created_by_profile_id, max_players, password_hash, password_value, is_ranked, is_public_lobby, question_count, answer_timeout_sec, round_pause_sec)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING id, created_at, updated_at
-	`, room.Uid, room.Title, room.InviteCode, room.GameType, room.Status, room.CreatedByProfileID, room.MaxPlayers, room.PasswordHash, room.PasswordValue, room.IsRanked, room.QuestionCount, room.AnswerTimeoutSec).Scan(&room.ID, &room.CreatedAt, &room.UpdatedAt)
+	`, room.Uid, room.Title, room.InviteCode, room.GameType, room.Status, room.CreatedByProfileID, room.MaxPlayers, room.PasswordHash, room.PasswordValue, room.IsRanked, room.IsPublicLobby, room.QuestionCount, room.AnswerTimeoutSec, room.RoundPauseSec).Scan(&room.ID, &room.CreatedAt, &room.UpdatedAt)
 }
 
 func (s *roomStorage) Get(ctx context.Context, id int64) (*model.Room, error) {
@@ -221,6 +242,10 @@ func (s *roomStorage) Get(ctx context.Context, id int64) (*model.Room, error) {
 
 func (s *roomStorage) GetByInviteCode(ctx context.Context, code string) (*model.Room, error) {
 	return s.get(ctx, `SELECT * FROM game_room WHERE invite_code=$1 AND is_active=true`, code)
+}
+
+func (s *roomStorage) GetByInviteCodeForUpdate(ctx context.Context, code string) (*model.Room, error) {
+	return s.get(ctx, `SELECT * FROM game_room WHERE invite_code=$1 AND is_active=true FOR UPDATE`, code)
 }
 
 func (s *roomStorage) GetForUpdate(ctx context.Context, id int64) (*model.Room, error) {
@@ -234,6 +259,7 @@ func (s *roomStorage) GetWaitingCreatedByProfile(ctx context.Context, profileID 
 		WHERE created_by_profile_id=$1
 		  AND is_active=true
 		  AND status='waiting'
+		  AND COALESCE(is_public_lobby, false)=false
 		ORDER BY updated_at DESC, id DESC
 		LIMIT 1
 	`, profileID)
@@ -259,6 +285,7 @@ func (s *roomStorage) ListForProfile(ctx context.Context, profileID int64, limit
 		FROM game_room r
 		WHERE r.is_active=true
 		  AND r.status='waiting'
+		  AND COALESCE(r.is_public_lobby, false)=false
 		ORDER BY r.updated_at DESC
 		LIMIT $1 OFFSET $2
 	`, limit, offset)
@@ -377,6 +404,7 @@ func (s *roomStorage) TouchEmptyWaiting(ctx context.Context, roomID int64) error
 		WHERE r.id=$1
 		  AND r.status='waiting'
 		  AND r.is_active=true
+		  AND COALESCE(r.is_public_lobby, false)=false
 		  AND NOT EXISTS (
 		    SELECT 1
 		    FROM game_room_member m
@@ -402,6 +430,7 @@ func (s *roomStorage) DeactivateEmptyWaitingOlderThan(ctx context.Context, older
 		SET is_active=false, updated_at=NOW(), finished_at=COALESCE(finished_at, NOW())
 		WHERE r.status='waiting'
 		  AND r.is_active=true
+		  AND COALESCE(r.is_public_lobby, false)=false
 		  AND r.updated_at <= NOW() - ($1 * INTERVAL '1 second')
 		  AND NOT EXISTS (
 		    SELECT 1
@@ -496,6 +525,7 @@ func (s *memberStorage) DeactivateStaleWaiting(ctx context.Context, olderThan ti
 		  AND m.is_active=true
 		  AND r.is_active=true
 		  AND r.status='waiting'
+		  AND NOT r.is_public_lobby
 		  AND m.updated_at <= NOW() - ($1 * INTERVAL '1 second')
 		RETURNING m.room_id
 	`, seconds)
@@ -635,6 +665,74 @@ func (s *memberStorage) Stats(ctx context.Context, profileID int64) (model.Profi
 		WHERE m.profile_id=$1 AND r.status='finished' AND r.is_active=true
 	`, profileID)
 	return stats, err
+}
+
+type PublicParticipantRepo interface {
+	CreateGuestProfile(ctx context.Context) (int64, error)
+	Create(ctx context.Context, participant *model.PublicParticipant) error
+	GetByTokenHash(ctx context.Context, tokenHash string) (*model.PublicParticipant, error)
+	GetByProfile(ctx context.Context, profileID int64) (*model.PublicParticipant, error)
+}
+
+type publicParticipantStorage struct {
+	db DB
+}
+
+func NewPublicParticipantStorage(db DB) PublicParticipantRepo {
+	return &publicParticipantStorage{db: db}
+}
+
+func (s *publicParticipantStorage) CreateGuestProfile(ctx context.Context) (int64, error) {
+	var profileID int64
+	err := s.db.QueryRow(ctx, `
+		INSERT INTO profile (uid)
+		VALUES ($1)
+		RETURNING id
+	`, uuid.New()).Scan(&profileID)
+	return profileID, err
+}
+
+func (s *publicParticipantStorage) Create(ctx context.Context, participant *model.PublicParticipant) error {
+	if participant.Uid == uuid.Nil {
+		participant.Uid = uuid.New()
+	}
+	return s.db.QueryRow(ctx, `
+		INSERT INTO game_public_participant (uid, room_id, profile_id, token_hash, first_name, last_name)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, created_at, updated_at
+	`, participant.Uid, participant.RoomID, participant.ProfileID, participant.TokenHash, participant.FirstName, participant.LastName).Scan(&participant.ID, &participant.CreatedAt, &participant.UpdatedAt)
+}
+
+func (s *publicParticipantStorage) GetByTokenHash(ctx context.Context, tokenHash string) (*model.PublicParticipant, error) {
+	var participant model.PublicParticipant
+	err := pgxscan.Get(ctx, s.db, &participant, `
+		SELECT *
+		FROM game_public_participant
+		WHERE token_hash=$1 AND is_active=true
+	`, tokenHash)
+	if err != nil {
+		if pgxscan.NotFound(err) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &participant, nil
+}
+
+func (s *publicParticipantStorage) GetByProfile(ctx context.Context, profileID int64) (*model.PublicParticipant, error) {
+	var participant model.PublicParticipant
+	err := pgxscan.Get(ctx, s.db, &participant, `
+		SELECT *
+		FROM game_public_participant
+		WHERE profile_id=$1 AND is_active=true
+	`, profileID)
+	if err != nil {
+		if pgxscan.NotFound(err) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &participant, nil
 }
 
 type RoomQuestionRepo interface {

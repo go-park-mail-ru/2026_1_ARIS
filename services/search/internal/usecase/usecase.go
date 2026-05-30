@@ -101,24 +101,7 @@ func (s *Service) Search(ctx context.Context, query string, limit int) (*Result,
 }
 
 func (s *Service) searchUsers(ctx context.Context, query string, limit int) ([]UserResult, error) {
-	body := map[string]any{
-		"query": map[string]any{
-			"bool": map[string]any{
-				"must": map[string]any{
-					"multi_match": map[string]any{
-						"query":     query,
-						"fields":    []string{"username^2", "full_name^1.5", "first_name", "last_name"},
-						"type":      "best_fields",
-						"fuzziness": "AUTO",
-					},
-				},
-				"filter": []map[string]any{
-					{"term": map[string]any{"is_active": true}},
-				},
-			},
-		},
-		"size": limit,
-	}
+	body := userSearchBody(query, limit)
 
 	type hit struct {
 		Source struct {
@@ -149,6 +132,80 @@ func (s *Service) searchUsers(ctx context.Context, query string, limit int) ([]U
 		users = append(users, u)
 	}
 	return users, nil
+}
+
+func userSearchBody(query string, limit int) map[string]any {
+	normalized := strings.ToLower(query)
+
+	return map[string]any{
+		"query": map[string]any{
+			"bool": map[string]any{
+				"should": []map[string]any{
+					{"term": map[string]any{
+						"username.keyword": map[string]any{
+							"value": normalized,
+							"boost": 12,
+						},
+					}},
+					{"match_phrase": map[string]any{
+						"first_name": map[string]any{
+							"query": query,
+							"boost": 10,
+						},
+					}},
+					{"match": map[string]any{
+						"first_name": map[string]any{
+							"query":    query,
+							"operator": "and",
+							"boost":    8,
+						},
+					}},
+					{"match_phrase": map[string]any{
+						"full_name": map[string]any{
+							"query": query,
+							"boost": 5,
+						},
+					}},
+					{"match": map[string]any{
+						"full_name": map[string]any{
+							"query":    query,
+							"operator": "and",
+							"boost":    3,
+						},
+					}},
+					{"match_phrase": map[string]any{
+						"last_name": map[string]any{
+							"query": query,
+							"boost": 2,
+						},
+					}},
+					{"match": map[string]any{
+						"last_name": map[string]any{
+							"query":    query,
+							"operator": "and",
+							"boost":    1.5,
+						},
+					}},
+					{"multi_match": map[string]any{
+						"query":     query,
+						"fields":    []string{"username^2", "first_name^2", "full_name^1.5", "last_name"},
+						"type":      "best_fields",
+						"fuzziness": "AUTO",
+						"boost":     0.5,
+					}},
+				},
+				"minimum_should_match": 1,
+				"filter": []map[string]any{
+					{"term": map[string]any{"is_active": true}},
+				},
+			},
+		},
+		"size": limit,
+		"sort": []map[string]any{
+			{"_score": map[string]any{"order": "desc"}},
+			{"user_account_id": map[string]any{"order": "asc"}},
+		},
+	}
 }
 
 func (s *Service) searchCommunities(ctx context.Context, query string, limit int) ([]CommunityResult, error) {

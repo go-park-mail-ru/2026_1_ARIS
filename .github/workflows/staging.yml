@@ -85,5 +85,10 @@ jobs:
             cd ${{ secrets.STAGING_DEPLOY_PATH }}
             git fetch origin
             git rm --cached -r --ignore-unmatch db/clickhouse || true
+            if [ -e db/clickhouse ]; then
+              echo "Removing legacy db/clickhouse checkout path..."
+              rm -rf db/clickhouse 2>/dev/null || \
+                docker run --rm -v "$PWD/db:/work" alpine:3.20 sh -c 'rm -rf /work/clickhouse'
+            fi
             git switch -f -C dev origin/dev
             sh scripts/deploy-remote.sh

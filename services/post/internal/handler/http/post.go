@@ -642,16 +642,17 @@ func mapFeed(feed usecase.FeedResult) feedResponse {
 			files = append(files, mediaFeedDTO{ID: file.UID, Name: file.Name, MimeType: file.MimeType, Link: file.URL})
 		}
 		posts = append(posts, postFeedDTO{
-			ID:        post.ID,
-			Text:      post.Text,
-			Author:    authorFeedDTO{ID: strconv.FormatInt(post.Author.ID, 10), FirstName: post.Author.FirstName, LastName: post.Author.LastName, Username: post.Author.Username, AvatarLink: derefString(post.Author.AvatarURL)},
-			CreatedAt: post.CreatedAt,
-			Likes:     post.Likes,
-			IsLiked:   post.IsLiked,
-			Comments:  post.Comments,
-			Reposts:   post.Reposts,
-			Medias:    medias,
-			Files:     files,
+			ID:          post.ID,
+			Text:        post.Text,
+			Author:      authorFeedDTO{ID: strconv.FormatInt(post.Author.ID, 10), FirstName: post.Author.FirstName, LastName: post.Author.LastName, Username: post.Author.Username, AvatarLink: derefString(post.Author.AvatarURL)},
+			CommunityID: post.CommunityID,
+			CreatedAt:   post.CreatedAt,
+			Likes:       post.Likes,
+			IsLiked:     post.IsLiked,
+			Comments:    post.Comments,
+			Reposts:     post.Reposts,
+			Medias:      medias,
+			Files:       files,
 		})
 	}
 	return feedResponse{Items: posts, NextCursor: feed.Cursor, HasMore: feed.HasMore}
