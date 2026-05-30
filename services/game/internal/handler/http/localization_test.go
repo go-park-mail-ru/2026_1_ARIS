@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	nethttp "net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-park-mail-ru/2026_1_ARIS/services/game/internal/usecase"
@@ -50,6 +51,51 @@ func TestRequestLanguage(t *testing.T) {
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9,ru;q=0.5")
 	if language := requestLanguage(req); language != "en" {
 		t.Fatalf("expected english accept-language, got %q", language)
+	}
+}
+
+func TestMapRoomKeepsZeroCorrectAnswerForCompletedQuestion(t *testing.T) {
+	completedAt := "2026-05-30T10:00:00Z"
+	room := usecase.Room{
+		ID:         1,
+		GameType:   "number_duel",
+		Status:     "active",
+		MaxPlayers: 2,
+		Questions: []usecase.RoomQuestion{
+			{
+				Position:    1,
+				Status:      "completed",
+				CompletedAt: &completedAt,
+				Question: usecase.Question{
+					ID:            10,
+					Text:          usecase.LocalizedText{RU: "Сколько животных каждого вида взял Моисей на ковчег?", EN: "How many animals of each kind did Moses take onto the ark?"},
+					CorrectAnswer: 0,
+					IsActive:      true,
+				},
+			},
+			{
+				Position: 2,
+				Status:   "active",
+				Question: usecase.Question{
+					ID:            11,
+					Text:          usecase.LocalizedText{RU: "Скрытый вопрос", EN: "Hidden question"},
+					CorrectAnswer: 42,
+					IsActive:      true,
+				},
+			},
+		},
+	}
+
+	data, err := json.Marshal(mapRoom(room, "ru"))
+	if err != nil {
+		t.Fatalf("unexpected marshal error: %v", err)
+	}
+	body := string(data)
+	if !strings.Contains(body, `"correctAnswer":0`) {
+		t.Fatalf("expected completed zero answer in payload: %s", body)
+	}
+	if strings.Contains(body, `"correctAnswer":42`) {
+		t.Fatalf("active question leaked correct answer: %s", body)
 	}
 }
 

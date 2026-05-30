@@ -274,4 +274,5 @@ write_env services/game/.env \
   POOL_MAX_CONN_IDLE_TIME "$POOL_MAX_CONN_IDLE_TIME" \
   "" "" \
   USER_GRPC_ADDR user:8004 \
-  AUTH_GRPC_ADDR auth:8002
+  AUTH_GRPC_ADDR auth:8002 \
+  SUPPORT_GRPC_ADDR support:8007

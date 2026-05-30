@@ -90,6 +90,74 @@ func TestCreateRoom_EmptyTitle_ReturnsErrInvalidInput(t *testing.T) {
 	}
 }
 
+func TestJoinRoom_PublicLobbyAuthenticatedPlayer(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	const (
+		userAccountID = int64(5)
+		profileID     = int64(50)
+		roomID        = int64(7)
+	)
+	svc, rooms, members, _, roomQuestions, _, _, users := newGameService(ctrl)
+	room := &model.Room{
+		ID:                 roomID,
+		Title:              "Public lobby PUB123",
+		InviteCode:         "PUB123",
+		GameType:           model.DefaultGameType,
+		Status:             model.RoomStatusWaiting,
+		CreatedByProfileID: 10,
+		MaxPlayers:         80,
+		IsPublicLobby:      true,
+		QuestionCount:      5,
+		AnswerTimeoutSec:   7,
+	}
+
+	users.EXPECT().
+		GetProfileByUserAccount(gomock.Any(), &userpb.GetProfileByUserAccountRequest{UserAccountId: userAccountID}).
+		Return(&userpb.GetProfileByUserAccountResponse{ProfileId: profileID}, nil).
+		Times(2)
+	members.EXPECT().DeactivateStaleWaiting(gomock.Any(), staleWaitingMemberTTL).Return(nil, nil).Times(2)
+	rooms.EXPECT().DeactivateEmptyWaitingOlderThan(gomock.Any(), emptyWaitingRoomTTL).Return(nil).Times(2)
+
+	rooms.EXPECT().GetByInviteCode(gomock.Any(), "PUB123").Return(room, nil)
+	listCalls := 0
+	members.EXPECT().List(gomock.Any(), roomID).DoAndReturn(func(context.Context, int64) ([]model.RoomMember, error) {
+		listCalls++
+		if listCalls == 1 {
+			return []model.RoomMember{{RoomID: roomID, ProfileID: 90, IsActive: true}}, nil
+		}
+		return []model.RoomMember{
+			{RoomID: roomID, ProfileID: 90, IsActive: true, IsReady: true},
+			{RoomID: roomID, ProfileID: profileID, IsActive: true, IsReady: true},
+		}, nil
+	}).Times(2)
+	members.EXPECT().Add(gomock.Any(), roomID, profileID).Return(nil)
+	members.EXPECT().SetReady(gomock.Any(), roomID, profileID, true).Return(nil)
+
+	rooms.EXPECT().Get(gomock.Any(), roomID).Return(room, nil)
+	members.EXPECT().IsMember(gomock.Any(), roomID, profileID).Return(true, nil)
+	members.EXPECT().Stats(gomock.Any(), profileID).Return(model.ProfileStats{}, nil)
+	roomQuestions.EXPECT().List(gomock.Any(), roomID).Return(nil, nil)
+	users.EXPECT().GetProfileSummary(gomock.Any(), gomock.Any()).Return(&userpb.GetProfileSummaryResponse{
+		FirstName: "Player",
+		LastName:  "Public",
+		Username:  "player",
+	}, nil).AnyTimes()
+
+	joined, err := svc.JoinRoom(ctx, userAccountID, " pub123 ", "", "")
+	if err != nil {
+		t.Fatalf("JoinRoom() error = %v", err)
+	}
+	if !joined.IsPublicLobby || joined.ID != roomID || len(joined.Players) != 2 {
+		t.Fatalf("unexpected public room: %+v", joined)
+	}
+	if joined.Players[1].ProfileID != profileID || !joined.Players[1].IsReady {
+		t.Fatalf("registered player was not joined as ready: %+v", joined.Players)
+	}
+}
+
 func TestCreateRoom_ProfileIDByAccountFails(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

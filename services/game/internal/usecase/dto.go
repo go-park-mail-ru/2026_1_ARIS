@@ -8,6 +8,12 @@ type CreateRoomInput struct {
 	IsRanked         bool
 	QuestionCount    int
 	AnswerTimeoutSec int
+	RoundPauseSec    int
+}
+
+type CreatePublicRoomInput struct {
+	AnswerTimeoutSec int
+	RoundPauseSec    int
 }
 
 type LocalizedText struct {
@@ -94,8 +100,10 @@ type Room struct {
 	HasPassword             bool
 	Password                string
 	IsRanked                bool
+	IsPublicLobby           bool
 	QuestionCount           int
 	AnswerTimeoutSec        int
+	RoundPauseSec           int
 	Creator                 Player
 	CurrentQuestionIndex    int
 	NextQuestionAt          *string
@@ -112,6 +120,11 @@ type Room struct {
 	CreatedAt               string
 	UpdatedAt               string
 	FinishedAt              *string
+}
+
+type PublicJoinResult struct {
+	Token string
+	Room  Room
 }
 
 type HistoryItem struct {
