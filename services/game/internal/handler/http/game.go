@@ -20,6 +20,19 @@ type Handler struct {
 	hub  *websocket.Hub
 }
 
+type publicGameService interface {
+	CreatePublicRoom(context.Context, int64, usecase.CreatePublicRoomInput) (usecase.Room, error)
+	JoinPublicRoom(context.Context, string, string, string) (usecase.PublicJoinResult, error)
+	GetPublicRoom(context.Context, int64, string) (usecase.Room, error)
+	PublicProfileByToken(context.Context, int64, string) (int64, error)
+	GetRoomByProfile(context.Context, int64, int64) (usecase.Room, error)
+	SubmitAnswerByProfile(context.Context, int64, int64, float64) (usecase.Room, error)
+	ListRoomMessagesByProfile(context.Context, int64, int64, int, int) ([]usecase.RoomMessage, error)
+	SendRoomMessageByProfile(context.Context, int64, int64, string) (usecase.RoomMessage, error)
+	TouchWaitingRoomMemberByProfile(context.Context, int64, int64) error
+	LeaveWaitingRoomOnDisconnectByProfile(context.Context, int64, int64) error
+}
+
 const waitingRoomDisconnectGrace = 3 * time.Second
 
 func New(game GameService, hub *websocket.Hub) *Handler {
@@ -29,12 +42,19 @@ func New(game GameService, hub *websocket.Hub) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler) http.Handler) {
+	r.Post("/games/public-rooms/{inviteCode}/join", h.JoinPublicRoom)
+	r.Get("/games/public-rooms/{roomID}", h.GetPublicRoom)
+	r.Post("/games/public-rooms/{roomID}/answers", h.SubmitPublicAnswer)
+	r.Get("/games/public-rooms/{roomID}/messages", h.ListPublicRoomMessages)
+	r.Post("/games/public-rooms/{roomID}/messages", h.SendPublicRoomMessage)
+
 	r.Group(func(r chi.Router) {
 		if authMiddleware != nil {
 			r.Use(authMiddleware)
 		}
 		r.Get("/games/rooms", h.ListRooms)
 		r.Post("/games/rooms", h.CreateRoom)
+		r.Post("/games/public-rooms", h.CreatePublicRoom)
 		r.Post("/games/rooms/join", h.JoinRoom)
 		r.Get("/games/rooms/{roomID}", h.GetRoom)
 		r.Delete("/games/rooms/{roomID}", h.DisbandRoom)
@@ -63,6 +83,8 @@ func (h *Handler) RegisterRoutes(r chi.Router, authMiddleware func(http.Handler)
 }
 
 func (h *Handler) RegisterWebSocketRoute(r chi.Router, authMiddleware func(http.Handler) http.Handler) {
+	r.Get("/ws/games/public/{roomID}", h.HandlePublicWebSocket)
+
 	r.Group(func(r chi.Router) {
 		if authMiddleware != nil {
 			r.Use(authMiddleware)
@@ -88,6 +110,7 @@ func (h *Handler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 		IsRanked:         req.IsRanked,
 		QuestionCount:    req.QuestionCount,
 		AnswerTimeoutSec: req.AnswerTimeoutSec,
+		RoundPauseSec:    req.RoundPauseSec,
 	})
 	if err != nil {
 		if errors.Is(err, usecase.ErrActiveCreatedRoom) {
@@ -97,6 +120,30 @@ func (h *Handler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusCreated, mapRoom(room, requestLanguage(r)))
+}
+
+func (h *Handler) CreatePublicRoom(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFromContext(w, r)
+	if !ok {
+		return
+	}
+	var req createPublicRoomRequest
+	if r.ContentLength != 0 && !utils.DecodeJSON(w, r, &req) {
+		return
+	}
+	publicGame, ok := h.publicGame(w)
+	if !ok {
+		return
+	}
+	room, err := publicGame.CreatePublicRoom(r.Context(), userID, usecase.CreatePublicRoomInput{
+		AnswerTimeoutSec: req.AnswerTimeoutSec,
+		RoundPauseSec:    req.RoundPauseSec,
+	})
+	if err != nil {
 		writeServiceError(w, err)
 		return
 	}
@@ -118,6 +165,122 @@ func (h *Handler) JoinRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.WriteJSON(w, http.StatusOK, mapRoom(room, requestLanguage(r)))
+}
+
+func (h *Handler) JoinPublicRoom(w http.ResponseWriter, r *http.Request) {
+	publicGame, ok := h.publicGame(w)
+	if !ok {
+		return
+	}
+	var req publicJoinRoomRequest
+	if !utils.DecodeJSON(w, r, &req) {
+		return
+	}
+	result, err := publicGame.JoinPublicRoom(r.Context(), chi.URLParam(r, "inviteCode"), req.FirstName, req.LastName)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, publicJoinRoomResponse{
+		Token: result.Token,
+		Room:  mapRoom(result.Room, requestLanguage(r)),
+	})
+}
+
+func (h *Handler) GetPublicRoom(w http.ResponseWriter, r *http.Request) {
+	publicGame, ok := h.publicGame(w)
+	if !ok {
+		return
+	}
+	roomID, ok := parsePathID(w, chi.URLParam(r, "roomID"), "неверный ID комнаты")
+	if !ok {
+		return
+	}
+	token := publicGuestTokenFromRequest(r)
+	profileID, err := publicGame.PublicProfileByToken(r.Context(), roomID, token)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	_ = publicGame.TouchWaitingRoomMemberByProfile(r.Context(), profileID, roomID)
+	room, err := publicGame.GetRoomByProfile(r.Context(), profileID, roomID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, mapRoom(room, requestLanguage(r)))
+}
+
+func (h *Handler) SubmitPublicAnswer(w http.ResponseWriter, r *http.Request) {
+	publicGame, ok := h.publicGame(w)
+	if !ok {
+		return
+	}
+	roomID, ok := parsePathID(w, chi.URLParam(r, "roomID"), "неверный ID комнаты")
+	if !ok {
+		return
+	}
+	var req submitAnswerRequest
+	if !utils.DecodeJSON(w, r, &req) {
+		return
+	}
+	profileID, err := publicGame.PublicProfileByToken(r.Context(), roomID, publicGuestTokenFromRequest(r))
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	room, err := publicGame.SubmitAnswerByProfile(r.Context(), profileID, roomID, req.Answer)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, mapRoom(room, requestLanguage(r)))
+}
+
+func (h *Handler) ListPublicRoomMessages(w http.ResponseWriter, r *http.Request) {
+	publicGame, ok := h.publicGame(w)
+	if !ok {
+		return
+	}
+	roomID, profileID, ok := h.publicProfileAndRoomID(w, r)
+	if !ok {
+		return
+	}
+	_ = publicGame.TouchWaitingRoomMemberByProfile(r.Context(), profileID, roomID)
+	messages, err := publicGame.ListRoomMessagesByProfile(r.Context(), profileID, roomID, queryInt(r, "limit", 100), queryInt(r, "offset", 0))
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	resp := make([]roomMessageResponse, 0, len(messages))
+	for _, message := range messages {
+		resp = append(resp, mapRoomMessage(message))
+	}
+	utils.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *Handler) SendPublicRoomMessage(w http.ResponseWriter, r *http.Request) {
+	publicGame, ok := h.publicGame(w)
+	if !ok {
+		return
+	}
+	roomID, profileID, ok := h.publicProfileAndRoomID(w, r)
+	if !ok {
+		return
+	}
+	var req roomMessageRequest
+	if !utils.DecodeJSON(w, r, &req) {
+		return
+	}
+	_ = publicGame.TouchWaitingRoomMemberByProfile(r.Context(), profileID, roomID)
+	message, err := publicGame.SendRoomMessageByProfile(r.Context(), profileID, roomID, req.Text)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	resp := mapRoomMessage(message)
+	h.broadcastRoomMessage(roomID, resp)
+	utils.WriteJSON(w, http.StatusCreated, resp)
 }
 
 func (h *Handler) ListRooms(w http.ResponseWriter, r *http.Request) {
@@ -526,6 +689,45 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *Handler) HandlePublicWebSocket(w http.ResponseWriter, r *http.Request) {
+	publicGame, ok := h.publicGame(w)
+	if !ok {
+		return
+	}
+	roomID, ok := parsePathID(w, chi.URLParam(r, "roomID"), "неверный ID комнаты")
+	if !ok {
+		return
+	}
+	token := publicGuestTokenFromRequest(r)
+	profileID, err := publicGame.PublicProfileByToken(r.Context(), roomID, token)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	room, err := publicGame.GetRoomByProfile(r.Context(), profileID, roomID)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	_ = publicGame.TouchWaitingRoomMemberByProfile(r.Context(), profileID, roomID)
+	language := requestLanguage(r)
+	initial, _ := utils.MarshalJSON(socketEvent{Type: "room_state", Room: ptr(mapRoom(room, language))})
+	if err := websocket.Serve(
+		h.hub,
+		w,
+		r,
+		strconv.FormatInt(roomID, 10),
+		-profileID,
+		language,
+		initial,
+		h.handleSocketMessage,
+		h.handleSocketDisconnect,
+		h.handleSocketHeartbeat,
+	); err != nil {
+		writeError(w, err.Error(), http.StatusBadRequest)
+	}
+}
+
 func (h *Handler) handleSocketMessage(ctx context.Context, roomIDRaw string, userID int64, payload []byte) ([]byte, error) {
 	roomID, err := strconv.ParseInt(roomIDRaw, 10, 64)
 	if err != nil || roomID <= 0 {
@@ -534,6 +736,31 @@ func (h *Handler) handleSocketMessage(ctx context.Context, roomIDRaw string, use
 	var msg socketMessage
 	if err := utils.UnmarshalJSON(payload, &msg); err != nil {
 		return marshalEvent(socketEvent{Type: "error", Error: "неверный формат сообщения"}), nil
+	}
+	if userID < 0 {
+		if msg.Type == "room_message" || msg.Type == "room_chat_message" {
+			publicGame, ok := h.game.(publicGameService)
+			if !ok {
+				return marshalEvent(socketEvent{Type: "error", Error: serviceErrorMessage(usecase.ErrForbidden)}), nil
+			}
+			message, err := publicGame.SendRoomMessageByProfile(ctx, -userID, roomID, msg.Text)
+			if err != nil {
+				return marshalEvent(socketEvent{Type: "error", Error: serviceErrorMessage(err)}), nil
+			}
+			h.broadcastRoomMessage(roomID, mapRoomMessage(message))
+			return nil, nil
+		}
+		if msg.Type != "" && msg.Type != "submit_answer" {
+			return marshalEvent(socketEvent{Type: "error", Error: "неподдерживаемый тип сообщения"}), nil
+		}
+		publicGame, ok := h.game.(publicGameService)
+		if !ok {
+			return marshalEvent(socketEvent{Type: "error", Error: serviceErrorMessage(usecase.ErrForbidden)}), nil
+		}
+		if _, err := publicGame.SubmitAnswerByProfile(ctx, -userID, roomID, msg.Answer); err != nil {
+			return marshalEvent(socketEvent{Type: "error", Error: serviceErrorMessage(err)}), nil
+		}
+		return nil, nil
 	}
 	if msg.Type == "room_message" || msg.Type == "room_chat_message" {
 		message, err := h.game.SendRoomMessage(ctx, userID, roomID, msg.Text)
@@ -582,6 +809,9 @@ func (h *Handler) handleSocketDisconnect(ctx context.Context, roomIDRaw string, 
 		}
 		disconnectCtx, cancel := context.WithTimeout(context.Background(), waitingRoomDisconnectGrace)
 		defer cancel()
+		if userID < 0 {
+			return
+		}
 		if room, err := h.game.GetRoom(disconnectCtx, userID, roomID); err == nil {
 			h.broadcastDisconnectRemovalMessage(room.ID, disconnectingPlayer(room))
 		}
@@ -594,6 +824,12 @@ func (h *Handler) handleSocketHeartbeat(ctx context.Context, roomIDRaw string, u
 	if err != nil || roomID <= 0 {
 		return
 	}
+	if userID < 0 {
+		if publicGame, ok := h.game.(publicGameService); ok {
+			_ = publicGame.TouchWaitingRoomMemberByProfile(ctx, -userID, roomID)
+		}
+		return
+	}
 	_ = h.game.TouchWaitingRoomMember(ctx, userID, roomID)
 }
 
@@ -602,6 +838,17 @@ func (h *Handler) broadcastRoom(ctx context.Context, roomID int64) {
 		return
 	}
 	h.hub.BroadcastRoomFunc(strconv.FormatInt(roomID, 10), func(userID int64, language string) []byte {
+		if userID < 0 {
+			publicGame, ok := h.game.(publicGameService)
+			if !ok {
+				return marshalEvent(socketEvent{Type: "room_updated"})
+			}
+			room, err := publicGame.GetRoomByProfile(ctx, -userID, roomID)
+			if err != nil {
+				return marshalEvent(socketEvent{Type: "room_updated"})
+			}
+			return marshalEvent(socketEvent{Type: "room_state", Room: ptr(mapRoom(room, language))})
+		}
 		room, err := h.game.GetRoom(ctx, userID, roomID)
 		if err != nil {
 			return marshalEvent(socketEvent{Type: "room_updated"})
@@ -657,6 +904,15 @@ func playerDisplayName(player usecase.Player) string {
 	return "игроком"
 }
 
+func (h *Handler) publicGame(w http.ResponseWriter) (publicGameService, bool) {
+	publicGame, ok := h.game.(publicGameService)
+	if !ok {
+		writeError(w, "public lobby is unavailable", http.StatusNotImplemented)
+		return nil, false
+	}
+	return publicGame, true
+}
+
 func (h *Handler) userAndRoomID(w http.ResponseWriter, r *http.Request) (int64, int64, bool) {
 	userID, ok := userIDFromContext(w, r)
 	if !ok {
@@ -666,6 +922,23 @@ func (h *Handler) userAndRoomID(w http.ResponseWriter, r *http.Request) (int64, 
 	return userID, roomID, ok
 }
 
+func (h *Handler) publicProfileAndRoomID(w http.ResponseWriter, r *http.Request) (int64, int64, bool) {
+	publicGame, ok := h.publicGame(w)
+	if !ok {
+		return 0, 0, false
+	}
+	roomID, ok := parsePathID(w, chi.URLParam(r, "roomID"), "неверный ID комнаты")
+	if !ok {
+		return 0, 0, false
+	}
+	profileID, err := publicGame.PublicProfileByToken(r.Context(), roomID, publicGuestTokenFromRequest(r))
+	if err != nil {
+		writeServiceError(w, err)
+		return 0, 0, false
+	}
+	return roomID, profileID, true
+}
+
 func userIDFromContext(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	userID, ok := r.Context().Value("user_id").(int64)
 	if !ok || userID <= 0 {
@@ -673,6 +946,18 @@ func userIDFromContext(w http.ResponseWriter, r *http.Request) (int64, bool) {
 		return 0, false
 	}
 	return userID, true
+}
+
+func publicGuestTokenFromRequest(r *http.Request) string {
+	for _, value := range []string{
+		r.Header.Get("X-Game-Guest-Token"),
+		r.URL.Query().Get("token"),
+	} {
+		if token := strings.TrimSpace(value); token != "" {
+			return token
+		}
+	}
+	return ""
 }
 
 func parsePathID(w http.ResponseWriter, raw string, message string) (int64, bool) {
@@ -810,8 +1095,10 @@ func mapRoom(room usecase.Room, language string) roomResponse {
 		HasPassword:             room.HasPassword,
 		Password:                room.Password,
 		IsRanked:                room.IsRanked,
+		IsPublicLobby:           room.IsPublicLobby,
 		QuestionCount:           room.QuestionCount,
 		AnswerTimeoutSec:        room.AnswerTimeoutSec,
+		RoundPauseSec:           room.RoundPauseSec,
 		Creator:                 mapPlayer(room.Creator),
 		CurrentQuestionIndex:    room.CurrentQuestionIndex,
 		NextQuestionAt:          room.NextQuestionAt,
@@ -873,7 +1160,7 @@ func mapRoomQuestions(items []usecase.RoomQuestion, language string) []roomQuest
 		result = append(result, roomQuestionResponse{
 			Position:        item.Position,
 			Status:          item.Status,
-			Question:        mapRoomQuestionPayload(item.Question, language),
+			Question:        mapRoomQuestionPayload(item.Question, language, item.Status == "completed" || item.CompletedAt != nil),
 			WinnerProfileID: int64PtrString(item.WinnerProfileID),
 			StartedAt:       item.StartedAt,
 			DeadlineAt:      item.DeadlineAt,
@@ -893,13 +1180,16 @@ func mapQuestion(item usecase.Question) questionResponse {
 	}
 }
 
-func mapRoomQuestionPayload(item usecase.Question, language string) roomQuestionPayloadResponse {
-	return roomQuestionPayloadResponse{
-		ID:            int64String(item.ID),
-		Text:          localizedValue(item.Text, language),
-		CorrectAnswer: item.CorrectAnswer,
-		IsActive:      item.IsActive,
+func mapRoomQuestionPayload(item usecase.Question, language string, revealAnswer bool) roomQuestionPayloadResponse {
+	response := roomQuestionPayloadResponse{
+		ID:       int64String(item.ID),
+		Text:     localizedValue(item.Text, language),
+		IsActive: item.IsActive,
 	}
+	if revealAnswer {
+		response.CorrectAnswer = &item.CorrectAnswer
+	}
+	return response
 }
 
 func mapAnswers(items []usecase.Answer) []answerResponse {

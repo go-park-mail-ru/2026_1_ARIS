@@ -8,11 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	supportpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/support"
 	userpb "github.com/go-park-mail-ru/2026_1_ARIS/proto/user"
@@ -43,7 +45,7 @@ const (
 	emptyWaitingRoomTTL    = 30 * time.Second
 	staleWaitingMemberTTL  = 15 * time.Second
 	gameStartCountdown     = 10 * time.Second
-	roundResultCountdown   = 5 * time.Second
+	defaultRoundPauseSec   = 5
 	gamePauseDuration      = 2 * time.Minute
 	forceResumeCountdown   = 5 * time.Second
 	ratingBaseValue        = 1000
@@ -60,6 +62,14 @@ const (
 	roundResultScoreStepDelay    = 1250 * time.Millisecond
 	roundResultScoreboardSortGap = 650 * time.Millisecond
 	roundResultTimerStartGap     = 850 * time.Millisecond
+	publicLobbyMaxPlayers        = 80
+	publicLobbyQuestionCount     = 5
+	publicLobbyAnswerTimeoutSec  = 10
+	publicLobbyRoundPauseSec     = 14
+)
+
+var (
+	publicGuestNamePattern = regexp.MustCompile(`^[A-Za-zА-Яа-яЁё-]+$`)
 )
 
 type Service struct {
@@ -118,6 +128,7 @@ func (s *Service) CreateRoom(ctx context.Context, userAccountID int64, in Create
 				IsRanked:           in.IsRanked,
 				QuestionCount:      in.QuestionCount,
 				AnswerTimeoutSec:   in.AnswerTimeoutSec,
+				RoundPauseSec:      in.RoundPauseSec,
 			}
 			createErr = tx.Rooms.Create(ctx, &room)
 			if createErr == nil {
@@ -139,6 +150,122 @@ func (s *Service) CreateRoom(ctx context.Context, userAccountID int64, in Create
 		return Room{}, err
 	}
 	return s.GetRoom(ctx, userAccountID, room.ID)
+}
+
+func (s *Service) CreatePublicRoom(ctx context.Context, userAccountID int64, in CreatePublicRoomInput) (Room, error) {
+	if err := s.requireQuestionAdmin(ctx, userAccountID); err != nil {
+		return Room{}, err
+	}
+	normalizePublicRoomInput(&in)
+	profileID, err := s.profileIDByAccount(ctx, userAccountID)
+	if err != nil {
+		return Room{}, err
+	}
+	var room model.Room
+	err = s.store.InTx(ctx, func(tx repository.Store) error {
+		var createErr error
+		for i := 0; i < 5; i++ {
+			code := inviteCode()
+			room = model.Room{
+				Uid:                uuid.New(),
+				Title:              "Public lobby " + code,
+				InviteCode:         code,
+				GameType:           model.DefaultGameType,
+				Status:             model.RoomStatusWaiting,
+				CreatedByProfileID: profileID,
+				MaxPlayers:         publicLobbyMaxPlayers,
+				IsRanked:           false,
+				IsPublicLobby:      true,
+				QuestionCount:      publicLobbyQuestionCount,
+				AnswerTimeoutSec:   in.AnswerTimeoutSec,
+				RoundPauseSec:      in.RoundPauseSec,
+			}
+			createErr = tx.Rooms.Create(ctx, &room)
+			if createErr == nil {
+				break
+			}
+			if isRoomTitleUniqueViolation(createErr) {
+				continue
+			}
+			if !isUniqueViolation(createErr) {
+				return createErr
+			}
+		}
+		return createErr
+	})
+	if err != nil {
+		return Room{}, err
+	}
+	return s.GetRoom(ctx, userAccountID, room.ID)
+}
+
+func (s *Service) JoinPublicRoom(ctx context.Context, inviteCode string, firstName string, lastName string) (PublicJoinResult, error) {
+	code := strings.ToUpper(strings.TrimSpace(inviteCode))
+	if code == "" {
+		return PublicJoinResult{}, ErrInvalidInput
+	}
+	firstName, lastName, err := normalizePublicGuestNames(firstName, lastName)
+	if err != nil {
+		return PublicJoinResult{}, err
+	}
+	token, err := publicGuestToken()
+	if err != nil {
+		return PublicJoinResult{}, err
+	}
+	tokenHash := publicGuestTokenHash(token)
+	var (
+		roomID    int64
+		profileID int64
+	)
+	err = s.store.InTx(ctx, func(tx repository.Store) error {
+		room, err := tx.Rooms.GetByInviteCodeForUpdate(ctx, code)
+		if err != nil {
+			return mapRepoErr(err)
+		}
+		if !room.IsPublicLobby || room.Status != model.RoomStatusWaiting {
+			return ErrForbidden
+		}
+		members, err := tx.Members.List(ctx, room.ID)
+		if err != nil {
+			return err
+		}
+		members = publicRoomPlayableMembers(*room, members)
+		if len(members) >= room.MaxPlayers {
+			return ErrRoomFull
+		}
+		profileID, err = tx.PublicParticipants.CreateGuestProfile(ctx)
+		if err != nil {
+			return err
+		}
+		participant := model.PublicParticipant{
+			Uid:       uuid.New(),
+			RoomID:    room.ID,
+			ProfileID: profileID,
+			TokenHash: tokenHash,
+			FirstName: firstName,
+			LastName:  lastName,
+		}
+		if err := tx.PublicParticipants.Create(ctx, &participant); err != nil {
+			return err
+		}
+		if err := tx.Members.Add(ctx, room.ID, profileID); err != nil {
+			return mapRepoErr(err)
+		}
+		if err := tx.Members.SetReady(ctx, room.ID, profileID, true); err != nil {
+			return mapRepoErr(err)
+		}
+		roomID = room.ID
+		return nil
+	})
+	if err != nil {
+		return PublicJoinResult{}, err
+	}
+	s.notifyRoom(ctx, roomID)
+	room, err := s.GetRoomByProfile(ctx, profileID, roomID)
+	if err != nil {
+		return PublicJoinResult{}, err
+	}
+	return PublicJoinResult{Token: token, Room: room}, nil
 }
 
 func (s *Service) JoinRoom(ctx context.Context, userAccountID int64, inviteCode string, roomIDRaw string, password string) (Room, error) {
@@ -173,6 +300,36 @@ func (s *Service) JoinRoom(ctx context.Context, userAccountID int64, inviteCode 
 			return mapRepoErr(err)
 		}
 		roomID = room.ID
+		if room.IsPublicLobby {
+			if room.CreatedByProfileID == profileID {
+				if room.Status == model.RoomStatusWaiting {
+					if err := tx.Members.Deactivate(ctx, room.ID, profileID); err != nil && !errors.Is(mapRepoErr(err), ErrNotFound) {
+						return mapRepoErr(err)
+					}
+				}
+				return nil
+			}
+			members, err := tx.Members.List(ctx, room.ID)
+			if err != nil {
+				return err
+			}
+			members = publicRoomPlayableMembers(*room, members)
+			for _, member := range members {
+				if member.ProfileID == profileID {
+					return nil
+				}
+			}
+			if room.Status != model.RoomStatusWaiting {
+				return ErrAlreadyStarted
+			}
+			if len(members) >= room.MaxPlayers {
+				return ErrRoomFull
+			}
+			if err := tx.Members.Add(ctx, room.ID, profileID); err != nil {
+				return mapRepoErr(err)
+			}
+			return mapRepoErr(tx.Members.SetReady(ctx, room.ID, profileID, true))
+		}
 		if room.Status != model.RoomStatusWaiting {
 			return ErrAlreadyStarted
 		}
@@ -233,7 +390,14 @@ func (s *Service) LeaveRoom(ctx context.Context, userAccountID, roomID int64) er
 	if err != nil {
 		return err
 	}
-	err = s.store.InTx(ctx, func(tx repository.Store) error {
+	return s.LeaveRoomByProfile(ctx, profileID, roomID)
+}
+
+func (s *Service) LeaveRoomByProfile(ctx context.Context, profileID, roomID int64) error {
+	if profileID <= 0 || roomID <= 0 {
+		return ErrInvalidInput
+	}
+	err := s.store.InTx(ctx, func(tx repository.Store) error {
 		room, err := tx.Rooms.GetForUpdate(ctx, roomID)
 		if err != nil {
 			return mapRepoErr(err)
@@ -268,10 +432,25 @@ func (s *Service) LeaveWaitingRoomOnDisconnect(ctx context.Context, userAccountI
 	return err
 }
 
+func (s *Service) LeaveWaitingRoomOnDisconnectByProfile(ctx context.Context, profileID, roomID int64) error {
+	err := s.LeaveRoomByProfile(ctx, profileID, roomID)
+	if errors.Is(err, ErrAlreadyStarted) || errors.Is(err, ErrForbidden) || errors.Is(err, ErrNotFound) {
+		return nil
+	}
+	return err
+}
+
 func (s *Service) TouchWaitingRoomMember(ctx context.Context, userAccountID, roomID int64) error {
 	profileID, err := s.profileIDByAccount(ctx, userAccountID)
 	if err != nil {
 		return err
+	}
+	return s.TouchWaitingRoomMemberByProfile(ctx, profileID, roomID)
+}
+
+func (s *Service) TouchWaitingRoomMemberByProfile(ctx context.Context, profileID, roomID int64) error {
+	if profileID <= 0 || roomID <= 0 {
+		return ErrInvalidInput
 	}
 	return s.store.Members.TouchWaiting(ctx, roomID, profileID)
 }
@@ -511,22 +690,25 @@ func (s *Service) StartRoom(ctx context.Context, userAccountID, roomID int64) (R
 		if err != nil {
 			return err
 		}
+		members = publicRoomPlayableMembers(*room, members)
 		if len(members) < 2 {
 			return ErrInvalidInput
 		}
-		for _, member := range members {
-			if !member.IsReady {
-				return ErrInvalidInput
+		if !room.IsPublicLobby {
+			for _, member := range members {
+				if !member.IsReady {
+					return ErrInvalidInput
+				}
 			}
 		}
-		questions, err := tx.Questions.Random(ctx, room.GameType, room.QuestionCount)
+		questions, err := questionsForRoomStart(ctx, tx, room)
 		if err != nil {
 			return err
 		}
 		if len(questions) < room.QuestionCount {
 			return ErrInvalidInput
 		}
-		for i, question := range questions {
+		for i, question := range questions[:room.QuestionCount] {
 			if err := tx.RoomQs.Add(ctx, room.ID, question.ID, i+1); err != nil {
 				return err
 			}
@@ -572,8 +754,15 @@ func areReplayMembersReady(members []model.RoomMember) bool {
 	return true
 }
 
+func questionsForRoomStart(ctx context.Context, tx repository.Store, room *model.Room) ([]model.Question, error) {
+	if room != nil && room.IsPublicLobby {
+		return tx.Questions.PublicLobby(ctx)
+	}
+	return tx.Questions.Random(ctx, room.GameType, room.QuestionCount)
+}
+
 func (s *Service) prepareReplay(ctx context.Context, tx repository.Store, room *model.Room) (time.Time, error) {
-	questions, err := tx.Questions.Random(ctx, room.GameType, room.QuestionCount)
+	questions, err := questionsForRoomStart(ctx, tx, room)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -583,7 +772,7 @@ func (s *Service) prepareReplay(ctx context.Context, tx repository.Store, room *
 	if err := tx.RoomQs.Clear(ctx, room.ID); err != nil {
 		return time.Time{}, err
 	}
-	for i, question := range questions {
+	for i, question := range questions[:room.QuestionCount] {
 		if err := tx.RoomQs.Add(ctx, room.ID, question.ID, i+1); err != nil {
 			return time.Time{}, err
 		}
@@ -610,15 +799,27 @@ func (s *Service) prepareReplay(ctx context.Context, tx repository.Store, room *
 }
 
 func (s *Service) SubmitAnswer(ctx context.Context, userAccountID, roomID int64, value float64) (Room, error) {
-	if math.IsNaN(value) || math.IsInf(value, 0) {
-		return Room{}, ErrInvalidInput
-	}
 	profileID, err := s.profileIDByAccount(ctx, userAccountID)
 	if err != nil {
 		return Room{}, err
 	}
+	return s.SubmitAnswerByProfile(ctx, profileID, roomID, value)
+}
+
+func (s *Service) SubmitPublicAnswer(ctx context.Context, roomID int64, token string, value float64) (Room, error) {
+	participant, err := s.publicParticipantByToken(ctx, roomID, token)
+	if err != nil {
+		return Room{}, err
+	}
+	return s.SubmitAnswerByProfile(ctx, participant.ProfileID, roomID, value)
+}
+
+func (s *Service) SubmitAnswerByProfile(ctx context.Context, profileID, roomID int64, value float64) (Room, error) {
+	if math.IsNaN(value) || math.IsInf(value, 0) || profileID <= 0 {
+		return Room{}, ErrInvalidInput
+	}
 	var deadline *time.Time
-	err = s.store.InTx(ctx, func(tx repository.Store) error {
+	err := s.store.InTx(ctx, func(tx repository.Store) error {
 		room, err := tx.Rooms.GetForUpdate(ctx, roomID)
 		if err != nil {
 			return mapRepoErr(err)
@@ -692,6 +893,7 @@ func (s *Service) SubmitAnswer(ctx context.Context, userAccountID, roomID int64,
 		if err != nil {
 			return err
 		}
+		members = publicRoomPlayableMembers(*room, members)
 		if answerCount >= len(members) {
 			next, err := s.completeActiveQuestion(ctx, tx, room)
 			if err != nil {
@@ -708,7 +910,7 @@ func (s *Service) SubmitAnswer(ctx context.Context, userAccountID, roomID int64,
 		s.scheduleDeadline(roomID, *deadline)
 	}
 	s.notifyRoom(ctx, roomID)
-	return s.GetRoom(ctx, userAccountID, roomID)
+	return s.GetRoomByProfile(ctx, profileID, roomID)
 }
 
 func (s *Service) PauseRoom(ctx context.Context, userAccountID, roomID int64) (Room, error) {
@@ -915,6 +1117,29 @@ func (s *Service) GetRoom(ctx context.Context, userAccountID, roomID int64) (Roo
 	if err != nil {
 		return Room{}, err
 	}
+	return s.GetRoomByProfile(ctx, profileID, roomID)
+}
+
+func (s *Service) GetPublicRoom(ctx context.Context, roomID int64, token string) (Room, error) {
+	participant, err := s.publicParticipantByToken(ctx, roomID, token)
+	if err != nil {
+		return Room{}, err
+	}
+	return s.GetRoomByProfile(ctx, participant.ProfileID, roomID)
+}
+
+func (s *Service) PublicProfileByToken(ctx context.Context, roomID int64, token string) (int64, error) {
+	participant, err := s.publicParticipantByToken(ctx, roomID, token)
+	if err != nil {
+		return 0, err
+	}
+	return participant.ProfileID, nil
+}
+
+func (s *Service) GetRoomByProfile(ctx context.Context, profileID, roomID int64) (Room, error) {
+	if profileID <= 0 || roomID <= 0 {
+		return Room{}, ErrInvalidInput
+	}
 	if err := s.cleanupEmptyWaitingRooms(ctx); err != nil {
 		return Room{}, err
 	}
@@ -926,7 +1151,7 @@ func (s *Service) GetRoom(ctx context.Context, userAccountID, roomID int64) (Roo
 	if err != nil {
 		return Room{}, err
 	}
-	if !ok {
+	if !ok && room.CreatedByProfileID != profileID {
 		return Room{}, ErrForbidden
 	}
 	if room.Status == model.RoomStatusActive && roomEventDue(room, time.Now()) {
@@ -1048,7 +1273,14 @@ func (s *Service) ListRoomMessages(ctx context.Context, userAccountID, roomID in
 	if err != nil {
 		return nil, err
 	}
-	if err := s.ensureRoomMember(ctx, roomID, profileID); err != nil {
+	return s.ListRoomMessagesByProfile(ctx, profileID, roomID, limit, offset)
+}
+
+func (s *Service) ListRoomMessagesByProfile(ctx context.Context, profileID, roomID int64, limit, offset int) ([]RoomMessage, error) {
+	if profileID <= 0 || roomID <= 0 {
+		return nil, ErrInvalidInput
+	}
+	if err := s.ensureRoomChatAccess(ctx, roomID, profileID); err != nil {
 		return nil, err
 	}
 	messages, err := s.store.Messages.List(ctx, roomID, normalizeLimit(limit, 100, 300), normalizeOffset(offset))
@@ -1063,11 +1295,18 @@ func (s *Service) SendRoomMessage(ctx context.Context, userAccountID, roomID int
 	if err != nil {
 		return RoomMessage{}, err
 	}
-	text, err = normalizeRoomMessageText(text)
+	return s.SendRoomMessageByProfile(ctx, profileID, roomID, text)
+}
+
+func (s *Service) SendRoomMessageByProfile(ctx context.Context, profileID, roomID int64, text string) (RoomMessage, error) {
+	if profileID <= 0 || roomID <= 0 {
+		return RoomMessage{}, ErrInvalidInput
+	}
+	text, err := normalizeRoomMessageText(text)
 	if err != nil {
 		return RoomMessage{}, err
 	}
-	if err := s.ensureRoomMember(ctx, roomID, profileID); err != nil {
+	if err := s.ensureRoomChatAccess(ctx, roomID, profileID); err != nil {
 		return RoomMessage{}, err
 	}
 	message := model.RoomMessage{
@@ -1213,11 +1452,33 @@ func (s *Service) ensureRoomMember(ctx context.Context, roomID, profileID int64)
 	return nil
 }
 
+func (s *Service) ensureRoomChatAccess(ctx context.Context, roomID, profileID int64) error {
+	if roomID <= 0 || profileID <= 0 {
+		return ErrInvalidInput
+	}
+	room, err := s.store.Rooms.Get(ctx, roomID)
+	if err != nil {
+		return mapRepoErr(err)
+	}
+	if room.IsPublicLobby && room.CreatedByProfileID == profileID {
+		return nil
+	}
+	ok, err := s.store.Members.IsMember(ctx, roomID, profileID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrForbidden
+	}
+	return nil
+}
+
 func (s *Service) buildRoom(ctx context.Context, room model.Room, meProfileID int64) (Room, error) {
 	members, err := s.store.Members.List(ctx, room.ID)
 	if err != nil {
 		return Room{}, err
 	}
+	members = publicRoomPlayableMembers(room, members)
 	stats, err := s.store.Members.Stats(ctx, meProfileID)
 	if err != nil {
 		return Room{}, err
@@ -1291,8 +1552,10 @@ func (s *Service) buildRoom(ctx context.Context, room model.Room, meProfileID in
 		HasPassword:             room.PasswordHash != nil && strings.TrimSpace(*room.PasswordHash) != "",
 		Password:                roomPasswordForProfile(room, meProfileID),
 		IsRanked:                room.IsRanked,
+		IsPublicLobby:           room.IsPublicLobby,
 		QuestionCount:           room.QuestionCount,
 		AnswerTimeoutSec:        room.AnswerTimeoutSec,
+		RoundPauseSec:           room.RoundPauseSec,
 		Creator:                 s.player(ctx, model.RoomMember{ProfileID: room.CreatedByProfileID}, meProfileID, false),
 		CurrentQuestionIndex:    room.CurrentQuestionIndex,
 		NextQuestionAt:          timePtrString(room.NextQuestionAt),
@@ -1325,6 +1588,15 @@ func (s *Service) player(ctx context.Context, member model.RoomMember, meProfile
 			player.Name = summary.GetUsername()
 		}
 		player.AvatarID = summary.AvatarId
+	}
+	if strings.TrimSpace(player.Name) == "" && s.store.PublicParticipants != nil {
+		participant, err := s.store.PublicParticipants.GetByProfile(ctx, member.ProfileID)
+		if err == nil {
+			player.FirstName = participant.FirstName
+			player.LastName = participant.LastName
+			player.Name = strings.TrimSpace(participant.FirstName + " " + participant.LastName)
+			player.Username = "guest"
+		}
 	}
 	return player
 }
@@ -1381,6 +1653,7 @@ func (s *Service) completeActiveQuestion(ctx context.Context, tx repository.Stor
 	if err != nil {
 		return nil, err
 	}
+	members = publicRoomPlayableMembers(*room, members)
 	if active.Position >= room.QuestionCount {
 		roomWinner := scoreWinner(members)
 		room.Status = model.RoomStatusFinished
@@ -1406,7 +1679,7 @@ func (s *Service) completeActiveQuestion(ctx context.Context, tx repository.Stor
 		}
 		return nil, nil
 	}
-	nextQuestionAt := now.Add(roundResultTransitionDuration(members, answers, active.StartedAt))
+	nextQuestionAt := now.Add(roundResultTransitionDuration(room.RoundPauseSec, members, answers, active.StartedAt))
 	room.Status = model.RoomStatusActive
 	room.CurrentQuestionIndex = active.Position
 	room.CurrentQuestionID = nil
@@ -1439,6 +1712,20 @@ func roundResultMemberAnswers(members []model.RoomMember, answers []model.Answer
 		}
 	}
 	return result
+}
+
+func publicRoomPlayableMembers(room model.Room, members []model.RoomMember) []model.RoomMember {
+	if !room.IsPublicLobby || room.CreatedByProfileID <= 0 {
+		return members
+	}
+	filtered := make([]model.RoomMember, 0, len(members))
+	for _, member := range members {
+		if member.ProfileID == room.CreatedByProfileID {
+			continue
+		}
+		filtered = append(filtered, member)
+	}
+	return filtered
 }
 
 func roundResultAnswerGroupKey(value float64) string {
@@ -1523,16 +1810,11 @@ func roundResultPositivePointCount(memberCount int, answers []model.Answer, star
 	return positiveCount
 }
 
-func roundResultTransitionDuration(members []model.RoomMember, answers []model.Answer, startedAt *time.Time) time.Duration {
-	memberAnswers := roundResultMemberAnswers(members, answers)
-	maxRevealIndex := roundResultMaxRevealIndex(len(members), memberAnswers)
-	answersRevealEnd := roundResultCardDelay(maxRevealIndex) + roundResultAnswerSettle
-	timesReveal := answersRevealEnd + roundResultTimesRevealGap
-	scoreStart := timesReveal + roundResultScoreStartGap
-	pointSteps := roundResultPositivePointCount(len(members), memberAnswers, startedAt)
-	sortAt := scoreStart + time.Duration(pointSteps)*roundResultScoreStepDelay + roundResultScoreboardSortGap
-	timerStart := sortAt + roundResultTimerStartGap
-	return timerStart + roundResultCountdown
+func roundResultTransitionDuration(roundPauseSec int, members []model.RoomMember, answers []model.Answer, startedAt *time.Time) time.Duration {
+	_ = members
+	_ = answers
+	_ = startedAt
+	return time.Duration(normalizeRoundPauseSec(roundPauseSec)) * time.Second
 }
 
 func answerWinner(answers []model.Answer) *int64 {
@@ -2055,7 +2337,38 @@ func normalizeCreateInput(in *CreateRoomInput) error {
 	if in.AnswerTimeoutSec > 120 {
 		in.AnswerTimeoutSec = 120
 	}
+	in.RoundPauseSec = normalizeRoundPauseSec(in.RoundPauseSec)
 	return nil
+}
+
+func normalizePublicRoomInput(in *CreatePublicRoomInput) {
+	if in.AnswerTimeoutSec <= 0 {
+		in.AnswerTimeoutSec = publicLobbyAnswerTimeoutSec
+	}
+	if in.AnswerTimeoutSec < 3 {
+		in.AnswerTimeoutSec = 3
+	}
+	if in.AnswerTimeoutSec > 120 {
+		in.AnswerTimeoutSec = 120
+	}
+	if in.RoundPauseSec <= 0 {
+		in.RoundPauseSec = publicLobbyRoundPauseSec
+	} else {
+		in.RoundPauseSec = normalizeRoundPauseSec(in.RoundPauseSec)
+	}
+}
+
+func normalizeRoundPauseSec(value int) int {
+	if value <= 0 {
+		return defaultRoundPauseSec
+	}
+	if value < 1 {
+		return 1
+	}
+	if value > 60 {
+		return 60
+	}
+	return value
 }
 
 func normalizeRoomTitle(title string) (string, error) {
@@ -2072,6 +2385,99 @@ func normalizeRoomMessageText(text string) (string, error) {
 		return "", ErrInvalidInput
 	}
 	return text, nil
+}
+
+func normalizePublicGuestNames(firstName string, lastName string) (string, string, error) {
+	firstName, err := normalizePublicGuestName(firstName)
+	if err != nil {
+		return "", "", err
+	}
+	lastName, err = normalizePublicGuestName(lastName)
+	if err != nil {
+		return "", "", err
+	}
+	if detectPublicGuestAlphabet(firstName) != detectPublicGuestAlphabet(lastName) {
+		return "", "", ErrInvalidInput
+	}
+	return firstName, lastName, nil
+}
+
+func normalizePublicGuestName(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	runes := []rune(value)
+	if len(runes) == 0 || len(runes) > 12 || !publicGuestNamePattern.MatchString(value) {
+		return "", ErrInvalidInput
+	}
+	hasLatin := false
+	hasCyrillic := false
+	for _, r := range runes {
+		switch {
+		case r == '-':
+		case (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z'):
+			hasLatin = true
+		case (r >= 'А' && r <= 'я') || r == 'Ё' || r == 'ё':
+			hasCyrillic = true
+		default:
+			return "", ErrInvalidInput
+		}
+	}
+	if hasLatin == hasCyrillic {
+		return "", ErrInvalidInput
+	}
+	for i, r := range runes {
+		if i == 0 {
+			runes[i] = unicode.ToUpper(r)
+		} else {
+			runes[i] = unicode.ToLower(r)
+		}
+	}
+	return string(runes), nil
+}
+
+func detectPublicGuestAlphabet(value string) string {
+	for _, r := range value {
+		switch {
+		case (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z'):
+			return "latin"
+		case (r >= 'А' && r <= 'я') || r == 'Ё' || r == 'ё':
+			return "cyrillic"
+		}
+	}
+	return ""
+}
+
+func publicGuestToken() (string, error) {
+	var buf [32]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(buf[:]), nil
+}
+
+func publicGuestTokenHash(token string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(token)))
+	return hex.EncodeToString(sum[:])
+}
+
+func (s *Service) publicParticipantByToken(ctx context.Context, roomID int64, token string) (*model.PublicParticipant, error) {
+	if roomID <= 0 || strings.TrimSpace(token) == "" || s.store.PublicParticipants == nil {
+		return nil, ErrInvalidInput
+	}
+	participant, err := s.store.PublicParticipants.GetByTokenHash(ctx, publicGuestTokenHash(token))
+	if err != nil {
+		return nil, mapRepoErr(err)
+	}
+	if participant.RoomID != roomID {
+		return nil, ErrForbidden
+	}
+	room, err := s.store.Rooms.Get(ctx, roomID)
+	if err != nil {
+		return nil, mapRepoErr(err)
+	}
+	if !room.IsPublicLobby {
+		return nil, ErrForbidden
+	}
+	return participant, nil
 }
 
 func passwordHashPtr(password string) *string {

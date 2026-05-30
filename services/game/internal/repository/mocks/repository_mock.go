@@ -193,6 +193,21 @@ func (mr *MockQuestionRepoMockRecorder) Random(ctx, gameType, limit interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Random", reflect.TypeOf((*MockQuestionRepo)(nil).Random), ctx, gameType, limit)
 }
 
+// PublicLobby mocks base method.
+func (m *MockQuestionRepo) PublicLobby(ctx context.Context) ([]model.Question, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PublicLobby", ctx)
+	ret0, _ := ret[0].([]model.Question)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// PublicLobby indicates an expected call of PublicLobby.
+func (mr *MockQuestionRepoMockRecorder) PublicLobby(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublicLobby", reflect.TypeOf((*MockQuestionRepo)(nil).PublicLobby), ctx)
+}
+
 // Update mocks base method.
 func (m *MockQuestionRepo) Update(ctx context.Context, q *model.Question) error {
 	m.ctrl.T.Helper()
@@ -315,6 +330,21 @@ func (m *MockRoomRepo) GetByInviteCode(ctx context.Context, code string) (*model
 func (mr *MockRoomRepoMockRecorder) GetByInviteCode(ctx, code interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByInviteCode", reflect.TypeOf((*MockRoomRepo)(nil).GetByInviteCode), ctx, code)
+}
+
+// GetByInviteCodeForUpdate mocks base method.
+func (m *MockRoomRepo) GetByInviteCodeForUpdate(ctx context.Context, code string) (*model.Room, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByInviteCodeForUpdate", ctx, code)
+	ret0, _ := ret[0].(*model.Room)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByInviteCodeForUpdate indicates an expected call of GetByInviteCodeForUpdate.
+func (mr *MockRoomRepoMockRecorder) GetByInviteCodeForUpdate(ctx, code interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByInviteCodeForUpdate", reflect.TypeOf((*MockRoomRepo)(nil).GetByInviteCodeForUpdate), ctx, code)
 }
 
 // GetForUpdate mocks base method.
